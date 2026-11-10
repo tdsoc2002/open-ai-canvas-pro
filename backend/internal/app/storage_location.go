@@ -48,8 +48,8 @@ func (s *Service) TestUserOSSSetting(actor *model.User, req OSSSettingRequest) (
 	if err != nil {
 		return nil, err
 	}
-	if strings.EqualFold(strings.TrimSpace(req.Provider), s3Provider) && !platform.AllowUserS3 {
-		return nil, Forbidden("平台管理员尚未允许个人 S3 兼容存储")
+	if !platform.AllowUserS3 {
+		return nil, Forbidden("平台管理员尚未允许个人对象存储")
 	}
 	_, current, err := s.readUserOSSSetting(actor.ID)
 	if err != nil {

@@ -118,7 +118,7 @@ func (s *Service) processResourceOffloadJob(ctx context.Context, job *model.Reso
 		return
 	}
 	target := &model.Resource{ID: resource.ID, UserID: resource.UserID, Kind: resource.Kind, Provider: job.TargetProvider, Endpoint: job.TargetEndpoint, Bucket: job.TargetBucket, StorageSettingID: job.TargetStorageSettingID, ObjectKey: job.TargetObjectKey, MimeType: resource.MimeType, Size: resource.Size}
-	setting, err := s.ossSettingForResource(job.UserID, target)
+	setting, err := s.ossSettingForResourceWrite(job.UserID, target)
 	if err != nil {
 		_ = file.Close()
 		s.retryResourceOffload(job, owner, "storage_config", err.Error())

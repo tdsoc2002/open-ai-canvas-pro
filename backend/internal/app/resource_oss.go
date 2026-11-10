@@ -19,24 +19,55 @@ func (s *Service) activeOSSSetting() (ossSettingValue, error) {
 }
 
 func (s *Service) activeResourceOSSSetting(userID string) (ossSettingValue, string, bool, error) {
-	userSetting, value, err := s.readUserOSSSetting(userID)
-	if err != nil {
-		return ossSettingValue{}, "", false, err
-	}
 	_, systemValue, err := s.readOSSSetting()
 	if err != nil {
 		return ossSettingValue{}, "", false, err
 	}
-	userAllowed := value.Provider != s3Provider || systemValue.AllowUserS3
-	if userSetting != nil && value.Enabled && userAllowed {
-		value, err = validateActiveOSSSetting(value, "用户 OSS 尚未启用", "你的 OSS 配置不完整")
-		return value, firstNonEmpty(value.StorageLocationID, userSetting.ID), true, err
+	if systemValue.AllowUserS3 {
+		userSetting, value, err := s.readUserOSSSetting(userID)
+		if err != nil {
+			return ossSettingValue{}, "", false, err
+		}
+		if userSetting != nil && value.Enabled {
+			value, err = validateActiveOSSSetting(value, "用户 OSS 尚未启用", "你的 OSS 配置不完整")
+			return value, firstNonEmpty(value.StorageLocationID, userSetting.ID), true, err
+		}
 	}
 	if !systemValue.Enabled {
 		return ossSettingValue{}, "", false, nil
 	}
 	systemValue, err = validateActiveOSSSetting(systemValue, "管理员尚未启用 OSS", "平台 OSS 配置不完整，请联系管理员")
 	return systemValue, systemValue.StorageLocationID, true, err
+}
+
+func (s *Service) ossSettingForResourceWrite(userID string, resource *model.Resource) (ossSettingValue, error) {
+	_, platform, err := s.readOSSSetting()
+	if err != nil {
+		return ossSettingValue{}, err
+	}
+	if !platform.AllowUserS3 {
+		personal := false
+		if resource.StorageSettingID != "" {
+			location, lookupErr := s.repo.StorageLocation(resource.StorageSettingID)
+			err = lookupErr
+			if err == nil {
+				personal = location.Scope == "user"
+			} else if errors.Is(err, gorm.ErrRecordNotFound) {
+				_, err = s.repo.UserOSSSettingForUser(userID, resource.StorageSettingID)
+				personal = err == nil
+			}
+		} else {
+			_, err = s.userOSSSettingForResource(userID, resource)
+			personal = err == nil
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return ossSettingValue{}, err
+		}
+		if personal {
+			return ossSettingValue{}, Forbidden("平台管理员尚未允许个人对象存储")
+		}
+	}
+	return s.ossSettingForResource(userID, resource)
 }
 
 func (s *Service) ossSettingForResource(userID string, resource *model.Resource) (ossSettingValue, error) {

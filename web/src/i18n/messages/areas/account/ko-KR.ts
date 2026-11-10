@@ -127,7 +127,7 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
         oss: {
             loadFailed: "개인 오브젝트 스토리지 설정을 불러오지 못했습니다",
             loginRequired: "로그인하면 개인 오브젝트 스토리지를 설정할 수 있습니다.",
-            s3NotAllowed: "플랫폼 관리자가 개인 S3 호환 스토리지를 허용하지 않았습니다",
+            s3NotAllowed: "개인 객체 스토리지가 비활성화되었습니다. 새 업로드는 플랫폼 스토리지를 사용합니다.",
             enabledSuccess: "개인 오브젝트 스토리지를 사용합니다. 이후 업로드는 이 스토리지를 우선 사용합니다",
             disabledSuccess: "개인 오브젝트 스토리지 사용을 중지했습니다. 이후 업로드는 플랫폼 스토리지를 사용합니다",
             saveFailed: "개인 오브젝트 스토리지 설정을 저장하지 못했습니다",

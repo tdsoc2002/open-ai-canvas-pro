@@ -76,7 +76,7 @@ export function UserOSSSettingsForm() {
 
     const save = async () => {
         const values = await form.validateFields();
-        if (values.enabled && values.provider === "s3" && !setting?.allowUserS3) return message.error(t("account.layout.oss.s3NotAllowed"));
+        if (!setting?.allowUserS3) return message.error(t("account.layout.oss.s3NotAllowed"));
         setSaving(true);
         try {
             const data = await updateUserOSSSetting({
@@ -109,6 +109,7 @@ export function UserOSSSettingsForm() {
     };
 
     const testConnection = async () => {
+        if (!setting?.allowUserS3) return message.error(t("account.layout.oss.s3NotAllowed"));
         const values = await form.validateFields();
         const validationError = validateOSSConnectionDraft(values);
         if (validationError) {
@@ -128,6 +129,14 @@ export function UserOSSSettingsForm() {
             setTesting(false);
         }
     };
+
+    if (!setting || !setting.allowUserS3) {
+        return (
+            <div role="status" className="rounded-md border border-dashed border-border px-5 py-10 text-center text-sm text-foreground/55">
+                {!setting ? (loading ? t("common.loading") : t("account.layout.oss.loadFailed")) : t("account.layout.oss.s3NotAllowed")}
+            </div>
+        );
+    }
 
     return (
         <Form form={form} layout="vertical" requiredMark={false} disabled={loading} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
@@ -153,9 +162,29 @@ export function UserOSSSettingsForm() {
                 </Form.Item>
                 <Form.Item name="provider" label={t("account.layout.oss.provider")} rules={[{ required: true, message: t("account.layout.oss.providerRequired") }]} className="mb-3">
                     <Select
-                        options={[{ label: t("account.layout.oss.providers.aliyun"), value: "aliyun" }, { label: t("account.layout.oss.providers.tencent"), value: "tencent" }, { label: t("account.layout.oss.providers.qiniu"), value: "qiniu" }, { label: t("account.layout.oss.providers.volcengine"), value: "volcengine" }, { label: t("account.layout.oss.providers.s3"), value: "s3", disabled: setting?.allowUserS3 === false }]}
+                        options={[
+                            { label: t("account.layout.oss.providers.aliyun"), value: "aliyun" },
+                            { label: t("account.layout.oss.providers.tencent"), value: "tencent" },
+                            { label: t("account.layout.oss.providers.qiniu"), value: "qiniu" },
+                            { label: t("account.layout.oss.providers.volcengine"), value: "volcengine" },
+                            { label: t("account.layout.oss.providers.s3"), value: "s3" },
+                        ]}
                         onChange={(nextProvider: OSSFormValues["provider"]) => {
-                            if (nextProvider !== provider) form.setFieldsValue({ s3Preset: "custom", region: "", endpoint: "", cdnBaseUrl: "", cdnAuthMode: "", requireCDN: false, allowPrivateProxy: false, bucket: "", accessKeyId: "", accessKeySecret: "", sessionToken: "", pathStyle: false });
+                            if (nextProvider !== provider)
+                                form.setFieldsValue({
+                                    s3Preset: "custom",
+                                    region: "",
+                                    endpoint: "",
+                                    cdnBaseUrl: "",
+                                    cdnAuthMode: "",
+                                    requireCDN: false,
+                                    allowPrivateProxy: false,
+                                    bucket: "",
+                                    accessKeyId: "",
+                                    accessKeySecret: "",
+                                    sessionToken: "",
+                                    pathStyle: false,
+                                });
                         }}
                     />
                 </Form.Item>
@@ -170,15 +199,7 @@ export function UserOSSSettingsForm() {
                 <Form.Item
                     name="endpoint"
                     label={isQiniuKodo ? t("account.layout.oss.uploadEndpoint") : "Endpoint"}
-                    extra={
-                        isS3
-                            ? getS3PresetHints(s3Preset).help
-                            : isTencentCOS
-                              ? t("account.layout.oss.endpointHintTencent")
-                              : isVolcengineTOS
-                                ? t("account.layout.oss.endpointHintVolcengine")
-                                : undefined
-                    }
+                    extra={isS3 ? getS3PresetHints(s3Preset).help : isTencentCOS ? t("account.layout.oss.endpointHintTencent") : isVolcengineTOS ? t("account.layout.oss.endpointHintVolcengine") : undefined}
                     className="mb-3"
                 >
                     <Input
@@ -200,27 +221,20 @@ export function UserOSSSettingsForm() {
                 <Form.Item
                     name="cdnBaseUrl"
                     label={isQiniuKodo ? t("account.layout.oss.cdnQiniu") : isS3 ? t("account.layout.oss.cdnS3") : t("account.layout.oss.cdnDefault")}
-                    extra={
-                        isTencentCOS
-                            ? t("account.layout.oss.cdnHintTencent")
-                            : isQiniuKodo
-                              ? t("account.layout.oss.cdnHintQiniu")
-                              : isVolcengineTOS
-                                ? t("account.layout.oss.cdnHintVolcengine")
-                                : t("account.layout.oss.cdnHintAliyun")
-                    }
+                    extra={isTencentCOS ? t("account.layout.oss.cdnHintTencent") : isQiniuKodo ? t("account.layout.oss.cdnHintQiniu") : isVolcengineTOS ? t("account.layout.oss.cdnHintVolcengine") : t("account.layout.oss.cdnHintAliyun")}
                     rules={[{ type: "url", message: t("account.layout.oss.cdnInvalid") }]}
                     className="mb-3"
                 >
                     <Input inputMode="url" spellCheck={false} placeholder="https://media.example.com" />
                 </Form.Item>
-                <Form.Item
-                    name="cdnAuthMode"
-                    label={t("account.layout.oss.cdnAuth")}
-                    extra={isQiniuKodo ? t("account.layout.oss.cdnAuthHintQiniu") : t("account.layout.oss.cdnAuthHintDefault")}
-                    className="mb-3"
-                >
-                    <Select options={[{ label: t("account.layout.oss.cdnAuthNone"), value: "" }, { label: t("account.layout.oss.cdnAuthPublic"), value: "public" }, { label: t("account.layout.oss.cdnAuthQiniu"), value: "qiniu", disabled: !isQiniuKodo }]} />
+                <Form.Item name="cdnAuthMode" label={t("account.layout.oss.cdnAuth")} extra={isQiniuKodo ? t("account.layout.oss.cdnAuthHintQiniu") : t("account.layout.oss.cdnAuthHintDefault")} className="mb-3">
+                    <Select
+                        options={[
+                            { label: t("account.layout.oss.cdnAuthNone"), value: "" },
+                            { label: t("account.layout.oss.cdnAuthPublic"), value: "public" },
+                            { label: t("account.layout.oss.cdnAuthQiniu"), value: "qiniu", disabled: !isQiniuKodo },
+                        ]}
+                    />
                 </Form.Item>
                 <Form.Item name="requireCDN" label={t("account.layout.oss.requireCDN")} valuePropName="checked" extra={t("account.layout.oss.requireCDNHint")} className="mb-3">
                     <Switch checkedChildren={t("account.layout.oss.requireCDNOn")} unCheckedChildren={t("account.layout.oss.requireCDNOff")} />
@@ -235,10 +249,28 @@ export function UserOSSSettingsForm() {
                     <Input spellCheck={false} placeholder={DEFAULT_OSS_PATH_PREFIX} />
                 </Form.Item>
                 <Form.Item name="accessKeyId" label={accessKeyIdLabel} className="mb-3 xl:col-span-1">
-                    <Input autoComplete="off" spellCheck={false} placeholder={isTencentCOS ? t("account.layout.oss.keyIdTencent") : isQiniuKodo ? t("account.layout.oss.keyIdQiniu") : isVolcengineTOS ? t("account.layout.oss.keyIdVolcengine") : t("account.layout.oss.keyIdAliyun")} />
+                    <Input
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder={isTencentCOS ? t("account.layout.oss.keyIdTencent") : isQiniuKodo ? t("account.layout.oss.keyIdQiniu") : isVolcengineTOS ? t("account.layout.oss.keyIdVolcengine") : t("account.layout.oss.keyIdAliyun")}
+                    />
                 </Form.Item>
                 <Form.Item name="accessKeySecret" label={hasCurrentProviderSecret ? t("account.layout.oss.keepBlank", { label: accessKeySecretLabel }) : accessKeySecretLabel} className="mb-3 xl:col-span-2">
-                    <Input.Password autoComplete="new-password" spellCheck={false} placeholder={hasCurrentProviderSecret ? t("account.layout.oss.keepSecret") : isTencentCOS ? t("account.layout.oss.secretTencent") : isQiniuKodo ? t("account.layout.oss.secretQiniu") : isVolcengineTOS ? t("account.layout.oss.secretVolcengine") : t("account.layout.oss.secretAliyun")} />
+                    <Input.Password
+                        autoComplete="new-password"
+                        spellCheck={false}
+                        placeholder={
+                            hasCurrentProviderSecret
+                                ? t("account.layout.oss.keepSecret")
+                                : isTencentCOS
+                                  ? t("account.layout.oss.secretTencent")
+                                  : isQiniuKodo
+                                    ? t("account.layout.oss.secretQiniu")
+                                    : isVolcengineTOS
+                                      ? t("account.layout.oss.secretVolcengine")
+                                      : t("account.layout.oss.secretAliyun")
+                        }
+                    />
                 </Form.Item>
                 {isS3 ? (
                     <>
@@ -253,8 +285,18 @@ export function UserOSSSettingsForm() {
             </div>
 
             <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-foreground/50">{savedAt ? t("account.layout.oss.savedAt", { time: savedAt }) : t("account.layout.oss.notSaved")}</span><ConnectionTestStatus result={testResult} stale={testStale} /></div>
-                <div className="flex flex-wrap gap-2"><Button loading={testing} onClick={() => void testConnection()}>{t("account.layout.oss.test")}</Button><Button type="primary" loading={saving} onClick={() => void save()}>{t("account.layout.oss.save")}</Button></div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-foreground/50">{savedAt ? t("account.layout.oss.savedAt", { time: savedAt }) : t("account.layout.oss.notSaved")}</span>
+                    <ConnectionTestStatus result={testResult} stale={testStale} />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <Button loading={testing} onClick={() => void testConnection()}>
+                        {t("account.layout.oss.test")}
+                    </Button>
+                    <Button type="primary" loading={saving} onClick={() => void save()}>
+                        {t("account.layout.oss.save")}
+                    </Button>
+                </div>
             </div>
         </Form>
     );
@@ -307,5 +349,10 @@ function ConnectionTestStatus({ result, stale }: { result: OSSConnectionTestResu
     const { t } = useTranslation();
     if (stale) return <StatusBadge tone="warning" label={t("account.layout.oss.retestNeeded")} />;
     if (!result) return null;
-    return <StatusBadge tone={result.ok ? "success" : "error"} label={result.ok ? (result.testedAt ? t("account.layout.oss.testPassedAt", { time: formatSavedAt(result.testedAt) }) : t("account.layout.oss.testPassedShort")) : result.message || t("account.layout.oss.testFailedShort")} />;
+    return (
+        <StatusBadge
+            tone={result.ok ? "success" : "error"}
+            label={result.ok ? (result.testedAt ? t("account.layout.oss.testPassedAt", { time: formatSavedAt(result.testedAt) }) : t("account.layout.oss.testPassedShort")) : result.message || t("account.layout.oss.testFailedShort")}
+        />
+    );
 }

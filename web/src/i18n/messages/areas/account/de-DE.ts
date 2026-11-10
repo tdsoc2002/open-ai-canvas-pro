@@ -127,7 +127,7 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         oss: {
             loadFailed: "Einstellungen für persönlichen Objektspeicher konnten nicht geladen werden",
             loginRequired: "Melden Sie sich an, um persönlichen Objektspeicher einzurichten.",
-            s3NotAllowed: "Der Plattformadministrator hat persönlichen S3-kompatiblen Speicher nicht freigegeben",
+            s3NotAllowed: "Persönlicher Objektspeicher ist deaktiviert. Neue Uploads verwenden den Plattformspeicher.",
             enabledSuccess: "Persönlicher Objektspeicher ist aktiviert. Neue Uploads verwenden ihn bevorzugt.",
             disabledSuccess: "Persönlicher Objektspeicher ist deaktiviert. Neue Uploads verwenden den Plattformspeicher.",
             saveFailed: "Einstellungen für persönlichen Objektspeicher konnten nicht gespeichert werden",

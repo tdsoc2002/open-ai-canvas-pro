@@ -43,19 +43,20 @@ func supportedOSSProvider(provider string) bool {
 }
 
 type OSSSettingRequest struct {
-	Enabled           bool   `json:"enabled"`
-	Provider          string `json:"provider"`
-	Region            string `json:"region"`
-	Endpoint          string `json:"endpoint"`
-	CDNBaseURL        string `json:"cdnBaseUrl"`
-	Bucket            string `json:"bucket"`
-	AccessKeyID       string `json:"accessKeyId"`
-	AccessKeySecret   string `json:"accessKeySecret"`
-	PublicBaseURL     string `json:"publicBaseUrl"`
-	PathPrefix        string `json:"pathPrefix"`
-	S3Preset          string `json:"s3Preset"`
-	PathStyle         bool   `json:"pathStyle"`
-	SessionToken      string `json:"sessionToken"`
+	Enabled         bool   `json:"enabled"`
+	Provider        string `json:"provider"`
+	Region          string `json:"region"`
+	Endpoint        string `json:"endpoint"`
+	CDNBaseURL      string `json:"cdnBaseUrl"`
+	Bucket          string `json:"bucket"`
+	AccessKeyID     string `json:"accessKeyId"`
+	AccessKeySecret string `json:"accessKeySecret"`
+	PublicBaseURL   string `json:"publicBaseUrl"`
+	PathPrefix      string `json:"pathPrefix"`
+	S3Preset        string `json:"s3Preset"`
+	PathStyle       bool   `json:"pathStyle"`
+	SessionToken    string `json:"sessionToken"`
+	// Retained wire name; controls all personal object storage providers.
 	AllowUserS3       bool   `json:"allowUserS3"`
 	CDNAuthMode       string `json:"cdnAuthMode"`
 	RequireCDN        bool   `json:"requireCDN"`
@@ -193,6 +194,14 @@ func (s *Service) UpdateUserOSSSetting(actor *model.User, req OSSSettingRequest)
 	if actor == nil {
 		return nil, Unauthorized("请先登录")
 	}
+	_, platform, err := s.readOSSSetting()
+	if err != nil {
+		return nil, err
+	}
+	// The existing allowUserS3 field now gates every personal storage provider.
+	if !platform.AllowUserS3 {
+		return nil, Forbidden("平台管理员尚未允许个人对象存储")
+	}
 	_, currentValue, err := s.readUserOSSSetting(actor.ID)
 	if err != nil {
 		return nil, err
@@ -200,13 +209,6 @@ func (s *Service) UpdateUserOSSSetting(actor *model.User, req OSSSettingRequest)
 	next, err := ossSettingFromRequest(req, currentValue)
 	if err != nil {
 		return nil, err
-	}
-	_, platform, err := s.readOSSSetting()
-	if err != nil {
-		return nil, err
-	}
-	if next.Enabled && next.Provider == s3Provider && !platform.AllowUserS3 {
-		return nil, Forbidden("平台管理员尚未允许个人 S3 兼容存储")
 	}
 	if next.Provider == s3Provider && next.Enabled {
 		location, err := s.requireTestedS3Location("user", actor.ID, next)
@@ -752,7 +754,7 @@ func (s *Service) publicUserOSSSetting(setting *model.UserOSSSetting, value ossS
 		RequireCDN:         value.Delivery.RequireCDN,
 		AllowPrivateProxy:  value.Delivery.AllowPrivateProxy,
 	}
-	if value.Provider == s3Provider && !allowUserS3 {
+	if !allowUserS3 {
 		result.Enabled = false
 	}
 	if setting != nil {

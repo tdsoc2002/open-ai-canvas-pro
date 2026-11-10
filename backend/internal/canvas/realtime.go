@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 
@@ -69,13 +70,18 @@ func NewRealtimeHub(client *redis.Client) *RealtimeHub {
 	return &RealtimeHub{rooms: make(map[string]map[string]*RealtimeSession), redis: client, id: kernel.NewID()}
 }
 
-func realtimeRoom(userID, canvasID string) string {
-	return "canvas:realtime:v1:" + base64.RawURLEncoding.EncodeToString([]byte(userID)) + ":" + base64.RawURLEncoding.EncodeToString([]byte(canvasID))
+func (h *RealtimeHub) realtimeRoom(userID, canvasID string) string {
+	prefix := "canvas:realtime:v1:"
+	// Redis Pub/Sub ignores SELECT, so shared deployments must scope channels too.
+	if h.redis != nil {
+		prefix += strconv.Itoa(h.redis.Options().DB) + ":"
+	}
+	return prefix + base64.RawURLEncoding.EncodeToString([]byte(userID)) + ":" + base64.RawURLEncoding.EncodeToString([]byte(canvasID))
 }
 
 func (h *RealtimeHub) Open(ctx context.Context, userID, canvasID string) (*RealtimeSession, []CanvasPresence, error) {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &RealtimeSession{hub: h, room: realtimeRoom(userID, canvasID), peer: CanvasPresence{ID: kernel.NewID(), UpdatedAt: time.Now().UnixMilli()}, Events: make(chan RealtimeEvent, 128), ctx: ctx, cancel: cancel}
+	s := &RealtimeSession{hub: h, room: h.realtimeRoom(userID, canvasID), peer: CanvasPresence{ID: kernel.NewID(), UpdatedAt: time.Now().UnixMilli()}, Events: make(chan RealtimeEvent, 128), ctx: ctx, cancel: cancel}
 	if h.redis != nil {
 		s.pubsub = h.redis.Subscribe(ctx, s.room)
 		ready, stop := context.WithTimeout(ctx, 3*time.Second)
@@ -132,7 +138,7 @@ func (h *RealtimeHub) Open(ctx context.Context, userID, canvasID string) (*Realt
 }
 
 func (h *RealtimeHub) Changed(userID, canvasID string) {
-	h.publish(realtimeRoom(userID, canvasID), RealtimeEvent{Type: "invalidate"})
+	h.publish(h.realtimeRoom(userID, canvasID), RealtimeEvent{Type: "invalidate"})
 }
 
 func (h *RealtimeHub) deliver(room string, event RealtimeEvent) {

@@ -43,6 +43,7 @@ export type UserOSSSetting = {
     sessionToken?: string;
     hasSessionToken: boolean;
     pathStyle: boolean;
+    /** Existing API field controlling every personal object storage provider. */
     allowUserS3: boolean;
     publicBaseUrl: string;
     pathPrefix: string;

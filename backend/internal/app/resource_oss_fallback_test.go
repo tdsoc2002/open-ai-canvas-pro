@@ -99,6 +99,9 @@ func TestStoreResourceLocalPathUnaffectedByOSS(t *testing.T) {
 
 func seedOSSEnabled(t *testing.T, db *gorm.DB, userID string, endpoint string) {
 	t.Helper()
+	if err := db.Create(&model.SystemSetting{Key: ossSettingKey, ValueJSON: `{"allowUserS3":true}`}).Error; err != nil {
+		t.Fatal(err)
+	}
 	setting := model.UserOSSSetting{
 		ID:        newID(),
 		UserID:    userID,

@@ -595,6 +595,7 @@ func TestCurrentUserCDNSettingAppliesToHistoricalResourcesInSameStorage(t *testi
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 	svc := newResourceTestService(t)
+	setPersonalStorageAllowed(t, svc, true)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{
 		Enabled: true, Provider: aliyunOSSProvider, Endpoint: server.URL, Bucket: "private-bucket",
@@ -644,6 +645,7 @@ func TestBoundHistoricalUserResourceDoesNotFollowCurrentProviderCDN(t *testing.T
 	defer qiniuCDN.Close()
 
 	svc := newResourceTestService(t)
+	setPersonalStorageAllowed(t, svc, true)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{
 		Enabled: true, Provider: aliyunOSSProvider, Endpoint: aliyunEndpoint.URL, CDNBaseURL: aliyunCDN.URL, Bucket: "aliyun-bucket",
@@ -693,6 +695,7 @@ func TestHistoricalUserResourceWithoutStorageSettingIDKeepsItsProviderCDN(t *tes
 	defer qiniuEndpoint.Close()
 	defer qiniuCDN.Close()
 	svc := newResourceTestService(t)
+	setPersonalStorageAllowed(t, svc, true)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{
 		Enabled: true, Provider: aliyunOSSProvider, Endpoint: aliyunEndpoint.URL, CDNBaseURL: aliyunCDN.URL, Bucket: "aliyun-bucket",
@@ -919,7 +922,7 @@ func TestActiveResourceOSSSettingPrefersUserVersion(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 	svc := newResourceTestService(t)
-	systemJSON, _ := json.Marshal(ossSettingValue{Enabled: true, Provider: "aliyun", Endpoint: server.URL, Bucket: "system", AccessKeyID: "system-id", AccessKeySecret: "system-secret"})
+	systemJSON, _ := json.Marshal(ossSettingValue{Enabled: true, AllowUserS3: true, Provider: "aliyun", Endpoint: server.URL, Bucket: "system", AccessKeyID: "system-id", AccessKeySecret: "system-secret"})
 	if err := svc.repo.SaveSystemSetting(&model.SystemSetting{Key: ossSettingKey, ValueJSON: string(systemJSON)}); err != nil {
 		t.Fatal(err)
 	}
@@ -942,6 +945,7 @@ func TestUserOSSSettingVersionsKeepHistoricalSecrets(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 	svc := newResourceTestService(t)
+	setPersonalStorageAllowed(t, svc, true)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{Enabled: true, Provider: "aliyun", Endpoint: server.URL, Bucket: "old", AccessKeyID: "old-id", AccessKeySecret: "old-secret"}); err != nil {
 		t.Fatal(err)

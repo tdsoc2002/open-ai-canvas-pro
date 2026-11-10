@@ -10,7 +10,23 @@ import { type OSSConnectionTestResult, changesRequireOSSRetest, getS3PresetHints
 import { getAdminOSSSetting, updateAdminOSSSetting, type AdminOSSSetting, testAdminOSSConnection } from "@/services/api/auth";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "../components/admin-ui";
-import { accessKeySecretLabel, formValues, formatSettingTime, hasStorageChanges, isAdminOSSSetting, normalizeStoragePayload, providerDraftValues, storageProviderLabel, storageResponseMatches, type StoragePayload, validateStorageDraft, connectionInput, storageConfigurationReady, providerGuidance, accessKeyIdLabel } from "./storage-settings-model";
+import {
+    accessKeySecretLabel,
+    formValues,
+    formatSettingTime,
+    hasStorageChanges,
+    isAdminOSSSetting,
+    normalizeStoragePayload,
+    providerDraftValues,
+    storageProviderLabel,
+    storageResponseMatches,
+    type StoragePayload,
+    validateStorageDraft,
+    connectionInput,
+    storageConfigurationReady,
+    providerGuidance,
+    accessKeyIdLabel,
+} from "./storage-settings-model";
 import { type OSSFormValues, type StorageMode } from "./storage-settings-model";
 
 export { type OSSFormValues, type StorageMode, type StoragePayload } from "./storage-settings-model";
@@ -565,7 +581,12 @@ export default function StorageSettingsPage() {
                                             <Form.Item name="requireCDN" label="必须走 CDN" valuePropName="checked" extra="开启后 CDN 鉴权配置不完整时直接失败，不会静默回源。">
                                                 <Switch checkedChildren="严格" unCheckedChildren="允许回源" />
                                             </Form.Item>
-                                            <Form.Item name="allowPrivateProxy" label="允许模型输入代理" valuePropName="checked" extra="仅允许服务端向第三方模型提交参考素材时读取私有源站。浏览器展示、复制、下载和本地处理始终直连 OSS/CDN，不会经平台中转媒体正文。">
+                                            <Form.Item
+                                                name="allowPrivateProxy"
+                                                label="允许模型输入代理"
+                                                valuePropName="checked"
+                                                extra="仅允许服务端向第三方模型提交参考素材时读取私有源站。浏览器展示、复制、下载和本地处理始终直连 OSS/CDN，不会经平台中转媒体正文。"
+                                            >
                                                 <Switch checkedChildren="允许" unCheckedChildren="禁止" />
                                             </Form.Item>
                                         </div>
@@ -608,8 +629,8 @@ export default function StorageSettingsPage() {
                                 </>
                             )}
                             <div className="admin-storage-form-section">
-                                <FormSectionTitle icon={<ShieldCheck className="size-4" />} title="用户自有存储" description="允许用户配置个人 S3 兼容存储；个人配置停用时仍回退到平台存储。" />
-                                <Form.Item name="allowUserS3" label="允许个人 S3 兼容存储" valuePropName="checked">
+                                <FormSectionTitle icon={<ShieldCheck className="size-4" />} title="用户自有存储" description="统一控制所有个人对象存储。关闭后禁止配置、保存和连接测试，新上传使用平台存储；历史文件仍可读取。" />
+                                <Form.Item name="allowUserS3" label="允许个人对象存储" valuePropName="checked">
                                     <Switch checkedChildren="允许" unCheckedChildren="不允许" />
                                 </Form.Item>
                             </div>

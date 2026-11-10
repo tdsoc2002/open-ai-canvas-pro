@@ -127,7 +127,7 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
         oss: {
             loadFailed: "Failed to load personal object storage settings",
             loginRequired: "Sign in to configure personal object storage.",
-            s3NotAllowed: "The platform administrator has not enabled personal S3-compatible storage",
+            s3NotAllowed: "The platform administrator has disabled personal object storage. New uploads use platform storage.",
             enabledSuccess: "Personal object storage is enabled. New uploads will use it first.",
             disabledSuccess: "Personal object storage is disabled. New uploads will use platform storage.",
             saveFailed: "Failed to save personal object storage settings",

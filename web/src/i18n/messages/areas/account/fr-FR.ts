@@ -127,7 +127,7 @@ export const frFR: DeepStringRecord<typeof zhCN> = {
         oss: {
             loadFailed: "Échec du chargement de la configuration du stockage objet personnel",
             loginRequired: "Connectez-vous pour configurer votre stockage objet personnel.",
-            s3NotAllowed: "L'administrateur n'a pas encore autorisé le stockage personnel compatible S3",
+            s3NotAllowed: "Le stockage objet personnel est désactivé. Les nouveaux fichiers utilisent le stockage de la plateforme.",
             enabledSuccess: "Stockage objet personnel activé. Les prochains téléversements l'utiliseront en priorité.",
             disabledSuccess: "Stockage objet personnel désactivé. Les prochains téléversements utiliseront le stockage de la plateforme.",
             saveFailed: "Échec de l'enregistrement de la configuration du stockage objet personnel",

@@ -98,18 +98,36 @@ func TestCanvasRealtimeAcrossRedisInstances(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	hubA, hubB := NewRealtimeHub(client), NewRealtimeHub(client)
+	otherClient := redis.NewClient(&redis.Options{Network: "unix", Addr: socket, DB: 1, MaxRetries: -1, ContextTimeoutEnabled: true})
+	defer otherClient.Close()
+	otherHub := NewRealtimeHub(otherClient)
+	otherSite, _, err := otherHub.Open(ctx, "user", "canvas")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer otherSite.Close()
 	a, _, err := hubA.Open(ctx, "user", "canvas")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer a.Close()
+	if otherSite.room == a.room {
+		t.Fatal("Redis databases share the same Pub/Sub channel")
+	}
 	b, _, err := hubB.Open(ctx, "user", "canvas")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer b.Close()
-	if a.Snapshot().Number != 1 || b.Snapshot().Number != 2 {
+	if a.Snapshot().Number != 1 || b.Snapshot().Number != 2 || otherSite.Snapshot().Number != 1 {
 		t.Fatalf("instances assigned inconsistent device numbers: %d / %d", a.Snapshot().Number, b.Snapshot().Number)
+	}
+	subscribers, err := client.PubSubNumSub(ctx, a.room, otherSite.room).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subscribers[a.room] != 2 || subscribers[otherSite.room] != 1 {
+		t.Fatalf("unexpected site channel subscribers: %+v", subscribers)
 	}
 	waitPresenceEvent(t, b, func(e RealtimeEvent) bool { return e.Peer != nil && e.Peer.ID == a.ID() })
 	if err := a.Update(&PresencePoint{X: 88, Y: 99}, nil); err != nil {
@@ -118,6 +136,12 @@ func TestCanvasRealtimeAcrossRedisInstances(t *testing.T) {
 	waitPresenceEvent(t, b, func(e RealtimeEvent) bool { return e.Peer != nil && e.Peer.Cursor != nil && e.Peer.Cursor.X == 88 })
 	hubA.Changed("user", "canvas")
 	waitPresenceEvent(t, b, func(e RealtimeEvent) bool { return e.Type == "invalidate" })
+	for len(otherSite.Events) > 0 {
+		event := <-otherSite.Events
+		if event.Type == "invalidate" || (event.Peer != nil && event.Peer.ID == a.ID()) {
+			t.Fatal("presence crossed Redis databases")
+		}
+	}
 	a.Close()
 	waitPresenceEvent(t, b, func(e RealtimeEvent) bool { return e.Type == "leave" && e.PeerID == a.ID() })
 	c, _, err := hubA.Open(ctx, "user", "canvas")

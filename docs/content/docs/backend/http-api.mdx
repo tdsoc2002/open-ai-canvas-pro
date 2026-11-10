@@ -219,6 +219,16 @@ handle 放错端点、格式错误或行 ID 不存在时，工具错误回执提
 
 存储空间商品与积分商品共用 `/api/payments/*` 和 `/api/admin/payments/products`。商品和订单增加 `kind`/`productKind`（`credits`|`storage`）、`storageBytes`、`storageDurationDays`。`/payments/providers` 与下单不再要求积分功能；积分功能关闭时，`/payments/products` 只返回存储空间商品，积分商品下单返回功能未开启。商品类型创建后不能修改。
 
+## 个人对象存储开关
+
+平台对象存储配置中的 `allowUserS3` 沿用现有 JSON 字段名，统一控制所有个人对象存储类型，包括阿里云 OSS、腾讯云 COS、七牛云 Kodo、火山引擎 TOS 和 S3 兼容存储。
+
+- 管理员通过 `GET/PATCH /api/admin/settings/oss` 查询和保存策略。
+- 关闭时，`PATCH /api/settings/oss` 和 `POST /api/settings/oss/test` 均返回 HTTP 403，任何类型及启用/停用请求都不能保存；连接测试不会发出上游请求。
+- `GET /api/settings/oss` 返回 `allowUserS3=false`、`enabled=false`；前端隐藏“我的对象存储”菜单，分类下没有其他可见项目时也隐藏整个分类。直接访问存储分类链接会转到个人信息，不提供配置表单。
+- 新上传和生成媒体使用平台存储；未启用平台对象存储时使用平台本地存储。已有个人存储绑定的补传任务及媒体写入也会被禁止，补传保留本地文件并按既有机制等待重试。
+- 历史个人存储文件仍按资源绑定的位置和凭据读取、删除，关闭开关不迁移或删除历史文件。
+
 ## AutoDL 视频画面规格配置
 
 渠道模型的 `capabilityConfig.video.resolutions` 与 `defaultResolution` 直接表示所选完整分辨率与默认值，始终生效；不再使用或返回 `customSizeEnabled`、`customScreenSpec`。AutoDL v2.3.0 未声明独立比例参数，因此 `ratios` 为空、`defaultRatio` 为空字符串，横竖与方形由完整分辨率标签表达。

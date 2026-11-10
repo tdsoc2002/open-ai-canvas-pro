@@ -125,7 +125,7 @@ export const zhCN = {
         oss: {
             loadFailed: "读取个人对象存储配置失败",
             loginRequired: "登录后可配置个人对象存储。",
-            s3NotAllowed: "平台管理员尚未允许个人 S3 兼容存储",
+            s3NotAllowed: "平台管理员尚未允许个人对象存储，新上传将使用平台存储。",
             enabledSuccess: "个人对象存储已启用，后续上传将优先使用该存储",
             disabledSuccess: "个人对象存储已停用，后续上传将使用平台存储",
             saveFailed: "保存个人对象存储配置失败",

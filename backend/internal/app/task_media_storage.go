@@ -377,7 +377,7 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 // storeTaskMediaObjectContext 直传对象存储。是否改存本地由 taskMediaObjectWriter
 // 决定：只有平台存储失败才会兜底，并且总会登记补传任务，不会静默改变存储位置。
 func (s *Service) storeTaskMediaObjectContext(ctx context.Context, resource *model.Resource, body io.Reader) (string, error) {
-	setting, err := s.ossSettingForResource(resource.UserID, resource)
+	setting, err := s.ossSettingForResourceWrite(resource.UserID, resource)
 	if err != nil {
 		return "", err
 	}

@@ -414,7 +414,7 @@ func (s *Service) storeResourceObject(resource *model.Resource, fileName string,
 	if resource.Provider == "local" {
 		return "", writeLocalResourceObject(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)), body)
 	}
-	setting, settingErr := s.ossSettingForResource(resource.UserID, resource)
+	setting, settingErr := s.ossSettingForResourceWrite(resource.UserID, resource)
 	if settingErr != nil {
 		return "", settingErr
 	}
