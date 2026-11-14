@@ -33,7 +33,10 @@ function priceLabel(tier: ChannelModelPriceTier, capability: ChannelModel["capab
         const sale = tier.priceConfigured ? tier[key] : undefined;
         return (
             <div key={key}>
-                <span>{label ? `${label} ` : ""}{tier.costPricing?.configured ? formatModelPrice(cost) : "未配置成本"} / {tier.priceConfigured ? formatModelPrice(sale) : "未配置售价"}</span>
+                <span>
+                    {label ? `${label} ` : ""}
+                    {tier.costPricing?.configured ? formatModelPrice(cost) : "未配置成本"} / {tier.priceConfigured ? formatModelPrice(sale) : "未配置售价"}
+                </span>
                 {/* 货币计价时售价与积分成本单位不同，加价率依赖分组兑换比例，不在这里推算。 */}
                 <span className="admin-model-cost-unit">{saleUnit === "积分" ? `积分 / ${unit} · 加价 ${formatModelMarkup(cost, sale)}` : `成本积分 / 售价 ${saleUnit} · 每${unit}`}</span>
             </div>
@@ -52,8 +55,9 @@ export function specificationLabel(tier: ChannelModelPriceTier) {
         [
             operation ? operations[operation] || operation : "",
             imageQualityLabel(specific(selector.quality)),
-            imageQualityLabel(specific(selector.resolution)),
+            imageQualityLabel(specific(selector.imageResolution) || specific(selector.resolution)),
             specific(selector.size),
+            specific(selector.count) ? `${selector.count} 张输出` : "",
             resolution.toUpperCase(),
             duration ? `${duration} 秒` : "",
             specific(selector.imageCount) ? `${selector.imageCount} 张参考图` : "",

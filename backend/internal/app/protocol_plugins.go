@@ -928,7 +928,8 @@ func (c *pluginRuntime) readRegistry() ([]pluginRegistryRecord, error) {
 }
 
 func (c *pluginRuntime) writeRegistry(records []pluginRegistryRecord) error {
-	data, err := json.MarshalIndent(records, "", "  ")
+	// RawMessage 也会被 MarshalIndent 展开，使合法清单在落盘后超过大小限制。
+	data, err := json.Marshal(records)
 	if err != nil {
 		return err
 	}
