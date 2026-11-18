@@ -159,6 +159,9 @@ func validateImageCapabilityConfig(value *ImageCapabilityConfig) error {
 }
 
 func validateVideoCapabilityConfig(value *VideoCapabilityConfig) error {
+	if total := value.References.MaxTotalItems; total != nil && (*total < 0 || *total < value.References.MinImages) {
+		return BadAuthRequest("视频参考素材总数限制无效")
+	}
 	if value.References.PromptMaxChars < 1 || value.References.PromptMaxChars > 1000000 {
 		return BadAuthRequest("提示词最大字符数必须在 1-1000000 之间")
 	}
@@ -297,9 +300,8 @@ func (s *Service) ValidateTaskCapability(input map[string]any) error {
 		}
 		return validateWorkflowProviderConfig(taskInput.Mode, taskInput.Config)
 	}
-	// 普通音频模型沿用主线的能力校验路径；当前专用能力表只覆盖图片和视频。
 	if taskInput.Mode == "audio" {
-		return nil
+		return s.validateTack2AIAudioAdmission(taskInput)
 	}
 	channelID := strings.TrimSpace(taskInput.Config.ChannelID)
 	if channelID == "" {
@@ -465,6 +467,9 @@ func validateVideoTask(profile *VideoCapabilityConfig, input canvasGenerationInp
 	if len(input.ReferenceImages) > profile.References.MaxImages || len(input.ReferenceVideos) > profile.References.MaxVideos || len(input.ReferenceAudios) > profile.References.MaxAudios {
 		return newModelCapabilityArgumentError("referenceNodeIds", "item_count", BadAuthRequest("参考素材数量超过当前模型限制"))
 	}
+	if total := profile.References.MaxTotalItems; total != nil && len(input.ReferenceImages)+len(input.ReferenceVideos)+len(input.ReferenceAudios) > *total {
+		return newModelCapabilityArgumentError("referenceNodeIds", "item_count", BadAuthRequest("参考素材总数超过当前模型限制"))
+	}
 	if model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(input.Config.InterfaceType)) && len(input.ReferenceAudios) > 0 && len(input.ReferenceImages) == 0 && len(input.ReferenceVideos) == 0 {
 		return newModelCapabilityArgumentError("referenceNodeIds", "invalid_combination", BadAuthRequest("火山方舟全模态参考不支持纯音频或文本+音频，请同时添加参考图片或参考视频"))
 	}
@@ -516,7 +521,7 @@ func validateVideoTask(profile *VideoCapabilityConfig, input canvasGenerationInp
 	if !containsCapabilityString(profile.Operations, operation) {
 		return newModelCapabilityArgumentError("logicalModelId", "unsupported_value", BadAuthRequest("当前视频模型不支持该生成模式"))
 	}
-	return nil
+	return validateTack2AIVideoRequest(profile, input, seconds)
 }
 
 func validateImageTask(profile *ImageCapabilityConfig, input canvasGenerationInput) error {
@@ -582,6 +587,15 @@ func validateImageTask(profile *ImageCapabilityConfig, input canvasGenerationInp
 }
 
 func validateImageTaskWithResolvedSize(input map[string]any, taskInput *canvasGenerationInput, profile *ImageCapabilityConfig) error {
+	if taskInput.Config.InterfaceType == tencentVODImageProtocol {
+		count, _ := strconv.Atoi(strings.TrimSpace(taskInput.Config.Count))
+		if count > 1 {
+			return newModelCapabilityArgumentError("count", "unsupported_value", BadAuthRequest("腾讯 VOD OG 每个任务仅支持生成一张"))
+		}
+		if taskInput.Mask != nil && len(taskInput.ReferenceImages) >= 8 {
+			return newModelCapabilityArgumentError("referenceNodeIds", "item_count", BadAuthRequest("腾讯 VOD OG 的参考图和蒙版合计不能超过 8 张"))
+		}
+	}
 	if profile.Parameters != nil {
 		if err := applyImageParameterValues(&taskInput.Config, profile); err != nil {
 			return err
@@ -823,7 +837,15 @@ func imageSizeClientSubmitsRatio(profile *ImageCapabilityConfig) bool {
 // 且确实有档位要被编码进尺寸。与 imageSizeResolutionEnabled 共用 imageSizePixelOutbound，
 // 保证“需要换算”只有一个判断来源。size + 像素值 + 无预设表 的线路不需要换算，不能误伤。
 func imageSizePresetMissingExact(profile *ImageCapabilityConfig, protocol string) bool {
+	if tack2aiOpenPixelSize(profile, protocol) {
+		return false
+	}
 	return imageSizePixelOutbound(profile, protocol) && len(profile.Size.Presets) == 0 && imageSizeClientSubmitsRatio(profile)
+}
+
+func tack2aiOpenPixelSize(profile *ImageCapabilityConfig, protocol string) bool {
+	return protocol == "tack2ai-image" && profile != nil && profile.Parameters != nil && profile.Size.Parameter == "size" &&
+		profile.Size.AllowCustom && len(profile.Size.Values) == 0 && len(profile.Size.Presets) == 0 && !profile.Resolution.Supported
 }
 
 // imageSizePresetMissing 在规则本体上再要求“有可解析的档位”：没有档位声明的线路（如 ark、

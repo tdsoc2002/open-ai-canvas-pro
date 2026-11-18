@@ -1,4 +1,5 @@
 import { doubaoAudioVoiceOptions, doubaoDefaultAudioVoice } from "@/lib/doubao-audio-voices";
+import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import { resolveModelRequestConfig } from "@/stores/use-config-store";
 import type { AiConfig } from "@/stores/use-config-store";
 
@@ -87,17 +88,39 @@ export function isDoubaoAudioConfig(config: AiConfig) {
     return resolveModelRequestConfig(config, config.model || config.audioModel).interfaceType === "doubao-streaming-tts";
 }
 
+export function isTack2AIAudioConfig(config: AiConfig, model = config.model || config.audioModel) {
+    return resolveModelRequestConfig(config, model).interfaceType === "tack2ai-audio";
+}
+
+export function tack2aiAudioNodeParameters(config: AiConfig, model: string, node: Partial<Pick<AiConfig, "audioVoice" | "audioFormat" | "audioSpeed" | "audioInstructions">> | undefined) {
+    if (!isTack2AIAudioConfig(config, model)) return {};
+    return {
+        audioVoice: node?.audioVoice ?? "",
+        audioFormat: node?.audioFormat ?? "",
+        audioSpeed: node?.audioSpeed ?? "",
+        audioInstructions: node?.audioInstructions ?? "",
+    };
+}
+
 export function audioVoiceOptionsForConfig(config: AiConfig) {
+    if (isTack2AIAudioConfig(config)) {
+        return (modelCapabilityConfigFor(config, config.model || config.audioModel).audio?.voices || []).map((value) => ({ value, label: value }));
+    }
     return isDoubaoAudioConfig(config) ? doubaoAudioVoiceOptions : openAIAudioVoiceOptions;
 }
 
 export function audioFormatOptionsForConfig(config: AiConfig) {
+    if (isTack2AIAudioConfig(config)) {
+        const audio = modelCapabilityConfigFor(config, config.model || config.audioModel).audio;
+        if (audio) return (audio.formats || []).map((value) => ({ value, label: value.toUpperCase() }));
+    }
     return isDoubaoAudioConfig(config) ? doubaoAudioFormatOptions : openAIAudioFormatOptions;
 }
 
 export function normalizeAudioVoiceForConfig(config: AiConfig, value: string) {
-    const options = audioVoiceOptionsForConfig(config);
     const normalized = String(value || "").trim();
+    if (isTack2AIAudioConfig(config)) return normalized;
+    const options = audioVoiceOptionsForConfig(config);
     if (isDoubaoAudioConfig(config)) {
         if (!normalized || normalized === "alloy") return "";
         return normalized;
@@ -108,6 +131,10 @@ export function normalizeAudioVoiceForConfig(config: AiConfig, value: string) {
 
 export function normalizeAudioFormatForConfig(config: AiConfig, value: string) {
     const options = audioFormatOptionsForConfig(config);
+    if (isTack2AIAudioConfig(config)) {
+        const audio = modelCapabilityConfigFor(config, config.model || config.audioModel).audio;
+        if (audio) return options.some((option) => option.value === value) ? value : audio.formatDefault || "";
+    }
     return options.some((item) => item.value === value) ? value : "mp3";
 }
 

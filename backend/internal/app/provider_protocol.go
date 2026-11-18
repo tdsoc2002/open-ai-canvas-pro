@@ -61,6 +61,19 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 	// 不把“已提交但结果未知”伪装成成功，也不把下载失败降级成空结果。
 	request := protocolRequestFromInput(input)
 	taskID := resumedProviderRequestID(ctx)
+	if isTencentVODProtocol(adapter.Metadata().ID) {
+		var err error
+		if taskID == "" && adapter.Metadata().ID == tencentVODImageProtocol {
+			err = prepareTencentVODImageRequest(&input.Config, &request)
+		} else if taskID == "" {
+			err = prepareTencentVODRequest(&input.Config, &request)
+		} else {
+			err = setTencentVODRequestScope(&input.Config, &request)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	detached := protocolDetachedPolling(adapter, input.Mode)
 	var created protocol.CreateResult
 	if taskID == "" {
@@ -214,6 +227,11 @@ func extractProviderTaskID(body []byte) (string, error) {
 // 人工恢复走此路径，因此检查本地失败任务时绝不会创建第二个计费任务。
 func queryProtocolAdapterVideoTask(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter, taskID string) (map[string]interface{}, string, error) {
 	request := protocolRequestFromInput(input)
+	if isTencentVODProtocol(adapter.Metadata().ID) {
+		if err := setTencentVODRequestScope(&input.Config, &request); err != nil {
+			return nil, "", err
+		}
+	}
 	pollContext := protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID}
 	spec, err := adapter.BuildPoll(ctx, pollContext)
 	if err != nil {

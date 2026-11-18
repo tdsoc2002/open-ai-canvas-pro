@@ -37,6 +37,7 @@ type SystemChannelExportChannel struct {
 	MediaTransport    *ReferenceMediaTransport   `json:"mediaTransport,omitempty"`
 	Name              string                     `json:"name"`
 	BaseURL           string                     `json:"baseUrl"`
+	TencentVODAppID   *int64                     `json:"tencentVodAppId,omitempty"`
 	SortOrder         int                        `json:"sortOrder"`
 	Enabled           bool                       `json:"enabled"`
 	ConcurrencyLimit  int                        `json:"concurrencyLimit"`
@@ -97,6 +98,9 @@ func (s *Service) ExportSystemChannels(actor *model.User, ids []string) (*System
 				return nil, err
 			}
 			exported.WebsiteName = website.Name
+		}
+		if appID := publicChannel(channel, true, nil).TencentVODAppID; appID != 0 {
+			exported.TencentVODAppID = &appID
 		}
 		for _, item := range items {
 			exportedModel, err := exportChannelModel(item)
@@ -219,8 +223,7 @@ func (s *Service) ImportSystemChannels(actor *model.User, payload SystemChannelE
 func (s *Service) importSystemChannel(actor *model.User, imported SystemChannelExportChannel, byName map[string]model.ModelChannel) (string, bool, error) {
 	sortOrder := imported.SortOrder
 	useGlobal := imported.ConcurrencyLimit <= 0
-	req := ChannelRequest{MediaTransport: imported.MediaTransport, Name: strings.TrimSpace(imported.Name), BaseURL: imported.BaseURL, SortOrder: &sortOrder, UseGlobalConcurrency: &useGlobal}
-	req.APIFormat = imported.APIFormat
+	req := ChannelRequest{APIFormat: imported.APIFormat, MediaTransport: imported.MediaTransport, Name: strings.TrimSpace(imported.Name), BaseURL: imported.BaseURL, TencentVODAppID: imported.TencentVODAppID, SortOrder: &sortOrder, UseGlobalConcurrency: &useGlobal}
 	if !useGlobal {
 		limit := imported.ConcurrencyLimit
 		req.ConcurrencyLimit = &limit

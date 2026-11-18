@@ -265,4 +265,7 @@ func TestDramaCanvasAssetKeepsUnknownDimensionsAsZero(t *testing.T) {
 	if ids := metadata["projectIds"].([]any); len(ids) != 1 || ids[0] != "prj-1" || metadata["projectName"] != "短剧" {
 		t.Fatalf("metadata = %#v", metadata)
 	}
+	if metadata["librarySaved"] != false {
+		t.Fatalf("automatic drama registration did not opt out of the library: %#v", metadata)
+	}
 }

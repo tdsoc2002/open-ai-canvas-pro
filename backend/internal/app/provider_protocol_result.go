@@ -78,6 +78,15 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 		if err != nil {
 			return nil, err
 		}
+		if mode == "audio" && config.InterfaceType == tack2aiAudioProtocol {
+			if mimeType == "application/ogg" {
+				mimeType = "audio/ogg"
+			}
+			mimeType, err = validateGeneratedAudio(mimeType, data, config.AudioFormat)
+			if err != nil {
+				return nil, err
+			}
+		}
 		item := map[string]interface{}{"dataUrl": dataURL(mimeType, data), "mimeType": mimeType}
 		items = append(items, item)
 	}
@@ -108,6 +117,9 @@ func attachProtocolUsage(output map[string]interface{}, mode string, result *pro
 // 不会把未知内容伪装成具体图片、视频或音频 MIME。
 func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter, request protocol.GenerationRequest, taskID string, result *protocol.Result, pollPolicy videoPollPolicy) (map[string]interface{}, error) {
 	if protocolResultHasOutput(input.Mode, result) {
+		if adapter.Metadata().ID == tencentVODImageProtocol && len(result.Images) != max(request.ImageCount, 1) {
+			return nil, errors.New("腾讯 VOD OG 返回图片张数与请求不一致，不能按原张数结算")
+		}
 		return finishProtocolResult(ctx, input.Config, input.Mode, taskID, result, pollPolicy)
 	}
 	resultAdapter, ok := protocolResultEndpoint(adapter)

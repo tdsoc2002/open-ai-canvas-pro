@@ -64,6 +64,18 @@ func protocolRequestFromInput(input canvasGenerationInput) protocol.GenerationRe
 			"count":             input.Config.Count,
 		},
 	}
+	if input.Mode == "video" && input.Config.InterfaceType == "tack2ai-video" && input.VideoCapability != nil && input.VideoCapability.Tack2AI != nil {
+		mode, roles := tack2aiVideoMode(input.VideoCapability.Tack2AI, input)
+		request.Extra["tack2aiVideoMode"] = mode
+		if len(request.Images) == len(input.ReferenceImages) && len(request.Images) > 0 {
+			for index := range request.Images {
+				request.Images[index].Role = roles[index]
+			}
+		}
+		if strings.EqualFold(firstNonEmpty(input.Config.Size, input.VideoCapability.DefaultRatio), "adaptive") {
+			request.Extra["tack2aiVideoRatio"] = "adaptive"
+		}
+	}
 	for _, message := range input.TextHistory {
 		role := strings.ToLower(strings.TrimSpace(message.Role))
 		if role != "user" && role != "assistant" && role != "system" {
@@ -98,6 +110,11 @@ func protocolRequestFromInput(input canvasGenerationInput) protocol.GenerationRe
 				request.ProviderOptions[strings.TrimSpace(namespace)] = options
 			}
 		}
+	}
+	if input.Mode == "audio" && input.Config.InterfaceType == tack2aiAudioProtocol && input.Config.CapabilityConfig != nil && input.Config.CapabilityConfig.Audio != nil {
+		// 管理员声明的能力经过准入，不能再由任务的任意扩展覆盖。
+		delete(request.ProviderOptions, tack2aiAudioProtocol)
+		request.Extra["audioReferenceEncoding"] = input.Config.CapabilityConfig.Audio.ReferenceEncoding
 	}
 	if input.Mode == "image" && input.Config.InterfaceType == string(model.ChannelInterfaceGrokImage) {
 		options := make(map[string]any)
@@ -163,14 +180,14 @@ func protocolImageReferences(input canvasGenerationInput) []protocol.MediaRefere
 		if input.Mode == "image" {
 			item.Role = "edit_source"
 		}
-		if item.URL != "" || item.DataURL != "" {
+		if item.URL != "" || item.DataURL != "" || input.Config.InterfaceType == tencentVODImageProtocol {
 			result = append(result, item)
 		}
 	}
 	if input.Mask != nil {
 		mask := protocolMediaReference(*input.Mask, "image", len(result))
 		mask.Role = "mask"
-		if mask.URL != "" || mask.DataURL != "" {
+		if mask.URL != "" || mask.DataURL != "" || input.Config.InterfaceType == tencentVODImageProtocol {
 			result = append(result, mask)
 		}
 	}

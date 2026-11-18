@@ -1,7 +1,8 @@
 import { useId } from "react";
 import { Input, InputNumber, Radio } from "antd";
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
-import { audioFormatOptionsForConfig, audioSpeedLabel, audioVoiceOptionsForConfig, isDoubaoAudioConfig, normalizeAudioFormatForConfig, normalizeAudioSpeedValue, normalizeAudioVoiceForConfig } from "@/lib/audio-generation";
+import { audioFormatOptionsForConfig, audioSpeedLabel, audioVoiceOptionsForConfig, isDoubaoAudioConfig, isTack2AIAudioConfig, normalizeAudioFormatForConfig, normalizeAudioSpeedValue, normalizeAudioVoiceForConfig } from "@/lib/audio-generation";
+import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { CanvasAudioSettingKey } from "@/components/canvas/canvas-audio-settings-popover";
@@ -11,6 +12,7 @@ type AudioSettingsPanelProps = { config: AiConfig; onConfigChange: (key: CanvasA
 export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[var(--panel-width-compact)] space-y-4" }: AudioSettingsPanelProps) {
     const listId = useId();
     const doubao = isDoubaoAudioConfig(config);
+    const catalogAudio = isTack2AIAudioConfig(config) ? modelCapabilityConfigFor(config, config.model || config.audioModel).audio : undefined;
     const voice = normalizeAudioVoiceForConfig(config, config.audioVoice);
     const voices = audioVoiceOptionsForConfig(config);
     const currentVoice = voices.some((item) => item.value === voice) ? voices : [{ value: voice, label: voice || "不指定音色" }, ...voices];
@@ -50,30 +52,43 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         </>
                     )}
                 </fieldset>
-                <fieldset>
-                    <legend className="mb-2 text-xs" style={{ color: theme.node.muted }}>
-                        音频格式
-                    </legend>
-                    <Radio.Group aria-label="音频格式" value={format} options={formats} onChange={(event) => onConfigChange("audioFormat", event.target.value)} className="flex flex-wrap gap-2" />
-                </fieldset>
-                <fieldset className="space-y-2">
-                    <legend className="mb-2 text-xs" style={{ color: theme.node.muted }}>
-                        语速
-                    </legend>
-                    <Radio.Group aria-label="常用语速" value={speed} options={["0.75", "1", "1.25", "1.5"].map((value) => ({ value, label: audioSpeedLabel(value) }))} onChange={(event) => onConfigChange("audioSpeed", event.target.value)} />
-                    <InputNumber
-                        aria-label="自定义语速"
-                        min={0.25}
-                        max={4}
-                        step={0.05}
-                        value={Number(speed)}
-                        className="w-full"
-                        onChange={(value) => {
-                            if (value !== null) onConfigChange("audioSpeed", normalizeAudioSpeedValue(String(value)));
-                        }}
-                    />
-                    {doubao ? <p className="text-xs leading-5" style={{ color: theme.node.muted }}>1x 为正常语速。情绪克制、低声不等于慢速；提示词也不要重复要求放慢或拖长尾音。</p> : null}
-                </fieldset>
+                {formats.length > 0 ? (
+                    <fieldset>
+                        <legend className="mb-2 text-xs" style={{ color: theme.node.muted }}>
+                            音频格式
+                        </legend>
+                        <Radio.Group aria-label="音频格式" value={format} options={formats} onChange={(event) => onConfigChange("audioFormat", event.target.value)} className="flex flex-wrap gap-2" />
+                    </fieldset>
+                ) : null}
+                {!catalogAudio || catalogAudio.speedSupported ? (
+                    <fieldset className="space-y-2">
+                        <legend className="mb-2 text-xs" style={{ color: theme.node.muted }}>
+                            语速
+                        </legend>
+                        <Radio.Group
+                            aria-label="常用语速"
+                            value={speed}
+                            options={["0.75", "1", "1.25", "1.5"].filter((value) => Number(value) >= (catalogAudio?.speedMin ?? 0.25) && Number(value) <= (catalogAudio?.speedMax ?? 4)).map((value) => ({ value, label: audioSpeedLabel(value) }))}
+                            onChange={(event) => onConfigChange("audioSpeed", event.target.value)}
+                        />
+                        <InputNumber
+                            aria-label="自定义语速"
+                            min={catalogAudio?.speedMin ?? 0.25}
+                            max={catalogAudio?.speedMax ?? 4}
+                            step={0.05}
+                            value={Number(speed)}
+                            className="w-full"
+                            onChange={(value) => {
+                                if (value !== null) onConfigChange("audioSpeed", normalizeAudioSpeedValue(String(value)));
+                            }}
+                        />
+                        {doubao ? (
+                            <p className="text-xs leading-5" style={{ color: theme.node.muted }}>
+                                1x 为正常语速。情绪克制、低声不等于慢速；提示词也不要重复要求放慢或拖长尾音。
+                            </p>
+                        ) : null}
+                    </fieldset>
+                ) : null}
                 {doubao ? (
                     <details className="space-y-2 text-xs" style={{ color: theme.node.muted }}>
                         <summary className="cursor-pointer">豆包提示词写法</summary>
@@ -84,12 +99,12 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <p className="leading-5">参考图片：最多连接 1 张图片，写清要说的台词；不要与参考音频混用。</p>
                         <p className="leading-5">当前豆包协议没有独立发送声音指令、语言和方言参数；这些要求写入节点提示词，不保证每项都能精确执行。</p>
                     </details>
-                ) : (
+                ) : !catalogAudio || catalogAudio.instructionsSupported ? (
                     <label className="flex flex-col gap-2 text-xs" style={{ color: theme.node.muted }}>
                         声音指令
                         <Input.TextArea aria-label="声音指令" rows={3} value={config.audioInstructions || ""} placeholder="例如：自然、温暖的旁白" onChange={(event) => onConfigChange("audioInstructions", event.target.value)} />
                     </label>
-                )}
+                ) : null}
             </section>
         </ImageSettingsTheme>
     );

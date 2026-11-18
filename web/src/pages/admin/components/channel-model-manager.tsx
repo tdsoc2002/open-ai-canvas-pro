@@ -17,6 +17,7 @@ import {
     importAdminChannelModels,
     listAdminChannelModels,
     setAdminChannelModelEnabled,
+    type AdminChannelModelCatalogEntry,
     type AdminChannelModelHealth,
     type ChannelModel,
     type ChannelCatalogDiff,
@@ -33,6 +34,17 @@ import { ChannelModelBatchEditDialog } from "./channel-model-batch-edit-dialog";
 import { deselectVisibleModels, filterImportModels, normalizeFetchModelKey, selectExistingImportModels, selectVisibleModels } from "./channel-model-import-selection";
 import { duplicateChannelModelValues, type ChannelModelFormValues } from "./channel-model-editor-form";
 import { Select } from "@/components/ui/base/select";
+
+type ChannelModelFetchPreview = {
+    models: string[];
+    catalog?: Map<string, AdminChannelModelCatalogEntry>;
+};
+
+function catalogModelUnavailableReason(catalog: ChannelModelFetchPreview["catalog"], id: string) {
+    if (!catalog) return undefined;
+    const entry = catalog.get(id);
+    return entry?.unavailableReason || (entry?.fingerprint ? undefined : "缺少可验证的模型配置，请重新拉取");
+}
 
 export type ChannelModelFilters = {
     keyword: string;
@@ -75,8 +87,7 @@ export function ChannelModelManager({
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
     const [fetching, setFetching] = useState(false);
-    const [fetchPreviewOpen, setFetchPreviewOpen] = useState(false);
-    const [fetchPreviewModels, setFetchPreviewModels] = useState<string[]>([]);
+    const [fetchPreview, setFetchPreview] = useState<ChannelModelFetchPreview | null>(null);
     const [catalogDiff, setCatalogDiff] = useState<ChannelCatalogDiff | null>(null);
     const [catalogStatus, setCatalogStatus] = useState<ChannelCatalogStatus | null>(null);
     const [catalogStatusError, setCatalogStatusError] = useState("");
@@ -188,14 +199,19 @@ export function ChannelModelManager({
             if (sequence !== fetchSequence.current) return;
             setCatalogDiff(result);
             setCatalogStatus({ models: result.models, readAt: result.readAt, stale: false });
-            setFetchPreviewModels(result.models);
+            const catalog = result.catalog && new Map(result.catalog.map((entry) => [entry.id, entry]));
+            const models = catalog ? [...new Set([...result.models, ...catalog.keys()])] : result.models;
+            if (models.length === 0) {
+                message.warning("上游没有返回可用模型");
+                return;
+            }
+            setFetchPreview({ models, catalog });
             setSelectedFetchModels(
                 selectExistingImportModels(
-                    result.models,
+                    models.filter((name) => !catalogModelUnavailableReason(catalog, name)),
                     items.flatMap((item) => [item.modelKey, item.providerModelKey].filter(Boolean)),
                 ),
             );
-            setFetchPreviewOpen(true);
         } catch (error) {
             if (sequence === fetchSequence.current) message.error(`${afterCreate ? "Key 已保存，模型读取失败：" : ""}${error instanceof Error ? error.message : "拉取模型失败"}`);
         } finally {
@@ -209,14 +225,14 @@ export function ChannelModelManager({
     };
 
     const resetFetchPreview = () => {
-        setFetchPreviewOpen(false);
-        setFetchPreviewModels([]);
+        setFetchPreview(null);
+        setCatalogDiff(null);
         setSelectedFetchModels([]);
         setFetchKeyword("");
     };
 
     const importSelectedModels = async () => {
-        if (!selectedFetchModels.length) return;
+        if (!selectedImportableFetchModels.length) return;
         if (!selectedNewFetchModels.length) {
             message.info("当前勾选的模型均已存在，没有需要新增的模型");
             resetFetchPreview();
@@ -224,7 +240,17 @@ export function ChannelModelManager({
         }
         setImporting(true);
         try {
-            const result = await importAdminChannelModels(channel.id, selectedFetchModels);
+            const models = fetchCatalog ? selectedNewFetchModels : selectedImportableFetchModels;
+            const catalogFingerprints =
+                fetchCatalog &&
+                Object.fromEntries(
+                    models.map((name) => {
+                        const fingerprint = fetchCatalog.get(name)?.fingerprint;
+                        if (!fingerprint) throw new Error("缺少可验证的模型配置，请重新拉取");
+                        return [name, fingerprint];
+                    }),
+                );
+            const result = await importAdminChannelModels(channel.id, { models, catalogFingerprints });
             await reload();
             await onChanged();
             resetFetchPreview();
@@ -397,21 +423,32 @@ export function ChannelModelManager({
     const currentPage = Math.min(page, Math.max(1, Math.ceil(filteredItems.length / pageSize)));
     const pagedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
     const existingFetchModelKeys = new Set(items.flatMap((item) => [item.modelKey, item.providerModelKey].filter(Boolean).map(normalizeFetchModelKey)));
-    const selectedNewFetchModels = selectedFetchModels.filter((name) => !existingFetchModelKeys.has(normalizeFetchModelKey(name)));
-    const selectedExistingFetchCount = selectedFetchModels.length - selectedNewFetchModels.length;
+    const fetchPreviewModels = fetchPreview?.models ?? [];
+    const fetchCatalog = fetchPreview?.catalog;
+    const importableFetchModels = new Set(fetchPreviewModels.filter((name) => !catalogModelUnavailableReason(fetchCatalog, name)));
+    const selectedImportableFetchModels = selectedFetchModels.filter((name) => importableFetchModels.has(name));
+    const selectedNewFetchModels = selectedImportableFetchModels.filter((name) => !existingFetchModelKeys.has(normalizeFetchModelKey(name)));
+    const selectedExistingFetchCount = selectedImportableFetchModels.length - selectedNewFetchModels.length;
     const fetchKeywordQuery = fetchKeyword.trim().toLowerCase();
     const visibleFetchModels = filterImportModels(fetchPreviewModels, fetchKeyword);
-    const allVisibleFetchModelsSelected = visibleFetchModels.length > 0 && visibleFetchModels.every((name) => selectedFetchModels.includes(name));
-    const selectedVisibleFetchCount = visibleFetchModels.filter((name) => selectedFetchModels.includes(name)).length;
-    const fetchModelOptions = visibleFetchModels.map((name) => ({
-        label: (
-            <span className="break-all">
-                {name}
-                {catalogDiff?.added?.includes(name) ? " · 新增" : catalogDiff?.retained?.includes(name) ? " · 仍在目录" : ""}
-            </span>
-        ),
-        value: name,
-    }));
+    const visibleImportableFetchModels = visibleFetchModels.filter((name) => importableFetchModels.has(name));
+    const selectedVisibleFetchCount = visibleImportableFetchModels.filter((name) => selectedFetchModels.includes(name)).length;
+    const fetchModelOptions = visibleFetchModels.map((name) => {
+        const entry = fetchCatalog?.get(name);
+        const unavailableReason = catalogModelUnavailableReason(fetchCatalog, name);
+        const details = unavailableReason || [entry?.capability && capabilityLabel(entry.capability), entry?.protocol && modelProtocolLabel(entry.protocol, availableProtocols)].filter(Boolean).join(" · ");
+        return {
+            label: (
+                <span className="break-all">
+                    {name}
+                    {catalogDiff?.added?.includes(name) ? " · 新增" : catalogDiff?.retained?.includes(name) ? " · 仍在目录" : ""}
+                    {details && <span className="block break-words text-xs text-foreground/65">{unavailableReason ? `不可导入：${details}` : details}</span>}
+                </span>
+            ),
+            value: name,
+            disabled: importing || Boolean(unavailableReason),
+        };
+    });
 
     return (
         <div className="admin-channel-model-manager">
@@ -632,18 +669,18 @@ export function ChannelModelManager({
             )}
             <AdminModal
                 title="选择要导入的模型"
-                open={fetchPreviewOpen}
+                open={fetchPreview !== null}
                 centered
                 width={720}
                 rootClassName="admin-model-import-modal"
                 onCancel={closeFetchPreview}
-                maskClosable={!importing}
+                mask={{ closable: !importing }}
                 closable={!importing}
                 footer={[
                     <Button key="cancel" disabled={importing} onClick={closeFetchPreview}>
                         取消
                     </Button>,
-                    <Button key="confirm" type="primary" loading={importing} disabled={!selectedFetchModels.length} onClick={() => void importSelectedModels()}>
+                    <Button key="confirm" type="primary" loading={importing} disabled={!(fetchCatalog ? selectedNewFetchModels.length : selectedImportableFetchModels.length)} onClick={() => void importSelectedModels()}>
                         确认导入
                     </Button>,
                 ]}
@@ -675,14 +712,14 @@ export function ChannelModelManager({
                     />
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/25 px-3 py-2">
                         <span className="text-sm font-medium text-foreground/70" aria-live="polite">
-                            已选择 {selectedFetchModels.length} / {fetchPreviewModels.length} 个模型
+                            已选择 {selectedImportableFetchModels.length} / {fetchPreviewModels.length} 个模型
                             {fetchKeywordQuery ? `，当前匹配 ${visibleFetchModels.length} 个（其中 ${selectedVisibleFetchCount} 个已勾选）` : ""}
                         </span>
                         <Space size={4}>
-                            <Button size="small" disabled={importing || !visibleFetchModels.length || allVisibleFetchModelsSelected} onClick={() => setSelectedFetchModels((current) => selectVisibleModels(current, visibleFetchModels))}>
-                                {fetchKeywordQuery ? `全选匹配的 ${visibleFetchModels.length} 个` : "全选"}
+                            <Button size="small" disabled={importing || visibleImportableFetchModels.length === selectedVisibleFetchCount} onClick={() => setSelectedFetchModels((current) => selectVisibleModels(current, visibleImportableFetchModels))}>
+                                {fetchKeywordQuery ? `全选匹配的 ${visibleImportableFetchModels.length} 个` : "全选"}
                             </Button>
-                            <Button size="small" disabled={importing || selectedVisibleFetchCount === 0} onClick={() => setSelectedFetchModels((current) => deselectVisibleModels(current, visibleFetchModels))}>
+                            <Button size="small" disabled={importing || selectedVisibleFetchCount === 0} onClick={() => setSelectedFetchModels((current) => deselectVisibleModels(current, visibleImportableFetchModels))}>
                                 {fetchKeywordQuery ? "取消选中匹配的" : "取消全选"}
                             </Button>
                         </Space>
@@ -694,14 +731,14 @@ export function ChannelModelManager({
                                 value={selectedFetchModels}
                                 options={fetchModelOptions}
                                 disabled={importing}
-                                onChange={(values) => setSelectedFetchModels(values as string[])}
+                                onChange={(values) => setSelectedFetchModels((values as string[]).filter((name) => importableFetchModels.has(name)))}
                             />
                         ) : (
                             <p className="m-0 py-6 text-center text-sm text-foreground/55">没有匹配「{fetchKeyword.trim()}」的模型</p>
                         )}
                     </div>
                     <div className="text-xs text-foreground/50">
-                        {selectedNewFetchModels.length > 0 ? `将导入 ${selectedNewFetchModels.length} 个新模型` : "当前勾选的模型均已存在"}
+                        {selectedNewFetchModels.length > 0 ? `将导入 ${selectedNewFetchModels.length} 个新模型` : fetchCatalog ? "未选择新模型" : "当前勾选的模型均已存在"}
                         {selectedExistingFetchCount > 0 ? `，另有 ${selectedExistingFetchCount} 个已存在模型已勾选` : ""}
                     </div>
                 </div>

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
 	"yingce/backend/internal/model"
 )
 
@@ -111,6 +112,33 @@ func (s *Service) TestAdminChannelModel(ctx context.Context, actor *model.User, 
 	}
 	if capability == "video" {
 		input.VideoCapability = videoProfile
+	}
+	if capability == "audio" && string(protocol) == tack2aiAudioProtocol {
+		capabilityConfig := req.CapabilityConfig
+		if capabilityConfig == nil || capabilityConfig.Audio == nil {
+			// 导入的语音配置不会从测试表单回传。只读同渠道、同协议、
+			// 同上游模型的配置；即使新条目尚未启用也可以测试。
+			saved, lookupErr := s.repo.ChannelModelByKeyIncludingDisabled(channel.ID, modelKey)
+			if lookupErr != nil && !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+				return nil, lookupErr
+			}
+			if saved != nil && saved.Protocol == protocol && normalizeCapability(saved.Capability) == capability &&
+				firstNonEmpty(channelProviderModelKey(saved.ProviderModelKey, protocol), saved.ModelKey) == providerModelKey {
+				capabilityConfig, lookupErr = DecodeModelCapabilityConfig(saved.CapabilityConfigJSON)
+				if lookupErr != nil {
+					return nil, BadAuthRequest("当前语音模型能力配置无效")
+				}
+			}
+		}
+		profile, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, capabilityConfig, s.protocolRegistry())
+		if normalizeErr != nil {
+			return nil, normalizeErr
+		}
+		if profile != nil && profile.Audio != nil && profile.Audio.VoiceRequired && profile.Audio.VoiceDefault == "" {
+			return nil, BadAuthRequest("测试前需要为当前语音模型配置默认音色")
+		}
+		input.Config.CapabilityConfig = profile
+		input.Config.AudioVoice, input.Config.AudioFormat, input.Config.AudioSpeed = "", "", ""
 	}
 
 	// 测试复用真实生成协议、运行时并发和熔断策略，但不创建用户任务或计费订单。

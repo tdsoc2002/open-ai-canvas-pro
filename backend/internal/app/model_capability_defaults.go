@@ -169,6 +169,17 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		DefaultOperation:  "text_to_video",
 	}
 	switch model.ChannelInterfaceType(protocol) {
+	case model.ChannelInterfaceTencentVODVS:
+		version, _ := tencentVODModelVersion(modelName)
+		seconds, images, videos, audios, resolutions := tencentVODLimits(version)
+		video.Operations = append(video.Operations, "reference_to_video", "audio_to_video")
+		video.Duration = VideoDurationConfig{Selection: "range", Min: 4, Max: seconds, Step: 1, Default: 5}
+		video.Ratios = append([]string{"adaptive"}, video.Ratios...)
+		video.DefaultRatio, video.DefaultResolution, video.Resolutions = "adaptive", "720P", resolutions
+		video.References.MaxImages, video.References.MaxVideos, video.References.MaxAudios = images, videos, audios
+		video.References.MaxVideoDuration, video.References.MaxAudioDuration = seconds, seconds
+		video.GenerateAudio = VideoBooleanConfig{Supported: true, Default: true}
+		video.Watermark = VideoBooleanConfig{Supported: true, Default: false}
 	case model.ChannelInterfaceVolcengineJiMengVideo:
 		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
 		video.Resolutions = []string{"720p"}

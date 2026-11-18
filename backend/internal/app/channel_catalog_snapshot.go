@@ -15,14 +15,15 @@ import (
 )
 
 type ChannelCatalogDiff struct {
-	Models         []string   `json:"models"`
-	Added          []string   `json:"added"`
-	Retained       []string   `json:"retained"`
-	Missing        []string   `json:"missing"`
-	FirstRead      bool       `json:"firstRead"`
-	BaselineReset  bool       `json:"baselineReset"`
-	ReadAt         time.Time  `json:"readAt"`
-	PreviousReadAt *time.Time `json:"previousReadAt,omitempty"`
+	Models         []string                  `json:"models"`
+	Catalog        []AdminChannelCatalogItem `json:"catalog,omitempty"`
+	Added          []string                  `json:"added"`
+	Retained       []string                  `json:"retained"`
+	Missing        []string                  `json:"missing"`
+	FirstRead      bool                      `json:"firstRead"`
+	BaselineReset  bool                      `json:"baselineReset"`
+	ReadAt         time.Time                 `json:"readAt"`
+	PreviousReadAt *time.Time                `json:"previousReadAt,omitempty"`
 }
 
 type ChannelCatalogStatus struct {
@@ -86,17 +87,13 @@ func (s *Service) ReadAdminChannelCatalog(ctx context.Context, actor *model.User
 	if err != nil {
 		return nil, err
 	}
-	headers, err := ParseOutboundHeadersJSON(channel.HeadersJSON)
+	catalog, err := s.fetchAdminChannelModelCatalog(ctx, actor, channel)
 	if err != nil {
 		return nil, err
 	}
-	models, err := s.FetchChannelModels(ctx, actor, ChannelModelsRequest{BaseURL: channel.BaseURL, APIKey: channel.APIKey, APIFormat: channel.APIFormat, ProxyURL: channel.ProxyURL, Headers: headers})
-	if err != nil {
-		return nil, err
-	}
-	models = uniqueNonEmpty(models)
+	models := catalog.models
 	sort.Strings(models)
-	result := &ChannelCatalogDiff{Models: models, Added: []string{}, Retained: []string{}, Missing: []string{}, ReadAt: time.Now().UTC()}
+	result := &ChannelCatalogDiff{Models: models, Catalog: catalog.items(), Added: []string{}, Retained: []string{}, Missing: []string{}, ReadAt: time.Now().UTC()}
 	err = s.repo.Transaction(func(repo *repository.Repository) error {
 		if err := s.checkCatalogSource(repo, channel); err != nil {
 			return err

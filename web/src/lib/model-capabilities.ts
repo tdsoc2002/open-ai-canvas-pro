@@ -39,6 +39,24 @@ export type ModelCapabilityConfig = {
     text?: TextCapabilityConfig;
     image?: ImageCapabilityConfig;
     video?: VideoCapabilityConfig;
+    audio?: AudioCapabilityConfig;
+};
+
+export type AudioCapabilityConfig = {
+    voiceDefault?: string;
+    voices?: string[];
+    voiceRequired?: boolean;
+    formats?: string[];
+    formatDefault?: string;
+    instructionsSupported?: boolean;
+    maxInputChars?: number;
+    maxImages?: number;
+    maxAudios?: number;
+    maxReferences?: number;
+    referenceEncoding?: string;
+    speedSupported?: boolean;
+    speedMin?: number;
+    speedMax?: number;
 };
 
 export type TextCapabilityConfig = {
@@ -476,6 +494,28 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         operations: ["text_to_video", "image_to_video"],
         defaultOperation: "text_to_video",
     };
+    if (protocol === "tencent-vod-vs") {
+        const version = model
+            .trim()
+            .toLowerCase()
+            .replace(/^(?:vs-)?(?:(?:doubao|tencent)-seedance-)?/, "")
+            .replace(/-(?:260128|260615|260628)$/, "")
+            .replace("2-0", "2.0")
+            .replace("2-5", "2.5");
+        const extended = version === "2.5";
+        const seconds = extended ? 30 : 15;
+        video.references.maxImages = extended ? 30 : 9;
+        video.references.maxVideos = video.references.maxAudios = extended ? 10 : 3;
+        video.references.maxVideoDurationSeconds = video.references.maxAudioDurationSeconds = seconds;
+        video.duration = { selection: "range", min: 4, max: seconds, step: 1, default: 5 };
+        video.operations.push("reference_to_video", "audio_to_video");
+        video.ratios.unshift("adaptive");
+        video.defaultRatio = "adaptive";
+        video.defaultResolution = "720P";
+        video.resolutions = version === "2.0" ? ["480P", "720P", "1080P", "4K"] : extended ? ["480P", "720P", "1080P"] : ["480P", "720P"];
+        video.generateAudio = { supported: true, default: true };
+        video.watermark = { supported: true, default: false };
+    }
     if (protocol === "volcengine-jimeng-video") {
         video.duration = { selection: "enum", values: [5, 10], default: 5 };
         video.resolutions = ["720p"];

@@ -139,6 +139,10 @@ export function changeChannelModelProtocol(values: ChannelModelFormValues, proto
 }
 
 export function updateChannelModelUpstreamCapabilities(values: ChannelModelFormValues, protocols: ModelProtocolDefinition[] = []): ChannelModelFormValues {
+    if (values.capability === "video" && values.protocol === "tencent-vod-vs") {
+        const defaults = defaultModelCapabilityConfig(values.protocol, values.providerModelKey?.trim() || values.modelKey.trim());
+        return { ...values, capabilityConfig: { ...values.capabilityConfig, version: defaults.version, video: defaults.video } };
+    }
     const workflows = protocols.find((p) => p.value === values.protocol)?.workflows;
     if (values.capability === "video" && workflows?.length) {
         // 工作流协议的画面规格必须写回表单；只在界面上投影会让保存提交旧协议的分辨率。

@@ -32,6 +32,7 @@ type ChannelFormValues = {
     baseUrl: string;
     apiKey?: string;
     secretKey?: string;
+    tencentVodAppId?: number;
     headers?: ChannelHeader[];
     useGlobalConcurrency?: boolean;
     concurrencyLimit?: number;
@@ -39,7 +40,14 @@ type ChannelFormValues = {
     proxyUrl?: string;
 };
 
+const TENCENT_VOD_URL = "https://vod.tencentcloudapi.com";
+
+function isTencentVodUrl(value?: string) {
+    return value?.trim().replace(/\/$/, "") === TENCENT_VOD_URL;
+}
+
 export function adminChannelSavePayload(values: ChannelFormValues) {
+    const tencentVod = isTencentVodUrl(values.baseUrl);
     return {
         name: values.name.trim(),
         apiFormat: values.apiFormat,
@@ -47,7 +55,8 @@ export function adminChannelSavePayload(values: ChannelFormValues) {
         baseUrl: values.baseUrl.trim(),
         apiKey: values.apiKey?.trim() || "",
         secretKey: values.secretKey?.trim() || "",
-        headers: values.headers || [],
+        ...(tencentVod ? { tencentVodAppId: values.tencentVodAppId } : {}),
+        headers: tencentVod ? [] : values.headers || [],
         useGlobalConcurrency: values.useGlobalConcurrency !== false,
         concurrencyLimit: values.useGlobalConcurrency === false ? values.concurrencyLimit : undefined,
         enabled: values.enabled !== false,
@@ -89,6 +98,7 @@ export default function ChannelsPage() {
     const [modelFilters, setModelFilters] = useState<ChannelModelFilters>({ keyword: "", capability: "all", status: "all" });
     const requestSequence = useRef(0);
     const [form] = Form.useForm<ChannelFormValues>();
+    const tencentVod = isTencentVodUrl(Form.useWatch("baseUrl", form));
     const useGlobalConcurrency = Form.useWatch("useGlobalConcurrency", form) !== false;
     const hasFilters = Boolean(keyword || status !== "all" || category !== "all");
     const { visibleChannels, selectedChannel: fallbackChannel } = selectChannelWorkspace(channels, keyword, status, selectedChannelId, category);
@@ -191,6 +201,7 @@ export default function ChannelsPage() {
                       baseUrl: channel.baseUrl,
                       apiKey: "",
                       secretKey: "",
+                      tencentVodAppId: channel.tencentVodAppId,
                       headers: channel.headers || [],
                       useGlobalConcurrency: !channel.concurrencyLimit,
                       concurrencyLimit: channel.concurrencyLimit || undefined,
@@ -224,7 +235,7 @@ export default function ChannelsPage() {
 
     const save = async () => {
         const values = await form.validateFields();
-        const headerError = validateChannelHeaders(values.headers);
+        const headerError = isTencentVodUrl(values.baseUrl) ? null : validateChannelHeaders(values.headers);
         if (headerError) {
             message.error(headerError);
             return;
@@ -699,22 +710,44 @@ export default function ChannelsPage() {
                             ]}
                         />
                     </Form.Item>
+                    {!editingChannel && !tencentVod && (
+                        <Button type="link" className="mb-4 p-0" onClick={() => form.setFieldValue("baseUrl", TENCENT_VOD_URL)}>
+                            使用腾讯云 VOD VS 直连
+                        </Button>
+                    )}
+                    {tencentVod && (
+                        <Form.Item
+                            name="tencentVodAppId"
+                            label="点播应用 ID（SubAppId）"
+                            rules={[{ type: "integer", required: true, min: 1, max: 4294967295, message: "请填写有效的点播应用 ID" }]}
+                            extra="填写云点播控制台中对应应用的 ID，不是 COS 存储桶的 APPID。"
+                        >
+                            <InputNumber min={1} max={4294967295} precision={0} className="w-full" />
+                        </Form.Item>
+                    )}
                     <Form.Item
                         name="apiKey"
-                        label={editingChannel ? `API Key / Access Key（${configuredSecretText}）` : "API Key / Access Key"}
+                        label={tencentVod ? "腾讯云 SecretId" : editingChannel ? `API Key / Access Key（${configuredSecretText}）` : "API Key / Access Key"}
                         rules={editingChannel ? [] : [{ required: true, message: "请填写 API Key 或 Access Key" }]}
-                        extra="OpenAI 兼容协议填写 API Key；即梦官方协议填写 IAM Access Key。"
+                        extra={tencentVod ? "仅服务端用于腾讯云 TC3 签名。" : "OpenAI 兼容协议填写 API Key；即梦官方协议填写 IAM Access Key。"}
                     >
                         <Input.Password autoComplete="new-password" placeholder={editingChannel ? "留空保留原凭证" : "API Key 或 Access Key"} />
                     </Form.Item>
-                    <Form.Item name="secretKey" label={editingChannel ? `Secret Key（${channelSecretText(editingChannel)}）` : "Secret Key（可选）"} extra="仅即梦官方等 AK/SK 签名协议需要；其他渠道留空。">
+                    <Form.Item
+                        name="secretKey"
+                        label={tencentVod ? "腾讯云 SecretKey" : editingChannel ? `Secret Key（${channelSecretText(editingChannel)}）` : "Secret Key（可选）"}
+                        rules={tencentVod && !editingChannel?.hasSecretKey ? [{ required: true, whitespace: true, message: "请填写腾讯云 SecretKey" }] : []}
+                        extra={tencentVod ? undefined : "仅即梦官方等 AK/SK 签名协议需要；其他渠道留空。"}
+                    >
                         <Input.Password autoComplete="new-password" placeholder={editingChannel ? "留空保留原 Secret Key" : "IAM Secret Key"} />
                     </Form.Item>
-                    <div className="mb-6">
-                        <Form.Item name="headers" noStyle>
-                            <ChannelHeadersEditor />
-                        </Form.Item>
-                    </div>
+                    {!tencentVod && (
+                        <div className="mb-6">
+                            <Form.Item name="headers" noStyle>
+                                <ChannelHeadersEditor />
+                            </Form.Item>
+                        </div>
+                    )}
                     <Form.Item name="proxyUrl" label="代理地址" extra="为该渠道单独配置出站代理，支持 socks5://、socks5h://、http://、https://。留空则使用全局环境变量代理。">
                         <Input disabled={Boolean(addingToWebsite)} placeholder="例如：socks5://127.0.0.1:1080 或 http://127.0.0.1:7890" />
                     </Form.Item>

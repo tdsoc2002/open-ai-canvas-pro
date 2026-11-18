@@ -8,16 +8,27 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"yingce/backend/internal/model"
 )
 
+const tack2aiAudioProtocol = "tack2ai-audio"
+
 func runAudioTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
 	if _, ok := declarativeProtocolAdapterForContext(ctx, input.Config.InterfaceType); ok {
+		if input.Config.InterfaceType == tack2aiAudioProtocol {
+			if err := prepareTack2AIAudioInput(&input); err != nil {
+				return nil, err
+			}
+		}
 		return runDeclarativeProtocolTask(ctx, input)
 	}
 	if resolved, ok := input.Metadata["resolvedCharacterVersions"].([]interface{}); ok && len(resolved) > 0 {
@@ -52,6 +63,88 @@ func runAudioTask(ctx context.Context, input canvasGenerationInput) (map[string]
 		return nil, err
 	}
 	return map[string]interface{}{"mode": "audio", "audio": map[string]interface{}{"dataUrl": dataURL(mimeType, data), "mimeType": mimeType, "format": format}}, nil
+}
+
+func (s *Service) validateTack2AIAudioAdmission(input canvasGenerationInput) error {
+	if input.Config.InterfaceType != tack2aiAudioProtocol {
+		return nil
+	}
+	channelID := firstNonEmpty(strings.TrimSpace(input.Config.ChannelID), systemChannelIDFromBaseURL(input.Config.BaseURL))
+	var err error
+	if channelID != "" {
+		item, lookupErr := s.repo.ChannelModelByKey(channelID, providerChannelModelKey(input.Config))
+		if lookupErr != nil || string(item.Protocol) != tack2aiAudioProtocol {
+			return BadAuthRequest("当前系统渠道模型未配置或已停用")
+		}
+		input.Config.CapabilityConfig, err = normalizedChannelModelCapability(item, s.protocolRegistry())
+	} else {
+		input.Config.CapabilityConfig, err = NormalizeModelCapabilityConfigForModel("audio", tack2aiAudioProtocol, input.Config.Model, input.Config.CapabilityConfig)
+	}
+	if err != nil {
+		return err
+	}
+	return prepareTack2AIAudioInput(&input)
+}
+
+// Both task admission and execution check the same model contract. References
+// and an explicit speaker are alternative inputs for the supported wire shape.
+func prepareTack2AIAudioInput(input *canvasGenerationInput) error {
+	config := &input.Config
+	config.AudioVoice = strings.TrimSpace(config.AudioVoice)
+	config.AudioFormat = strings.TrimSpace(config.AudioFormat)
+	config.AudioSpeed = strings.TrimSpace(config.AudioSpeed)
+	config.AudioInstructions = strings.TrimSpace(config.AudioInstructions)
+	profile := config.CapabilityConfig
+	imageCount, audioCount := len(input.ReferenceImages), len(input.ReferenceAudios)
+	hasReferences := imageCount+audioCount > 0
+	if input.Mask != nil || len(input.ReferenceVideos) > 0 {
+		return BadAuthRequest("当前语音协议不支持参考视频或蒙版")
+	}
+	if profile == nil || profile.Audio == nil {
+		if hasReferences {
+			return BadAuthRequest("当前语音模型没有声明参考素材能力")
+		}
+		return nil
+	}
+	audio := profile.Audio
+	if hasReferences {
+		if audio.ReferenceEncoding != "metadata.references" || imageCount > audio.MaxImages || audioCount > audio.MaxAudios ||
+			imageCount+audioCount > audio.MaxReferences || imageCount > 1 || audioCount > 3 || imageCount > 0 && audioCount > 0 {
+			return BadAuthRequest("参考素材类型、数量或组合超出当前语音模型支持范围")
+		}
+		if config.AudioVoice != "" {
+			return BadAuthRequest("参考素材与显式音色不能同时使用")
+		}
+	} else {
+		config.AudioVoice = firstNonEmpty(config.AudioVoice, audio.VoiceDefault)
+		if audio.VoiceRequired && config.AudioVoice == "" {
+			return BadAuthRequest("当前语音模型需要选择音色")
+		}
+		if config.AudioVoice != "" && len(audio.Voices) > 0 && !slices.Contains(audio.Voices, config.AudioVoice) {
+			return BadAuthRequest("当前语音模型不支持所选音色")
+		}
+	}
+	if audio.MaxInputChars > 0 && utf8.RuneCountInString(input.Prompt) > audio.MaxInputChars {
+		return BadAuthRequest("语音文本长度超出当前模型限制")
+	}
+	config.AudioFormat = firstNonEmpty(config.AudioFormat, audio.FormatDefault)
+	if config.AudioFormat != "" && len(audio.Formats) > 0 && !slices.Contains(audio.Formats, config.AudioFormat) {
+		return BadAuthRequest("当前语音模型不支持所选音频格式")
+	}
+	if config.AudioSpeed != "" {
+		if !audio.SpeedSupported {
+			return BadAuthRequest("当前语音模型不支持语速设置")
+		}
+		speed, err := strconv.ParseFloat(config.AudioSpeed, 64)
+		if err != nil || math.IsNaN(speed) || math.IsInf(speed, 0) || speed <= 0 ||
+			audio.SpeedMin != nil && speed < *audio.SpeedMin || audio.SpeedMax != nil && speed > *audio.SpeedMax {
+			return BadAuthRequest("语速超出当前模型支持范围")
+		}
+	}
+	if !audio.InstructionsSupported && config.AudioInstructions != "" {
+		return BadAuthRequest("当前语音模型不支持独立声音指令，请在提示词中描述")
+	}
+	return nil
 }
 
 func runAsyncAudioTask(ctx context.Context, input canvasGenerationInput, body map[string]interface{}, format string) (map[string]interface{}, error) {

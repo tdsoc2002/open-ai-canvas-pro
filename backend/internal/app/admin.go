@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,6 +97,7 @@ type ChannelRequest struct {
 	ExpectedUpdatedAt    time.Time                `json:"expectedUpdatedAt,omitempty"`
 	WebsiteID            string                   `json:"websiteId"`
 	APIFormat            *string                  `json:"apiFormat"`
+	TencentVODAppID      *int64                   `json:"tencentVodAppId"`
 	MediaTransport       *ReferenceMediaTransport `json:"mediaTransport"`
 	Name                 string                   `json:"name"`
 	SortOrder            *int                     `json:"sortOrder"`
@@ -115,6 +117,7 @@ type ChannelRequest struct {
 
 type PublicModelChannel struct {
 	WebsiteID        string                    `json:"websiteId,omitempty"`
+	TencentVODAppID  int64                     `json:"tencentVodAppId,omitempty"`
 	MediaTransport   *ReferenceMediaTransport  `json:"mediaTransport,omitempty"`
 	ID               string                    `json:"id"`
 	UserID           string                    `json:"userId"`
@@ -182,7 +185,25 @@ func (s *Service) channelFromRequest(req ChannelRequest, channel model.ModelChan
 	}
 	models := uniqueNonEmpty(req.Models)
 	modelsJSON, _ := json.Marshal(models)
-	headersJSON, err := EncodeOutboundHeadersJSON(req.Headers)
+	headers, appID, err := splitTencentVODChannelHeaders(req.Headers)
+	if err != nil {
+		return channel, err
+	}
+	if req.TencentVODAppID != nil {
+		appID = *req.TencentVODAppID
+	}
+	if isTencentVODBaseURL(baseURL) {
+		if appID <= 0 || appID > 1<<32-1 {
+			return channel, BadAuthRequest("请填写有效的腾讯云点播应用 ID")
+		}
+		if len(headers) != 0 {
+			return channel, BadAuthRequest("腾讯 VOD VS 的请求头由系统管理")
+		}
+		headers = append(headers, OutboundHeader{Name: tencentVODAppIDHeader, Value: strconv.FormatInt(appID, 10)})
+	} else if appID != 0 {
+		return channel, BadAuthRequest("腾讯 VOD 应用 ID 仅用于腾讯云官方渠道地址")
+	}
+	headersJSON, err := EncodeOutboundHeadersJSON(headers)
 	if err != nil {
 		return channel, err
 	}
@@ -291,6 +312,7 @@ func publicChannel(channel model.ModelChannel, admin bool, channelModels []model
 	baseURL := channel.BaseURL
 	proxyURL := ""
 	var headers []OutboundHeader
+	var tencentVODAppID int64
 	if channel.Scope == model.ChannelScopeSystem {
 		if !admin {
 			apiKey = "system"
@@ -298,6 +320,7 @@ func publicChannel(channel model.ModelChannel, admin bool, channelModels []model
 		}
 		if admin {
 			headers, _ = ParseOutboundHeadersJSON(channel.HeadersJSON)
+			headers, tencentVODAppID, _ = splitTencentVODChannelHeaders(headers)
 		}
 	} else if admin {
 		apiKey = channel.APIKey
@@ -307,6 +330,7 @@ func publicChannel(channel model.ModelChannel, admin bool, channelModels []model
 	}
 	return PublicModelChannel{
 		WebsiteID:        channel.WebsiteID,
+		TencentVODAppID:  tencentVODAppID,
 		ID:               channel.ID,
 		UserID:           channel.UserID,
 		Scope:            channel.Scope,

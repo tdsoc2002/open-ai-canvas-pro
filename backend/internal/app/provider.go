@@ -64,6 +64,7 @@ type providerTextMessage struct {
 }
 
 type providerConfig struct {
+	tencentVODAppID       int64                   // trusted channel setting; never supplied by a task
 	mediaTransport        ReferenceMediaTransport // resolved from administrator settings; never deserialized from task input
 	ChannelID             string                  `json:"channelId"`
 	ChannelModelKey       string                  `json:"channelModelKey,omitempty"`
@@ -331,7 +332,11 @@ func providerPrefersMediaURLs(interfaceType string, input canvasGenerationInput)
 		return false
 	}
 	switch strings.TrimSpace(interfaceType) {
+	case tack2aiAudioProtocol:
+		return input.Config.CapabilityConfig != nil && input.Config.CapabilityConfig.Audio != nil &&
+			input.Config.CapabilityConfig.Audio.ReferenceEncoding == "metadata.references"
 	case string(model.ChannelInterfaceChatCompletion), string(model.ChannelInterfaceOpenAIResponse), string(model.ChannelInterfaceClaudeAPI),
+		tencentVODImageProtocol,
 		string(model.ChannelInterfaceGrokImage), string(model.ChannelInterfaceVolcengineArkImage), string(model.ChannelInterfaceVolcengineArkAgentPlanImage),
 		string(model.ChannelInterfaceXAIVideo), string(model.ChannelInterfaceNovitaVideo),
 		string(model.ChannelInterfaceMiniMaxVideo), string(model.ChannelInterfaceNewAPIVideo),
@@ -360,6 +365,9 @@ func (s *Service) resolveProviderConfig(config providerConfig) (providerConfig, 
 		channelID = systemChannelIDFromBaseURL(config.BaseURL)
 	}
 	if channelID == "" {
+		if isTencentVODProtocol(config.InterfaceType) {
+			return providerConfig{}, Forbidden("腾讯 VOD 仅允许管理员配置的系统渠道")
+		}
 		if _, err := ValidateOutboundURL(config.BaseURL); err != nil {
 			return providerConfig{}, err
 		}
@@ -403,15 +411,14 @@ func (s *Service) resolveProviderConfig(config providerConfig) (providerConfig, 
 	if channelModel.Protocol == "" {
 		return providerConfig{}, errors.New("当前模型尚未配置请求协议")
 	}
-	if normalizeCapability(channelModel.Capability) == "text" {
-		// Admission strips client capabilities; restore the authoritative text
-		// contract for both queued tasks and Agent steps before resolving thinking.
+	if normalizeCapability(channelModel.Capability) == "text" || string(channelModel.Protocol) == tack2aiAudioProtocol {
+		// 系统任务不信任客户端能力配置，执行前恢复当前模型的权威合同。
 		config.CapabilityConfig, err = normalizedChannelModelCapability(channelModel, s.protocolRegistry())
 		if err != nil {
 			return providerConfig{}, InvalidModelSelection("指定的模型能力配置无效，请联系管理员")
 		}
 	}
-	providerModelKey := strings.TrimPrefix(strings.TrimSpace(config.ProviderModelKey), "models/")
+	providerModelKey := channelProviderModelKey(config.ProviderModelKey, channelModel.Protocol)
 	if config.PriceTierID != "" {
 		matched := false
 		for _, tier := range channelModel.PriceTiers {
@@ -433,6 +440,10 @@ func (s *Service) resolveProviderConfig(config providerConfig) (providerConfig, 
 	config.APIKey = channel.APIKey
 	config.SecretKey = channel.SecretKey
 	config.Headers, err = ParseOutboundHeadersJSON(channel.HeadersJSON)
+	if err != nil {
+		return providerConfig{}, err
+	}
+	config.Headers, config.tencentVODAppID, err = splitTencentVODChannelHeaders(config.Headers)
 	if err != nil {
 		return providerConfig{}, err
 	}

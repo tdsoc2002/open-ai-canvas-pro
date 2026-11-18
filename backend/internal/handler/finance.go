@@ -305,12 +305,12 @@ func RegisterFinanceRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		// 上游密钥只在 service 内使用；点击拉取时仅返回目录，确认后才写入渠道模型。
-		models, err := svc.ReadAdminChannelCatalog(c.Request.Context(), user, c.Param("id"))
+		result, err := svc.ReadAdminChannelCatalog(c.Request.Context(), user, c.Param("id"))
 		if err != nil {
 			failService(c, err)
 			return
 		}
-		ok(c, models)
+		ok(c, result)
 	})
 	r.POST("/admin/channels/:id/models/import", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
@@ -321,13 +321,13 @@ func RegisterFinanceRoutes(r *gin.RouterGroup, svc *service.Service) {
 		if !enforceRateLimit(c, "admin-channel-models-import:"+user.ID+":"+c.Param("id"), 10, time.Minute) {
 			return
 		}
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 		var req service.AdminChannelModelImportRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			fail(c, http.StatusBadRequest, err)
 			return
 		}
-		result, err := svc.ImportAdminChannelModels(c.Request.Context(), user, c.Param("id"), req.Models)
+		result, err := svc.ImportAdminChannelModels(c.Request.Context(), user, c.Param("id"), req.Models, req.CatalogFingerprints)
 		if err != nil {
 			failService(c, err)
 			return

@@ -511,6 +511,9 @@ func applyImageParameterValues(config *providerConfig, profile *ImageCapabilityC
 	}
 	config.Size, config.ImageResolution, config.Quality = text("size"), text("imageResolution"), text("quality")
 	config.Count, config.TransparentBackground = text("count"), text("transparentBackground")
+	if tack2aiOpenPixelSize(profile, config.InterfaceType) && config.Size != "" && config.Size != "auto" && !tack2aiPixels.MatchString(config.Size) {
+		return imageParameterAdmissionError("size", "unsupported_value", "请输入像素尺寸，例如 1024x1024")
+	}
 	if imageSizePixelOutbound(profile, config.InterfaceType) {
 		config.Size = resolveImageTaskSize(profile, config.InterfaceType, config.Size, config.ImageResolution)
 		if strings.Contains(config.Size, ":") {

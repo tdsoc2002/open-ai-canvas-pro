@@ -19,6 +19,12 @@ import (
 )
 
 func runImageTask(ctx context.Context, input canvasGenerationInput) (map[string]interface{}, error) {
+	if input.Config.InterfaceType == tencentVODImageProtocol {
+		ctx = ensureOfficialProtocolAdapter(ctx, input.Config.InterfaceType)
+		if _, ok := declarativeProtocolAdapterForContext(ctx, input.Config.InterfaceType); !ok {
+			return nil, errors.New("腾讯 VOD OG 图片插件未安装或未启用")
+		}
+	}
 	if input.Config.InterfaceType == string(model.ChannelInterfaceOpenAIImage) {
 		if err := validateOpenAIImageInput(input); err != nil {
 			return nil, err

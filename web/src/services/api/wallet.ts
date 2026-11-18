@@ -391,9 +391,18 @@ export function setAdminChannelModelEnabled(channelId: string, id: string, enabl
     return http.patch<{ model: ChannelModel }>(`/admin/channels/${encodeURIComponent(channelId)}/models/${encodeURIComponent(id)}/enabled`, { enabled });
 }
 
+export type AdminChannelModelCatalogEntry = {
+    id: string;
+    capability?: ChannelModel["capability"];
+    protocol?: string;
+    fingerprint?: string;
+    unavailableReason?: string;
+};
+
 // 管理员从上游读取模型目录；确认导入后才会写入渠道模型，价格和启用仍需人工确认。
 export type ChannelCatalogDiff = {
     models: string[];
+    catalog?: AdminChannelModelCatalogEntry[];
     added: string[];
     retained: string[];
     missing: string[];
@@ -425,8 +434,8 @@ export function fetchAdminChannelModels(channelId: string) {
     return http.post<ChannelCatalogDiff>(`/admin/channels/${encodeURIComponent(channelId)}/models/fetch`);
 }
 
-export function importAdminChannelModels(channelId: string, models: string[]) {
-    return http.post<{ models: string[]; added: number }>(`/admin/channels/${encodeURIComponent(channelId)}/models/import`, { models });
+export function importAdminChannelModels(channelId: string, input: { models: string[]; catalogFingerprints?: Record<string, string> }) {
+    return http.post<{ models: string[]; added: number }>(`/admin/channels/${encodeURIComponent(channelId)}/models/import`, input);
 }
 
 export function testAdminChannelModel(channelId: string, input: Pick<ChannelModel, "modelKey" | "providerModelKey" | "capability" | "protocol"> & { capabilityConfig?: ChannelModel["capabilityConfig"] }) {

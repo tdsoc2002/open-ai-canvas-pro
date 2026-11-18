@@ -32,6 +32,13 @@ describe("audio voice protocol handling", () => {
         expect(normalizeAudioVoiceValue("voice_001")).toBe("voice_001");
     });
 
+    test("does not invent an OpenAI voice for the Tack2AI protocol", () => {
+        const tack2ai = config("tack2ai-audio");
+        expect(normalizeAudioVoiceForConfig(tack2ai, "")).toBe("");
+        expect(normalizeAudioVoiceForConfig(tack2ai, "alloy")).toBe("alloy");
+        expect(normalizeAudioVoiceForConfig(tack2ai, "voice_001")).toBe("voice_001");
+    });
+
     test("uses provider-specific Doubao defaults instead of OpenAI alloy", () => {
         const doubao = { ...config("doubao-streaming-tts"), model: "seed-audio-1.0", audioModel: "seed-audio-1.0" } as any;
         expect(isDoubaoAudioConfig(doubao)).toBe(true);

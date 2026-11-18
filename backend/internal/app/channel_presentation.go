@@ -7,11 +7,17 @@ import (
 )
 
 func (req ChannelRequest) presentationOnly() bool {
-	return req.SortOrder != nil && req.WebsiteID == "" && req.APIFormat == nil && req.Name == "" && req.BaseURL == "" && req.APIKey == "" && req.SecretKey == "" && req.ConcurrencyLimit == nil && req.UseGlobalConcurrency == nil && req.Models == nil && req.Headers == nil && req.Enabled == nil && req.ProxyURL == nil && req.MediaTransport == nil
+	return req.SortOrder != nil && req.Enabled == nil && !req.hasConfiguration()
 }
 
 func (req ChannelRequest) enabledOnly() bool {
-	return req.Enabled != nil && req.SortOrder == nil && req.WebsiteID == "" && req.APIFormat == nil && req.Name == "" && req.BaseURL == "" && req.APIKey == "" && req.SecretKey == "" && req.ConcurrencyLimit == nil && req.UseGlobalConcurrency == nil && req.Models == nil && req.Headers == nil && req.ProxyURL == nil && req.MediaTransport == nil
+	return req.Enabled != nil && req.SortOrder == nil && !req.hasConfiguration()
+}
+
+func (req ChannelRequest) hasConfiguration() bool {
+	return req.WebsiteID != "" || req.APIFormat != nil || req.Name != "" || req.BaseURL != "" ||
+		req.APIKey != "" || req.SecretKey != "" || req.TencentVODAppID != nil || req.ConcurrencyLimit != nil ||
+		req.UseGlobalConcurrency != nil || req.Models != nil || req.Headers != nil || req.ProxyURL != nil || req.MediaTransport != nil
 }
 
 func (s *Service) updateChannelPresentation(id string, req ChannelRequest) (*PublicModelChannel, error) {

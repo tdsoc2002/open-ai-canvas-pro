@@ -71,12 +71,14 @@ type ChannelModelPriceTierRequest struct {
 
 // AdminChannelModelFetchResult 是管理员从上游拉目录后的汇总：models 为去重后的标识，added 为本次新建条数。
 type AdminChannelModelFetchResult struct {
-	Models []string `json:"models"`
-	Added  int64    `json:"added"`
+	Models  []string                  `json:"models"`
+	Catalog []AdminChannelCatalogItem `json:"catalog,omitempty"`
+	Added   int64                     `json:"added"`
 }
 
 type AdminChannelModelImportRequest struct {
-	Models []string `json:"models"`
+	Models              []string          `json:"models"`
+	CatalogFingerprints map[string]string `json:"catalogFingerprints,omitempty"`
 }
 
 type AdminChannelModelTestResult struct {
@@ -217,8 +219,17 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 		if req.ExpectedUpdatedAt.IsZero() || !req.ExpectedUpdatedAt.Equal(item.UpdatedAt) || req.ExpectedPriceVersion != item.PriceVersion {
 			return nil, BadAuthRequest("模型已被修改或缺少编辑版本，请刷新后重新编辑；本次未保存任何修改")
 		}
-		previousProviderModelKey = strings.TrimPrefix(strings.TrimSpace(item.ProviderModelKey), "models/")
 		previousProtocol = item.Protocol
+		previousProviderModelKey = channelProviderModelKey(item.ProviderModelKey, item.Protocol)
+		if protocol == "tack2ai-audio" && item.Protocol == protocol && previousProviderModelKey == providerModelKey &&
+			(req.CapabilityConfig == nil || req.CapabilityConfig.Audio == nil) {
+			// The generic audio editor has no vendor-specific controls. Editing
+			// the name or price must not erase an imported speech contract.
+			req.CapabilityConfig, err = DecodeModelCapabilityConfig(item.CapabilityConfigJSON)
+			if err != nil {
+				return nil, BadAuthRequest("源点动力语音模型能力配置无效")
+			}
+		}
 		item.PriceVersion++
 	} else {
 		item.ID, err = s.repo.NextPrefixedID("MODEL")
@@ -230,7 +241,7 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	// 否则任务请求会继续把旧上游键发给供应商。管理员显式配置的其他上游 SKU 不受影响。
 	if previousProviderModelKey != "" && providerModelKey != previousProviderModelKey {
 		for index := range tiers {
-			if strings.TrimPrefix(strings.TrimSpace(tiers[index].ProviderModelKey), "models/") == previousProviderModelKey {
+			if channelProviderModelKey(tiers[index].ProviderModelKey, item.Protocol) == previousProviderModelKey {
 				tiers[index].ProviderModelKey = providerModelKey
 			}
 		}
@@ -253,7 +264,7 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 		item.PriceCurrency = model.PriceCurrencyCredits
 	}
 	s.applyChannelModelPriceTierSummary(item, tiers)
-	if capability == "text" || capability == "image" || capability == "video" {
+	if capability == "text" || capability == "image" || capability == "video" || protocol == "tack2ai-audio" && req.CapabilityConfig != nil && req.CapabilityConfig.Audio != nil {
 		capabilityConfig, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig, s.protocolRegistry())
 		if normalizeErr != nil {
 			return nil, normalizeErr
@@ -336,10 +347,6 @@ func normalizeChannelModelContractWithRegistry(registry *protocol.Registry, chan
 	if modelKey == "" {
 		return "", "", "", "", BadAuthRequest("请填写模型标识")
 	}
-	providerModelKey := strings.TrimPrefix(strings.TrimSpace(req.ProviderModelKey), "models/")
-	if providerModelKey == "" {
-		providerModelKey = modelKey
-	}
 	capability := normalizeCapability(req.Capability)
 	if capability == "" {
 		return "", "", "", "", BadAuthRequest("请选择模型能力")
@@ -349,13 +356,46 @@ func normalizeChannelModelContractWithRegistry(registry *protocol.Registry, chan
 		return "", "", "", "", BadAuthRequest("请选择有效的模型请求协议")
 	}
 	protocol := model.ChannelInterfaceType(adapter.Metadata().ID)
+	providerModelKey := firstNonEmpty(channelProviderModelKey(req.ProviderModelKey, protocol), modelKey)
 	if expected := protocolCapabilityFromMetadata(adapter.Metadata()); expected != "" && expected != capability {
 		return "", "", "", "", BadAuthRequest("模型能力与请求协议不匹配")
 	}
 	if protocolAuthUsesSecretKey(adapter.Metadata().Auth) && (strings.TrimSpace(channel.APIKey) == "" || strings.TrimSpace(channel.SecretKey) == "") {
 		return "", "", "", "", BadAuthRequest(adapter.Metadata().Name + " 协议需要先在渠道中配置 API Key 和 Secret Key")
 	}
+	if isTencentVODProtocol(string(protocol)) {
+		headers, err := ParseOutboundHeadersJSON(channel.HeadersJSON)
+		if err != nil {
+			return "", "", "", "", err
+		}
+		_, appID, err := splitTencentVODChannelHeaders(headers)
+		if err != nil {
+			return "", "", "", "", err
+		}
+		if channel.Scope != model.ChannelScopeSystem || !isTencentVODBaseURL(channel.BaseURL) || appID == 0 {
+			return "", "", "", "", BadAuthRequest("腾讯 VOD 模型必须关联已配置应用 ID 的腾讯云官方系统渠道")
+		}
+		var modelErr error
+		if string(protocol) == tencentVODImageProtocol {
+			_, modelErr = tencentVODImageVersion(providerModelKey, "")
+		} else {
+			_, modelErr = tencentVODModelVersion(providerModelKey)
+		}
+		if modelErr != nil {
+			return "", "", "", "", modelErr
+		}
+	}
 	return modelKey, providerModelKey, capability, protocol, nil
+}
+
+func channelProviderModelKey(key string, protocol model.ChannelInterfaceType) string {
+	key = strings.TrimSpace(key)
+	switch protocol {
+	case "tack2ai-chat", "tack2ai-image", "tack2ai-video", "tack2ai-audio":
+		return key
+	default:
+		return strings.TrimPrefix(key, "models/")
+	}
 }
 
 func (s *Service) DeleteAdminChannelModel(actor *model.User, channelID string, id string) error {

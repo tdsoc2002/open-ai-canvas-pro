@@ -80,6 +80,8 @@ export type ModelChannel = {
     baseUrl: string;
     apiKey: string;
     secretKey?: string;
+    /** 仅管理端：腾讯云点播应用 ID（SubAppId）。 */
+    tencentVodAppId?: number;
     headers?: ChannelHeader[];
     apiFormat: ApiCallFormat;
     interfaceType?: ChannelInterfaceType;

@@ -161,7 +161,7 @@ func normalizeChannelModelPriceTiersWithIDs(req ChannelModelRequest, capability 
 			Selector:                            selector,
 			Resolution:                          resolution,
 			VideoSeconds:                        videoSeconds,
-			ProviderModelKey:                    strings.TrimPrefix(strings.TrimSpace(firstNonEmpty(input.ProviderModelKey, fallbackProviderModelKey)), "models/"),
+			ProviderModelKey:                    channelProviderModelKey(firstNonEmpty(input.ProviderModelKey, fallbackProviderModelKey), protocol),
 			BillingMode:                         billingMode,
 			UnitPriceMicrocredits:               input.UnitPriceMicrocredits,
 			InputTokenPriceMicrocredits:         input.InputTokenPriceMicrocredits,

@@ -6,6 +6,20 @@ import { DEFAULT_VIDEO_PROMPT_MAX_CHARS, defaultModelCapabilityConfig, normalize
 import { imageTierAvailable, imageResolutionTiers } from "../src/lib/image-size-presets.ts";
 import { workflowFieldIsRatioChoices } from "../src/lib/model-capabilities-workflow.ts";
 
+test("Tencent VOD VS only exposes the resolution, duration and reference modes of its version", () => {
+    const standard = defaultModelCapabilityConfig("tencent-vod-vs", "vs-2.0").video!;
+    const fast = defaultModelCapabilityConfig("tencent-vod-vs", "2.0-fast").video!;
+    const extended = defaultModelCapabilityConfig("tencent-vod-vs", "tencent-seedance-2-5-260628").video!;
+    assert.deepEqual(standard.resolutions, ["480P", "720P", "1080P", "4K"]);
+    assert.deepEqual(fast.resolutions, ["480P", "720P"]);
+    assert.deepEqual(extended.resolutions, ["480P", "720P", "1080P"]);
+    assert.equal(extended.duration.min, 4);
+    assert.equal(extended.duration.max, 30);
+    assert.equal(extended.defaultRatio, "adaptive");
+    assert.equal(extended.references.maxVideos, 10);
+    assert.ok(extended.operations.includes("reference_to_video"));
+});
+
 test("workflow ratio choices use the direct selection control only for ratio values", () => {
     const field = { fieldName: "aspectRatio", fieldType: "SELECT", options: ["auto", "9:16", "16:9", "21:9"] };
     assert.equal(workflowFieldIsRatioChoices(field), true);

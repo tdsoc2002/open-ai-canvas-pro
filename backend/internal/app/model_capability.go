@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"strings"
 
 	"yingce/backend/internal/model"
@@ -17,6 +19,26 @@ type ModelCapabilityConfig struct {
 	Text           *TextCapabilityConfig    `json:"text,omitempty"`
 	Image          *ImageCapabilityConfig   `json:"image,omitempty"`
 	Video          *VideoCapabilityConfig   `json:"video,omitempty"`
+	Audio          *AudioCapabilityConfig   `json:"audio,omitempty"`
+}
+
+// AudioCapabilityConfig is the declared contract for the Tack2AI speech endpoint.
+// Older routes without a catalog profile keep their existing behavior.
+type AudioCapabilityConfig struct {
+	VoiceDefault          string   `json:"voiceDefault,omitempty"`
+	Voices                []string `json:"voices,omitempty"`
+	VoiceRequired         bool     `json:"voiceRequired,omitempty"`
+	Formats               []string `json:"formats,omitempty"`
+	FormatDefault         string   `json:"formatDefault,omitempty"`
+	InstructionsSupported bool     `json:"instructionsSupported,omitempty"`
+	MaxInputChars         int      `json:"maxInputChars,omitempty"`
+	MaxImages             int      `json:"maxImages,omitempty"`
+	MaxAudios             int      `json:"maxAudios,omitempty"`
+	MaxReferences         int      `json:"maxReferences,omitempty"`
+	ReferenceEncoding     string   `json:"referenceEncoding,omitempty"`
+	SpeedSupported        bool     `json:"speedSupported,omitempty"`
+	SpeedMin              *float64 `json:"speedMin,omitempty"`
+	SpeedMax              *float64 `json:"speedMax,omitempty"`
 }
 
 type TextCapabilityConfig struct {
@@ -98,18 +120,19 @@ type ParameterSupport struct {
 }
 
 type VideoCapabilityConfig struct {
-	References        VideoReferenceConfig   `json:"references"`
-	Duration          VideoDurationConfig    `json:"duration"`
-	DurationSupported *bool                  `json:"durationSupported,omitempty"`
-	Ratios            []string               `json:"ratios"`
-	DefaultRatio      string                 `json:"defaultRatio"`
-	Resolutions       []string               `json:"resolutions"`
-	DefaultResolution string                 `json:"defaultResolution"`
-	FixedScreenSpec   *VideoScreenSpecConfig `json:"fixedScreenSpec,omitempty"`
-	GenerateAudio     VideoBooleanConfig     `json:"generateAudio"`
-	Watermark         VideoBooleanConfig     `json:"watermark"`
-	Operations        []string               `json:"operations"`
-	DefaultOperation  string                 `json:"defaultOperation"`
+	References        VideoReferenceConfig    `json:"references"`
+	Duration          VideoDurationConfig     `json:"duration"`
+	DurationSupported *bool                   `json:"durationSupported,omitempty"`
+	Ratios            []string                `json:"ratios"`
+	DefaultRatio      string                  `json:"defaultRatio"`
+	Resolutions       []string                `json:"resolutions"`
+	DefaultResolution string                  `json:"defaultResolution"`
+	FixedScreenSpec   *VideoScreenSpecConfig  `json:"fixedScreenSpec,omitempty"`
+	GenerateAudio     VideoBooleanConfig      `json:"generateAudio"`
+	Watermark         VideoBooleanConfig      `json:"watermark"`
+	Operations        []string                `json:"operations"`
+	DefaultOperation  string                  `json:"defaultOperation"`
+	Tack2AI           *Tack2AIVideoCapability `json:"tack2ai,omitempty"`
 	// Processing 只用于 kind=processing 的视频处理 provider（如画质增强），
 	// 生成类模型保持 nil。
 	Processing *VideoProcessingConfig `json:"processing,omitempty"`
@@ -142,6 +165,7 @@ type VideoScreenSpecConfig struct {
 }
 
 type VideoReferenceConfig struct {
+	MaxTotalItems    *int  `json:"maxTotalItems,omitempty"`
 	PromptMaxChars   int   `json:"promptMaxChars"`
 	MinImages        int   `json:"minImages"`
 	MaxImages        int   `json:"maxImages"`
@@ -191,10 +215,10 @@ func normalizedChannelModelCapability(channelModel *model.ChannelModel, registri
 		return nil, errors.New("渠道模型为空")
 	}
 	capability := normalizeCapability(channelModel.Capability)
-	if capability == "audio" {
+	if capability == "audio" && channelModel.Protocol != "tack2ai-audio" {
 		return nil, nil
 	}
-	if capability != "text" && capability != "image" && capability != "video" {
+	if capability != "text" && capability != "image" && capability != "video" && capability != "audio" {
 		return nil, fmt.Errorf("不支持的渠道模型能力：%s", channelModel.Capability)
 	}
 	config, err := DecodeModelCapabilityConfig(channelModel.CapabilityConfigJSON)
@@ -220,6 +244,13 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 		if err != nil {
 			return nil, err
 		}
+	}
+	if capability == "audio" && protocol == "tack2ai-audio" && input != nil && input.Audio != nil {
+		audio := *input.Audio
+		if err := validateTack2AIAudioCapability(&audio); err != nil {
+			return nil, err
+		}
+		return &ModelCapabilityConfig{Version: 1, MediaTransport: transport, Audio: &audio}, nil
 	}
 	if capability != "text" && capability != "image" && capability != "video" {
 		return nil, nil
@@ -292,6 +323,11 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 	}
 	// 已保存和提交的能力由管理员决定；型号建议只用于构造默认配置。
 	video := input.Video
+	if protocol != "tack2ai-video" && video.Tack2AI != nil {
+		copy := *video
+		copy.Tack2AI = nil
+		video = &copy
+	}
 	if strings.TrimSpace(protocol) == "autodl-comfyui" {
 		var err error
 		video, err = normalizeAutoDLVideoScreenSpec(video, modelName)
@@ -416,8 +452,12 @@ func applyModelSpecificVideoCapability(profile *VideoCapabilityConfig, protocol 
 // 渠道模型能力参数是唯一事实来源，前台模型供应线路直接引用该规格。
 func CapabilitySpecFromModelCapabilityConfig(config *ModelCapabilityConfig, capability string) (CapabilitySpec, error) {
 	spec := CapabilitySpec{Version: 1, Capability: capability, Inputs: map[string]InputConstraint{}, Options: map[string]OptionConstraint{}}
-	// 音频模型当前没有可编辑的渠道能力 JSON，使用空能力规格表示“无额外路由约束”。
 	if capability == "audio" {
+		if config != nil && config.Audio != nil {
+			audio := config.Audio
+			addInputConstraint(spec.Inputs, "image", 0, audio.MaxImages)
+			addInputConstraint(spec.Inputs, "audio", 0, audio.MaxAudios)
+		}
 		return spec, nil
 	}
 	if config == nil {
@@ -516,6 +556,39 @@ func CapabilitySpecFromModelCapabilityConfig(config *ModelCapabilityConfig, capa
 		return spec, BadAuthRequest("未知模型能力类型")
 	}
 	return spec, nil
+}
+
+func validateTack2AIAudioCapability(audio *AudioCapabilityConfig) error {
+	if audio.MaxInputChars < 0 || audio.MaxInputChars > 1000000 || audio.MaxImages < 0 || audio.MaxImages > 100 ||
+		audio.MaxAudios < 0 || audio.MaxAudios > 100 || audio.MaxReferences < 0 || audio.MaxReferences > 100 {
+		return BadAuthRequest("语音模型输入限制无效")
+	}
+	switch audio.ReferenceEncoding {
+	case "":
+		if audio.MaxImages+audio.MaxAudios+audio.MaxReferences != 0 {
+			return BadAuthRequest("语音模型未声明参考素材的编码")
+		}
+	case "metadata.references":
+		if audio.MaxReferences < 1 || audio.MaxImages+audio.MaxAudios < 1 {
+			return BadAuthRequest("语音参考素材数量无效")
+		}
+	default:
+		return BadAuthRequest("当前语音协议不支持此参考素材编码")
+	}
+	if len(audio.Voices) > 512 || len(audio.Formats) > 32 || len(audio.VoiceDefault) > 4096 ||
+		audio.VoiceDefault != "" && len(audio.Voices) > 0 && !slices.Contains(audio.Voices, audio.VoiceDefault) ||
+		audio.FormatDefault != "" && len(audio.Formats) > 0 && !slices.Contains(audio.Formats, audio.FormatDefault) {
+		return BadAuthRequest("语音音色或格式配置无效")
+	}
+	for _, limit := range []*float64{audio.SpeedMin, audio.SpeedMax} {
+		if limit != nil && (*limit <= 0 || math.IsNaN(*limit) || math.IsInf(*limit, 0)) {
+			return BadAuthRequest("语音语速范围无效")
+		}
+	}
+	if audio.SpeedMin != nil && audio.SpeedMax != nil && *audio.SpeedMin > *audio.SpeedMax {
+		return BadAuthRequest("语音语速范围无效")
+	}
+	return nil
 }
 
 // imageSizeOptionConstraint 保留可见的标准尺寸/比例，同时用 * 表示允许自定义。

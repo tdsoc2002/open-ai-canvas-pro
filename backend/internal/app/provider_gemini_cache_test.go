@@ -54,6 +54,7 @@ func TestProviderRequestIsBillable(t *testing.T) {
 		{method: http.MethodDelete, kind: "cache-delete", want: false},
 		{method: http.MethodPost, kind: "cancel", want: false},
 		{method: http.MethodGet, kind: "poll", want: false},
+		{method: http.MethodPost, kind: "poll", want: false},
 	} {
 		t.Run(tc.method+"/"+tc.kind, func(t *testing.T) {
 			if got := providerRequestIsBillable(tc.method, tc.kind); got != tc.want {

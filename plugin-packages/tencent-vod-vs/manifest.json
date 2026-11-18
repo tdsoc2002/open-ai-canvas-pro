@@ -1,0 +1,316 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "tencent-vod-vs",
+  "name": "腾讯云 VOD VS 直连",
+  "version": "1.0.0",
+  "author": "乐见画布",
+  "description": "管理员配置腾讯云点播，自主直连 VS 视频生成，不经过源点动力。",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "runtime": {
+    "backend": "declarative"
+  },
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "SecretId",
+        "required": true
+      },
+      {
+        "name": "secretKey",
+        "type": "secret",
+        "label": "SecretKey",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "tencent-vod-vs",
+        "label": "腾讯云 VOD VS 直连",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://vod.tencentcloudapi.com",
+        "auth": {
+          "type": "tc3",
+          "field": "apiKey",
+          "secretField": "secretKey",
+          "service": "vod"
+        },
+        "requiresPublicMediaUrls": true,
+        "detachedPolling": true,
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "ModelVersion",
+            "description": "VS 2.0、2.0-fast、2.0-mini 或 2.5。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "Prompt",
+            "description": "视频提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "FileInfos",
+            "description": "首帧、尾帧或参考图片。"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "required": false,
+            "mapping": "FileInfos",
+            "description": "参考视频。"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "required": false,
+            "mapping": "FileInfos",
+            "description": "参考音频。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": false,
+            "mapping": "OutputConfig.Duration",
+            "description": "秒数或自动时长。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "OutputConfig.AspectRatio",
+            "description": "输出画幅。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "OutputConfig.Resolution",
+            "description": "输出分辨率。"
+          },
+          {
+            "name": "generateAudio",
+            "type": "boolean",
+            "required": false,
+            "mapping": "OutputConfig.AudioGeneration",
+            "description": "是否生成音频。"
+          },
+          {
+            "name": "watermark",
+            "type": "boolean",
+            "required": false,
+            "mapping": "OutputConfig.LogoAdd",
+            "description": "是否添加水印。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/",
+          "originPath": true,
+          "contentType": "application/json",
+          "headers": {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-TC-Action": "CreateAigcVideoTask",
+            "X-TC-Version": "2018-07-17",
+            "X-TC-Region": "ap-guangzhou"
+          },
+          "body": {
+            "$ref": "request.extra.tencentVod"
+          }
+        },
+        "poll": {
+          "method": "POST",
+          "path": "/",
+          "originPath": true,
+          "contentType": "application/json",
+          "headers": {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-TC-Action": "DescribeTaskDetail",
+            "X-TC-Version": "2018-07-17",
+            "X-TC-Region": "ap-guangzhou"
+          },
+          "body": {
+            "TaskId": {
+              "$ref": "taskId"
+            },
+            "SubAppId": {
+              "$ref": "request.extra.tencentVodAppId"
+            }
+          }
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.Response.TaskId"
+              },
+              {
+                "$ref": "response.Response.AigcVideoTask.TaskId"
+              },
+              {
+                "$ref": "taskId"
+              }
+            ]
+          },
+          "status": {
+            "$switch": {
+              "cases": [
+                {
+                  "when": {
+                    "$and": [
+                      {
+                        "$eq": [
+                          {
+                            "$ref": "response.Response.AigcVideoTask.Status"
+                          },
+                          "FINISH"
+                        ]
+                      },
+                      {
+                        "$eq": [
+                          {
+                            "$ref": "response.Response.AigcVideoTask.ErrCode"
+                          },
+                          0
+                        ]
+                      }
+                    ]
+                  },
+                  "then": "succeeded"
+                },
+                {
+                  "when": {
+                    "$eq": [
+                      {
+                        "$ref": "response.Response.AigcVideoTask.Status"
+                      },
+                      "PROCESSING"
+                    ]
+                  },
+                  "then": "processing"
+                },
+                {
+                  "when": {
+                    "$ref": "response.Response.TaskId"
+                  },
+                  "then": "pending"
+                }
+              ],
+              "default": "failed"
+            }
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.Response.Error.Message"
+              },
+              {
+                "$ref": "response.Response.AigcVideoTask.Message"
+              },
+              "腾讯云点播未返回有效的视频任务结果"
+            ]
+          },
+          "errorPaths": [
+            "Response.Error",
+            "Response.AigcVideoTask.ErrCode"
+          ],
+          "videos": {
+            "$if": {
+              "condition": {
+                "$and": [
+                  {
+                    "$eq": [
+                      {
+                        "$ref": "response.Response.AigcVideoTask.Status"
+                      },
+                      "FINISH"
+                    ]
+                  },
+                  {
+                    "$eq": [
+                      {
+                        "$ref": "response.Response.AigcVideoTask.ErrCode"
+                      },
+                      0
+                    ]
+                  }
+                ]
+              },
+              "then": {
+                "$first": {
+                  "$map": {
+                    "from": {
+                      "$filter": {
+                        "from": {
+                          "$ref": "response.Response.AigcVideoTask.Output.FileInfos"
+                        },
+                        "as": "file",
+                        "where": {
+                          "$and": [
+                            {
+                              "$not": {
+                                "$ref": "file.UsageType"
+                              }
+                            },
+                            {
+                              "$in": [
+                                {
+                                  "$lower": {
+                                    "$ref": "file.FileType"
+                                  }
+                                },
+                                [
+                                  "",
+                                  "mp4",
+                                  "mov",
+                                  "webm",
+                                  "mkv",
+                                  "flv",
+                                  "m3u8"
+                                ]
+                              ]
+                            },
+                            {
+                              "$ref": "file.FileUrl"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "as": "file",
+                    "in": {
+                      "$ref": "file.FileUrl"
+                    }
+                  }
+                }
+              },
+              "else": null
+            }
+          },
+          "resultEphemeral": true
+        }
+      }
+    ]
+  },
+  "documentation": "# 腾讯云 VOD VS 直连\n\n本插件仅供管理员配置系统渠道，鉴权和视频请求由乐见画布服务端直连腾讯云，不经过源点动力，也不会在用户侧显示腾讯凭据。腾讯临时视频结果仍经任务管道写入平台已配置的对象存储。\n\n1. 后台进入「渠道与模型」，新建系统渠道，点击「使用腾讯云 VOD VS 直连」，填写点播应用 ID（SubAppId）、SecretId（`apiKey`）、SecretKey（`secretKey`）。\n2. 在该渠道添加视频模型，选择「腾讯云 VOD VS 直连」接口协议，上游模型填 `2.0`、`2.0-fast`、`2.0-mini` 或 `2.5`，设置平台售价和可用范围后再启用。\n3. 凭据仅用有权操作对应点播应用的最小权限云账号；不使用聊天中披露过的密钥。\n\n---\n\n# 腾讯云 VOD VS 接口\n\n创建任务为 `POST /`，`X-TC-Action: CreateAigcVideoTask`；轮询为 `POST /`，`X-TC-Action: DescribeTaskDetail`。域名固定为 `vod.tencentcloudapi.com`，版本 `2018-07-17`，区域 `ap-guangzhou`，采用 TC3 签名。轮询使用渠道内的 `SubAppId` 与上游任务 ID，不重新创建任务。以 `FINISH` 和明确的 `ErrCode=0` 确认完成，仅提取主视频。\n\n宿主限制参考素材为可公网访问的受策略约束链接；支持文生视频、首帧、首尾帧和全模态参考。2.0 系列固定时长 4–15 秒；2.5 支持 4–30 秒，首帧模式须选择自适应画幅。2.0 支持 480P/720P/1080P/4K，2.0-fast/mini 支持 480P/720P，2.5 支持 480P/720P/1080P。\n\n当前产品入口只开放固定秒数，自动时长仍待接入报价及结算。该直连不包含源点动力的网关计费、跨账号素材池、编辑或续写模式。\n\n官方接口：[创建 AIGC 视频](https://cloud.tencent.com/document/api/266/126239) · [查询任务详情](https://cloud.tencent.com/document/api/266/33431)。\n\n<!-- YINGCE_MANIFEST_CONTRACT_START -->\n## Manifest 完整接口定义\n\n以下 JSON 与插件包内实际 `manifest.json` 逐字段一致，覆盖插件身份、权限、配置、鉴权、参数、校验、创建、Agent、查询、取消、结果下载、响应和 Agent 响应映射。`documentation` 字段的值就是当前完整文档；为避免文档在自身内部无限递归，JSON 中仅用等义占位文本表示正文。\n\n```json\n{\n  \"apiVersion\": \"yingce.plugin/v2\",\n  \"id\": \"tencent-vod-vs\",\n  \"name\": \"腾讯云 VOD VS 直连\",\n  \"version\": \"1.0.0\",\n  \"author\": \"乐见画布\",\n  \"description\": \"管理员配置腾讯云点播，自主直连 VS 视频生成，不经过源点动力。\",\n  \"permissions\": [\n    \"generation.run\",\n    \"media.read\"\n  ],\n  \"runtime\": {\n    \"backend\": \"declarative\"\n  },\n  \"configuration\": {\n    \"fields\": [\n      {\n        \"name\": \"apiKey\",\n        \"type\": \"secret\",\n        \"label\": \"SecretId\",\n        \"required\": true\n      },\n      {\n        \"name\": \"secretKey\",\n        \"type\": \"secret\",\n        \"label\": \"SecretKey\",\n        \"required\": true\n      }\n    ]\n  },\n  \"contributes\": {\n    \"providers\": [\n      {\n        \"id\": \"tencent-vod-vs\",\n        \"label\": \"腾讯云 VOD VS 直连\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"admin.system-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"https://vod.tencentcloudapi.com\",\n        \"auth\": {\n          \"type\": \"tc3\",\n          \"field\": \"apiKey\",\n          \"secretField\": \"secretKey\",\n          \"service\": \"vod\"\n        },\n        \"requiresPublicMediaUrls\": true,\n        \"detachedPolling\": true,\n        \"parameters\": [\n          {\n            \"name\": \"model\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"ModelVersion\",\n            \"description\": \"VS 2.0、2.0-fast、2.0-mini 或 2.5。\"\n          },\n          {\n            \"name\": \"prompt\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"Prompt\",\n            \"description\": \"视频提示词。\"\n          },\n          {\n            \"name\": \"images\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"FileInfos\",\n            \"description\": \"首帧、尾帧或参考图片。\"\n          },\n          {\n            \"name\": \"videos\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"FileInfos\",\n            \"description\": \"参考视频。\"\n          },\n          {\n            \"name\": \"audios\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"FileInfos\",\n            \"description\": \"参考音频。\"\n          },\n          {\n            \"name\": \"duration\",\n            \"type\": \"integer\",\n            \"required\": false,\n            \"mapping\": \"OutputConfig.Duration\",\n            \"description\": \"秒数或自动时长。\"\n          },\n          {\n            \"name\": \"aspectRatio\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"OutputConfig.AspectRatio\",\n            \"description\": \"输出画幅。\"\n          },\n          {\n            \"name\": \"resolution\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"OutputConfig.Resolution\",\n            \"description\": \"输出分辨率。\"\n          },\n          {\n            \"name\": \"generateAudio\",\n            \"type\": \"boolean\",\n            \"required\": false,\n            \"mapping\": \"OutputConfig.AudioGeneration\",\n            \"description\": \"是否生成音频。\"\n          },\n          {\n            \"name\": \"watermark\",\n            \"type\": \"boolean\",\n            \"required\": false,\n            \"mapping\": \"OutputConfig.LogoAdd\",\n            \"description\": \"是否添加水印。\"\n          }\n        ],\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Content-Type\": \"application/json; charset=utf-8\",\n            \"X-TC-Action\": \"CreateAigcVideoTask\",\n            \"X-TC-Version\": \"2018-07-17\",\n            \"X-TC-Region\": \"ap-guangzhou\"\n          },\n          \"body\": {\n            \"$ref\": \"request.extra.tencentVod\"\n          }\n        },\n        \"poll\": {\n          \"method\": \"POST\",\n          \"path\": \"/\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Content-Type\": \"application/json; charset=utf-8\",\n            \"X-TC-Action\": \"DescribeTaskDetail\",\n            \"X-TC-Version\": \"2018-07-17\",\n            \"X-TC-Region\": \"ap-guangzhou\"\n          },\n          \"body\": {\n            \"TaskId\": {\n              \"$ref\": \"taskId\"\n            },\n            \"SubAppId\": {\n              \"$ref\": \"request.extra.tencentVodAppId\"\n            }\n          }\n        },\n        \"response\": {\n          \"taskId\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.Response.TaskId\"\n              },\n              {\n                \"$ref\": \"response.Response.AigcVideoTask.TaskId\"\n              },\n              {\n                \"$ref\": \"taskId\"\n              }\n            ]\n          },\n          \"status\": {\n            \"$switch\": {\n              \"cases\": [\n                {\n                  \"when\": {\n                    \"$and\": [\n                      {\n                        \"$eq\": [\n                          {\n                            \"$ref\": \"response.Response.AigcVideoTask.Status\"\n                          },\n                          \"FINISH\"\n                        ]\n                      },\n                      {\n                        \"$eq\": [\n                          {\n                            \"$ref\": \"response.Response.AigcVideoTask.ErrCode\"\n                          },\n                          0\n                        ]\n                      }\n                    ]\n                  },\n                  \"then\": \"succeeded\"\n                },\n                {\n                  \"when\": {\n                    \"$eq\": [\n                      {\n                        \"$ref\": \"response.Response.AigcVideoTask.Status\"\n                      },\n                      \"PROCESSING\"\n                    ]\n                  },\n                  \"then\": \"processing\"\n                },\n                {\n                  \"when\": {\n                    \"$ref\": \"response.Response.TaskId\"\n                  },\n                  \"then\": \"pending\"\n                }\n              ],\n              \"default\": \"failed\"\n            }\n          },\n          \"message\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.Response.Error.Message\"\n              },\n              {\n                \"$ref\": \"response.Response.AigcVideoTask.Message\"\n              },\n              \"腾讯云点播未返回有效的视频任务结果\"\n            ]\n          },\n          \"errorPaths\": [\n            \"Response.Error\",\n            \"Response.AigcVideoTask.ErrCode\"\n          ],\n          \"videos\": {\n            \"$if\": {\n              \"condition\": {\n                \"$and\": [\n                  {\n                    \"$eq\": [\n                      {\n                        \"$ref\": \"response.Response.AigcVideoTask.Status\"\n                      },\n                      \"FINISH\"\n                    ]\n                  },\n                  {\n                    \"$eq\": [\n                      {\n                        \"$ref\": \"response.Response.AigcVideoTask.ErrCode\"\n                      },\n                      0\n                    ]\n                  }\n                ]\n              },\n              \"then\": {\n                \"$first\": {\n                  \"$map\": {\n                    \"from\": {\n                      \"$filter\": {\n                        \"from\": {\n                          \"$ref\": \"response.Response.AigcVideoTask.Output.FileInfos\"\n                        },\n                        \"as\": \"file\",\n                        \"where\": {\n                          \"$and\": [\n                            {\n                              \"$not\": {\n                                \"$ref\": \"file.UsageType\"\n                              }\n                            },\n                            {\n                              \"$in\": [\n                                {\n                                  \"$lower\": {\n                                    \"$ref\": \"file.FileType\"\n                                  }\n                                },\n                                [\n                                  \"\",\n                                  \"mp4\",\n                                  \"mov\",\n                                  \"webm\",\n                                  \"mkv\",\n                                  \"flv\",\n                                  \"m3u8\"\n                                ]\n                              ]\n                            },\n                            {\n                              \"$ref\": \"file.FileUrl\"\n                            }\n                          ]\n                        }\n                      }\n                    },\n                    \"as\": \"file\",\n                    \"in\": {\n                      \"$ref\": \"file.FileUrl\"\n                    }\n                  }\n                }\n              },\n              \"else\": null\n            }\n          },\n          \"resultEphemeral\": true\n        }\n      }\n    ]\n  },\n  \"documentation\": \"<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>\"\n}\n```\n<!-- YINGCE_MANIFEST_CONTRACT_END -->\n"
+}

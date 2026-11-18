@@ -71,14 +71,14 @@ func (s *Service) FetchAdminChannelModels(ctx context.Context, actor *model.User
 
 // PreviewAdminChannelModels 只读取上游模型目录，不修改渠道模型配置。
 func (s *Service) PreviewAdminChannelModels(ctx context.Context, actor *model.User, channelID string) ([]string, error) {
-	if err := s.RequireAdmin(actor); err != nil {
+	result, err := s.PreviewAdminChannelModelCatalog(ctx, actor, channelID)
+	if err != nil {
 		return nil, err
 	}
-	return s.fetchAdminChannelModelCatalog(ctx, actor, channelID)
+	return result.Models, nil
 }
 
-// ImportAdminChannelModels 只导入管理员明确选择、且仍存在于上游目录中的模型。
-func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.User, channelID string, selected []string) (*AdminChannelModelFetchResult, error) {
+func (s *Service) PreviewAdminChannelModelCatalog(ctx context.Context, actor *model.User, channelID string) (*AdminChannelModelFetchResult, error) {
 	if err := s.RequireAdmin(actor); err != nil {
 		return nil, err
 	}
@@ -86,25 +86,52 @@ func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.Use
 	if err != nil {
 		return nil, err
 	}
-	models, err := s.fetchAdminChannelModelCatalog(ctx, actor, channelID)
+	catalog, err := s.fetchAdminChannelModelCatalog(ctx, actor, channel)
 	if err != nil {
 		return nil, err
 	}
-	if len(selected) == 0 {
-		return nil, BadAuthRequest("请至少选择一个要导入的模型")
+	return &AdminChannelModelFetchResult{Models: catalog.models, Catalog: catalog.items()}, nil
+}
+
+// ImportAdminChannelModels 只导入管理员明确选择、且仍存在于上游目录中的模型。
+func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.User, channelID string, selected []string, fingerprints ...map[string]string) (*AdminChannelModelFetchResult, error) {
+	if err := s.RequireAdmin(actor); err != nil {
+		return nil, err
 	}
-	if len(selected) > 500 {
-		return nil, BadAuthRequest("单次最多导入 500 个模型")
+	if len(selected) == 0 || len(selected) > 500 {
+		return nil, BadAuthRequest("请选择 1–500 个要导入的模型")
 	}
-	available := make(map[string]string, len(models))
-	for _, name := range models {
-		available[channelModelCatalogKey(name)] = name
+	channel, err := s.adminSystemChannel(channelID)
+	if err != nil {
+		return nil, err
+	}
+	catalog, err := s.fetchAdminChannelModelCatalog(ctx, actor, channel)
+	if err != nil {
+		return nil, err
+	}
+	var approved map[string]string
+	if len(fingerprints) > 0 {
+		approved = fingerprints[0]
+	}
+	return s.importAdminChannelModelSelection(channel, catalog, selected, approved)
+}
+
+func (s *Service) importAdminChannelModelSelection(channel *model.ModelChannel, catalog *adminModelCatalog, selected []string, fingerprints map[string]string) (*AdminChannelModelFetchResult, error) {
+	lookupKey := channelModelCatalogKey
+	if catalog.drafts != nil {
+		lookupKey = func(id string) string { return id }
+	} else if len(fingerprints) > 0 {
+		return nil, BadAuthRequest("渠道发现方式已变更，请重新拉取模型")
+	}
+	available := make(map[string]string, len(catalog.models))
+	for _, name := range catalog.models {
+		available[lookupKey(name)] = name
 	}
 	chosen := make([]string, 0, len(selected))
 	seen := make(map[string]struct{}, len(selected))
 	for _, rawName := range selected {
-		name := strings.TrimPrefix(strings.TrimSpace(rawName), "models/")
-		key := channelModelCatalogKey(name)
+		name := strings.TrimSpace(rawName)
+		key := lookupKey(name)
 		if key == "" {
 			continue
 		}
@@ -122,7 +149,7 @@ func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.Use
 		return nil, BadAuthRequest("请至少选择一个有效的模型")
 	}
 
-	existing, err := s.repo.ChannelModels(channelID, true)
+	existing, err := s.repo.ChannelModels(channel.ID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +157,7 @@ func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.Use
 	for _, item := range existing {
 		providerKey := firstNonEmpty(item.ProviderModelKey, item.ModelKey)
 		known[channelModelCatalogKey(providerKey)] = struct{}{}
+		known[channelModelCatalogKey(item.ModelKey)] = struct{}{}
 	}
 	retired := retiredChannelModelKeys(channel.RetiredModelsJSON)
 	missing := make([]model.ChannelModel, 0, len(chosen))
@@ -138,12 +166,29 @@ func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.Use
 		if _, ok := known[key]; ok || retired[key] {
 			continue
 		}
-		modelID, idErr := s.repo.NextPrefixedID("MODEL")
-		if idErr != nil {
-			return nil, idErr
+		item := model.ChannelModel{ChannelID: channel.ID, ModelKey: strings.TrimPrefix(name, "models/"), ProviderModelKey: name, DisplayName: "未分类", BillingMode: "fixed_request", Enabled: false, PriceConfigured: false, PriceVersion: 1}
+		if catalog.drafts != nil {
+			draft := catalog.drafts[name]
+			if draft.info.UnavailableReason != "" {
+				return nil, BadAuthRequest("无法导入模型 " + name + "：" + draft.info.UnavailableReason)
+			}
+			if draft.info.Fingerprint == "" || fingerprints[name] != draft.info.Fingerprint {
+				return nil, BadAuthRequest("模型目录已变化或未确认，请重新拉取后导入：" + name)
+			}
+			item.Capability = draft.info.Capability
+			item.Protocol = model.ChannelInterfaceType(draft.info.Protocol)
+			item.CapabilityConfigJSON = draft.config
+			item.CapabilityVersion = 1
 		}
-		missing = append(missing, model.ChannelModel{ID: modelID, ChannelID: channelID, ModelKey: name, ProviderModelKey: name, DisplayName: "未分类", BillingMode: "fixed_request", Enabled: false, PriceConfigured: false, PriceVersion: 1})
+		missing = append(missing, item)
 		known[key] = struct{}{}
+	}
+	for i := range missing {
+		id, err := s.repo.NextPrefixedID("MODEL")
+		if err != nil {
+			return nil, err
+		}
+		missing[i].ID = id
 	}
 	var added int64
 	err = s.repo.Transaction(func(repo *repository.Repository) error {
@@ -163,10 +208,17 @@ func (s *Service) ImportAdminChannelModels(ctx context.Context, actor *model.Use
 	return &AdminChannelModelFetchResult{Models: chosen, Added: added}, nil
 }
 
-func (s *Service) fetchAdminChannelModelCatalog(ctx context.Context, actor *model.User, channelID string) ([]string, error) {
-	result, err := s.ReadAdminChannelCatalog(ctx, actor, channelID)
+func (s *Service) fetchAdminChannelModelCatalog(ctx context.Context, actor *model.User, channel *model.ModelChannel) (*adminModelCatalog, error) {
+	if target := tack2aiCatalogTarget(channel.BaseURL, channel.APIFormat); target != "" {
+		return s.fetchTack2AICatalog(ctx, channel, target)
+	}
+	headers, err := ParseOutboundHeadersJSON(channel.HeadersJSON)
 	if err != nil {
 		return nil, err
 	}
-	return result.Models, nil
+	models, err := s.FetchChannelModels(ctx, actor, ChannelModelsRequest{BaseURL: channel.BaseURL, APIKey: channel.APIKey, APIFormat: channel.APIFormat, ProxyURL: channel.ProxyURL, Headers: headers})
+	if err != nil {
+		return nil, err
+	}
+	return &adminModelCatalog{models: uniqueNonEmpty(models)}, nil
 }
