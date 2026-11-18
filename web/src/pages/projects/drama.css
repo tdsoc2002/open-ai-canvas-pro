@@ -2875,9 +2875,16 @@
 }
 
 /* ===== 作品列表：与“我的画布”同一内容库壳层 ===== */
+.drama-library > div {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
 .drama-library .drama-root {
     position: relative;
-    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: auto;
 }
 .drama-library-status {
     display: inline-flex;
@@ -3135,7 +3142,7 @@
 }
 .drama-library-hero {
     min-height: 440px;
-    flex: none;
+    flex: auto;
     margin-top: 8px;
 }
 .drama-library-drop {

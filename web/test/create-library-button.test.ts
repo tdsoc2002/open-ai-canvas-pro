@@ -197,8 +197,13 @@ describe("creation thread chrome", () => {
         expect(product).not.toContain("creation-composer-mode-row");
     });
 
-    test("parameter popovers use the user surface without a hairline stroke", () => {
+    test("图片参数复用共享浮层，视频参数保留原本的无描边表面", () => {
         const css = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-product.css"), "utf8");
+        const overlays = readFileSync(resolve(import.meta.dir, "../src/styles/shared/overlays.css"), "utf8");
+
+        expect(readCreateWorkspaceSource()).toContain('imageMode ? "creation-control-popover is-image-settings" : "creation-control-popover"');
+        expect(overlays).toContain(".creation-control-popover.is-image-settings .creation-control-popover-surface");
+        expect(css).toContain(".creation-control-popover.ant-popover:not(.is-image-settings)");
 
         expect(css).toContain(".creation-control-popover .ant-popover-inner");
         expect(css).toContain("background: var(--user-surface-raised) !important");

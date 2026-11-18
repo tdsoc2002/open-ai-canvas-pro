@@ -1,3 +1,19 @@
+/* 创作类型、模型选择与图片参数共用浮层；画布模型选择可保留自己的面板色。 */
+@layer utilities {
+    .creation-mode-menu.ant-dropdown .ant-dropdown-menu,
+    :root body .creation-model-picker-popover .creation-model-picker-surface.canvas-composer-popover-surface,
+    :root body .creation-control-popover.is-image-settings .creation-control-popover-surface {
+        --picker-menu-padding: var(--space-2);
+        --picker-row-inset: var(--space-3);
+        --picker-row-gap: var(--space-2);
+        --picker-icon-column: var(--space-6);
+        border: var(--control-border-width) solid var(--model-picker-edge, var(--border)) !important;
+        border-radius: var(--menu-radius) !important;
+        background: var(--model-picker-surface, var(--popover)) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+}
+
 /* Shared React Aria overlay entrance animation used by select and tooltip. */
 @keyframes ra-pop-in {
     from {
@@ -16,10 +32,18 @@
 }
 
 /* React Aria exposes the placement on the floating element. */
-.ra-pop-in[data-placement^="top"] { --ra-pop-origin: bottom center; }
-.ra-pop-in[data-placement^="bottom"] { --ra-pop-origin: top center; }
-.ra-pop-in[data-placement^="left"] { --ra-pop-origin: right center; }
-.ra-pop-in[data-placement^="right"] { --ra-pop-origin: left center; }
+.ra-pop-in[data-placement^="top"] {
+    --ra-pop-origin: bottom center;
+}
+.ra-pop-in[data-placement^="bottom"] {
+    --ra-pop-origin: top center;
+}
+.ra-pop-in[data-placement^="left"] {
+    --ra-pop-origin: right center;
+}
+.ra-pop-in[data-placement^="right"] {
+    --ra-pop-origin: left center;
+}
 
 @media (prefers-reduced-motion: reduce) {
     .ra-pop-in {

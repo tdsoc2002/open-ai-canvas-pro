@@ -3,29 +3,21 @@
     width: min(216px, calc(100vw - var(--space-8)));
     max-height: calc(100dvh - var(--space-8));
     overflow-y: auto;
-    padding: var(--space-2);
+    padding: var(--picker-menu-padding);
 }
-.creation-mode-menu .ant-dropdown-menu-item-group-title {
-    padding: var(--space-1) var(--space-3) var(--space-2);
-    color: var(--muted-foreground);
-    font-size: var(--fs-caption);
-    font-weight: 500;
-}
-.creation-mode-menu .ant-dropdown-menu-item-group-list {
-    margin: 0;
-}
-.creation-mode-menu .ant-dropdown-menu-item {
+.creation-mode-menu .ant-dropdown-menu .ant-dropdown-menu-item {
     min-height: var(--space-10);
-    padding: var(--space-1) var(--space-3);
-    gap: var(--space-2);
+    padding: var(--space-1) var(--picker-row-inset);
+    gap: var(--picker-row-gap);
     border-radius: var(--control-radius);
     color: var(--foreground);
     font-size: var(--fs-ui);
+    text-align: start;
 }
-.creation-mode-menu .ant-dropdown-menu-item-icon {
+.creation-mode-menu .ant-dropdown-menu .ant-dropdown-menu-item-icon {
     width: var(--icon-size);
     height: var(--icon-size);
-    margin-inline-end: 0;
+    margin-inline-end: calc(var(--picker-icon-column) - var(--icon-size));
     flex-shrink: 0;
 }
 .creation-mode-menu .ant-dropdown-menu-item-selected {
@@ -48,14 +40,8 @@
     flex-shrink: 0;
     color: var(--brand, currentColor);
 }
-/* 只为创作类型菜单恢复浮层边界；通用工作区菜单仍保持无边框、无阴影。 */
+/* 类型菜单的交互态覆盖工作区内通用的 AntD 菜单状态。 */
 @layer utilities {
-    .creation-mode-menu.ant-dropdown .ant-dropdown-menu {
-        border: var(--control-border-width) solid var(--border) !important;
-        border-radius: var(--menu-radius) !important;
-        background: var(--popover) !important;
-        box-shadow: var(--shadow-lg) !important;
-    }
     .creation-mode-menu.ant-dropdown .ant-dropdown-menu-item:is(:hover, :focus-visible, .ant-dropdown-menu-item-active) {
         background: var(--muted) !important;
     }
@@ -68,7 +54,7 @@
     }
 }
 @media (pointer: coarse) {
-    .creation-mode-menu .ant-dropdown-menu-item {
+    .creation-mode-menu .ant-dropdown-menu .ant-dropdown-menu-item {
         min-height: calc(var(--space-10) + var(--space-1));
     }
 }
@@ -916,11 +902,9 @@
     }
 }
 
-/* 参数弹窗挂在 body overlays，必须直接用用户表面 token；描边由 Ant inner 的 1px border 造成。 */
+/* 参数弹窗挂在 body overlays，内容继承工作区文字和选中态。 */
 .app-user-overlays .creation-control-popover,
 .app-product-overlays .creation-control-popover {
-    --popover: var(--user-surface-raised);
-    --border: transparent;
     --creation-text: var(--user-ink);
     --creation-muted: var(--user-ink-muted);
     --creation-faint: var(--user-ink-soft);
@@ -928,19 +912,18 @@
     --control-selected-fg: var(--user-ink);
 }
 
+:is(.app-user-overlays, .app-product-overlays) .creation-control-popover:not(.is-image-settings) {
+    --popover: var(--user-surface-raised);
+    --border: transparent;
+}
+
 .app-user-overlays .creation-control-popover .ant-popover-arrow,
 .app-product-overlays .creation-control-popover .ant-popover-arrow {
     display: none;
 }
 
-.app-user-overlays .creation-control-popover.ant-popover,
-.app-user-overlays .creation-control-popover .ant-popover-container,
-.app-user-overlays .creation-control-popover .ant-popover-inner,
-.app-user-overlays .creation-control-popover-surface,
-.app-product-overlays .creation-control-popover.ant-popover,
-.app-product-overlays .creation-control-popover .ant-popover-container,
-.app-product-overlays .creation-control-popover .ant-popover-inner,
-.app-product-overlays .creation-control-popover-surface {
+:is(.app-user-overlays, .app-product-overlays) .creation-control-popover.ant-popover:not(.is-image-settings),
+:is(.app-user-overlays, .app-product-overlays) .creation-control-popover:not(.is-image-settings) :is(.ant-popover-container, .ant-popover-inner, .creation-control-popover-surface) {
     border: 0 !important;
     outline: 0 !important;
     background: var(--user-surface-raised) !important;
@@ -1142,17 +1125,55 @@
     white-space: normal !important;
 }
 
-html:not(.dark) .app-user-overlays .creation-control-popover.ant-popover,
-html:not(.dark) .app-user-overlays .creation-control-popover .ant-popover-container,
-html:not(.dark) .app-user-overlays .creation-control-popover .ant-popover-inner,
-html:not(.dark) .app-user-overlays .creation-control-popover-surface,
-html:not(.dark) .app-product-overlays .creation-control-popover.ant-popover,
-html:not(.dark) .app-product-overlays .creation-control-popover .ant-popover-container,
-html:not(.dark) .app-product-overlays .creation-control-popover .ant-popover-inner,
-html:not(.dark) .app-product-overlays .creation-control-popover-surface {
+html:not(.dark) :is(.app-user-overlays, .app-product-overlays) .creation-control-popover.ant-popover:not(.is-image-settings),
+html:not(.dark) :is(.app-user-overlays, .app-product-overlays) .creation-control-popover:not(.is-image-settings) :is(.ant-popover-container, .ant-popover-inner, .creation-control-popover-surface) {
     box-shadow:
         0 1px 2px color-mix(in srgb, rgba(25, 25, 30, 0.12) 50%, transparent),
         0 16px 40px rgba(25, 25, 30, 0.12) !important;
+}
+
+/* 间隔计入定位盒，贴着视口翻转时不会把浮层边框推出去。 */
+.creation-control-popover.is-image-settings {
+    padding-block: var(--space-1);
+}
+
+:is(.app-user-overlays, .app-product-overlays) .is-image-settings .creation-parameter-menu {
+    width: min(432px, calc(100vw - var(--space-8))) !important;
+    max-height: 60dvh;
+    padding: var(--space-4) !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.is-image-settings .creation-parameter-menu :is(.image-size-ratios, .image-size-tiers, .creation-choice-grid.is-quality) {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--space-16)), 1fr)) !important;
+    gap: var(--picker-row-gap);
+}
+
+.is-image-settings .creation-parameter-menu :is(.image-size-tiers button, .image-size-ratios button, .creation-choice-grid.is-quality button) {
+    border-radius: var(--control-radius) !important;
+    font-size: var(--fs-caption) !important;
+}
+
+.is-image-settings .image-size-ratios button:has(> .image-size-ratio-icon) {
+    display: grid;
+    grid-template-rows: var(--space-6) auto;
+    place-items: center;
+}
+
+.is-image-settings .image-size-label {
+    font-size: var(--fs-caption);
+}
+
+.is-image-settings .image-size-output {
+    padding-inline: 0;
+    background: transparent;
+    color: var(--muted-foreground);
+}
+
+:is(.app-user-overlays, .app-product-overlays) .is-image-settings .creation-parameter-menu :is(.image-size-tiers button, .image-size-ratios button):not([aria-pressed="true"], :disabled):hover {
+    background: var(--user-surface-hover) !important;
+    color: var(--user-ink) !important;
 }
 
 /* 长提示词保持编辑器可控：按当前字号最多展示约 12 行，继续输入时只在编辑区内部滚动。 */

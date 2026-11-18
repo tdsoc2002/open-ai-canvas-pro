@@ -42,29 +42,13 @@
         border-radius: 8px;
     }
 
-    /* 模型弹窗与发起它的输入框同一表面（画布入口由 model-picker.tsx 写入节点面板色，工作台回退到
-       --user-surface-raised）：不透明实底 + 1px 低对比边线 + 两层浮层阴影，不再用偏蓝的磨砂玻璃。
-       选择器要压过 globals.css 里 .canvas-composer-popover-surface 的同层 !important 规则。 */
+    /* 浮层外观统一由 overlays.css 管理，这里仅清除 Popover 的额外内距和模糊。 */
     :root body .creation-model-picker-popover .creation-model-picker-surface.canvas-composer-popover-surface {
-        border: 0 !important;
-        border-radius: 12px !important;
-        background: var(--model-picker-surface, var(--user-surface-raised, var(--popover))) !important;
-        box-shadow:
-            0 0 0 1px var(--model-picker-edge, var(--user-border, var(--border))),
-            0 1px 2px rgb(15 23 42 / 0.08),
-            0 16px 40px rgb(15 23 42 / 0.12) !important;
         overflow: hidden;
         padding: 0 !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
         animation: none;
-    }
-
-    .dark body .creation-model-picker-popover .creation-model-picker-surface.canvas-composer-popover-surface {
-        box-shadow:
-            0 0 0 1px var(--model-picker-edge, var(--user-border, var(--border))),
-            0 1px 2px rgb(0 0 0 / 0.4),
-            0 18px 44px rgb(0 0 0 / 0.44) !important;
     }
 
     .creation-model-picker-surface .ant-popover-inner-content {
@@ -75,7 +59,7 @@
     :root body .creation-model-picker-popover .creation-model-picker-menu {
         overflow-x: hidden;
         overflow-y: auto;
-        padding: 8px !important;
+        padding: var(--picker-menu-padding) !important;
         background: transparent !important;
         color: var(--model-picker-ink, var(--user-ink, var(--foreground))) !important;
     }
@@ -117,10 +101,6 @@
         border-radius: 8px;
         padding: 8px 8px;
         transition: none;
-    }
-
-    .creation-model-picker-menu .canvas-model-picker-option > span:first-child {
-        gap: 12px;
     }
 
     .creation-model-picker-menu .canvas-model-picker-option > span:first-child > span:nth-child(2) > span:first-child {
@@ -576,16 +556,6 @@ html:not(.dark) .creation-chat-composer .creation-model-picker.canvas-composer-m
     border-radius: 8px;
     padding: 4px 8px;
 }
-.creation-model-picker-menu .canvas-model-picker-option > span:first-child {
-    gap: 8px;
-}
-.creation-model-picker-menu .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
-    width: 24px;
-    height: 24px;
-    border: 0;
-    border-radius: 0;
-    background: transparent !important;
-}
 .creation-model-picker-menu .canvas-model-picker-option > span:first-child > span:nth-child(2) > span:first-child {
     font-size: 11px;
 }
@@ -631,13 +601,13 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     min-width: 0;
     min-height: 52px;
     align-items: center;
-    gap: 10px;
+    gap: var(--picker-row-gap);
     border: 0;
-    border-radius: 8px;
-    padding: 8px;
+    border-radius: var(--control-radius);
+    padding: var(--space-2) var(--picker-row-inset);
     background: transparent;
     color: inherit;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
     transition: background-color 150ms ease;
 }
@@ -651,13 +621,13 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     outline: 2px solid var(--ring);
     outline-offset: -2px;
 }
-.canvas-model-picker-brand-icon {
+.canvas-model-picker-brand-icon,
+.creation-model-picker-surface .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
     display: grid;
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    place-items: center;
-    background: transparent;
+    width: var(--picker-icon-column);
+    height: var(--picker-icon-column);
+    flex: 0 0 var(--picker-icon-column);
+    place-items: center start;
 }
 /* 文字列必须可收缩：名称与“渠道数 · 来源”截断，健康度圆点固定宽度，永远不越过右侧箭头。 */
 .canvas-model-picker-brand-copy {
@@ -1085,9 +1055,6 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     width: min(232px, 60cqw) !important;
 }
 /* 模型与渠道共用菜单高度约束，长列表在各自区域滚动。 */
-.app-user-workspace .creation-model-picker-menu.is-brand-list {
-    padding: 8px !important;
-}
 .app-user-workspace .creation-model-picker-menu .canvas-model-picker-subheading {
     display: flex;
     align-items: baseline;
@@ -1105,14 +1072,7 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
 .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option {
     min-height: 55px;
     border-radius: 12px;
-    padding: 8px 8px;
-}
-.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
-    width: 24px;
-    height: 24px;
-    border-radius: 0;
-    background: transparent !important;
-    color: var(--user-ink-muted);
+    padding-block: var(--space-2);
 }
 .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .text-amber-600,
 .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .dark\:text-amber-300 {
@@ -1139,9 +1099,6 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     min-height: 32px !important;
     height: 32px !important;
 }
-.creation-model-picker-surface .creation-model-picker-menu.is-brand-list {
-    padding: 8px !important;
-}
 .creation-model-picker-surface .canvas-model-picker-subheading {
     display: flex;
     align-items: baseline;
@@ -1158,12 +1115,14 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
 }
 .creation-model-picker-surface .canvas-model-picker-option {
     min-height: 52px;
-    border-radius: 8px;
-    padding: 8px 8px;
+    border-radius: var(--control-radius);
+    padding: var(--space-2) var(--picker-row-inset);
+    text-align: start;
+}
+.creation-model-picker-surface .canvas-model-picker-option > span:first-child {
+    gap: var(--picker-row-gap);
 }
 .creation-model-picker-surface .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
-    width: 24px;
-    height: 24px;
     border-radius: 0;
     background: transparent !important;
     color: currentColor;
@@ -1194,15 +1153,8 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
 
 .is-compact-two-pane .canvas-model-picker-brand {
     min-height: calc(var(--space-10) + var(--space-1));
-    gap: var(--space-2);
     padding-block: var(--space-1);
     border-radius: var(--control-radius);
-}
-
-.is-compact-two-pane .canvas-model-picker-brand-icon {
-    width: var(--space-5);
-    height: var(--space-5);
-    flex-basis: var(--space-5);
 }
 
 .is-compact-two-pane .canvas-model-picker-brand-meta {
@@ -1221,8 +1173,10 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
 
 .creation-model-picker-surface .is-compact-two-pane .canvas-model-picker-option {
     align-items: flex-start;
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--control-radius);
+    padding-block: var(--space-1);
+}
+.creation-model-picker-surface .is-compact-two-pane .canvas-model-picker-option > span:first-child {
+    align-items: flex-start;
 }
 
 .is-compact-two-pane .canvas-model-picker-option[aria-selected="true"],

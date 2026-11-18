@@ -259,22 +259,16 @@ export function CreationModeMenu({ mode, onModeChange, agentActive = false, onAg
             menu={{
                 selectable: true,
                 selectedKeys: [activeKey],
-                items: [
-                    {
-                        type: "group",
-                        label: "创作类型",
-                        children: items.map((item) => ({
-                            key: item.key,
-                            icon: item.icon,
-                            label: (
-                                <span className="creation-mode-menu-label">
-                                    {item.label}
-                                    {item.key === activeKey ? <Check aria-hidden="true" /> : null}
-                                </span>
-                            ),
-                        })),
-                    },
-                ],
+                items: items.map((item) => ({
+                    key: item.key,
+                    icon: item.icon,
+                    label: (
+                        <span className="creation-mode-menu-label">
+                            {item.label}
+                            {item.key === activeKey ? <Check aria-hidden="true" /> : null}
+                        </span>
+                    ),
+                })),
                 onClick: ({ key }) => {
                     setOpen(false);
                     if (key === "agent") onAgentSelect();
@@ -869,6 +863,7 @@ function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: 
 
 function GenerationSettingsMenu(props: ComposerProps) {
     const [open, setOpen] = useState(false);
+    const imageMode = props.mode === "image";
     // 张数上限与发送时的实际单数保持一致。
     const imageBatchLimit = Math.min(15, useGenerationBatchLimit());
     const activeQualityOptions = props.imageProfile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: imageQualityLabel(value), description: "模型支持的质量/分辨率" });
@@ -1009,12 +1004,17 @@ function GenerationSettingsMenu(props: ComposerProps) {
             open={open}
             onOpenChange={setOpen}
             trigger="click"
-            placement="bottom"
+            placement={imageMode ? "bottomLeft" : "bottom"}
+            align={imageMode ? { offset: [0, 0], overflow: { adjustY: true, shiftX: true, shiftY: true } } : undefined}
             arrow={false}
-            classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
+            classNames={{
+                root: imageMode ? "creation-control-popover is-image-settings" : "creation-control-popover",
+                container: "creation-control-popover-surface",
+                content: "creation-control-popover-content",
+            }}
             content={panel}
         >
-            <button type="button" className="creation-chat-control" aria-label={`生成设置：${summary}`}>
+            <button type="button" className="creation-chat-control" aria-label={`生成设置：${summary}`} aria-expanded={open}>
                 <SlidersHorizontal />
                 <span>{summary}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
