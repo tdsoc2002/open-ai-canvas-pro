@@ -982,7 +982,9 @@ async function main() {
         console.error(`\nPrevis P0 Chrome E2E FAILED (${failures} assertion(s)).`);
         process.exit(1);
     }
-    console.log("\nPrevis P0 Chrome E2E PASSED.");
+    // Bun 的 CDP 连接关闭后仍可能保留句柄；断言和清理都已完成，再结束进程。
+    await new Promise((resolve) => process.stdout.write("\nPrevis P0 Chrome E2E PASSED.\n", resolve));
+    process.exit(0);
 }
 
 main().catch((error) => {

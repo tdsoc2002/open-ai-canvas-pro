@@ -21,6 +21,7 @@ describe("media fallback", () => {
         const grid = source("../src/pages/tasks/task-grid-card.tsx");
         const page = source("../src/pages/tasks/index.tsx");
         const detail = source("../src/pages/tasks/task-detail-modal.tsx");
+        const result = source("../src/pages/tasks/task-result-preview.tsx");
 
         expect(list).toContain("<MediaPreview");
         expect(list).toContain("disabled={previewUnavailable}");
@@ -28,8 +29,9 @@ describe("media fallback", () => {
         // 放大预览留在页面；详情弹窗的结果大图和缩略图各用一次。
         expect(page.match(/<MediaPreview/g)).toHaveLength(1);
         expect(page).toContain('fallbackClassName="task-center-preview-unavailable"');
-        expect(detail.match(/<MediaPreview/g)).toHaveLength(2);
-        expect(detail).toContain('fallbackClassName="task-detail-stage-unavailable"');
+        expect(detail).toContain("<TaskResultPreview");
+        expect(result.match(/<MediaPreview/g)).toHaveLength(2);
+        expect(result).toContain('fallbackClassName="task-detail-stage-unavailable"');
     });
 
     test("uses the fallback in admin log thumbnails and enlarged previews", () => {
@@ -47,6 +49,7 @@ describe("task cancellation policy", () => {
         const grid = source("../src/pages/tasks/task-grid-card.tsx");
         const page = source("../src/pages/tasks/index.tsx");
         const detail = source("../src/pages/tasks/task-detail-modal.tsx");
+        const shared = source("../src/pages/tasks/task-shared.tsx");
 
         expect(detail).not.toContain("cancelGenerationTask");
         expect(list).not.toContain("isTaskCancellable");
@@ -58,7 +61,9 @@ describe("task cancellation policy", () => {
         // 进行中统计按「非终态」兜底：后端可能出现枚举外的中间态（如 Agent 控制面超时任务），
         // 白名单匹配会让这些任务不在任何 tab 里，导致总数对不上。
         expect(page).toContain('if (task.status === "succeeded") succeeded += 1;');
-        expect(page).toContain('task.status !== "succeeded" && task.status !== "failed" && task.status !== "cancelled"');
+        expect(page).toMatch(/function taskInProgress\([^)]*\) \{\s*return task.status !== "succeeded" && !isTaskFailed\(task\);/);
+        expect(shared).toMatch(/function isTaskFailed\([^)]*\) \{\s*return task.status === "failed" \|\| task.status === "cancelled";/);
+        expect(page).toContain('if (statusFilter === "active") return taskInProgress(task);');
     });
 
     test("batch stop only applies to items still waiting locally", () => {
