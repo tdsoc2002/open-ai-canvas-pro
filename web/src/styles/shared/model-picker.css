@@ -579,7 +579,7 @@ html:not(.dark) .creation-chat-composer .creation-model-picker.canvas-composer-m
 .creation-model-picker-menu .canvas-model-picker-option > span:first-child {
     gap: 8px;
 }
-.creation-model-picker-menu .canvas-model-picker-option > span:first-child > span:first-child {
+.creation-model-picker-menu .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
     width: 24px;
     height: 24px;
     border: 0;
@@ -761,6 +761,59 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     .canvas-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
         display: none;
     }
+}
+.canvas-model-picker-menu.is-agent-compact {
+    gap: var(--space-1);
+    overscroll-behavior: contain;
+}
+.canvas-model-picker-compact-option {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    min-width: 0;
+    border-radius: var(--control-radius);
+}
+.canvas-model-picker-compact-option[data-selected],
+.canvas-model-picker-compact-group[data-selected] {
+    background: var(--control-selected-bg);
+}
+.canvas-model-picker-compact-group {
+    width: 100%;
+    min-height: var(--space-10);
+}
+.canvas-model-picker-compact-group[aria-expanded="true"] .canvas-model-picker-chevron {
+    transform: rotate(180deg);
+}
+.canvas-model-picker-compact-group .canvas-model-picker-option-check {
+    flex: none;
+}
+.canvas-model-picker-compact-channels:not([hidden]) {
+    display: grid;
+    gap: var(--space-1);
+    margin: var(--space-1) 0 var(--space-2) var(--space-3);
+    padding-inline-start: var(--space-2);
+    border-inline-start: var(--control-border-width) solid var(--border);
+}
+.is-agent-compact .canvas-model-picker-option-heading > span:first-child {
+    flex-basis: 100%;
+}
+.is-agent-compact .canvas-model-picker-option-heading {
+    gap: var(--space-1) var(--space-2);
+}
+.is-agent-compact .canvas-model-picker-option-name {
+    font-size: var(--fs-ui);
+    line-height: var(--lh-body);
+}
+.canvas-model-picker-compact-channel {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: var(--fs-caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.canvas-model-picker-compact-option > .model-picker-availability {
+    margin: 0 var(--space-2) var(--space-2) 0;
 }
 .canvas-model-picker-option-heading {
     display: flex;
@@ -1054,7 +1107,7 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     border-radius: 12px;
     padding: 8px 8px;
 }
-.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option > span:first-child > span:first-child {
+.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
     width: 24px;
     height: 24px;
     border-radius: 0;
@@ -1108,17 +1161,137 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     border-radius: 8px;
     padding: 8px 8px;
 }
-.creation-model-picker-surface .canvas-model-picker-option > span:first-child > span:first-child {
+.creation-model-picker-surface .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
     width: 24px;
     height: 24px;
     border-radius: 0;
     background: transparent !important;
     color: currentColor;
 }
-.creation-model-picker-surface .canvas-model-picker-option > span:first-child > span:first-child svg {
+.creation-model-picker-surface .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo svg {
     color: currentColor !important;
     opacity: 1 !important;
 }
 .creation-model-picker-surface .canvas-model-picker-option .model-picker-price {
     font-size: var(--fs-tiny);
+}
+
+/* 创作首页与画布节点共用 LJCanvas 的紧凑双栏。 */
+@media (min-width: 721px) {
+    .canvas-model-picker-menu.is-compact-two-pane.is-model-list {
+        width: min(720px, calc(100vw - var(--space-6)));
+    }
+
+    .creation-model-picker-surface .canvas-model-picker-menu.is-compact-two-pane.is-model-list .canvas-model-picker-two-pane {
+        grid-template-columns: 224px minmax(0, 1fr);
+        gap: var(--space-2);
+    }
+
+    .creation-model-picker-surface .canvas-model-picker-menu.is-compact-two-pane.is-model-list .canvas-model-picker-brand-rail {
+        padding-right: var(--space-2);
+    }
+}
+
+.is-compact-two-pane .canvas-model-picker-brand {
+    min-height: calc(var(--space-10) + var(--space-1));
+    gap: var(--space-2);
+    padding-block: var(--space-1);
+    border-radius: var(--control-radius);
+}
+
+.is-compact-two-pane .canvas-model-picker-brand-icon {
+    width: var(--space-5);
+    height: var(--space-5);
+    flex-basis: var(--space-5);
+}
+
+.is-compact-two-pane .canvas-model-picker-brand-meta {
+    gap: var(--space-1);
+}
+
+.is-compact-two-pane .canvas-model-picker-brand-copy .model-picker-availability-track {
+    gap: 1px;
+}
+
+.is-compact-two-pane .canvas-model-picker-brand-copy .model-picker-availability-pill {
+    width: 3px;
+    height: 3px;
+    flex-basis: 3px;
+}
+
+.creation-model-picker-surface .is-compact-two-pane .canvas-model-picker-option {
+    align-items: flex-start;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--control-radius);
+}
+
+.is-compact-two-pane .canvas-model-picker-option[aria-selected="true"],
+.is-compact-two-pane .canvas-model-picker-option:hover:not(:disabled) {
+    background: var(--control-selected-bg) !important;
+}
+
+.is-compact-two-pane .canvas-model-picker-option-heading {
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+}
+
+.is-compact-two-pane .canvas-model-picker-option-identity {
+    flex: 1 1 40%;
+}
+
+.is-compact-two-pane .canvas-model-picker-option-name {
+    font-size: var(--fs-ui);
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.is-compact-two-pane .canvas-model-picker-option-price,
+.is-compact-two-pane .canvas-model-picker-option-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+}
+
+.is-compact-two-pane .canvas-model-picker-option-meta {
+    margin-top: var(--space-1);
+}
+
+.is-compact-two-pane .canvas-model-picker-option-meta:empty,
+.is-compact-two-pane .canvas-model-picker-description:empty {
+    display: none;
+}
+
+.is-compact-two-pane .canvas-model-picker-option-meta .model-tags {
+    margin-top: 0;
+}
+
+.is-compact-two-pane .canvas-model-picker-option .model-picker-price {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.is-compact-two-pane .canvas-model-picker-reference-billing {
+    margin-left: 0;
+    white-space: normal;
+}
+
+.canvas-model-picker-selected-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: var(--space-1);
+    color: inherit;
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.canvas-model-picker-selected-badge svg {
+    width: var(--space-3);
+    height: var(--space-3);
 }

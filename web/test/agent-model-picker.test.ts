@@ -27,3 +27,15 @@ test("Agent 对话和设置复用创作页模型选择器，并且只展示文�
     expect(twoPane).not.toMatch(/align-items:\s*(?:start|flex-start)/);
     expect(twoPane).not.toContain("min-height: 300px");
 });
+
+test("仅 Agent 对话显式启用向上展开的单列模型菜单", async () => {
+    const panel = await Bun.file(new URL("../src/components/canvas/canvas-cloud-agent-panel-parts.tsx", import.meta.url)).text();
+    const settings = await Bun.file(new URL("../src/components/canvas/canvas-cloud-agent-settings.tsx", import.meta.url)).text();
+    const creation = await Bun.file(new URL("../src/pages/create/creation-workspace.tsx", import.meta.url)).text();
+    const picker = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
+    expect(panel).toContain('layout="agent-compact"');
+    expect(settings).not.toContain('layout="agent-compact"');
+    expect(creation).not.toContain('layout="agent-compact"');
+    expect(picker).toContain('placement={compact ? "topLeft" : "bottomLeft"}');
+    expect(picker).toContain('group.kind === "product" && group.models.length > 1');
+});

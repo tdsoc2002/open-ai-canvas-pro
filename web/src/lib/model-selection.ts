@@ -5,6 +5,7 @@ import { imageParameterRequest, imageParameterDefaults, imageParameterAccepts } 
 import { imageSizePresets } from "@/lib/image-size-presets";
 import { currentGenerationBatchLimit } from "./generation-batch-limit";
 import { modelOptionName, PUBLIC_MODEL_CATALOG_ID, resolveModelChannel, resolveModelRequestConfig, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
+import { isTack2AIAudioConfig } from "@/lib/audio-generation";
 
 export type ModelInputSummary = {
     textCount: number;
@@ -48,6 +49,7 @@ export function audioReferenceCapacity(config: AiConfig, model: string) {
 
 export function isDoubaoAudioModel(config: AiConfig, model: string) {
     if (!String(model || "").trim()) return false;
+    if (isTack2AIAudioConfig(config, model)) return false;
     if (audioProtocol(config, model) === "doubao-streaming-tts") return true;
     // seed-audio-1.0 与 seed-audio-1.0-multilingual 共用同一套 references 合同。
     return modelOptionName(model).toLowerCase().startsWith("seed-audio");
@@ -164,6 +166,17 @@ export function modelCompatibilityError(config: AiConfig, model: string, require
         return "";
     }
 
+    if (isTack2AIAudioConfig(config, model)) {
+        const audio = modelCapabilityConfigFor(config, model).audio;
+        const references = audio?.referenceEncoding === "metadata.references" ? audio : undefined;
+        if (input.videoCount > 0) return "音频模型不能连接参考视频";
+        if (input.imageCount > 0 && input.audioCount > 0) return "不能同时连接参考图片和参考音频";
+        if (input.characterCount > 1) return "角色配音一次只能引用一个角色卡";
+        if (input.imageCount > (references?.maxImages || 0)) return references?.maxImages ? `当前音频模型最多支持 ${references.maxImages} 张参考图` : "当前音频模型不支持参考图";
+        if (input.audioCount > (references?.maxAudios || 0)) return references?.maxAudios ? `当前音频模型最多支持 ${references.maxAudios} 段参考音频` : "当前音频模型不支持参考音频";
+        if (input.imageCount + input.audioCount > (references?.maxReferences || 0)) return `当前音频模型最多支持 ${references?.maxReferences || 0} 个参考素材`;
+        return "";
+    }
     if (isDoubaoAudioModel(config, model)) return doubaoAudioInputError(input);
     if (input.imageCount > 0 || input.videoCount > 0) return "音频模型不能连接参考图片或参考视频";
     if (input.characterCount > 1) return "角色配音一次只能引用一个角色卡";
@@ -179,11 +192,11 @@ export function modelPromptLengthError(config: AiConfig, model: string, capabili
     const configuredProfile = channel.modelCosts?.find((item) => item.model === modelOptionName(model))?.capabilityConfig;
     if (!configuredProfile) return "";
     const profile = modelCapabilityConfigFor(config, model);
-    const maxChars = capability === "text" ? profile.text?.references.promptMaxChars : capability === "image" ? profile.image?.references.promptMaxChars : capability === "video" ? profile.video?.references.promptMaxChars : undefined;
+    const maxChars = capability === "text" ? profile.text?.references.promptMaxChars : capability === "image" ? profile.image?.references.promptMaxChars : capability === "video" ? profile.video?.references.promptMaxChars : profile.audio?.maxInputChars;
     if (!maxChars || maxChars <= 0) return "";
     const actualChars = Array.from(prompt).length;
     if (actualChars <= maxChars) return "";
-    const label = capability === "text" ? "文本" : capability === "image" ? "图片" : "视频";
+    const label = capability === "text" ? "文本" : capability === "image" ? "图片" : capability === "video" ? "视频" : "语音";
     return `当前${label}模型提示词最多 ${maxChars} 个字符，完整提示词为 ${actualChars} 个字符。系统不会自动截断，请精简当前输入、连线内容或技能上下文后重试`;
 }
 

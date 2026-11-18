@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-test("模型行只保留选中高亮，价格使用独立的彩色标签", async () => {
+test("默认模型行只保留选中高亮，价格使用独立的彩色标签", async () => {
     const [component, styles, workspace] = await Promise.all([
         Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/styles/shared/model-picker.css", import.meta.url)).text(),
@@ -8,7 +8,7 @@ test("模型行只保留选中高亮，价格使用独立的彩色标签", async
     ]);
     expect(component).not.toContain("previewedModel");
     expect(component).not.toContain("onMouseEnter");
-    expect(styles).not.toMatch(/canvas-model-picker-(?:brand|option)(?:\[[^\]]*\])?:hover/);
+    expect(styles).not.toMatch(/^\s*\.canvas-model-picker-(?:brand|option)(?:\[[^\]]*\])?:hover/m);
     expect(workspace).not.toContain(".canvas-model-picker-brand.is-active");
     expect(styles).toContain('.canvas-model-picker-brand[aria-pressed="true"]');
     expect(styles).toContain('.canvas-model-picker-option[aria-selected="true"]');
@@ -27,19 +27,20 @@ test("模型行只保留选中高亮，价格使用独立的彩色标签", async
     expect(styles).toContain("width: min(800px, calc(100vw - 24px))");
 });
 
-test("每次打开菜单都展开当前选中模型所属目录，无有效选中时显示一级目录", async () => {
+test("双栏打开已选模型所属目录，小源单列默认收起多渠道", async () => {
     const component = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
     const opening = component.match(/const setPickerOpen = \(nextOpen: boolean\) => \{([\s\S]*?)\n    \};/)?.[1] || "";
-    expect(opening).toContain("setActiveGroupKey(optionGroups.find((group) => group.models.some((item) => item.models.includes(current)))?.key ?? null)");
+    expect(opening).toContain("compact ? undefined : optionGroups.find((group) => group.models.some((item) => item.models.includes(current)))");
+    expect(opening).toContain("setActiveGroupKey(selectedGroup?.key ?? null)");
     expect(opening).not.toContain("setActiveGroupKey(null)");
 });
 
-test("选择模型关闭菜单并将焦点返还触发器，支持通过 Escape 和外部点击关闭", async () => {
+test("选择模型后保留乐见价目交互，其他入口关闭菜单并还原焦点", async () => {
     const component = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
     const selection = component.match(/onClick=\{\(\) => \{\s*if \(!model\) return;([\s\S]*?)\}\}/)?.[1] || "";
     expect(selection).toContain("onChange(model)");
-    expect(selection).toContain("setOpen(false)");
-    expect(selection).toContain("focus()");
+    expect(selection).toContain("if (!workbench) closePickerAndRestoreFocus()");
+    expect(component).toMatch(/const closePickerAndRestoreFocus = \(\) => \{\s*setOpen\(false\);\s*window.requestAnimationFrame\(\(\) => triggerRef.current\?\.focus/);
     expect(component).toContain('event.key === "Escape"');
     expect(component).toContain('window.addEventListener("pointerdown", closeOnOutsidePointer, true)');
 });
@@ -92,4 +93,27 @@ test("模型和渠道分别滚动，外层双栏不被长列表撑高", async ()
         expect(pane).toMatch(/overflow-x:\s*hidden\s*;/);
         expect(pane).toMatch(/overflow-y:\s*auto\s*;/);
     }
+});
+
+test("紧凑双栏中长模型名换行且空描述不占位", async () => {
+    const [component, styles] = await Promise.all([Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text(), Bun.file(new URL("../src/styles/shared/model-picker.css", import.meta.url)).text()]);
+    expect(component).toContain('const compactTwoPane = layout === "compact-two-pane"');
+    expect(component).toContain('compactTwoPane && "is-compact-two-pane"');
+    expect(styles).toMatch(/\.is-compact-two-pane[^{\n]* \.canvas-model-picker-option-name\s*\{[^}]*overflow-wrap:\s*anywhere/);
+    expect(styles).toMatch(/\.is-compact-two-pane \.canvas-model-picker-description:empty\s*\{[^}]*display:\s*none/);
+    expect(styles).toMatch(/\.is-compact-two-pane \.canvas-model-picker-option:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--control-selected-bg\)/);
+});
+
+test("创作首页和画布复用紧凑双栏，不影响对话或小源", async () => {
+    const [creation, nodePanel, agent, styles] = await Promise.all([
+        Bun.file(new URL("../src/pages/create/creation-workspace.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/components/canvas/canvas-node-prompt-panel.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/components/canvas/canvas-cloud-agent-panel-parts.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/create/creation-product.css", import.meta.url)).text(),
+    ]);
+    expect(creation).toContain('const isCreationHome = props.variant === "empty"');
+    expect(creation).toContain('layout={isCreationHome ? "compact-two-pane" : undefined}');
+    expect(nodePanel).toContain('layout="compact-two-pane"');
+    expect(agent).toContain('layout="agent-compact"');
+    expect(styles).not.toContain("minmax(0, 34%)");
 });

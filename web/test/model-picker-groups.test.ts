@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { groupModelsForPicker, modelChannelLabel } from "../src/lib/model-picker-groups";
 import { groupModelsByDisplayName, modelCompatibilityError, modelGroupReferenceLimits, resolveCompatibleModel } from "../src/lib/model-selection";
-import { modelQuoteRequest, priceTiersForCurrentSelection, priceTierSummaryLabel } from "../src/lib/model-pricing";
+import { modelQuoteRequest, priceTiersForCurrentSelection, priceTierSummaryLabel, systemModelQuoteRequest } from "../src/lib/model-pricing";
 import { systemChannelModelChannels } from "../src/lib/user-session";
 import type { PublicChannelCatalog, PublicChannelModel } from "../src/services/api/logical-models";
 import { defaultConfig, normalizeConfigSnapshot, resolveModelRequestConfig, selectableModelsByCapability } from "../src/stores/use-config-store";
@@ -190,4 +190,60 @@ test("new models share 未分类 while explicit groups equal to model IDs remain
         ["upstream-b", ["upstream::b"]],
     ]);
     expect(groups[1].models[0].models).toEqual(["upstream::c"]);
+});
+
+test("乐见图片菜单将同款模型归到同一组，不混合不同型号和渠道", () => {
+    const image = (key: string, name: string, channelLabel: string) => ({ ...model(channelLabel, 50_000, key, name), capability: "image" as const, protocol: "openai-image" });
+    const config = {
+        ...defaultConfig,
+        channels: systemChannelModelChannels([
+            {
+                id: "vod",
+                name: "VOD",
+                displayName: "腾讯 VOD 直连",
+                models: [image("gpt-image-2", "腾讯 Image 2", "腾讯 VOD 直连"), image("gpt-image-2.5-flare", "腾讯 Image 2.5 Flare", "腾讯 VOD 直连"), image("gpt-image-2.5-sunburst", "腾讯 Image 2.5 Sunburst", "腾讯 VOD 直连")],
+            },
+            {
+                id: "relay",
+                name: "relay",
+                displayName: "Tack2AI",
+                models: [
+                    image("Tencent-image-2", "未分类", "Tencent-image-2"),
+                    image("Tencent-image-flare", "未分类", "Tencent-image-flare"),
+                    image("Tencent-image-sunburst", "未分类", "Tencent-image-sunburst"),
+                    image("originx-image-2", "未分类", ""),
+                    image("seedream-5.5", "", "低价渠道"),
+                ],
+            },
+        ]),
+    };
+    const options = selectableModelsByCapability(config, "image");
+    const groups = groupModelsForPicker(config, options, "workbench-image");
+    expect(groups.map(({ label, models }) => [label, models.map(({ label: channel, key }) => [channel, key])])).toEqual([
+        [
+            "GPT Image 2",
+            [
+                ["腾讯 VOD 直连", "vod::gpt-image-2"],
+                ["Tack2AI", "relay::Tencent-image-2"],
+            ],
+        ],
+        [
+            "GPT Image 2.5 Flare",
+            [
+                ["腾讯 VOD 直连", "vod::gpt-image-2.5-flare"],
+                ["Tack2AI", "relay::Tencent-image-flare"],
+            ],
+        ],
+        [
+            "GPT Image 2.5 Sunburst",
+            [
+                ["腾讯 VOD 直连", "vod::gpt-image-2.5-sunburst"],
+                ["Tack2AI", "relay::Tencent-image-sunburst"],
+            ],
+        ],
+        ["originx-image-2", [["Tack2AI", "relay::originx-image-2"]]],
+        ["seedream-5.5", [["低价渠道", "relay::seedream-5.5"]]],
+    ]);
+    expect(groupModelsForPicker(config, options).map(({ label }) => label)).toContain("未分类");
+    expect(systemModelQuoteRequest(config, groups[0].models[1].key, "image")).toMatchObject({ channelId: "relay", modelKey: "Tencent-image-2" });
 });
