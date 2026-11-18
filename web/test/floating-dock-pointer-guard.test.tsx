@@ -32,3 +32,13 @@ describe("floating dock pointer capability probe", () => {
         }
     });
 });
+
+test("竖工具栏标注方向，默认布局保持横向", () => {
+    const items = [{ id: "add", label: "添加", icon: <span>+</span> }];
+    const vertical = renderToStaticMarkup(<FloatingDock items={items} variant="toolbar" vertical />);
+    const horizontal = renderToStaticMarkup(<FloatingDock items={items} variant="toolbar" />);
+    expect(vertical).toContain('aria-orientation="vertical"');
+    expect(vertical).toContain("flex-col overflow-y-auto");
+    expect(horizontal).not.toContain('aria-orientation="vertical"');
+    expect(horizontal).toContain("overflow-x-auto");
+});

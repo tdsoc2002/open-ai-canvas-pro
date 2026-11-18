@@ -6,7 +6,7 @@ import { App, Button, Dropdown, Input, Modal } from "antd";
 import { Select } from "@/components/ui/base/select";
 import { ArrowDownAZ, Clock3, Download, FileUp, History, ListFilter, LoaderCircle, Plus, Search, SlidersHorizontal } from "lucide-react";
 
-import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
+import { CollectionGrid, WorkspacePage } from "@/components/layout/workspace-page";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceNoResultsState, WorkspaceState } from "@/components/layout/workspace-state";
 
@@ -84,7 +84,6 @@ export default function CanvasPage() {
         if (userId) return sessionHydrated ? (libraryQuery.data?.pages.flatMap((page) => page.projects) ?? []) : [];
         return sessionHydrated && hydrated ? localSummaries : [];
     }, [libraryQuery.data, localSummaries, userId, sessionHydrated, hydrated]);
-    const totalProjects = userId ? (libraryQuery.data?.pages[0]?.total ?? 0) : projects.length;
     const importProject = useCanvasStore((state) => state.importProject);
     const selectedIds = useCanvasUiStore((state) => state.selectedProjectIds);
     const deleteDialogOpen = useCanvasUiStore((state) => state.deleteProjectIds.length > 0);
@@ -446,24 +445,9 @@ export default function CanvasPage() {
     if (hydrated && !libraryQuery.isError && (mode === "new" || mode === "recent" || mode === "handoff")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">正在打开画布...</main>;
 
     return (
-        <WorkspacePage className="studio-collection-page">
+        <WorkspacePage className="studio-collection-page canvas-list-page">
             <div className="studio-band">
-                <PageHeader
-                    title="我的画布"
-                    description="把镜头、素材和想法留在同一张画布里。"
-                    meta={<span className="app-projects-header-meta">{totalProjects} 个</span>}
-                    actions={
-                        <div className="collection-header-actions">
-                            <Button type="primary" disabled={!hydrated} icon={<Plus />} onClick={createAndEnter}>
-                                新建画布
-                            </Button>
-                            <Button disabled={!hydrated} icon={<FileUp />} onClick={() => inputRef.current?.click()}>
-                                导入
-                            </Button>
-                        </div>
-                    }
-                />
-
+                <h1 className="sr-only">我的画布</h1>
                 <CollectionToolbar
                     label="画布浏览工具"
                     active={Boolean(keyword || projectFilter !== "all" || sort !== "updated")}
@@ -473,15 +457,23 @@ export default function CanvasPage() {
                         setSort("updated");
                     }}
                     trailing={
-                        <Button type="text" icon={<History />} onClick={() => setHistoryOpen(true)}>
-                            创作历史
-                        </Button>
+                        <>
+                            <Button type="text" icon={<History />} onClick={() => setHistoryOpen(true)}>
+                                创作历史
+                            </Button>
+                            <Button type="primary" disabled={!hydrated} icon={<Plus />} onClick={createAndEnter}>
+                                新建画布
+                            </Button>
+                            <Button disabled={!hydrated} icon={<FileUp />} onClick={() => inputRef.current?.click()}>
+                                导入
+                            </Button>
+                        </>
                     }
                 >
                     <Input prefix={<Search />} value={keyword} allowClear placeholder="搜索画布" aria-label="搜索画布" onChange={(event) => setKeyword(event.target.value)} />
-                    <Dropdown trigger={["click"]} placement="bottomLeft" menu={{ items: projectFilterItems, selectedKeys: [projectFilter], onClick: ({ key }) => setProjectFilter(String(key)) }}>
-                        <Button icon={<SlidersHorizontal />} aria-label="按所属项目筛选">
-                            {projectFilterLabel}
+                    <Dropdown trigger={["click"]} placement="bottomLeft" classNames={{ root: "canvas-list-project-menu" }} menu={{ items: projectFilterItems, selectedKeys: [projectFilter], onClick: ({ key }) => setProjectFilter(String(key)) }}>
+                        <Button className="canvas-list-project-filter" icon={<SlidersHorizontal />} aria-label="按所属项目筛选" title={projectFilterLabel}>
+                            <span className="truncate">{projectFilterLabel}</span>
                         </Button>
                     </Dropdown>
                     <Dropdown trigger={["click"]} placement="bottomLeft" menu={{ items: sortItems, selectedKeys: [sort], onClick: ({ key }) => setSort(key as typeof sort) }}>
@@ -563,8 +555,7 @@ export default function CanvasPage() {
                 ) : (
                     <WorkspaceState
                         icon="canvas"
-                        title="让第一个想法落在画布上"
-                        description="图片、分镜和灵感，都可以在这里自由组织。"
+                        title="还没有画布"
                         action={
                             <Button type="primary" icon={<Plus />} disabled={!hydrated} title={hydrated ? undefined : "正在恢复本地画布，完成后可新建"} onClick={createAndEnter}>
                                 新建画布

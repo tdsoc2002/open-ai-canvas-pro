@@ -1,4 +1,5 @@
-import { audioModelForConnection, audioReferenceCapacity, doubaoAudioInputError, isDoubaoAudioModel, maxModelInputCapacity, resolveCompatibleModel, type ModelInputSummary } from "@/lib/model-selection";
+import { isTack2AIAudioConfig } from "@/lib/audio-generation";
+import { audioModelForConnection, audioReferenceCapacity, doubaoAudioInputError, isDoubaoAudioModel, maxModelInputCapacity, modelCompatibilityError, resolveCompatibleModel, type ModelInputSummary } from "@/lib/model-selection";
 import { getNodeAcceptedInputKinds, getNodeGenerationMode, getNodeInputKind, getNodeMaxInputCount } from "@/lib/canvas/node-registry";
 import { readNodeGenerationSpec, resolveGenerationSelection } from "@/lib/canvas/generation-contract";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -19,9 +20,7 @@ export function canvasConnectionError(config: AiConfig, nodes: CanvasNodeData[],
         const source = nodes.find((node) => node.id === candidate.fromNodeId);
         const sourceKind = source ? getNodeInputKind(source.type) : undefined;
         const isMediaConversion = target.type === CanvasNodeType.MediaConversion;
-        const hasAcceptedSource = isMediaConversion
-            ? source?.type === CanvasNodeType.Image || source?.type === CanvasNodeType.Video
-            : Boolean(sourceKind && acceptedInputKinds.includes(sourceKind));
+        const hasAcceptedSource = isMediaConversion ? source?.type === CanvasNodeType.Image || source?.type === CanvasNodeType.Video : Boolean(sourceKind && acceptedInputKinds.includes(sourceKind));
         if (!sourceKind || !hasAcceptedSource) {
             const labels = acceptedInputKinds.map(acceptedInputKindLabel).join("或");
             const targetLabel = isMediaConversion ? "转换" : target.type === CanvasNodeType.BatchTable ? "批量创作表" : labels;
@@ -29,11 +28,7 @@ export function canvasConnectionError(config: AiConfig, nodes: CanvasNodeData[],
         }
         const maxInputCount = getNodeMaxInputCount(target.type);
         if (maxInputCount) {
-            const inputCount = new Set(
-                [...connections, { id: "candidate", ...candidate }]
-                    .filter((connection) => connection.toNodeId === target.id)
-                    .map((connection) => connection.fromNodeId),
-            ).size;
+            const inputCount = new Set([...connections, { id: "candidate", ...candidate }].filter((connection) => connection.toNodeId === target.id).map((connection) => connection.fromNodeId)).size;
             if (inputCount > maxInputCount) return `${isMediaConversion ? "转换" : "当前"}节点最多连接 ${maxInputCount} 个输入`;
         }
     }
@@ -53,6 +48,7 @@ export function canvasConnectionError(config: AiConfig, nodes: CanvasNodeData[],
     if (mode === "text" && input.audioCount > 0) return "文本生成节点不能连接参考音频";
     if (mode === "audio") {
         const model = routedAudioModel(config, target, input);
+        if (isTack2AIAudioConfig(config, model)) return modelCompatibilityError(config, model, { capability: "audio", input });
         if (isDoubaoAudioModel(config, model)) return doubaoAudioInputError(input);
         if (input.imageCount > 0 || input.videoCount > 0) return "音频生成节点不能连接参考图片或参考视频";
         if (input.characterCount > 1) return "角色配音一次只能连接一个角色卡";

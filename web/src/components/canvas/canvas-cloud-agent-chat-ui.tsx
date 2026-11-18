@@ -27,7 +27,7 @@ import { AgentImagePreview } from "./canvas-cloud-agent-composer";
 // 这里保留再导出，既有 import 路径保持可用。
 import { agentAttachmentReferences, type CloudAgentChatAttachment } from "./canvas-cloud-agent-attachments";
 export { agentAttachmentReferences, type CloudAgentChatAttachment } from "./canvas-cloud-agent-attachments";
-export { AGENT_SCENE_DEFS, AgentChatComposer, AgentImagePreview, AgentSceneCapsules, type AgentSceneBucket } from "./canvas-cloud-agent-composer";
+export { AgentChatComposer, AgentImagePreview, AgentSceneCapsules } from "./canvas-cloud-agent-composer";
 
 type CloudAgentOperationImpact = {
     operationCount: number;

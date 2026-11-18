@@ -114,3 +114,19 @@ export const DEFAULT_CANVAS_APPEARANCE: CanvasAppearance = {
 export function agentCopy(template: string, name: string) {
     return template.replaceAll("{agentName}", () => name);
 }
+
+export function agentPanelTitle(appearance: CanvasAppearance) {
+    return appearance.panelTitle === DEFAULT_CANVAS_APPEARANCE.panelTitle ? appearance.agentName : agentCopy(appearance.panelTitle, appearance.agentName);
+}
+
+export function agentWelcomeCopy(appearance: CanvasAppearance) {
+    return {
+        title: agentCopy(appearance.welcomeTitle === DEFAULT_CANVAS_APPEARANCE.welcomeTitle ? "今天想创作什么？" : appearance.welcomeTitle, appearance.agentName),
+        description: appearance.welcomeDescription === DEFAULT_CANVAS_APPEARANCE.welcomeDescription ? "" : agentCopy(appearance.welcomeDescription, appearance.agentName),
+    };
+}
+
+export function agentComposerPlaceholder(appearance: CanvasAppearance, inCanvas: boolean) {
+    if (appearance.inputPlaceholder !== DEFAULT_CANVAS_APPEARANCE.inputPlaceholder) return agentCopy(appearance.inputPlaceholder, appearance.agentName);
+    return inCanvas ? "说说你想做什么，@ 引用，/ 使用技能" : "说说你想做什么，/ 使用技能";
+}

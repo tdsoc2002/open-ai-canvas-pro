@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -95,6 +96,14 @@ func TestRegisterTaskOutputFromTaskPersistsMediaAssetAndArtifactIdempotently(t *
 	}
 	if len(asset.PrimaryVersionID) > 36 || asset.PrimaryVersionID != versionID {
 		t.Fatalf("primary version ID = %q, want %q with at most 36 characters", asset.PrimaryVersionID, versionID)
+	}
+	var payload struct {
+		Metadata struct {
+			LibrarySaved *bool `json:"librarySaved"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal([]byte(asset.PayloadJSON), &payload); err != nil || payload.Metadata.LibrarySaved == nil || *payload.Metadata.LibrarySaved {
+		t.Fatalf("workflow output did not opt out of the library: %s; err=%v", asset.PayloadJSON, err)
 	}
 	var version model.AssetVersion
 	if err := db.First(&version, "id = ?", versionID).Error; err != nil {

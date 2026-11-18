@@ -135,6 +135,7 @@ import { canvasReferenceImageDimensions } from "@/lib/canvas/canvas-reference-im
 import { cancelGenerationTask } from "@/services/api/task-center";
 import { CanvasTopBar, type CanvasProjectView } from "./canvas-project-top-bar";
 import { CanvasAssetView } from "@/components/canvas/canvas-asset-view";
+import { CanvasViewSettingsMenu } from "@/components/canvas/canvas-view-settings-menu";
 import type { CanvasAssetVersion } from "@/lib/canvas/canvas-asset-catalog";
 import { canDownloadCanvasNodeMedia } from "@/lib/canvas/canvas-media-download";
 import { CanvasSyncStatus } from "./canvas-sync-status";
@@ -170,6 +171,7 @@ import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
+import { useThemePack } from "@/themes/use-theme-pack";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
 import { applyCanvasImport } from "./canvas-import-save";
 import { waitForCanvasSync } from "@/lib/canvas/sync-recovery";
@@ -239,6 +241,7 @@ export default function CanvasPage() {
 }
 
 function CanvasViewportPage() {
+    const joyseeEditor = useThemePack()?.workspaceStyle === "joysee";
     // 命令式确认必须走 App.useApp().modal；静态 Modal.confirm 拿不到主题和 App 上下文。
     const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
@@ -340,7 +343,9 @@ function CanvasViewportPage() {
     const savedProject = useCanvasStore((state) => state.projects.some((project) => project.id === projectId));
     const { tasks: activeTasks } = useCanvasActiveTasks(projectId, projectLoaded && savedProject);
     const { focusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
-    const [focusDockRevealed, setFocusDockRevealed] = useState(false);
+    const [focusDockPreference, setFocusDockPreference] = useState<boolean | null>(null);
+    const focusDockRevealed = focusDockPreference ?? joyseeEditor;
+    const [collaborationControlHost, setCollaborationControlHost] = useState<HTMLDivElement | null>(null);
     // 画布 / 资产视图写在 URL 上，刷新和分享链接都能回到同一视图；专注模式只服务画布编辑。
     const canvasView: CanvasProjectView = searchParams.get("view") === "assets" && !focusMode ? "assets" : "canvas";
 
@@ -651,7 +656,7 @@ function CanvasViewportPage() {
         if (!enteredFocus) return;
         closeAgent();
         setIsMiniMapOpen(false);
-        setFocusDockRevealed(false);
+        setFocusDockPreference(null);
     }, [closeAgent, focusMode]);
 
     useEffect(() => {
@@ -2621,6 +2626,21 @@ function CanvasViewportPage() {
     // 关联的不是短剧（404）时 loadFailed 为真，回到普通画布。
     const dramaCanvas = Boolean(drama.dramaId) && !drama.loadFailed;
     const dramaFirstEpisode = drama.summary?.episodes.find((episode) => episode.stats.segments > 0);
+    const canvasViewControls = (
+        <CanvasZoomControls
+            embedded={joyseeEditor}
+            scale={viewport.k}
+            containerRef={containerRef}
+            onScaleChange={setZoomScale}
+            onFitContent={fitCanvasContent}
+            onAutoArrange={autoArrangeCanvasNodes}
+            hideNodeConnections={hideNodeConnections}
+            onHideNodeConnectionsChange={setHideNodeConnections}
+            isMiniMapOpen={isMiniMapOpen}
+            onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
+            onOpenShortcuts={() => setShortcutRequestNonce((value) => value + 1)}
+        />
+    );
     const emptyCanvasState =
         emptyStateKind === "freeform" ? (
             <CanvasFreeformEmptyState commands={freeformCreateCommands} />
@@ -2879,7 +2899,7 @@ function CanvasViewportPage() {
             <main
                 id="canvas-main"
                 tabIndex={-1}
-                className={`relative flex h-full min-h-0 overflow-clip outline-none ${!focusMode && !dramaCanvas ? `canvas-main-with-workspace ${workspaceOpen ? "canvas-workspace-expanded" : ""}` : ""}`}
+                className={`${joyseeEditor ? "joysee-canvas-editor" : ""} relative flex h-full min-h-0 overflow-clip outline-none ${!focusMode && !dramaCanvas ? `canvas-main-with-workspace ${workspaceOpen ? "canvas-workspace-expanded" : ""}` : ""}`}
                 style={{ background: resolvedCanvasAppearance.background, color: theme.node.text }}
             >
                 {!focusMode && !dramaCanvas ? (
@@ -2949,6 +2969,21 @@ function CanvasViewportPage() {
                                     onShare={() => setShareModalOpen(true)}
                                     shortcutRequestNonce={shortcutRequestNonce}
                                     syncIcon={<CanvasSyncStatus projectId={projectId} />}
+                                    collaborationControlRef={joyseeEditor ? setCollaborationControlHost : undefined}
+                                    assetViewSettingsControl={
+                                        joyseeEditor && canvasView === "assets" ? (
+                                            <CanvasViewSettingsMenu
+                                                appearance={canvasAppearance}
+                                                backgroundMode={backgroundMode}
+                                                colorTheme={colorTheme}
+                                                theme={theme}
+                                                onAppearanceChange={applyCanvasAppearance}
+                                                onSaveAppearanceDefault={saveCanvasAppearanceDefault}
+                                                onBackgroundModeChange={setBackgroundMode}
+                                                onEnterFocusMode={enterFocusMode}
+                                            />
+                                        ) : undefined
+                                    }
                                     onOpenSearch={() => setNodeSearchOpen(true)}
                                     projectContext={
                                         shortDramaEnabled && currentProject?.projectId
@@ -3112,16 +3147,26 @@ function CanvasViewportPage() {
                                         </CanvasNodeActionContext.Provider>
                                     </CanvasViewport>
 
-                                    <CanvasCollaborationLayer key={`${canvasStorageScope}:${projectId}`} canvasId={projectId} enabled={projectLoaded && savedProject} containerRef={containerRef} nodesRef={nodesRef} viewportRef={viewportRef} />
+                                    <CanvasCollaborationLayer
+                                        key={`${canvasStorageScope}:${projectId}`}
+                                        canvasId={projectId}
+                                        enabled={projectLoaded && savedProject}
+                                        containerRef={containerRef}
+                                        nodesRef={nodesRef}
+                                        viewportRef={viewportRef}
+                                        membersHost={joyseeEditor ? collaborationControlHost : undefined}
+                                    />
 
                                     <CanvasActiveTaskPanel tasks={activeTasks} onCancelTask={cancelCanvasTask} topInset={focusMode ? "var(--space-3)" : "var(--canvas-topbar-offset)"} />
 
                                     {focusMode ? (
                                         <CanvasFocusModeBar
                                             syncIcon={<CanvasSyncStatus projectId={projectId} />}
+                                            collaborationControlRef={joyseeEditor ? setCollaborationControlHost : undefined}
+                                            verticalTools={joyseeEditor}
                                             dockRevealed={focusDockRevealed}
                                             zoomPercent={viewport.k}
-                                            onToggleDock={() => setFocusDockRevealed((value) => !value)}
+                                            onToggleDock={() => setFocusDockPreference(!focusDockRevealed)}
                                             onExit={exitFocusMode}
                                             onZoomIn={zoomCanvasIn}
                                             onZoomOut={zoomCanvasOut}
@@ -3145,6 +3190,7 @@ function CanvasViewportPage() {
                                             appearance={canvasAppearance}
                                             backgroundMode={backgroundMode}
                                             showImageInfo={showImageInfo}
+                                            hideNodeConnections={hideNodeConnections}
                                             onAddImage={() => createNode(CanvasNodeType.Image)}
                                             onAddVideo={() => createNode(CanvasNodeType.Video)}
                                             onAddAudio={() => createNode(CanvasNodeType.Audio)}
@@ -3167,12 +3213,15 @@ function CanvasViewportPage() {
                                             onSaveAppearanceDefault={saveCanvasAppearanceDefault}
                                             onBackgroundModeChange={setBackgroundMode}
                                             onShowImageInfoChange={setShowImageInfo}
+                                            onHideNodeConnectionsChange={setHideNodeConnections}
                                             onOpenWorkspace={() => setWorkspaceOpen((value) => !value)}
                                             onOpenMyAssets={() => {
                                                 openAssetsAtPosition();
                                             }}
                                             onOpenProjectCharacters={() => openCharacterLibrary()}
                                             onOpenPoseLibrary={() => openPoseLibrary()}
+                                            viewControls={joyseeEditor && !focusMode ? canvasViewControls : undefined}
+                                            vertical={joyseeEditor && focusMode}
                                             compact={dramaCanvas}
                                         />
                                     ) : null}
@@ -3241,6 +3290,7 @@ function CanvasViewportPage() {
                                     node={dialogNode}
                                     viewport={viewport}
                                     containerRef={containerRef}
+                                    panelWidth={joyseeEditor ? (dialogNode.type === CanvasNodeType.Image || dialogNode.type === CanvasNodeType.Video ? 880 : 720) : undefined}
                                     allowOverflow={dialogNode.type !== CanvasNodeType.Config}
                                     dragOffset={dragPreview?.nodeIds.has(dialogNode.id) ? { x: dragPreview.x, y: dragPreview.y } : null}
                                     isDragging={isNodeDragging && Boolean(dragPreview?.nodeIds.has(dialogNode.id))}
@@ -3376,7 +3426,7 @@ function CanvasViewportPage() {
 
                             {isMiniMapOpen && !focusMode ? <Minimap nodes={nodes} viewport={viewport} viewportSize={size} canvasContainerRef={containerRef} onViewportPreviewChange={previewViewport} onViewportChange={handleViewportChange} /> : null}
 
-                            {!focusMode ? (
+                            {!focusMode && !joyseeEditor ? (
                                 <CanvasOverlayLayerContainer
                                     overlayId="asset-tray"
                                     fallbackZIndex="var(--z-panel)"
@@ -3385,18 +3435,7 @@ function CanvasViewportPage() {
                                     onPointerDown={(event) => event.stopPropagation()}
                                     onWheel={(event) => event.stopPropagation()}
                                 >
-                                    <CanvasZoomControls
-                                        scale={viewport.k}
-                                        containerRef={containerRef}
-                                        onScaleChange={setZoomScale}
-                                        onFitContent={fitCanvasContent}
-                                        onAutoArrange={autoArrangeCanvasNodes}
-                                        hideNodeConnections={hideNodeConnections}
-                                        onHideNodeConnectionsChange={setHideNodeConnections}
-                                        isMiniMapOpen={isMiniMapOpen}
-                                        onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
-                                        onOpenShortcuts={() => setShortcutRequestNonce((value) => value + 1)}
-                                    />
+                                    {canvasViewControls}
                                 </CanvasOverlayLayerContainer>
                             ) : null}
 

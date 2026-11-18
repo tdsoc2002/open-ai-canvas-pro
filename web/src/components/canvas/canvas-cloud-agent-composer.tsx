@@ -1,4 +1,4 @@
-// 画布 Agent 输入区：场景胶囊、输入框（附件、@ 引用、/ 技能）、发送/排队/停止按钮与图片预览。
+// 画布 Agent 输入区：附件、@ 引用、/ 技能、发送/排队/停止按钮与图片预览。
 //
 // 运行中输入框保持可用（产品约定，勿收紧）：Enter 默认排队，⌘/Ctrl+Enter 插进当前轮；
 // 停止由 running 驱动，固定在主按钮左侧，与发送互不排斥。
@@ -231,6 +231,7 @@ export function AgentChatComposer({
     charLimit,
     blockReason,
     onLongTextPaste,
+    topActions,
     left,
     submitAccessory,
     tray,
@@ -277,6 +278,8 @@ export function AgentChatComposer({
     blockReason?: string | null;
     /** 粘贴了很长的文字：文字照常粘贴，由调用方决定是否建议转成画布文本节点。 */
     onLongTextPaste?: (text: string) => void;
+    /** 输入卡片上方的独立工具行，不占用输入区或拖拽手柄。 */
+    topActions?: ReactNode;
     left?: ReactNode;
     /** 发送按钮左侧的附属控件，例如上下文用量环。 */
     submitAccessory?: ReactNode;
@@ -458,6 +461,7 @@ export function AgentChatComposer({
 
     return (
         <div className="agent-composer-wrap min-w-0 shrink-0" onWheelCapture={(event) => event.stopPropagation()}>
+            {topActions ? <div className="agent-composer-top-actions">{topActions}</div> : null}
             {/* 队列托盘由外壳承载；连接器并入输入卡，保持单一表面。 */}
             <div className="agent-composer-shell relative" data-has-footer={tray ? "" : undefined}>
                 <AnimatePresence initial={false}>
@@ -589,7 +593,7 @@ export function AgentChatComposer({
                                     onEscape();
                                 }}
                                 onContentSizeChange={handlePromptContentSizeChange}
-                                className="w-full resize-none border-0 bg-transparent px-1 py-1 text-sm leading-5 outline-none placeholder:opacity-45"
+                                className="w-full resize-none border-0 bg-transparent px-1 py-1 text-sm leading-5 outline-none"
                                 containerClassName="min-h-[60px] h-full"
                                 style={{ color: theme.node.text }}
                                 placeholder={placeholder}
@@ -620,6 +624,11 @@ export function AgentChatComposer({
                             </div>
                         ) : null}
                     </div>
+                    {showCount ? (
+                        <div className={`agent-composer-count text-right${overLimit ? " is-over" : ""}`} title={overLimit ? (blockedReason ?? undefined) : `单条消息最多 ${charLimit!.toLocaleString()} 字`}>
+                            {textLength.toLocaleString()} / {charLimit!.toLocaleString()}
+                        </div>
+                    ) : null}
                     <div className="agent-composer-toolbar mt-2">
                         <div className="agent-composer-controls flex min-w-0 items-center gap-1">
                             {onAddFiles ? (
@@ -646,11 +655,6 @@ export function AgentChatComposer({
                             {left}
                         </div>
                         <div className="agent-composer-submit flex items-center gap-2">
-                            {showCount ? (
-                                <span className={`agent-composer-count${overLimit ? " is-over" : ""}`} title={overLimit ? (blockedReason ?? undefined) : `单条消息最多 ${charLimit!.toLocaleString()} 字`}>
-                                    {textLength.toLocaleString()} / {charLimit!.toLocaleString()}
-                                </span>
-                            ) : null}
                             {submitAccessory}
                             <span className="agent-composer-stop-slot">
                                 <AnimatePresence initial={false}>

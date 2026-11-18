@@ -12,6 +12,7 @@ import AgentMemoryPane from "@/pages/settings/agent-memory-pane";
 import type { AgentPermissionMode, AgentProfileLayer, AgentProfileScope, AgentProfileView, AgentReasoningMode } from "@/services/api/agent";
 import type { Skill, SkillAgentMode } from "@/services/api/skills";
 import type { AiConfig } from "@/stores/use-config-store";
+import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
 
 const MCPManager = lazy(() => import("@/components/mcp/mcp-manager"));
 
@@ -80,11 +81,12 @@ const permissionOptions: Array<{ value: AgentPermissionMode; label: string; shor
 const contextOptions: Array<{ value: AgentContextKey; label: string; description: string }> = [{ value: "canvas", label: "画布节点目录", description: "每次请求只带节点 id、类型和标题；正文按页读取，不含媒体或未同步修改" }];
 
 export function CanvasCloudAgentSettings(props: AgentSettingsProps) {
+    const agentName = useAppearanceStore(selectAgentName);
     const [section, setSection] = useState<SettingsSection>(props.initialSection || "home");
     const [skillTab, setSkillTab] = useState<"installed" | "market">("installed");
     const [mcpTab, setMcpTab] = useState<AgentMCPSettingsTab>(props.initialMcpTab || "connections");
     const { theme } = props;
-    const title = section === "home" ? "Agent 设置" : sectionTitle(section);
+    const title = section === "home" ? `${agentName}设置` : sectionTitle(section);
     const goHome = () => setSection("home");
 
     useEffect(() => {
@@ -105,7 +107,7 @@ export function CanvasCloudAgentSettings(props: AgentSettingsProps) {
                         {section === "skills" ? `${props.selectedSkillIds.length} 已固定` : "当前 Agent"}
                     </span>
                 ) : null}
-                {props.onCollapse ? <Button type="text" shape="circle" icon={<X className="size-4" />} onClick={props.onCollapse} aria-label="收起 Agent" title="收起" /> : null}
+                {props.onCollapse ? <Button type="text" shape="circle" icon={<X className="size-4" />} onClick={props.onCollapse} aria-label={`收起${agentName}`} title="收起" /> : null}
             </header>
 
             {section === "home" ? <SettingsHome props={props} theme={theme} onOpen={setSection} /> : null}
@@ -199,6 +201,7 @@ function MemoriesWorkspace() {
 }
 
 function SkillsWorkspace({ props, theme, tab, onTabChange }: { props: AgentSettingsProps; theme: CanvasTheme; tab: "installed" | "market"; onTabChange: (tab: "installed" | "market") => void }) {
+    const agentName = useAppearanceStore(selectAgentName);
     const [modeSavingId, setModeSavingId] = useState("");
     const query = props.skillSearch.trim().toLocaleLowerCase();
     const source = tab === "installed" ? props.installedSkills.filter((skill) => `${skill.skillName} ${skill.description || ""}`.toLocaleLowerCase().includes(query)) : props.marketSkills;
@@ -243,7 +246,7 @@ function SkillsWorkspace({ props, theme, tab, onTabChange }: { props: AgentSetti
                     className="mt-3 !h-10 !rounded-xl"
                 />
                 <p className="mt-3 text-xs leading-5" style={{ color: theme.node.muted }}>
-                    {tab === "market" ? "装好后 Agent 会在任务需要时自己查找并使用。" : `开启「自动」的技能，Agent 会按任务自己查找；勾选「固定」会在本对话优先使用，最多 ${AGENT_PINNED_SKILL_LIMIT} 个。`}
+                    {tab === "market" ? `安装后，${agentName}会按需使用。` : `开启「自动」后，${agentName}可按需使用技能；固定后会在本对话优先使用，最多 ${AGENT_PINNED_SKILL_LIMIT} 个。`}
                 </p>
             </div>
             <div className="canvas-agent-settings-scroll thin-scrollbar min-h-0 min-w-0 flex-1 space-y-1 overflow-y-auto p-4 pt-2">

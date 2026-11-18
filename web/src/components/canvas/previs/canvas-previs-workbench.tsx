@@ -626,7 +626,7 @@ export function CanvasPrevisWorkbench({
             tags: ["3D模型"],
             source: "预演台",
             data: { url: uploaded.url, storageKey: uploaded.storageKey, bytes: uploaded.bytes, mimeType: uploaded.mimeType, fileName: file.name },
-            metadata: { source: "previs" },
+            metadata: { source: "previs", librarySaved: false },
         });
         const asset = useAssetStore.getState().assets.find((item): item is ModelAsset => item.id === assetId && item.kind === "model");
         if (asset) addModelAsset(asset);

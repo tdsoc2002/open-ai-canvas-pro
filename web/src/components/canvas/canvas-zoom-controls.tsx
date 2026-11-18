@@ -13,6 +13,7 @@ import "./canvas-bottom-toolbar.css";
 import "./canvas-zoom-controls.css";
 
 type CanvasZoomControlsProps = {
+    embedded?: boolean;
     scale: number;
     onScaleChange: (scale: number) => void;
     onFitContent: () => void;
@@ -30,7 +31,7 @@ const QUICK_ZOOM_LEVELS = [0.25, 0.5, 1, 2] as const;
 const MAIN_TOOLBAR_SHIFT = "--canvas-main-toolbar-shift";
 const MAIN_TOOLBAR_MAX_WIDTH = "--canvas-main-toolbar-max-width";
 
-export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoArrange, hideNodeConnections = false, onHideNodeConnectionsChange, isMiniMapOpen, onToggleMiniMap, onOpenShortcuts, containerRef }: CanvasZoomControlsProps) {
+export function CanvasZoomControls({ embedded = false, scale, onScaleChange, onFitContent, onAutoArrange, hideNodeConnections = false, onHideNodeConnectionsChange, isMiniMapOpen, onToggleMiniMap, onOpenShortcuts, containerRef }: CanvasZoomControlsProps) {
     const theme = canvasThemes[useActiveTheme()];
     const rootRef = useRef<HTMLDivElement>(null);
     const liveScaleRef = useRef(scale);
@@ -40,6 +41,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
     const [precisionOpen, setPrecisionOpen] = useState(false);
 
     useLayoutEffect(() => {
+        if (embedded) return;
         const root = rootRef.current;
         const shell = root?.closest<HTMLElement>(".canvas-workspace-zoom-controls");
         const main = root?.closest("main");
@@ -90,7 +92,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
             toolbar.style.removeProperty(MAIN_TOOLBAR_SHIFT);
             toolbar.style.removeProperty(MAIN_TOOLBAR_MAX_WIDTH);
         };
-    }, []);
+    }, [embedded]);
 
     useEffect(() => updateScaleDisplay(scale), [scale]);
 
@@ -134,7 +136,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
         { id: "zoom-minimap", label: isMiniMapOpen ? "关闭小地图" : "打开小地图", icon: <Compass />, active: isMiniMapOpen, onClick: onToggleMiniMap },
         { id: "zoom-fit", label: "适应画布", icon: <Focus />, onClick: onFitContent },
         ...(onAutoArrange ? [{ id: "zoom-auto-arrange", label: "自动整理节点", icon: <LayoutTemplate />, onClick: onAutoArrange }] : []),
-        ...(onHideNodeConnectionsChange
+        ...(!embedded && onHideNodeConnectionsChange
             ? [
                   {
                       id: "zoom-hide-node-connections",
@@ -168,7 +170,14 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
     ];
 
     return (
-        <div ref={rootRef} data-canvas-no-zoom className="canvas-zoom-controls relative z-[var(--z-toolbar)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+        <div
+            ref={rootRef}
+            data-canvas-no-zoom
+            className={`canvas-zoom-controls ${embedded ? "is-embedded" : ""} relative z-[var(--z-toolbar)]`}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onWheel={(event) => event.stopPropagation()}
+        >
             <AnimatePresence>
                 {precisionOpen ? (
                     <motion.div
@@ -176,16 +185,11 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: aceternityMotion.duration.panel }}
-                        className="aceternity-floating-panel absolute bottom-full left-0 mb-2 w-[220px] max-w-full overflow-hidden rounded-[var(--panel-radius)] border p-2"
+                        className={`aceternity-floating-panel absolute bottom-full mb-2 w-[220px] max-w-full overflow-hidden rounded-[var(--panel-radius)] border p-2 ${embedded ? "right-0" : "left-0"}`}
                         style={{ background: theme.node.panel, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: "var(--elevation-overlay)" }}
                     >
                         <div className="flex items-center justify-between gap-3">
-                            <span>
-                                <span className="block text-[var(--fs-tiny)] font-semibold">画布尺度</span>
-                                <span className="mt-0.5 block text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>
-                                    精确控制视野密度
-                                </span>
-                            </span>
+                            <span className="text-[var(--fs-tiny)] font-semibold">画布尺度</span>
                             <span
                                 ref={panelLabelRef}
                                 className="rounded-[var(--r-sm)] px-2 py-1 text-[var(--fs-caption)] font-medium tabular-nums"
@@ -223,7 +227,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                 ) : null}
             </AnimatePresence>
 
-            <FloatingDock items={items} variant="toolbar" size="compact" className="canvas-floating-dock canvas-bottom-dock" style={canvasDockStyle(theme, theme.node.text)} ariaLabel="画布视图控制" />
+            <FloatingDock embedded={embedded} items={items} variant="toolbar" size="compact" className="canvas-floating-dock canvas-bottom-dock" style={canvasDockStyle(theme, theme.node.text)} ariaLabel="画布视图控制" />
         </div>
     );
 }

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Switch } from "@/components/ui/base/switch";
-import { Palette, Info } from "lucide-react";
+import { EyeOff, Info, Palette } from "lucide-react";
 
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
@@ -31,6 +31,7 @@ export function CanvasToolbar({
     appearance,
     backgroundMode,
     showImageInfo,
+    hideNodeConnections = false,
     onAddImage,
     onAddVideo,
     onAddAudio,
@@ -53,10 +54,13 @@ export function CanvasToolbar({
     onSaveAppearanceDefault,
     onBackgroundModeChange,
     onShowImageInfoChange,
+    onHideNodeConnectionsChange,
     onOpenWorkspace,
     onOpenMyAssets,
     onOpenProjectCharacters,
     onOpenPoseLibrary,
+    viewControls,
+    vertical = false,
     compact = false,
 }: {
     selectedCount: number;
@@ -69,6 +73,7 @@ export function CanvasToolbar({
     appearance: CanvasAppearance;
     backgroundMode: CanvasBackgroundMode;
     showImageInfo: boolean;
+    hideNodeConnections?: boolean;
     onAddImage: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
@@ -91,10 +96,14 @@ export function CanvasToolbar({
     onSaveAppearanceDefault: (appearance: CanvasAppearance) => void;
     onBackgroundModeChange: (mode: CanvasBackgroundMode) => void;
     onShowImageInfoChange: (show: boolean) => void;
+    onHideNodeConnectionsChange?: (hide: boolean) => void;
     onOpenWorkspace?: () => void;
     onOpenMyAssets: () => void;
     onOpenProjectCharacters: () => void;
     onOpenPoseLibrary?: () => void;
+    /** 乐见编辑器将编辑与视图操作收在同一浮动工具组。 */
+    viewControls?: ReactNode;
+    vertical?: boolean;
     /** 紧凑尺寸：短剧精修画布把视野留给节点。 */
     compact?: boolean;
 }) {
@@ -119,7 +128,9 @@ export function CanvasToolbar({
         if (!settingsOpen) setPrefs(readToolbarPrefs("main"));
     }, [settingsOpen]);
 
-    const placePanel = (event: ReactMouseEvent<HTMLElement>, width: number) => setPanelX(getPanelX(dockRef.current, event.currentTarget, width));
+    const placePanel = (event: ReactMouseEvent<HTMLElement>, width: number) => {
+        if (!vertical) setPanelX(getPanelX(rootRef.current, event.currentTarget, width));
+    };
     const runAddAction = (action: () => void) => {
         action();
         setAddOpen(false);
@@ -235,6 +246,7 @@ export function CanvasToolbar({
     } as ToolbarHandlers;
 
     const ctx: ToolContext = {
+        combinedMainToolbar: Boolean(viewControls),
         selectedCount,
         selectedNodeTypes: new Set(),
         selectedVideoCount: 0,
@@ -262,22 +274,32 @@ export function CanvasToolbar({
         <div
             ref={rootRef}
             data-canvas-no-zoom
-            className="canvas-main-toolbar pointer-events-none absolute inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] flex justify-center"
+            className={`canvas-main-toolbar pointer-events-none absolute flex ${vertical ? "canvas-focus-tool-rail" : `inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] justify-center ${viewControls ? "has-view-controls" : ""}`}`}
             style={{ zIndex }}
             onPointerDownCapture={bringToFront}
             onFocusCapture={bringToFront}
+            onWheel={vertical ? (event) => event.stopPropagation() : undefined}
         >
-            <AnimatePresence>{addOpen ? <AddNodeMenu x={panelX} theme={theme} commands={createCommands} /> : null}</AnimatePresence>
+            <AnimatePresence>{addOpen ? <AddNodeMenu x={panelX} vertical={vertical} theme={theme} commands={createCommands} /> : null}</AnimatePresence>
 
             {/* canvas-zoom-controls 按底部同排规则（canvasBottomRowLayout）写入 --canvas-main-toolbar-shift。 */}
-            <FloatingDock
-                ref={dockRef}
-                items={items}
-                variant="toolbar"
-                size={compact ? "compact" : "default"}
-                className="canvas-floating-dock canvas-bottom-dock pointer-events-auto relative left-[var(--canvas-main-toolbar-shift,0px)]"
-                style={canvasDockStyle(theme)}
-            />
+            {viewControls ? (
+                <div className="joysee-canvas-dock pointer-events-auto" style={canvasDockStyle(theme)}>
+                    <FloatingDock ref={dockRef} embedded items={items} variant="toolbar" size="compact" className="canvas-floating-dock canvas-bottom-dock" style={canvasDockStyle(theme)} />
+                    <span className="joysee-canvas-dock-divider" aria-hidden />
+                    {viewControls}
+                </div>
+            ) : (
+                <FloatingDock
+                    ref={dockRef}
+                    items={items}
+                    variant="toolbar"
+                    vertical={vertical}
+                    size={compact || vertical ? "compact" : "default"}
+                    className={`canvas-floating-dock canvas-bottom-dock pointer-events-auto relative ${vertical ? "canvas-focus-rail-dock" : "left-[var(--canvas-main-toolbar-shift,0px)]"}`}
+                    style={canvasDockStyle(theme)}
+                />
+            )}
 
             <AnimatePresence>
                 {appearanceOpen ? (
@@ -286,8 +308,8 @@ export function CanvasToolbar({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                        className="pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[296px] max-w-full"
-                        style={{ left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}
+                        className="canvas-toolbar-popup pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[296px] max-w-full"
+                        style={vertical ? undefined : { left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}
                     >
                         <SpotlightSurface
                             role="region"
@@ -300,10 +322,15 @@ export function CanvasToolbar({
                             className="aceternity-floating-panel flex flex-col overflow-hidden rounded-[var(--panel-radius)] border p-2 backdrop-blur-2xl"
                             contentClassName="relative z-[1] min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain thin-scrollbar"
                             data-canvas-wheel-scroll
-                            style={{ maxHeight: "calc(100dvh - var(--canvas-inset-y) - var(--canvas-dock-popover-offset) - 12px)", background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.toolbar.item }}
+                            style={{
+                                maxHeight: "var(--canvas-toolbar-popup-max-height, calc(100dvh - var(--canvas-inset-y) - var(--canvas-dock-popover-offset) - 12px))",
+                                background: theme.spatial.elevated,
+                                borderColor: theme.toolbar.border,
+                                color: theme.toolbar.item,
+                            }}
                             onWheel={(event) => event.stopPropagation()}
                         >
-                            <PanelHeading icon={<Palette className="size-4" />} title={t("canvasC.toolbar.appearance")} subtitle={t("canvasC.toolbar.appearanceSubtitle")} theme={theme} />
+                            <PanelHeading icon={<Palette className="size-4" />} title={t("canvasC.toolbar.appearance")} theme={theme} />
                             <CanvasAppearanceControls
                                 appearance={appearance}
                                 backgroundMode={backgroundMode}
@@ -320,6 +347,15 @@ export function CanvasToolbar({
                                 </span>
                                 <Switch size="sm" checked={showImageInfo} onChange={onShowImageInfoChange} />
                             </div>
+                            {viewControls && onHideNodeConnectionsChange ? (
+                                <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--dock-item-radius-labeled)] border px-2 py-2" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
+                                    <span className="inline-flex min-w-0 items-center gap-2 text-[var(--fs-caption)] font-semibold">
+                                        <EyeOff aria-hidden="true" className="size-3 shrink-0" />
+                                        {t("canvasC.toolbar.hideNodeConnections")}
+                                    </span>
+                                    <Switch size="sm" aria-label={t("canvasC.toolbar.hideNodeConnections")} checked={hideNodeConnections} onChange={onHideNodeConnectionsChange} />
+                                </div>
+                            ) : null}
                         </SpotlightSurface>
                     </motion.div>
                 ) : null}
@@ -330,15 +366,15 @@ export function CanvasToolbar({
     );
 }
 
-function AddNodeMenu({ x, theme, commands }: { x: string; theme: CanvasTheme; commands: CanvasCreateCommand[] }) {
+function AddNodeMenu({ x, vertical, theme, commands }: { x: string; vertical: boolean; theme: CanvasTheme; commands: CanvasCreateCommand[] }) {
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-            className="pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[420px] max-w-full"
-            style={{ left: x || "50%", transformOrigin: "bottom center", x: "-50%" }}
+            className="canvas-toolbar-popup pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[420px] max-w-full"
+            style={vertical ? undefined : { left: x || "50%", transformOrigin: "bottom center", x: "-50%" }}
         >
             <SpotlightSurface
                 spotlightColor={theme.toolbar.itemHover}
@@ -349,7 +385,7 @@ function AddNodeMenu({ x, theme, commands }: { x: string; theme: CanvasTheme; co
                 className="aceternity-floating-panel flex flex-col overflow-hidden rounded-[var(--panel-radius)] border p-2 backdrop-blur-2xl"
                 contentClassName="relative z-[1] min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain thin-scrollbar"
                 data-canvas-wheel-scroll
-                style={{ maxHeight: "calc(100dvh - var(--canvas-inset-y) - var(--canvas-dock-popover-offset) - 12px)", background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
+                style={{ maxHeight: "var(--canvas-toolbar-popup-max-height, calc(100dvh - var(--canvas-inset-y) - var(--canvas-dock-popover-offset) - 12px))", background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
                 onWheel={(event) => event.stopPropagation()}
             >
                 <CanvasCreateMenu commands={commands} />
@@ -358,25 +394,20 @@ function AddNodeMenu({ x, theme, commands }: { x: string; theme: CanvasTheme; co
     );
 }
 
-function PanelHeading({ icon, title, subtitle, theme }: { icon: ReactNode; title: string; subtitle: string; theme: CanvasTheme }) {
+function PanelHeading({ icon, title, theme }: { icon: ReactNode; title: string; theme: CanvasTheme }) {
     return (
         <div className="flex items-center gap-2">
             <span className="grid size-8 shrink-0 place-items-center rounded-[var(--dock-item-radius)] border opacity-75 [&_svg]:size-3.5" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
                 {icon}
             </span>
-            <span className="min-w-0">
-                <span className="block text-xs font-semibold">{title}</span>
-                <span className="mt-0.5 block text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>
-                    {subtitle}
-                </span>
-            </span>
+            <span className="text-xs font-semibold">{title}</span>
         </div>
     );
 }
 
-function getPanelX(dock: HTMLDivElement | null, target: HTMLElement, panelWidth: number) {
-    if (!dock) return "50%";
-    const rootBox = dock.parentElement?.getBoundingClientRect() || dock.getBoundingClientRect();
+function getPanelX(root: HTMLDivElement | null, target: HTMLElement, panelWidth: number) {
+    if (!root) return "50%";
+    const rootBox = root.getBoundingClientRect();
     const box = target.getBoundingClientRect();
     const center = box.left - rootBox.left + box.width / 2;
     // CSS keeps the anchor in bounds when the Agent or viewport resizes an open panel.

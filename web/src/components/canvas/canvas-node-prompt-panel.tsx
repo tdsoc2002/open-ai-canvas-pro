@@ -243,6 +243,7 @@ export function CanvasNodePromptPanel({
         "--canvas-composer-control-surface": theme.toolbar.itemHover,
         "--canvas-composer-control-hover": theme.toolbar.activeBg,
         "--canvas-composer-shadow": theme.node.shadow,
+        "--canvas-composer-border": theme.node.stroke,
         "--cn-text": theme.node.text,
     } as CSSProperties;
     const composerSurfaceStyle = {
@@ -533,6 +534,7 @@ export function CanvasNodePromptPanel({
                         showSelectedPrice={false}
                         showOptionPrices={creditsEnabled}
                         variant="creation"
+                        layout="compact-two-pane"
                         showConfiguredModelName
                     />
                 </div>

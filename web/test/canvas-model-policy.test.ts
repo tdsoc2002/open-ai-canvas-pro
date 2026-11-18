@@ -674,6 +674,45 @@ describe("画布连线能力", () => {
         const nodes = [node("voice", CanvasNodeType.Audio), node("target", CanvasNodeType.Audio)];
         expect(canvasConnectionError(config, nodes, [], { fromNodeId: "voice", toNodeId: "target" })).toContain("不支持参考音频");
     });
+    test("源点动力语音按目录允许陌生模型连接素材，不继承其他模型的默认音色", () => {
+        const model = "tack2ai::catalog-voice-171";
+        const config = {
+            ...defaultConfig,
+            model,
+            audioModel: model,
+            audioModels: [model],
+            models: [model],
+            channels: [
+                {
+                    id: "tack2ai",
+                    name: "源点动力",
+                    baseUrl: "https://ai.tack2ai.cn",
+                    apiKey: "test-key",
+                    apiFormat: "openai",
+                    models: ["catalog-voice-171"],
+                    modelCosts: [
+                        {
+                            model: "catalog-voice-171",
+                            capability: "audio",
+                            protocol: "tack2ai-audio",
+                            billingMode: "fixed_request",
+                            unitPriceMicrocredits: 1,
+                            capabilityConfig: { version: 1, audio: { referenceEncoding: "metadata.references", maxImages: 1, maxAudios: 1, maxReferences: 1 } },
+                        },
+                    ],
+                },
+            ],
+        } satisfies AiConfig;
+        const target = node("target", CanvasNodeType.Audio);
+        const nodes = [node("pic", CanvasNodeType.Image), node("sample", CanvasNodeType.Audio), target];
+        const image = { id: "image", fromNodeId: "pic", toNodeId: "target" };
+        const audio = { fromNodeId: "sample", toNodeId: "target" };
+        expect(canvasConnectionError(config, nodes, [], image)).toBe("");
+        expect(canvasConnectionError(config, nodes, [], audio)).toBe("");
+        expect(canvasConnectionError(config, nodes, [image], audio)).toContain("不能同时连接");
+        expect(buildGenerationConfig(config, target, "audio").audioVoice).toBe("");
+        expect(buildGenerationConfig(config, { ...target, metadata: { audioVoice: "alloy" } }, "audio").audioVoice).toBe("alloy");
+    });
 });
 
 describe("图片参考图上限", () => {

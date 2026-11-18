@@ -422,6 +422,7 @@ func TestAppearanceFallsBackWhenLocalLogoFileIsMissing(t *testing.T) {
 
 func TestUploadAppearanceLogoAlwaysUsesServerLocalStorage(t *testing.T) {
 	svc, db, dataDir, admin := newAppearanceTestService(t)
+	permitPersonalStorage(t, svc)
 	requests := make(chan struct{}, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests <- struct{}{}

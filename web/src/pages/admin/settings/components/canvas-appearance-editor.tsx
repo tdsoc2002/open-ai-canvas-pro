@@ -9,7 +9,7 @@ import {
     DEFAULT_AGENT_AVATAR,
     DEFAULT_AGENT_AVATAR_CLIP_STATES,
     agentAvatarClipForState,
-    agentCopy,
+    agentWelcomeCopy,
     isAgentAvatarBundleManifest,
     suggestedAgentAvatarClipStates,
     usesDefaultAgentAvatar,
@@ -35,14 +35,15 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
     const [selectedAvatarState, setSelectedAvatarState] = useState<AgentAvatarState>("idle");
     const url = value.live2dResourceId ? live2DModelURL(value.live2dResourceId, value.live2dEntry, true) : "";
     const defaultAvatar = usesDefaultAgentAvatar(value);
-    const bundleID = value.avatarBundleResourceId;
+    const welcome = agentWelcomeCopy(value);
+    const bundleID = value.avatarType === "bundle" ? value.avatarBundleResourceId : "";
     const bundleManifestURL = bundleID ? agentAvatarBundleFileURL(bundleID, "avatar.json", true) : "";
     const previewClip = bundleManifest ? agentAvatarClipForState(value, selectedAvatarState, bundleManifest) : "";
     const previewFile = bundleManifest?.clips[previewClip] || "";
     const previewBundleURL = bundleID && previewFile ? agentAvatarBundleFileURL(bundleID, previewFile, true) : "";
     const change = (patch: Partial<CanvasAppearance>) => onChange({ ...value, ...patch });
     useEffect(() => {
-        if (value.avatarType !== "bundle" || !bundleManifestURL) return;
+        if (!bundleManifestURL) return;
         const controller = new AbortController();
         setBundleLoading(true);
         setBundleError("");
@@ -61,7 +62,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
             }
         })();
         return () => controller.abort();
-    }, [value.avatarType, bundleManifestURL, attempt]);
+    }, [bundleManifestURL, attempt]);
     async function upload(file?: File) {
         if (!file) return;
         if (!file.name.toLowerCase().endsWith(".zip") || file.size > 128 * 1024 * 1024) {
@@ -113,7 +114,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
         <div className="grid gap-6 lg:grid-cols-2">
             <div>
                 <h3 className="mb-3 font-semibold">Agent 身份与文案</h3>
-                <p className="mb-4 text-sm text-foreground/60">独立于站点品牌。助手名称同步用于界面文案和对话中的自我介绍；文案可使用 {"{agentName}"} 引用名称，不修改工具权限。</p>
+                <p className="mb-4 text-sm text-foreground/60">助手名称独立于站点品牌。默认面板标题跟随助手名称；自定义文案可使用 {"{agentName}"} 引用名称，不修改工具权限。</p>
                 <Form layout="vertical" disabled={disabled || uploading}>
                     {(
                         [
@@ -124,11 +125,13 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                             ["welcomeDescription", "欢迎说明", 200],
                             ["inputPlaceholder", "输入框提示", 160],
                         ] as const
-                    ).map(([key, label, max]) => (
-                        <Form.Item key={key} label={label}>
-                            <Input value={value[key]} maxLength={max} showCount onChange={(event) => change({ [key]: event.target.value })} />
-                        </Form.Item>
-                    ))}
+                    )
+                        .filter(([key]) => key !== "launcherLabel" || !defaultAvatar)
+                        .map(([key, label, max]) => (
+                            <Form.Item key={key} label={label}>
+                                <Input value={value[key]} maxLength={max} showCount onChange={(event) => change({ [key]: event.target.value })} />
+                            </Form.Item>
+                        ))}
                 </Form>
             </div>
             <div className="grid content-start gap-4">
@@ -139,7 +142,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                     options={[
                         { label: "默认动态球", value: "orb" },
                         { label: "Live2D", value: "live2d", disabled: !url || readyURL !== url },
-                        { label: bundleID ? "状态动画包" : "默认水獭", value: "bundle" },
+                        { label: value.avatarBundleResourceId ? "自定义动画包" : "默认形象", value: "bundle" },
                     ]}
                     onChange={(event) => {
                         const type = event.target.value;
@@ -165,7 +168,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                             <Button icon={<Upload className="size-4" />} disabled={disabled || uploading} loading={uploading} onClick={() => bundleInput.current?.click()}>
                                 导入状态动画包 ZIP（最大 128 MiB）
                             </Button>
-                            {value.avatarBundleResourceId ? (
+                            {bundleID ? (
                                 <Button
                                     disabled={disabled || uploading}
                                     onClick={() => {
@@ -177,42 +180,44 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                                         setBundleError("");
                                     }}
                                 >
-                                    恢复默认水獭
+                                    恢复默认形象
                                 </Button>
                             ) : null}
                         </div>
-                        <div hidden={defaultAvatar} className={defaultAvatar ? undefined : "grid gap-3 border-t border-border pt-3"}>
-                            <Radio.Group
-                                className="flex flex-wrap"
-                                optionType="button"
-                                value={selectedAvatarState}
-                                disabled={disabled || uploading}
-                                options={AGENT_AVATAR_STATES.map((item) => ({ label: item.label, value: item.id }))}
-                                onChange={(event) => setSelectedAvatarState(event.target.value)}
-                            />
-                            <label className="grid gap-1 text-sm">
-                                {AGENT_AVATAR_STATES.find((item) => item.id === selectedAvatarState)?.label}动画
-                                <Select
-                                    aria-label="当前状态动画"
-                                    value={previewClip || undefined}
-                                    disabled={disabled || uploading || !bundleManifest}
-                                    loading={bundleLoading}
-                                    options={Object.entries(bundleManifest?.clips ?? {}).map(([clip, file]) => ({ label: `${clip} · ${file}`, value: clip }))}
-                                    onChange={(clip) =>
-                                        change({
-                                            avatarType: "bundle",
-                                            avatarClipStates: { ...value.avatarClipStates, [selectedAvatarState]: clip },
-                                        })
-                                    }
+                        {bundleID ? (
+                            <div className="grid gap-3 border-t border-border pt-3">
+                                <Radio.Group
+                                    className="flex flex-wrap"
+                                    optionType="button"
+                                    value={selectedAvatarState}
+                                    disabled={disabled || uploading}
+                                    options={AGENT_AVATAR_STATES.map((item) => ({ label: item.label, value: item.id }))}
+                                    onChange={(event) => setSelectedAvatarState(event.target.value)}
                                 />
-                            </label>
-                        </div>
-                        {!defaultAvatar && bundleManifest ? (
+                                <label className="grid gap-1 text-sm">
+                                    {AGENT_AVATAR_STATES.find((item) => item.id === selectedAvatarState)?.label}动画
+                                    <Select
+                                        aria-label="当前状态动画"
+                                        value={previewClip || undefined}
+                                        disabled={disabled || uploading || !bundleManifest}
+                                        loading={bundleLoading}
+                                        options={Object.entries(bundleManifest?.clips ?? {}).map(([clip, file]) => ({ label: `${clip} · ${file}`, value: clip }))}
+                                        onChange={(clip) =>
+                                            change({
+                                                avatarType: "bundle",
+                                                avatarClipStates: { ...value.avatarClipStates, [selectedAvatarState]: clip },
+                                            })
+                                        }
+                                    />
+                                </label>
+                            </div>
+                        ) : null}
+                        {bundleID && bundleManifest ? (
                             <p className="text-xs text-foreground/60">
                                 {Object.keys(bundleManifest.clips).length} 个动画 · {bundleManifest.width} × {bundleManifest.height}
                             </p>
                         ) : null}
-                        {!defaultAvatar && bundleError ? (
+                        {bundleID && bundleError ? (
                             <Alert
                                 type="warning"
                                 showIcon
@@ -297,7 +302,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                         />
                     ) : defaultAvatar ? (
                         <img {...DEFAULT_AGENT_AVATAR} alt="戴耳机的水獭剪辑搭档" draggable={false} />
-                    ) : value.avatarType === "bundle" && previewBundleURL && bundleManifest ? (
+                    ) : previewBundleURL && bundleManifest ? (
                         <div
                             className="relative mx-auto overflow-hidden"
                             style={{
@@ -310,8 +315,8 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                     ) : (
                         <AgentOrb size={60} color="#7164f6" />
                     )}
-                    <strong>{agentCopy(value.welcomeTitle, value.agentName)}</strong>
-                    <p className="text-sm text-foreground/60">{agentCopy(value.welcomeDescription, value.agentName)}</p>
+                    <strong>{welcome.title}</strong>
+                    {welcome.description ? <p className="text-sm text-foreground/60">{welcome.description}</p> : null}
                     {url ? <small>{readyURL === url ? "预览已就绪，可选择 Live2D 并保存启用" : "等待模型预览就绪"}</small> : null}
                 </div>
                 {error ? (

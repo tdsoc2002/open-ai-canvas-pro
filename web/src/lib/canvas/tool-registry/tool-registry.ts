@@ -107,7 +107,7 @@ export function resolveNodeToolbarPlacement(tool: ToolDefinition, ctx: ToolConte
     const placement = tool.nodeToolbar;
     return {
         group: typeof placement?.group === "function" ? placement.group(ctx) : placement?.group || "more",
-        order: typeof placement?.order === "function" ? placement.order(ctx) : placement?.order ?? tool.defaultOrder,
+        order: typeof placement?.order === "function" ? placement.order(ctx) : (placement?.order ?? tool.defaultOrder),
     };
 }
 
@@ -136,14 +136,15 @@ function buildEntriesWithSeparators(tools: ToolDefinition[], ctx: ToolContext): 
 }
 
 function toolToEntry(tool: ToolDefinition, ctx: ToolContext): FloatingDockEntry {
-    if (tool.switchGroup) {
+    const group = tool.switchGroup;
+    if (group && (group.when?.(ctx) ?? true)) {
         return {
             kind: "switch",
             id: tool.id,
             label: resolveText(tool.label, ctx),
-            value: tool.switchGroup.value(ctx),
-            options: tool.switchGroup.options,
-            onChange: (value) => tool.switchGroup?.onChange(ctx, value),
+            value: group.value(ctx),
+            options: group.options,
+            onChange: (value) => group.onChange(ctx, value),
         };
     }
     return {

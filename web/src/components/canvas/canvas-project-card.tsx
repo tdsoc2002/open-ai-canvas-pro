@@ -1,4 +1,4 @@
-import { Check, Clapperboard, CloudUpload, Download, FileText, Frame, Image as ImageIcon, MoreHorizontal, Music2, Pencil, Play, Plus, Settings2, SquareDashed, Trash2, Video, X, Blocks } from "lucide-react";
+import { Check, Clapperboard, CloudUpload, Download, FileText, Frame, Image as ImageIcon, MoreHorizontal, Music2, Pencil, Play, Plus, Settings2, Trash2, Video, X, Blocks } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { App, Dropdown, Input } from "antd";
@@ -26,8 +26,7 @@ export function CanvasCreateCard({ disabled, onClick }: { disabled?: boolean; on
             <span className="app-canvas-create-preview">
                 <Plus className="app-canvas-create-icon" />
             </span>
-            <span className="app-canvas-create-title">新建画布</span>
-            <span className="app-canvas-create-meta">从空白开始</span>
+            <span className="app-canvas-create-title pb-4">新建画布</span>
         </button>
     );
 }
@@ -158,32 +157,14 @@ export function CanvasProjectCard({ project, projectName, variant = "library", r
 }
 
 /**
- * quiet：内容库卡片用的安静占位。空白画布与仅视频画布共用同一张浅渐变底 + 42px 图标 tile，
- * 不再输出「空白画布 / 等待第一幕」文案；其他调用方保持原有占位。
+ * quiet：画布列表使用单张图片、视频首帧或默认插画；其他调用方保持原有预览。
  */
-export function ProjectPreview({ project, preferLatestImage = false, quiet = false, mosaic = false }: { project: Pick<CanvasProject, "id" | "nodes">; preferLatestImage?: boolean; quiet?: boolean; mosaic?: boolean }) {
+export function ProjectPreview({ project, preferLatestImage = false, quiet = false }: { project: Pick<CanvasProject, "id" | "nodes">; preferLatestImage?: boolean; quiet?: boolean }) {
     const syncProgress = useSyncProgressStore((state) => state.syncingProjects[project.id]);
     const isSyncing = Boolean(syncProgress && (syncProgress.phase === "uploading" || syncProgress.phase === "saving"));
-    const media = projectPreviewMedia(project.nodes, preferLatestImage);
-    const mosaicItems = mosaic ? projectPreviewMediaList(project.nodes, 3, preferLatestImage) : [];
-    const quietPlaceholder = (icon: ReactNode, kind: "empty" | "video") => (
-        <div className="canvas-project-placeholder size-full" data-kind={kind}>
-            <span className="canvas-project-placeholder-tile">{icon}</span>
-        </div>
-    );
-
-    const content = mosaicItems.length ? (
-        <div className="canvas-project-mosaic size-full" data-count={mosaicItems.length}>
-            {mosaicItems.map((item, index) => (
-                <span key={item.node.id || index} className="canvas-project-mosaic-cell">
-                    <ProjectPreviewTile media={item} />
-                </span>
-            ))}
-        </div>
-    ) : quiet && media?.node.type === CanvasNodeType.Video ? (
-        quietPlaceholder(<Video aria-hidden="true" />, "video")
-    ) : quiet && !media && !project.nodes.length ? (
-        quietPlaceholder(<SquareDashed aria-hidden="true" />, "empty")
+    const media = quiet ? undefined : projectPreviewMedia(project.nodes, preferLatestImage);
+    const content = quiet ? (
+        <CanvasLibraryCover candidates={canvasLibraryCoverMedia(project.nodes)} />
     ) : media ? (
         <div className="canvas-project-media size-full">
             {media.node.type === CanvasNodeType.Video ? (
@@ -286,29 +267,32 @@ export function projectPreviewMedia(nodes: CanvasNodeData[], preferLatestImage =
     return preferLatestImage ? cached.latest : cached.first;
 }
 
-/** 封面拼图用：图片优先（视频首帧依赖浏览器解码，不稳定），同类型内按 preferLatest 决定先新后旧。 */
-export function projectPreviewMediaList(nodes: CanvasNodeData[], limit: number, preferLatest = false) {
-    const items: ProjectPreviewMedia[] = [];
+function canvasLibraryCoverMedia(nodes: CanvasNodeData[]) {
+    const images: ProjectPreviewMedia[] = [];
+    const videos: ProjectPreviewMedia[] = [];
     for (const node of nodes) {
         if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video) continue;
         const url = getNodeMediaUrl(node);
-        if (isPreviewUrl(url)) items.push({ node, url, storageKey: node.metadata?.storageKey });
+        if (isPreviewUrl(url)) (node.type === CanvasNodeType.Image ? images : videos).push({ node, url, storageKey: node.metadata?.storageKey });
     }
-    if (preferLatest) items.reverse();
-    const images = items.filter((item) => item.node.type === CanvasNodeType.Image);
-    const videos = items.filter((item) => item.node.type === CanvasNodeType.Video);
-    return [...images, ...videos].slice(0, limit);
+    return [...images, ...videos];
 }
 
-function ProjectPreviewTile({ media }: { media: ProjectPreviewMedia }) {
-    if (media.node.type !== CanvasNodeType.Video) {
-        return <CachedResourceImage storageKey={media.storageKey} src={media.url} variant="thumbnail" alt="" loading="lazy" decoding="async" fallback={<MediaPlaceholder failed />} loadingFallback={<span className="canvas-project-mosaic-loading" />} />;
-    }
-    return <ProjectPreviewVideoFrame media={media} />;
+function CanvasLibraryCover({ candidates }: { candidates: ProjectPreviewMedia[] }) {
+    const [media, ...remaining] = candidates;
+    if (!media) return <img src="/images/canvas/canvas-default-cover.jpg" alt="" loading="lazy" decoding="async" className="canvas-default-cover" />;
+
+    // 只有当前媒体读取失败才挂载下一张，正常卡片不会并行加载多张封面。
+    const fallback = <CanvasLibraryCover candidates={remaining} />;
+    return media.node.type === CanvasNodeType.Video ? (
+        <ProjectPreviewVideoFrame media={media} fallback={fallback} />
+    ) : (
+        <CachedResourceImage storageKey={media.storageKey} src={media.url} variant="thumbnail" alt="" loading="lazy" decoding="async" fallback={fallback} loadingFallback={null} />
+    );
 }
 
 /** 视频封面：远程资源先换取授权播放地址，再只加载 metadata 并解码首帧。 */
-function ProjectPreviewVideoFrame({ media }: { media: ProjectPreviewMedia }) {
+function ProjectPreviewVideoFrame({ media, fallback }: { media: ProjectPreviewMedia; fallback: ReactNode }) {
     const identity = media.storageKey || media.url;
     const [resolved, setResolved] = useState<{ identity: string; url: string; failed: boolean }>({ identity: "", url: "", failed: false });
     const [failedIdentity, setFailedIdentity] = useState("");
@@ -327,16 +311,8 @@ function ProjectPreviewVideoFrame({ media }: { media: ProjectPreviewMedia }) {
         };
     }, [identity, media.storageKey, media.url]);
     const current = resolved.identity === identity ? resolved : null;
-    if (current?.failed || failedIdentity === identity) {
-        return (
-            <span className="canvas-project-placeholder size-full" data-kind="video">
-                <span className="canvas-project-placeholder-tile">
-                    <Video aria-hidden="true" />
-                </span>
-            </span>
-        );
-    }
-    if (!current?.url) return <span className="canvas-project-mosaic-loading" />;
+    if (current?.failed || failedIdentity === identity) return fallback;
+    if (!current?.url) return null;
     return (
         <>
             <video
@@ -353,7 +329,7 @@ function ProjectPreviewVideoFrame({ media }: { media: ProjectPreviewMedia }) {
                 }}
                 onError={() => setFailedIdentity(identity)}
             />
-            <span className="canvas-project-mosaic-play" aria-hidden="true">
+            <span className="canvas-collection-video-mark" aria-hidden="true">
                 <Play />
             </span>
         </>

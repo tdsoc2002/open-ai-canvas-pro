@@ -1,6 +1,6 @@
 import { App, Input } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
-import { Clock3, Download, FolderKanban, Layers3, LoaderCircle, MoreHorizontal, Pencil, Shapes, Trash2 } from "lucide-react";
+import { Download, Layers3, LoaderCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -22,8 +22,8 @@ type CanvasFolderCardProps = {
 };
 
 /**
- * 画布库卡片：内嵌圆角封面（最多三张媒体拼图）+ 标题 + 归属/更新时间页脚。
- * 节点数作为封面角标；重命名铅笔紧跟标题行尾，多选框与更多菜单浮在封面顶部，仅 hover/focus 显示，触屏常显。
+ * 画布库卡片：独立封面负责打开，名称和铅笔负责重命名。
+ * 多选框在封面上，时间、归属和更多菜单在封面下方。
  */
 export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, opening = false }: CanvasFolderCardProps) {
     const { message } = App.useApp();
@@ -48,14 +48,18 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
             await loadCanvasProjectForEditing(project.id);
             renameProject(project.id, editingTitle);
             await saveRemoteUserDataNow(project.id);
-        } catch (error) { message.error(error instanceof Error ? error.message : t("canvasB.common.renameFailed")); }
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : t("canvasB.common.renameFailed"));
+        }
     };
     const exportProject = async () => {
         try {
             const fullProject = await loadCanvasProjectForEditing(project.id);
             if (!fullProject) throw new Error(t("canvasB.folderCard.notFound"));
             await exportCanvasProjects([fullProject], project.title || t("canvasB.common.canvas"));
-        } catch (error) { message.error(error instanceof Error ? error.message : t("canvasB.common.exportFailed")); }
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : t("canvasB.common.exportFailed"));
+        }
     };
 
     const handleOpenKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -71,91 +75,96 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
             <div className="canvas-collection-open" role="button" tabIndex={0} aria-label={t("canvasB.folderCard.openCanvas", { title: project.title })} aria-busy={opening} onClick={() => !editing && !opening && onClick()} onKeyDown={handleOpenKeyDown}>
                 <div className="canvas-collection-preview">
                     <div className="canvas-collection-preview-media" aria-hidden="true">
-                        <ProjectPreview project={{ id: project.id, nodes: project.previewNodes }} preferLatestImage quiet mosaic />
+                        <ProjectPreview project={{ id: project.id, nodes: project.previewNodes }} quiet />
                     </div>
                     <span className="canvas-collection-badge" title={t("canvasB.folderCard.nodeCount", { count: project.nodeCount })}>
                         <Layers3 aria-hidden="true" />
                         <span>{project.nodeCount}</span>
                         <span className="sr-only">{t("canvasB.folderCard.nodesSuffix")}</span>
                     </span>
-                    {opening ? <div className="canvas-collection-opening"><LoaderCircle className="size-5 animate-spin" aria-hidden="true" /><span>正在打开</span></div> : null}
-                </div>
-                <div className="canvas-collection-body">
-                    <div className="canvas-collection-heading-row">
-                        {editing ? (
-                            <Input
-                                className="canvas-collection-title-input"
-                                size="small"
-                                value={editingTitle}
-                                aria-label={t("canvasB.folderCard.canvasName")}
-                                onChange={(event) => setEditingTitle(event.target.value)}
-                                onClick={(event) => event.stopPropagation()}
-                                onBlur={saveTitle}
-                                onKeyDown={(event) => {
-                                    if (event.key === "Enter") saveTitle();
-                                    if (event.key === "Escape") stopEditing();
-                                }}
-                                autoFocus
-                            />
-                        ) : (
-                            <span className="canvas-collection-title" title={project.title}>{project.title}</span>
-                        )}
-                    </div>
-                    <div className="canvas-collection-footer">
-                        <span className={cn("canvas-collection-project", !projectName && "is-free")} title={projectName ? t("canvasB.folderCard.belongsToProject", { name: projectName }) : t("canvasB.folderCard.freeCanvasHint")}>
-                            {projectName ? <FolderKanban aria-hidden="true" /> : <Shapes aria-hidden="true" />}
-                            <span>{projectName || t("canvasB.folderCard.freeCanvas")}</span>
-                        </span>
-                        <time className="canvas-collection-updated" dateTime={project.updatedAt} title={updatedTitle}>
-                            <Clock3 aria-hidden="true" />
-                            {formatRelativeTime(project.updatedAt)}
-                        </time>
-                    </div>
+                    {opening ? (
+                        <div className="canvas-collection-opening">
+                            <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+                            <span>正在打开</span>
+                        </div>
+                    ) : null}
                 </div>
             </div>
 
-            {!editing ? (
-                <button
-                    type="button"
-                    className="product-icon-button canvas-collection-rename"
-                    aria-label={t("canvasB.folderCard.renameTitle", { title: project.title })}
-                    title={t("canvasB.common.rename")}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        startEditing(project.id, project.title);
-                    }}
-                >
-                    <Pencil />
-                </button>
-            ) : null}
-
             <span className={cn("canvas-collection-select", selected && "is-visible")} onClick={(event) => event.stopPropagation()}>
-                <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={(event) => toggleSelected(project.id, event.target.checked)}
-                    aria-label={t("canvasB.folderCard.selectTitle", { title: project.title })}
-                />
+                <input type="checkbox" checked={selected} onChange={(event) => toggleSelected(project.id, event.target.checked)} aria-label={t("canvasB.folderCard.selectTitle", { title: project.title })} />
             </span>
 
-            <div className="canvas-collection-actions" onClick={(event) => event.stopPropagation()}>
-                <Dropdown
-                    trigger={["click"]}
-                    placement="bottomRight"
-                    menu={{
-                        onClick: ({ domEvent }) => domEvent.stopPropagation(),
-                        items: [
-                            { key: "rename", icon: <Pencil className="size-3.5" />, label: t("canvasB.common.rename"), onClick: () => startEditing(project.id, project.title) },
-                            { key: "export", icon: <Download className="size-3.5" />, label: t("canvasB.folderCard.exportCanvas"), onClick: () => void exportProject() },
-                            { type: "divider" },
-                            { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: t("common.delete"), onClick: () => setDeleteIds([project.id]) },
-                        ],
-                    }}
-                >
-                    <button type="button" className="product-icon-button canvas-collection-more" aria-label={t("canvasB.folderCard.canvasActions", { title: project.title })} title={t("canvasB.common.moreActions")} onClick={(event) => event.stopPropagation()}>
-                        <MoreHorizontal />
-                    </button>
-                </Dropdown>
+            <div className="canvas-collection-body">
+                <div className="canvas-collection-heading-row">
+                    {editing ? (
+                        <Input
+                            className="canvas-collection-title-input"
+                            size="small"
+                            value={editingTitle}
+                            aria-label={t("canvasB.folderCard.canvasName")}
+                            onChange={(event) => setEditingTitle(event.target.value)}
+                            onBlur={saveTitle}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") saveTitle();
+                                if (event.key === "Escape") {
+                                    event.stopPropagation();
+                                    stopEditing();
+                                }
+                            }}
+                            autoFocus
+                        />
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                className="canvas-collection-title"
+                                title={project.title}
+                                aria-label={t("canvasB.folderCard.renameTitle", { title: project.title })}
+                                disabled={opening}
+                                onClick={() => startEditing(project.id, project.title)}
+                            >
+                                {project.title}
+                            </button>
+                            <button
+                                type="button"
+                                className="product-icon-button canvas-collection-rename"
+                                aria-label={t("canvasB.folderCard.renameTitle", { title: project.title })}
+                                title={t("canvasB.common.rename")}
+                                disabled={opening}
+                                onClick={() => startEditing(project.id, project.title)}
+                            >
+                                <Pencil />
+                            </button>
+                        </>
+                    )}
+                </div>
+                <div className="canvas-collection-footer">
+                    <time className="canvas-collection-updated" dateTime={project.updatedAt} title={updatedTitle}>
+                        {formatRelativeTime(project.updatedAt)}
+                    </time>
+                    <span className="canvas-collection-project" title={projectName ? t("canvasB.folderCard.belongsToProject", { name: projectName }) : t("canvasB.folderCard.freeCanvasHint")}>
+                        {projectName || t("canvasB.folderCard.freeCanvas")}
+                    </span>
+                    <div className="canvas-collection-actions">
+                        <Dropdown
+                            trigger={["click"]}
+                            placement="bottomRight"
+                            menu={{
+                                items: [
+                                    { key: "rename", icon: <Pencil className="size-3.5" />, label: t("canvasB.common.rename"), onClick: () => startEditing(project.id, project.title) },
+                                    { key: "export", icon: <Download className="size-3.5" />, label: t("canvasB.folderCard.exportCanvas"), onClick: () => void exportProject() },
+                                    { type: "divider" },
+                                    { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: t("common.delete"), onClick: () => setDeleteIds([project.id]) },
+                                ],
+                            }}
+                        >
+                            <button type="button" className="product-icon-button canvas-collection-more" aria-label={t("canvasB.folderCard.canvasActions", { title: project.title })} title={t("canvasB.common.moreActions")}>
+                                <MoreHorizontal />
+                            </button>
+                        </Dropdown>
+                    </div>
+                </div>
             </div>
         </article>
     );

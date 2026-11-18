@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Hand, MousePointer2 } from "lucide-react";
+import type { MouseEvent } from "react";
 
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { CANVAS_MODE_TOOL_ID, defaultToolbarPrefs, migrateToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
@@ -60,6 +61,34 @@ describe("canvas toolbar mode switch", () => {
         const entries = resolveToolbarEntries("main", createMainContext("move"), null);
         const modeSwitch = entries.find((entry) => entry.kind === "switch");
         expect(modeSwitch?.kind === "switch" && modeSwitch.value).toBe("move");
+    });
+
+    test("combines grab and box selection into a toggle and omits history and workspace only in the combined dock", () => {
+        const context = { ...createMainContext(), combinedMainToolbar: true, canUndo: true, canRedo: true };
+        context.handlers.onToolChange = (tool) => {
+            context.canvasTool = tool;
+        };
+        const entries = () => resolveToolbarEntries("main", context, null);
+        const modeButton = () => {
+            const entry = entries().find(({ id }) => id === CANVAS_MODE_TOOL_ID);
+            if (entry?.kind !== "command" || !entry.onClick) throw new Error("Missing canvas mode button");
+            return entry;
+        };
+        const click = {} as MouseEvent<HTMLButtonElement>;
+        expect(entries().map(({ id }) => id)).not.toContain("tool-undo");
+        expect(entries().map(({ id }) => id)).not.toContain("tool-redo");
+        expect(entries().map(({ id }) => id)).not.toContain("tool-workspace");
+        expect(modeButton().active).toBe(false);
+        modeButton().onClick?.(click);
+        expect(context.canvasTool).toBe("move");
+        expect(modeButton().active).toBe(true);
+        modeButton().onClick?.(click);
+        expect(context.canvasTool).toBe("box-select");
+        expect(modeButton().active).toBe(false);
+
+        context.combinedMainToolbar = false;
+        expect(entries().map(({ id }) => id)).toEqual(expect.arrayContaining(["tool-undo", "tool-redo", "tool-workspace"]));
+        expect(entries().find(({ id }) => id === CANVAS_MODE_TOOL_ID)?.kind).toBe("switch");
     });
 
     test("migrates legacy separate tool prefs into the switch item", () => {

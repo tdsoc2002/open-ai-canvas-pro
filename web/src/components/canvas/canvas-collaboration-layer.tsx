@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Monitor, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { translate } from "@/i18n";
@@ -17,12 +18,14 @@ export const CanvasCollaborationLayer = memo(function CanvasCollaborationLayer({
     containerRef,
     nodesRef,
     viewportRef,
+    membersHost,
 }: {
     canvasId: string;
     enabled: boolean;
     containerRef: RefObject<HTMLDivElement | null>;
     nodesRef: RefObject<CanvasNodeData[]>;
     viewportRef: RefObject<ViewportTransform>;
+    membersHost?: HTMLElement | null;
 }) {
     const { t } = useTranslation();
     const [members, setMembers] = useState<CanvasPeerIdentity[]>([]);
@@ -184,49 +187,57 @@ export const CanvasCollaborationLayer = memo(function CanvasCollaborationLayer({
     }, [members.length]);
 
     if (!enabled) return null;
+    const memberControl =
+        members.length > 1 ? (
+            <details
+                ref={detailsRef}
+                className={`canvas-collaboration-members${membersHost ? " canvas-collaboration-members--toolbar" : ""}`}
+                data-canvas-no-zoom
+                onKeyDown={(event) => {
+                    if (event.key === "Escape" && detailsRef.current?.open) {
+                        event.stopPropagation();
+                        detailsRef.current.open = false;
+                        detailsRef.current.querySelector("summary")?.focus();
+                    }
+                }}
+            >
+                <summary aria-label={t("canvasA.collaboration.summaryLabel", { count: members.length })}>
+                    <Monitor size={14} aria-hidden="true" />
+                    <span className="canvas-collaboration-member-dots" aria-hidden="true">
+                        {members
+                            .filter((member) => !member.self)
+                            .slice(0, 3)
+                            .map((member) => (
+                                <i key={member.id} className={`canvas-collaboration-device--${((member.number - 1) % 6) + 1}`} />
+                            ))}
+                    </span>
+                    <span className="canvas-collaboration-member-count-label">{t("canvasA.collaboration.online", { count: members.length })}</span>
+                    {membersHost ? (
+                        <span className="canvas-collaboration-member-count" aria-hidden>
+                            {members.length}
+                        </span>
+                    ) : null}
+                    <ChevronDown size={12} aria-hidden="true" />
+                </summary>
+                <div className="canvas-collaboration-member-panel">
+                    <div className="canvas-collaboration-member-heading">{t("canvasA.collaboration.heading")}</div>
+                    <ul data-canvas-wheel-scroll aria-label={t("canvasA.collaboration.devicesList")} onWheel={(event) => event.stopPropagation()}>
+                        {members.map((member) => (
+                            <li key={member.id} data-device-number={member.number} className={`canvas-collaboration-device--${((member.number - 1) % 6) + 1}`}>
+                                <span className="canvas-collaboration-member-avatar">{member.number}</span>
+                                <span>{member.label}</span>
+                                <small>{member.self ? t("canvasA.collaboration.thisWindow") : t("canvasA.collaboration.onlineBadge")}</small>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </details>
+        ) : null;
+
     return (
         <div className="canvas-collaboration-layer" data-canvas-collaboration>
             <div ref={graphicsRef} className="canvas-collaboration-graphics" aria-hidden="true" />
-            {members.length > 1 ? (
-                <details
-                    ref={detailsRef}
-                    className="canvas-collaboration-members"
-                    data-canvas-no-zoom
-                    onKeyDown={(event) => {
-                        if (event.key === "Escape" && detailsRef.current?.open) {
-                            event.stopPropagation();
-                            detailsRef.current.open = false;
-                            detailsRef.current.querySelector("summary")?.focus();
-                        }
-                    }}
-                >
-                    <summary aria-label={t("canvasA.collaboration.summaryLabel", { count: members.length })}>
-                        <Monitor size={14} aria-hidden="true" />
-                        <span className="canvas-collaboration-member-dots" aria-hidden="true">
-                            {members
-                                .filter((member) => !member.self)
-                                .slice(0, 3)
-                                .map((member) => (
-                                    <i key={member.id} className={`canvas-collaboration-device--${((member.number - 1) % 6) + 1}`} />
-                                ))}
-                        </span>
-                        <span>{t("canvasA.collaboration.online", { count: members.length })}</span>
-                        <ChevronDown size={12} aria-hidden="true" />
-                    </summary>
-                    <div className="canvas-collaboration-member-panel">
-                        <div className="canvas-collaboration-member-heading">{t("canvasA.collaboration.heading")}</div>
-                        <ul aria-label={t("canvasA.collaboration.devicesList")}>
-                            {members.map((member) => (
-                                <li key={member.id} data-device-number={member.number} className={`canvas-collaboration-device--${((member.number - 1) % 6) + 1}`}>
-                                    <span className="canvas-collaboration-member-avatar">{member.number}</span>
-                                    <span>{member.label}</span>
-                                    <small>{member.self ? t("canvasA.collaboration.thisWindow") : t("canvasA.collaboration.onlineBadge")}</small>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </details>
-            ) : null}
+            {membersHost ? createPortal(memberControl, membersHost) : memberControl}
         </div>
     );
 });

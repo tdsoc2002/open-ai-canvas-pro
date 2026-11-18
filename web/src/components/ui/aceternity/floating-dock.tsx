@@ -45,8 +45,9 @@ export type FloatingDockEntry = FloatingDockCommand | FloatingDockSwitch | { kin
 type FloatingDockProps = {
     items: FloatingDockEntry[];
     size?: "default" | "compact";
-    /** Bottom canvas bars scroll within the available workspace and use portaled tooltips. */
+    /** Canvas toolbars scroll within the available workspace and use portaled tooltips. */
     variant?: "floating" | "toolbar";
+    vertical?: boolean;
     embedded?: boolean;
     className?: string;
     style?: CSSProperties;
@@ -66,7 +67,7 @@ function coarsePointerQuery(): MediaQueryList | undefined {
  * 固定格子 + 纯色 hover，只保留按压反馈与提示气泡。
  */
 export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock(
-    { items, size = "default", variant = "floating", embedded = false, className, style, ariaLabel = translate("account.ui.canvasTools"), showLabels = false },
+    { items, size = "default", variant = "floating", vertical = false, embedded = false, className, style, ariaLabel = translate("account.ui.canvasTools"), showLabels = false },
     forwardedRef,
 ) {
     const reducedMotion = useReducedMotion();
@@ -90,7 +91,7 @@ export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(functi
     }, []);
 
     const toolbar = variant === "toolbar";
-    const scrollable = toolbar || coarsePointer || narrow;
+    const scrollable = toolbar || vertical || coarsePointer || narrow;
     const compact = size === "compact";
     const itemSize = coarsePointer ? (compact ? 36 : 40) : compact ? 28 : 32;
 
@@ -99,25 +100,27 @@ export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(functi
             ref={forwardedRef}
             role="toolbar"
             aria-label={ariaLabel}
+            aria-orientation={vertical ? "vertical" : undefined}
             data-dock-size={size}
             data-dock-variant={variant}
             data-canvas-wheel-scroll={toolbar || undefined}
             className={cn(
                 "aceternity-floating-dock flex items-center",
-                scrollable ? "overflow-x-auto" : "overflow-visible",
+                vertical ? "flex-col overflow-y-auto overflow-x-hidden" : scrollable ? "overflow-x-auto" : "overflow-visible",
                 embedded ? "gap-0.5 px-0.5 shadow-none" : "gap-0.5 border backdrop-blur-2xl",
                 !embedded && (compact ? "rounded-[var(--r-lg)] p-1" : "rounded-[var(--r-xl)] p-2"),
                 className,
             )}
             style={{ ...style, "--dock-item-size": toolbar ? `var(--button-height${coarsePointer ? "-lg" : compact ? "-sm" : ""})` : `${itemSize}px` } as CSSProperties}
         >
-            {renderDockItems(items, { compact, showLabel: showLabels, nativeTitle: scrollable && !toolbar, motionEnabled: !reducedMotion && !toolbar, portalTooltip: toolbar })}
+            {renderDockItems(items, { compact, vertical, showLabel: showLabels, nativeTitle: scrollable && !toolbar, motionEnabled: !reducedMotion && !toolbar, portalTooltip: toolbar })}
         </div>
     );
 });
 
 type DockItemRenderProps = {
     compact: boolean;
+    vertical: boolean;
     showLabel: boolean;
     nativeTitle: boolean;
     motionEnabled: boolean;
@@ -133,7 +136,7 @@ function renderDockItems(items: FloatingDockEntry[], props: DockItemRenderProps)
     const flushDangerGroup = () => {
         if (!dangerGroup.length) return;
         result.push(
-            <span key={`danger-group-${index}`} className="aceternity-dock-danger-group flex shrink-0 items-center gap-0.5">
+            <span key={`danger-group-${index}`} className={cn("aceternity-dock-danger-group flex shrink-0 items-center gap-0.5", props.vertical && "flex-col")}>
                 {dangerGroup.map((command) => (
                     <DockCommandButton key={command.id} command={command} {...props} />
                 ))}
@@ -145,7 +148,7 @@ function renderDockItems(items: FloatingDockEntry[], props: DockItemRenderProps)
     for (const item of items) {
         if (item.kind === "separator") {
             flushDangerGroup();
-            result.push(<span key={item.id} aria-hidden className={cn("aceternity-dock-separator mx-1 w-px shrink-0", props.compact ? "h-3.5" : "h-4")} />);
+            result.push(<span key={item.id} aria-hidden className={cn("aceternity-dock-separator shrink-0", props.vertical ? "my-1 h-px w-6" : props.compact ? "mx-1 h-3.5 w-px" : "mx-1 h-4 w-px")} />);
             continue;
         }
         if (item.kind === "switch") {
@@ -204,7 +207,7 @@ function useDockTooltip() {
     };
 }
 
-function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEnabled, portalTooltip }: { command: FloatingDockCommand } & DockItemRenderProps) {
+function DockCommandButton({ command, compact, vertical, showLabel, nativeTitle, motionEnabled, portalTooltip }: { command: FloatingDockCommand } & DockItemRenderProps) {
     const tooltip = useDockTooltip();
     const pressed = command.expands ? undefined : command.active;
     const expanded = command.expands ? Boolean(command.active) : undefined;
@@ -236,7 +239,7 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
 
     return (
         <span className="relative inline-flex shrink-0">
-            <Tooltip title={portalTooltip ? command.label : undefined}>
+            <Tooltip title={portalTooltip ? command.label : undefined} placement={vertical ? "right" : "top"}>
                 <motion.button
                     type="button"
                     aria-label={command.label}
@@ -265,7 +268,7 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
     );
 }
 
-function DockSwitch({ entry, compact, showLabel, nativeTitle, motionEnabled, portalTooltip }: { entry: FloatingDockSwitch } & DockItemRenderProps) {
+function DockSwitch({ entry, compact, vertical, showLabel, nativeTitle, motionEnabled, portalTooltip }: { entry: FloatingDockSwitch } & DockItemRenderProps) {
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [focusedId, setFocusedId] = useState<string | null>(null);
     const labeled = showLabel || entry.options.some((option) => option.displayLabel);
@@ -274,15 +277,18 @@ function DockSwitch({ entry, compact, showLabel, nativeTitle, motionEnabled, por
         <span
             role="radiogroup"
             aria-label={entry.label}
-            className={cn("aceternity-dock-switch relative inline-flex shrink-0 items-center gap-0.5 rounded-[calc(var(--dock-item-radius)+2px)] p-0.5", labeled && "is-labeled")}
+            className={cn("aceternity-dock-switch relative inline-flex shrink-0 items-center gap-0.5 rounded-[calc(var(--dock-item-radius)+2px)] p-0.5", vertical && "flex-col", labeled && "is-labeled")}
             onKeyDown={(event) => {
-                if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+                const forward = vertical ? "ArrowDown" : "ArrowRight";
+                const backward = vertical ? "ArrowUp" : "ArrowLeft";
+                if (event.key !== forward && event.key !== backward) return;
                 event.preventDefault();
+                if (vertical) event.stopPropagation();
                 const selectedIndex = Math.max(
                     0,
                     entry.options.findIndex((option) => option.value === entry.value),
                 );
-                const direction = event.key === "ArrowRight" ? 1 : -1;
+                const direction = event.key === forward ? 1 : -1;
                 const next = entry.options[(selectedIndex + direction + entry.options.length) % entry.options.length];
                 if (next) {
                     entry.onChange(next.value);
@@ -295,7 +301,7 @@ function DockSwitch({ entry, compact, showLabel, nativeTitle, motionEnabled, por
                 const showTooltip = !portalTooltip && !labeled && !nativeTitle && (hoveredId === option.id || focusedId === option.id);
                 return (
                     <span key={option.id} className="relative inline-flex shrink-0">
-                        <Tooltip title={portalTooltip ? option.label : undefined}>
+                        <Tooltip title={portalTooltip ? option.label : undefined} placement={vertical ? "right" : "top"}>
                             <button
                                 type="button"
                                 role="radio"

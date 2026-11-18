@@ -109,6 +109,7 @@ export type ToolbarHandlers = {
 
 /** 工具运行时可见的上下文。工具定义通过纯函数读取状态 */
 export type ToolContext = {
+    combinedMainToolbar?: boolean;
     selectedCount: number;
     selectedNodeTypes: Set<CanvasNodeTypeId>;
     selectedVideoCount: number;
@@ -191,6 +192,7 @@ export type ToolDefinition = {
     expands?: boolean;
     /** 互斥开关：在 dock 中渲染为分段切换，而不是两个独立按钮 */
     switchGroup?: {
+        when?: (ctx: ToolContext) => boolean;
         value: (ctx: ToolContext) => string;
         options: Array<{ id: string; label: string; displayLabel?: string; icon: ReactNode; value: string }>;
         onChange: (ctx: ToolContext, value: string) => void;

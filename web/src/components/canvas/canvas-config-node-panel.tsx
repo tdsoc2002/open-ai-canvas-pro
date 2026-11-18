@@ -19,6 +19,7 @@ import {
 } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { normalizeVideoDuration, normalizeVideoResolution } from "@/lib/video-generation-options";
+import { tack2aiAudioNodeParameters } from "@/lib/audio-generation";
 import {
     defaultModelCapabilityConfig,
     modelCapabilityConfigFor,
@@ -746,6 +747,7 @@ function buildModelNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode
         audioLanguage: node.metadata?.audioLanguage || globalConfig.audioLanguage || defaultConfig.audioLanguage,
         audioDialect: node.metadata?.audioDialect || globalConfig.audioDialect || defaultConfig.audioDialect,
         audioInstructions: node.metadata?.audioInstructions || globalConfig.audioInstructions || defaultConfig.audioInstructions,
+        ...(mode === "audio" ? tack2aiAudioNodeParameters(globalConfig, model, node.metadata) : {}),
         audioEmotionControlMethod: node.metadata?.audioEmotionControlMethod || globalConfig.audioEmotionControlMethod || defaultConfig.audioEmotionControlMethod,
         audioEmotionRandom: node.metadata?.audioEmotionRandom || globalConfig.audioEmotionRandom || defaultConfig.audioEmotionRandom,
         audioEmotionHappy: node.metadata?.audioEmotionHappy || globalConfig.audioEmotionHappy || defaultConfig.audioEmotionHappy,

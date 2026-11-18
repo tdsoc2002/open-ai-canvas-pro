@@ -13,6 +13,8 @@ import { resetGenerationTaskMetadata } from "@/lib/canvas/canvas-project-generat
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { downloadBrowserMedia, resolveBrowserMediaDownloadHref, startBrowserDownload } from "@/services/browser-download";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
+import { saveExistingAssetToLibrary } from "@/services/asset-library";
+import { getActiveUserScope } from "@/lib/user-scope";
 import { canvasEditLeases } from "@/services/canvas-edit-leases";
 import type { AiConfig } from "@/stores/use-config-store";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
@@ -351,13 +353,20 @@ export function useCanvasNodeEditor({ config, canvasId, canvasTitle, domainProje
                 return;
             }
             if (node.type !== CanvasNodeType.Text && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) return message.error(translate("canvasPage.nodeEditor.typeNotSavable"));
-            if (!node.metadata?.content?.trim()) return message.error(translate("canvasPage.nodeEditor.nothingToSave"));
+            if (!node.metadata?.content?.trim() && (node.type === CanvasNodeType.Text || !node.metadata?.storageKey?.trim())) return message.error(translate("canvasPage.nodeEditor.nothingToSave"));
             try {
+                const scope = getActiveUserScope();
                 const result = await ensureCanvasNodeAsset({ canvasId, domainProjectId, node, source: "canvas-manual" });
+                if (scope !== getActiveUserScope()) return;
                 setNodes((current) => current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, assetId: result.assetId } } : item)));
                 if (domainProjectId) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
-                if (result.syncPending) message.info(domainProjectId ? translate("canvasPage.nodeEditor.savedLocalProjectSync") : translate("canvasPage.nodeEditor.savedLocalAssetSync"));
-                else message.success(result.linkedToProject ? translate("canvasPage.nodeEditor.addedToProject") : translate("canvasPage.nodeEditor.addedToMyAssets"));
+                if (scope !== getActiveUserScope()) return;
+                if (result.syncPending) {
+                    message.warning("素材已保存在本机，尚未加入我的素材；同步后请重试。");
+                    return;
+                }
+                await saveExistingAssetToLibrary(result.assetId, scope, resourceIdFromStorageKey(node.metadata?.storageKey));
+                if (scope === getActiveUserScope()) message.success(translate("canvasPage.nodeEditor.addedToMyAssets"));
             } catch (error) {
                 message.error(error instanceof Error ? error.message : translate("canvasPage.nodeEditor.saveAssetFailed"));
             }

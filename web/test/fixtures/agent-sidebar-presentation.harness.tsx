@@ -45,7 +45,7 @@ const { App, ConfigProvider } = await import("antd");
 const { MotionConfig } = await import("motion/react");
 const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
 const { MemoryRouter } = await import("react-router");
-const { AgentConversation, AgentHeader, ComposerControls } = await import("@/components/canvas/canvas-cloud-agent-panel-parts");
+const { AgentConversation, AgentHeader, ComposerControls, ComposerModelPicker } = await import("@/components/canvas/canvas-cloud-agent-panel-parts");
 const { AgentChatComposer, AgentQuestionBar, AgentSceneCapsules } = await import("@/components/canvas/canvas-cloud-agent-chat-ui");
 const { CanvasAgentSkillLibraryModal } = await import("@/components/canvas/canvas-agent-skill-library-modal");
 const { useAgentPanelDock } = await import("@/components/canvas/use-agent-panel-dock");
@@ -53,8 +53,10 @@ const { useGlobalAgentStore } = await import("@/stores/use-global-agent-store");
 const { restoreAgentPanelDock } = await import("@/lib/canvas/agent-panel-dock");
 const { defaultConfig } = await import("@/stores/use-config-store");
 const { canvasThemes } = await import("@/lib/canvas-theme");
+const { selectAgentName, useAppearanceStore } = await import("@/stores/use-appearance-store");
 
 const theme = canvasThemes.light;
+const collapseLabel = `收起${selectAgentName(useAppearanceStore.getState())}`;
 const initialDock = { ...useGlobalAgentStore.getState().dock };
 const noop = () => {};
 const canvas = { canvasId: "sidebar-canvas", nodeCount: 1, selectedNodeIds: [], references: [] };
@@ -244,13 +246,13 @@ function SidebarFixture() {
                             setPrompt("");
                         }}
                         includeAssetLibrary={false}
+                        topActions={<ComposerModelPicker config={defaultConfig} selectedModel="" onModelChange={noop} />}
                         left={
                             <ComposerControls
                                 config={defaultConfig}
                                 selectedModel=""
                                 permissionMode="read_only"
                                 theme={theme}
-                                onModelChange={noop}
                                 onPermissionChange={noop}
                                 skillsOpen={skillsOpen}
                                 onSkillsOpenChange={setSkillsOpen}
@@ -363,7 +365,7 @@ test("显式浮窗偏好保留，改视口或开关面板不会重置偏好", as
     await viewport(700);
     await viewport(1440);
     expect(layout()).toBe("floating");
-    await click("收起 Agent");
+    await click(collapseLabel);
     await click("重新打开 Agent");
     expect(layout()).toBe("floating");
     expect(useGlobalAgentStore.getState().dock.width).toBe(468);
@@ -382,7 +384,7 @@ test("标题历史、新建、更多停靠与关闭均可点击，切换和开�
     expect(editorText()).toBe("第二行镜头还没发送");
     await menu("停靠到画布右侧");
     expect(host.querySelector('[data-testid="sidebar"]')?.getAttribute("data-layout")).toBe("docked");
-    await click("收起 Agent");
+    await click(collapseLabel);
     expect(host.querySelector('[aria-label="Agent 输入"]')).toBeNull();
     await click("重新打开 Agent");
     expect(editorText()).toBe("第二行镜头还没发送");

@@ -32,6 +32,9 @@ import { nanoid } from "nanoid";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { agentSubmissionErrorTitle } from "@/lib/canvas/agent-error-presentation";
+import { agentComposerPlaceholder, DEFAULT_CANVAS_APPEARANCE } from "@/lib/canvas/agent-appearance";
+import { selectCanvasAppearance, useAppearanceStore } from "@/stores/use-appearance-store";
+import { useThemePack } from "@/themes/use-theme-pack";
 import { CanvasSyncPendingError, waitForCanvasSync } from "@/lib/canvas/sync-recovery";
 import {
     cancelAgentRun,
@@ -120,8 +123,8 @@ import { createAgentCanvasSync } from "@/services/agent-canvas-sync";
 import { agentCanvasUndoKey, type AgentCanvasUndoState, type AgentCanvasUndoTarget } from "@/lib/canvas/agent-canvas-undo";
 import { canvasEditLeases } from "@/services/canvas-edit-leases";
 import { buildSkillMentionReferences, resolveSkillMentions } from "@/services/skill-runtime";
-import { AGENT_SCENE_DEFS, AgentChatComposer, parseCloudAgentFormAnswer, AgentPlanBar, AgentQuestionBar, AgentSceneCapsules, type AgentSceneBucket, type CloudAgentChatMessage } from "./canvas-cloud-agent-chat-ui";
-import { AgentContextChip } from "./canvas-cloud-agent-composer";
+import { AgentChatComposer, parseCloudAgentFormAnswer, AgentPlanBar, AgentQuestionBar, type CloudAgentChatMessage } from "./canvas-cloud-agent-chat-ui";
+import { AGENT_SCENE_DEFS, AgentContextChip, AgentSceneCapsules, type AgentSceneBucket } from "./canvas-cloud-agent-composer";
 import { CanvasAgentSkillLibraryModal } from "./canvas-agent-skill-library-modal";
 import { useSkillCuration, curationQuery } from "@/components/skills/skill-curation-browser";
 import { CanvasCloudAgentSettings, agentPermissionLabel, type AgentContextKey } from "./canvas-cloud-agent-settings";
@@ -132,7 +135,7 @@ import { useAgentPanelDock } from "./use-agent-panel-dock";
 import { useAgentReasoningPreference } from "./use-agent-reasoning-preference";
 import "./canvas-cloud-agent.css";
 import { appendAgentError, appendUniqueMessage, applyAgentEvent, positiveNumber, type ApprovalState } from "./canvas-cloud-agent-events";
-import { AgentContextRing, AgentConversation, AgentHeader, AgentHistory, AgentLauncher, ComposerControls } from "./canvas-cloud-agent-panel-parts";
+import { AgentContextRing, AgentConversation, AgentHeader, AgentHistory, AgentLauncher, ComposerControls, ComposerModelPicker } from "./canvas-cloud-agent-panel-parts";
 import { useGlobalAgentStore, type AgentInsertedNode } from "@/stores/use-global-agent-store";
 
 type AgentPanelView = "chat" | "history" | "settings";
@@ -180,6 +183,8 @@ const EMPTY_REFERENCES: CanvasResourceReference[] = [];
  * 页面通过 useGlobalAgentStore 发布画布或短剧上下文，发送时冻结当前目标。
  */
 export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
+    const appearance = useAppearanceStore(selectCanvasAppearance);
+    const joysee = useThemePack()?.workspaceStyle === "joysee";
     // 只订阅渲染要用的字段。画布每次选中、拖动或编辑都会重发上下文；订阅整份会让面板和全部消息跟着重渲染。
     // 选中节点只在发送时读取，审批目标节点状态只在有审批时订阅（见 approvalTargetGenerating）。
     const canvasId = useGlobalAgentStore((state) => state.canvas?.canvasId ?? "");
@@ -210,6 +215,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     const [settingsMcpTab, setSettingsMcpTab] = useState<AgentMCPDestination>("connections");
     const [run, setRun] = useState<AgentRun | null>(null);
     const [contextUsage, setContextUsage] = useState<AgentContextUsage>(() => emptyAgentContextUsage(""));
+    const contextUsageView = presentAgentContextUsage(contextUsage);
     const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("connecting");
     const [connectionEpoch, setConnectionEpoch] = useState(0);
     const [messages, setMessages] = useState<CloudAgentChatMessage[]>([]);
@@ -458,12 +464,11 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
 
     const [createdSkills, setCreatedSkills] = useState<Skill[]>([]);
 
-    // 用户切换后重新加载，旧请求不得把其他账号的数据写回当前面板。
+    // 只在用户主动打开技能库后读取推荐；切换账号时丢弃旧请求。
     useEffect(() => {
         let active = true;
-        presetApplyingRef.current = null;
-        setPresetApplyingId("");
         setScenePresets([]);
+        if (!skillsOpen || !userId) return;
         listSkillPresets()
             .then((result) => {
                 if (active) setScenePresets(result.presets || []);
@@ -474,12 +479,13 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
         return () => {
             active = false;
         };
-    }, [userId]);
+    }, [skillsOpen, userId]);
 
     // 用户自建技能也要能出现在推荐里：官方种子库与剧典走「已装」，自建走 scope=created。
     useEffect(() => {
         let active = true;
         setCreatedSkills([]);
+        if (!skillsOpen || !userId) return;
         listSkills({ scope: "created", pageSize: 50 })
             .then((result) => {
                 if (active) setCreatedSkills(result.skills || []);
@@ -490,7 +496,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
         return () => {
             active = false;
         };
-    }, [userId]);
+    }, [skillsOpen, userId]);
 
     // 场景分桶：把「常用 / 推荐配方 / 场景技能」收进同一个维度，一级只显示分类。
     // 常用度：自建 > 已收藏 > 已装，同级按市场热度降序。
@@ -2453,6 +2459,20 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
             />
         ) : null;
 
+    const resizeCorner = dock.active ? null : (
+        <button
+            type="button"
+            aria-label="调整 Agent 面板大小"
+            title="拖动调整宽高，也可用方向键调整"
+            data-agent-resize="northwest"
+            className="agent-panel-resize-corner z-10 hidden size-5 shrink-0 cursor-nw-resize touch-none place-items-center rounded-md opacity-60 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 sm:grid"
+            onKeyDown={panelLayout.onResizeKeyDown}
+            style={{ color: theme.node.muted }}
+        >
+            <MoveDiagonal2 className="size-3" aria-hidden="true" />
+        </button>
+    );
+
     return (
         <>
             <AgentLauncher theme={theme} statusColor={statusColor} approvalPending={Boolean(approval)} reducedMotion={Boolean(reducedMotion)} status={status} hidden={open} onOpen={onOpen} />
@@ -2468,7 +2488,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                             { ...panelLayout.style, "--agent-surface-base": theme.node.panel, "--agent-ink": theme.node.text, "--agent-accent": theme.accent.primary, "--agent-shadow-color": theme.spatial.shadow } as CSSProperties &
                                 Record<`--${string}`, string>
                         }
-                        aria-label="Agent 工作台"
+                        aria-label={`${appearance.agentName}工作台`}
                         data-popover-anchor-container
                         data-canvas-no-zoom
                         data-canvas-wheel-scroll
@@ -2501,17 +2521,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                             <>
                                 <div data-agent-resize="north" className="absolute inset-x-5 top-0 z-10 hidden h-2 cursor-n-resize touch-none sm:block" />
                                 <div data-agent-resize="west" className="absolute bottom-5 left-0 top-5 z-10 hidden w-2 cursor-w-resize touch-none sm:block" />
-                                <button
-                                    type="button"
-                                    aria-label="调整 Agent 面板大小"
-                                    title="拖动调整宽高，也可用方向键调整"
-                                    data-agent-resize="northwest"
-                                    className="agent-panel-resize-corner absolute left-2 top-2 z-10 hidden size-5 cursor-nw-resize touch-none place-items-center rounded-md opacity-60 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 sm:grid"
-                                    onKeyDown={panelLayout.onResizeKeyDown}
-                                    style={{ color: theme.node.muted }}
-                                >
-                                    <MoveDiagonal2 className="size-3" aria-hidden="true" />
-                                </button>
+                                {view !== "chat" || !joysee ? resizeCorner : null}
                             </>
                         )}
                         <AnimatePresence mode="wait" initial={false}>
@@ -2582,11 +2592,14 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                 <motion.div key="chat" className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: reducedMotion ? 0 : 0.18 }}>
                                     <AgentHeader
                                         theme={theme}
-                                        hasMessages={messages.length > 0}
+                                        compact={joysee}
                                         statusLabel={statusLabel}
                                         statusColor={statusColor}
                                         live={running}
+                                        hasMessages={messages.length > 0}
                                         conversationTitle={conversations.find((conversation) => conversation.id === activeConversationId)?.title}
+                                        nodeCount={canvasId ? nodeCount : null}
+                                        resizeCorner={resizeCorner}
                                         onNew={newConversation}
                                         onHistory={() => setView("history")}
                                         exporting={exporting}
@@ -2641,6 +2654,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                     <AgentConversation
                                         key={activeConversationId}
                                         theme={theme}
+                                        compact={joysee}
                                         messages={messages}
                                         nodeCount={canvasId ? nodeCount : null}
                                         onChooseSkill={() => setSkillsOpen(true)}
@@ -2736,7 +2750,11 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         primaryDisabled={composerSubmitMode === "queue" && outboxIsFull}
                                         sending={busy}
                                         running={running}
-                                        placeholder={canvasId ? "说说要做什么，@ 引用节点，/ 或 、 引用技能，可粘贴图片" : pageContext ? "说说这个分镜想怎么改，或让小影先读本集镜头" : "说说要做什么，/ 或 、 引用技能；进入画布后可引用节点和图片"}
+                                        placeholder={
+                                            pageContext && appearance.inputPlaceholder === DEFAULT_CANVAS_APPEARANCE.inputPlaceholder
+                                                ? `说说这个分镜想怎么改，或让${appearance.agentName}先读本集镜头`
+                                                : agentComposerPlaceholder(appearance, Boolean(canvasId))
+                                        }
                                         theme={theme}
                                         onPromptChange={(value) => {
                                             if (!outboxEdit && !resolveAgentPromptPrefill(value, prefilledSubmissionRef.current)) prefilledSubmissionRef.current = null;
@@ -2773,14 +2791,14 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         references={conversationReferences}
                                         slashSkills={installedSkills}
                                         includeAssetLibrary={false}
-                                        submitAccessory={<AgentContextRing view={presentAgentContextUsage(contextUsage)} theme={theme} />}
+                                        submitAccessory={<AgentContextRing view={contextUsageView} theme={theme} />}
+                                        topActions={<ComposerModelPicker config={config} selectedModel={selectedModel} onModelChange={setModel} />}
                                         left={
                                             <ComposerControls
                                                 config={config}
                                                 selectedModel={selectedModel}
                                                 permissionMode={permissionMode}
                                                 theme={theme}
-                                                onModelChange={setModel}
                                                 onPermissionChange={setPermissionMode}
                                                 reasoningMode={reasoningMode}
                                                 onReasoningModeChange={setReasoningMode}

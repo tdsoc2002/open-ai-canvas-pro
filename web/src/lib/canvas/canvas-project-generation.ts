@@ -7,6 +7,7 @@ import { resolveMediaUrl, resolveVideoMediaUrl } from "@/services/file-storage";
 import { resourceIdFromStorageKey } from "@/services/api/resources";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { normalizeVideoDuration, normalizeVideoResolution } from "@/lib/video-generation-options";
+import { tack2aiAudioNodeParameters } from "@/lib/audio-generation";
 import { modelCapabilityConfigFor, workflowFieldCurrentValue, workflowFieldHasStoredValue, workflowFieldKey, workflowFieldRandomKey, workflowFieldSubmissionValue, workflowOutputSizeValue, workflowVideoFieldsFromJson } from "@/lib/model-capabilities";
 import { modelRequestOptions, resolveCompatibleModel, resolveModelGenerationDefaults, resolveVideoOperation, type ModelGenerationDefaults, type ModelRequirements } from "@/lib/model-selection";
 import { currentGenerationBatchLimit } from "@/lib/generation-batch-limit";
@@ -530,6 +531,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         taskWorkflowProvider: workflowProvider,
         runningHub,
         model,
+        ...(mode === "audio" && workflowProvider === "model" ? tack2aiAudioNodeParameters(config, model, node?.metadata) : {}),
         quality: generationDefaults.quality ?? requestedConfig.quality,
         imageResolution: generationDefaults.imageResolution ?? requestedConfig.imageResolution,
         imageParameters: generationDefaults.imageParameters ?? requestedConfig.imageParameters,

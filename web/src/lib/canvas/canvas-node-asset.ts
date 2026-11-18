@@ -23,6 +23,7 @@ export function canvasNodeToAsset(node: CanvasNodeData, options: CanvasNodeAsset
     if (!isMedia && node.type !== CanvasNodeType.Text) return null;
     const title = node.metadata?.originalFileName ? node.title || node.metadata.originalFileName : node.metadata?.prompt?.slice(0, 24) || node.title || canvasAssetFallbackTitle(node.type);
     const metadata = {
+        librarySaved: false,
         source: options.source,
         canvasId: options.canvasId,
         nodeId: node.id,

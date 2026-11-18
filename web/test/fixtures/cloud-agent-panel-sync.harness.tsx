@@ -52,11 +52,13 @@ let capabilitiesOverride: (() => Promise<unknown>) | undefined;
 let sendOverride: (() => Promise<{ run: AgentRun }>) | undefined;
 const refreshRequests: Array<{ observedConversationIds?: string[]; canvasId?: string }> = [];
 let generated = 0;
+let skillPresetReads = 0;
 let composer: Record<string, any>;
 let header: Record<string, any>;
 let conversationUI: Record<string, any>;
 let historyUI: Record<string, any>;
 let controls: Record<string, any>;
+let modelPicker: Record<string, any>;
 const silent = () => {};
 mock.module("file-saver", () => ({ saveAs: silent }));
 const MotionBox = ({ children, className, style }: any) => (
@@ -132,7 +134,10 @@ mock.module("@/services/cloud-agent-history", () => ({
 }));
 mock.module("@/services/api/skills", () => ({
     ...skillsApi,
-    listSkillPresets: async () => ({ presets: [] }),
+    listSkillPresets: async () => {
+        skillPresetReads++;
+        return { presets: [] };
+    },
     listSkills: async () => ({ skills: [] }),
     listAddedSkills: async () => ({ skills: [] }),
     listSkillLibraryCategories: async () => ({ categories: [] }),
@@ -143,27 +148,38 @@ mock.module("@/services/api/skills", () => ({
 mock.module("@/services/user-data-sync", () => ({ prepareCanvasForCloudAction: async () => {}, applyAgentCanvasPatches: async () => {}, refreshCanvasAfterAgent: async () => {} }));
 mock.module("@/components/skills/skill-curation-browser", () => ({ useSkillCuration: () => ({ curation: null }), curationQuery: () => ({}) }));
 mock.module("@/components/canvas/canvas-cloud-agent-chat-ui", () => ({
-    AGENT_SCENE_DEFS: [],
     parseCloudAgentFormAnswer: () => undefined,
     AgentChatComposer: (props: any) => {
         composer = props;
         return (
             <>
-                {props.left}
+                {props.topActions}
                 <textarea aria-label="草稿" value={props.prompt} readOnly />
+                {props.left}
             </>
         );
     },
     AgentPlanBar: () => null,
     AgentQuestionBar: () => null,
-    AgentSceneCapsules: () => null,
 }));
 mock.module("@/components/canvas/canvas-cloud-agent-panel-parts", () => ({
     AgentLauncher: () => null,
     AgentContextRing: () => null,
+    ComposerModelPicker: (props: any) => {
+        modelPicker = props;
+        return (
+            <button type="button" data-test-composer-model>
+                选择文本模型
+            </button>
+        );
+    },
     ComposerControls: (props: any) => {
         controls = props;
-        return null;
+        return (
+            <button type="button" onClick={() => props.onSkillsOpenChange(true)}>
+                打开技能库
+            </button>
+        );
     },
     AgentHeader: (props: any) => {
         header = props;
@@ -187,7 +203,7 @@ mock.module("@/components/canvas/canvas-cloud-agent-panel-parts", () => ({
 mock.module("@/components/canvas/canvas-agent-skill-library-modal", () => ({ CanvasAgentSkillLibraryModal: () => null }));
 mock.module("@/components/skills/skill-recommendations-modal", () => ({ SkillRecommendationsModal: () => null }));
 mock.module("@/components/canvas/canvas-cloud-agent-settings", () => ({ CanvasCloudAgentSettings: () => null, agentPermissionLabel: (mode: string) => mode }));
-mock.module("@/components/canvas/canvas-cloud-agent-composer", () => ({ AgentContextChip: () => null }));
+mock.module("@/components/canvas/canvas-cloud-agent-composer", () => ({ AGENT_SCENE_DEFS: [], AgentContextChip: () => null, AgentSceneCapsules: () => null }));
 mock.module("@/services/cloud-agent-outbox", () => ({ loadCloudAgentOutbox: async () => null, saveCloudAgentOutbox: async () => {}, clearCloudAgentOutbox: async () => {} }));
 mock.module("@/components/canvas/canvas-cloud-agent-connectors", () => ({ AgentConnectorsBar: () => null }));
 mock.module("@/components/canvas/use-agent-panel-layout", () => ({ useAgentPanelLayout: () => ({ style: {}, pointerHandlers: {}, reset: silent, onResizeKeyDown: silent }) }));
@@ -248,6 +264,7 @@ async function mount(
     capabilitiesOverride = undefined;
     sendOverride = undefined;
     generated = 0;
+    skillPresetReads = 0;
     subscriptions.length = 0;
     refreshRequests.length = 0;
     setActiveUserScope("sync-user");
@@ -298,6 +315,24 @@ function configureModels(ambiguous: boolean, thinking?: TextThinkingConfig) {
     const config = normalizeConfigSnapshot({ config: { ...defaultConfig, channels, textModel: "paid-channel::paid-model", model: "paid-channel::paid-model" } }).config;
     useConfigStore.setState({ config });
 }
+
+test("技能组合只在主动打开技能库后请求，模型控件独立置于输入区顶部", async () => {
+    const mounted = await mount(chat("empty", null), []);
+    try {
+        expect(skillPresetReads).toBe(0);
+        const skills = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === "打开技能库");
+        const modelButton = document.querySelector("[data-test-composer-model]");
+        const draft = document.querySelector("textarea");
+        expect(Boolean(modelButton && draft && skills)).toBe(true);
+        expect(Boolean(modelButton!.compareDocumentPosition(draft!) & dom.Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+        expect(Boolean(draft!.compareDocumentPosition(skills!) & dom.Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+        await act(async () => skills!.click());
+        expect(controls.skillsOpen).toBe(true);
+        expect(skillPresetReads).toBe(1);
+    } finally {
+        await mounted.close();
+    }
+});
 
 test("手机空缓存接续同画布桌面会话，审批被另一端处理后自动收敛且不重复提交", async () => {
     const waiting = makeRun("desktop", "waiting_approval");
@@ -492,7 +527,7 @@ test("第二端恢复裸模型key为唯一完整option，续发保持原零积�
     const cloud = { ...chat("server", { ...makeRun("mock-turn"), model: "local-agent-test" }), model: "local-agent-test" };
     const mounted = await mount(chat("new-device", null), [cloud]);
     try {
-        expect(controls.selectedModel).toBe("local-test::local-agent-test");
+        expect(modelPicker.selectedModel).toBe("local-test::local-agent-test");
         await act(async () => {
             composer.onPromptChange("接着免费测试模型继续");
         });
@@ -516,7 +551,7 @@ test("同名多渠道不能自动换到默认收费模型，手动选择后才�
         });
         remote = [{ ...chat("server", { ...makeRun("ambiguous"), model: "local-agent-test" }), model: "local-agent-test" }];
         await focus();
-        expect(controls.selectedModel).toBe("");
+        expect(modelPicker.selectedModel).toBe("");
         expect(composer.submitDisabled).toBe(true);
         await persist();
         expect(local.find((item) => item.id === activeId)?.model).toBe("local-agent-test");
@@ -527,9 +562,9 @@ test("同名多渠道不能自动换到默认收费模型，手动选择后才�
         });
         expect(sendInputs).toHaveLength(0);
         await act(async () => {
-            controls.onModelChange("another-test::local-agent-test");
+            modelPicker.onModelChange("another-test::local-agent-test");
         });
-        expect(controls.selectedModel).toBe("another-test::local-agent-test");
+        expect(modelPicker.selectedModel).toBe("another-test::local-agent-test");
         expect(composer.submitDisabled).toBe(false);
         await act(async () => {
             composer.onSubmit();
@@ -694,9 +729,9 @@ test("思考期间快速切换模型只改变下一轮设置，当前订阅和�
         const observation = subscriptions.at(-1)!;
         const subscriptionCount = subscriptions.length;
         for (const model of ["local-test::local-agent-test", "paid-channel::paid-model", "local-test::local-agent-test"]) {
-            await act(async () => controls.onModelChange(model));
+            await act(async () => modelPicker.onModelChange(model));
         }
-        expect(controls.selectedModel).toBe("local-test::local-agent-test");
+        expect(modelPicker.selectedModel).toBe("local-test::local-agent-test");
         expect(subscriptions).toHaveLength(subscriptionCount);
         expect(observation.closed).toBe(false);
         await act(async () => {
@@ -936,7 +971,7 @@ test("Agent 推理档位按账号和模型保存，面板重建后恢复并用�
         await act(async () => configureModels(false, alwaysThinking));
         expect(controls.reasoningMode).toBe("auto");
         await act(async () => controls.onReasoningModeChange("high"));
-        await act(async () => controls.onModelChange("local-test::local-agent-test"));
+        await act(async () => modelPicker.onModelChange("local-test::local-agent-test"));
         expect(controls.reasoningMode).toBe("auto");
         await act(async () => controls.onReasoningModeChange("low"));
     } finally {
@@ -947,9 +982,9 @@ test("Agent 推理档位按账号和模型保存，面板重建后恢复并用�
     try {
         await act(async () => configureModels(false, alwaysThinking));
         expect(controls.reasoningMode).toBe("high");
-        await act(async () => controls.onModelChange("local-test::local-agent-test"));
+        await act(async () => modelPicker.onModelChange("local-test::local-agent-test"));
         expect(controls.reasoningMode).toBe("low");
-        await act(async () => controls.onModelChange("paid-channel::paid-model"));
+        await act(async () => modelPicker.onModelChange("paid-channel::paid-model"));
         expect(controls.reasoningMode).toBe("high");
         await act(async () => composer.onPromptChange("沿用上次的推理档位"));
         await act(async () => {
@@ -1010,7 +1045,7 @@ test("提交等待与未确认重试之间切换模型，原请求正文、渠�
             await settle();
         });
         expect(release).toBeDefined();
-        await act(async () => controls.onModelChange("local-test::local-agent-test"));
+        await act(async () => modelPicker.onModelChange("local-test::local-agent-test"));
         await act(async () => {
             release!({ permissionModes: ["request_approval"], skills: true });
             await settle();
@@ -1020,8 +1055,8 @@ test("提交等待与未确认重试之间切换模型，原请求正文、渠�
         expect(frozen).toMatchObject({ model: "paid-model", channelId: "paid-channel", channelModelKey: "paid-model", prompt: "冻结提交时选择的模型" });
         expect(pending?.request).toEqual(frozen);
         expect(composer.prompt).toBe("冻结提交时选择的模型");
-        await act(async () => controls.onModelChange("paid-channel::paid-model"));
-        await act(async () => controls.onModelChange("local-test::local-agent-test"));
+        await act(async () => modelPicker.onModelChange("paid-channel::paid-model"));
+        await act(async () => modelPicker.onModelChange("local-test::local-agent-test"));
         sendFailure = undefined;
         await act(async () => {
             composer.onSubmit();

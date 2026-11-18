@@ -1,7 +1,7 @@
 import { Tooltip } from "@/components/ui/base/tooltip";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { PanelBottom, X, ZoomIn, ZoomOut } from "lucide-react";
+import { PanelBottom, PanelLeft, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { aceternityMotion } from "@/lib/aceternity-motion";
@@ -10,6 +10,8 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 
 type CanvasFocusModeBarProps = {
     syncIcon?: ReactNode;
+    collaborationControlRef?: Ref<HTMLDivElement>;
+    verticalTools?: boolean;
     dockRevealed: boolean;
     zoomPercent: number;
     onToggleDock: () => void;
@@ -19,10 +21,11 @@ type CanvasFocusModeBarProps = {
     onFit: () => void;
 };
 
-export function CanvasFocusModeBar({ syncIcon, dockRevealed, zoomPercent, onToggleDock, onExit, onZoomIn, onZoomOut, onFit }: CanvasFocusModeBarProps) {
+export function CanvasFocusModeBar({ syncIcon, collaborationControlRef, verticalTools, dockRevealed, zoomPercent, onToggleDock, onExit, onZoomIn, onZoomOut, onFit }: CanvasFocusModeBarProps) {
     const { t } = useTranslation();
     const theme = canvasThemes[useActiveTheme()];
     const reducedMotion = useReducedMotion();
+    const ToolsIcon = verticalTools ? PanelLeft : PanelBottom;
 
     return (
         <motion.div
@@ -50,7 +53,7 @@ export function CanvasFocusModeBar({ syncIcon, dockRevealed, zoomPercent, onTogg
                         aria-label={t("canvasA.focusBar.tools")}
                         aria-pressed={dockRevealed}
                     >
-                        <PanelBottom className="size-4" />
+                        <ToolsIcon className="size-4" />
                     </button>
                 </Tooltip>
                 <Tooltip title={t("canvasA.focusBar.zoomOut")}>
@@ -72,6 +75,7 @@ export function CanvasFocusModeBar({ syncIcon, dockRevealed, zoomPercent, onTogg
                         <ZoomIn className="size-4" />
                     </button>
                 </Tooltip>
+                {collaborationControlRef ? <div ref={collaborationControlRef} className="canvas-focus-presence shrink-0 empty:hidden" /> : null}
             </div>
         </motion.div>
     );

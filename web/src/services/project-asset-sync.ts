@@ -18,7 +18,7 @@ import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { CanvasSyncPendingError } from "@/lib/canvas/sync-recovery";
 import { createCanvasProjectAssetLinkQueue, type PendingCanvasProjectAssetLink } from "@/lib/canvas/project-asset-link-queue";
 import { appQueryClient } from "@/lib/query-client";
-import { hasRemoteUserDataSyncSession, loadAssetsForUse, saveRemoteUserDataNow, subscribeRemoteUserDataReady } from "@/services/user-data-sync";
+import { hasRemoteUserDataSyncSession, loadAssetsForUse, saveRemoteAssetNow, subscribeRemoteUserDataReady } from "@/services/user-data-sync";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { normalizeAssetCategory } from "@/lib/asset-category";
 import { runGenerationConsumer } from "@/services/generation-consumer-lifecycle";
@@ -149,7 +149,7 @@ async function persistCanvasNodeAsset(options: EnsureCanvasNodeAssetOptions): Pr
         return { assetId: asset.id, created, linkedToProject: sync.linked, syncPending: sync.pending };
     }
     try {
-        await saveRemoteUserDataNow([]);
+        await saveRemoteAssetNow(asset.id);
         throwIfAborted(options.signal);
         return { assetId: asset.id, created, linkedToProject: false, syncPending: false };
     } catch (error) {
@@ -280,7 +280,7 @@ async function performCanvasProjectAssetLink(job: PendingCanvasProjectAssetLink,
     }
 
     // 项目关联依赖后端 assets 记录，先强制完成素材同步，不能依赖延迟自动同步的时序。
-    await saveRemoteUserDataNow([]);
+    await saveRemoteAssetNow(asset.id);
     ensureCurrentScope();
     const { asset: linkedAsset } = await linkProjectAsset(
         job.domainProjectId,
@@ -295,13 +295,16 @@ async function performCanvasProjectAssetLink(job: PendingCanvasProjectAssetLink,
     let linked = category && linkedAsset.category !== category ? (await updateProjectAssetCategory(job.domainProjectId, asset.id, category, signal)).asset : linkedAsset;
     if (job.folderId !== undefined && (linked.folderId || "") !== job.folderId) linked = (await moveProjectAsset(job.domainProjectId, asset.id, job.folderId, signal)).asset;
     ensureCurrentScope();
+    const latest = useAssetStore.getState().assets.find((candidate) => candidate.id === asset.id);
+    if (!latest) throw new Error("素材已移除，无法完成项目关联");
+    const latestProjectIds = Array.isArray(latest.metadata?.projectIds) ? latest.metadata.projectIds.filter((id): id is string => typeof id === "string") : [];
     useAssetStore.getState().updateAsset(asset.id, {
         category: normalizeAssetCategory(linked.category),
         status: linked.status as AssetStatus,
         primaryVersionId: linked.primaryVersionId,
-        metadata: { ...asset.metadata, projectIds: [...new Set([...linkedProjectIds, job.domainProjectId])] },
+        metadata: { ...latest.metadata, projectIds: [...new Set([...latestProjectIds, job.domainProjectId])] },
     });
-    await saveRemoteUserDataNow([]);
+    await saveRemoteAssetNow(asset.id);
     ensureCurrentScope();
 }
 
@@ -482,6 +485,7 @@ async function generationOutputAsset(input: Parameters<MaterializeGenerationTask
     const result = generationTaskResult(input.task);
     const metadata = {
         source: "generation-task",
+        librarySaved: false,
         generationEffectKey: input.effectKey,
         taskId: input.task.id,
         outputIndex: input.output.outputIndex,

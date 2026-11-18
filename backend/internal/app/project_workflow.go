@@ -622,7 +622,7 @@ func (s *Service) ensureGeneratedProjectAsset(task model.Task, projectID string,
 		"id": assetID, "kind": mediaType, "category": model.AssetCategoryMaterial, "status": model.AssetVersionStatusConfirmed,
 		"primaryVersionId": versionID, "title": title, "coverUrl": resourceURL, "tags": []string{},
 		"createdAt": now.UTC().Format(time.RFC3339Nano), "updatedAt": now.UTC().Format(time.RFC3339Nano),
-		"data": data, "metadata": map[string]any{"source": "short-drama-workflow", "taskId": task.ID, "shotId": shot.ID, "projectIds": []string{projectID}},
+		"data": data, "metadata": map[string]any{"source": "short-drama-workflow", "librarySaved": false, "taskId": task.ID, "shotId": shot.ID, "projectIds": []string{projectID}},
 	})
 	asset := &model.Asset{ID: assetID, UserID: task.UserID, Kind: mediaType, Category: model.AssetCategoryMaterial, Status: model.AssetVersionStatusConfirmed, PrimaryVersionID: versionID, Title: title, PayloadJSON: string(payload), CreatedAt: now, UpdatedAt: now}
 	version := &model.AssetVersion{ID: versionID, AssetID: assetID, Version: 1, Status: model.AssetVersionStatusConfirmed, DefinitionJSON: "{}", Prompt: task.Prompt, Note: "工作流生成产物", CreatedAt: now, UpdatedAt: now}

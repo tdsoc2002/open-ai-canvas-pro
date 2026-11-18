@@ -4,12 +4,12 @@
 // 这些组件只接收 props、不直接访问 Agent API；状态与副作用集中在 CanvasCloudAgentPanel。
 
 import type { CanvasTheme } from "@/lib/canvas-theme";
-import { useAppearanceStore } from "@/stores/use-appearance-store";
-import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAULT_AGENT_AVATAR, DEFAULT_CANVAS_APPEARANCE, isAgentAvatarBundleManifest, usesDefaultAgentAvatar, type AgentAvatarBundleManifest } from "@/lib/canvas/agent-appearance";
-import { type CSSProperties, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { selectAgentName, selectCanvasAppearance, useAppearanceStore } from "@/stores/use-appearance-store";
+import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentPanelTitle, DEFAULT_AGENT_AVATAR, isAgentAvatarBundleManifest, usesDefaultAgentAvatar, type AgentAvatarBundleManifest } from "@/lib/canvas/agent-appearance";
+import { type CSSProperties, type ReactNode, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
-import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition } from "@/lib/canvas/agent-launcher-position";
+import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, AGENT_LAUNCHER_TOGGLE_SIZE, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition } from "@/lib/canvas/agent-launcher-position";
 import { useMatch } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,31 @@ import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appeara
 import { AgentAvatarVideo } from "@/components/canvas/agent-avatar-video";
 import { AgentOtterAvatar, playAgentOtterAction } from "./agent-otter-action";
 import { AgentOrb, agentOrbStateForAvatar } from "@/components/ui/agent-orb";
-import { ArrowDown, ArrowLeft, Check, ChevronDown, Clock3, Download, Ellipsis, History, LoaderCircle, Maximize2, MessageSquarePlus, Minus, PanelRight, PictureInPicture2, RefreshCw, Scaling, Settings2, ShieldCheck, Trash2, X, Blocks } from "lucide-react";
+import {
+    ArrowDown,
+    ArrowLeft,
+    BrainCircuit,
+    Check,
+    ChevronDown,
+    Clock3,
+    Download,
+    Ellipsis,
+    History,
+    LoaderCircle,
+    Maximize2,
+    MessageSquarePlus,
+    Minus,
+    PanelRight,
+    PictureInPicture2,
+    RefreshCw,
+    Scaling,
+    Settings2,
+    ShieldCheck,
+    Trash2,
+    TriangleAlert,
+    X,
+    Blocks,
+} from "lucide-react";
 import { agentModifierShortcut } from "@/lib/canvas/agent-outbox";
 import { Button, Input, Popover } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
@@ -67,7 +91,7 @@ export const AgentLauncher = memo(function AgentLauncher({
     hidden?: boolean;
     onOpen: () => void;
 }) {
-    const appearance = useAppearanceStore((state) => state.appearance.canvas) || DEFAULT_CANVAS_APPEARANCE;
+    const appearance = useAppearanceStore(selectCanvasAppearance);
     const appearanceResolved = useAppearanceStore((state) => state.resolved);
     const appearanceRevision = useAppearanceStore((state) => state.appearance.revision);
     const live = appearance.avatarType === "live2d" && Boolean(appearance.live2dResourceId && appearance.live2dEntry);
@@ -149,7 +173,7 @@ export const AgentLauncher = memo(function AgentLauncher({
     const media = Boolean(mediaURL && !mediaError);
     // 动作切换保留上一帧，只在首次加载或更换动画包时展示占位。
     const avatarLoading = !collapsed && !defaultAvatar && (bundleManifestLoading || !appearanceResolved || (media && readyBundleURL !== bundleManifestURL));
-    const aspectRatio = live ? 0.75 : bundleManifest ? bundleManifest.width / bundleManifest.height : defaultAvatar ? DEFAULT_AGENT_AVATAR.width / DEFAULT_AGENT_AVATAR.height : bundleManifestLoading ? 480 / 432 : 1;
+    const aspectRatio = live ? 0.75 : bundleManifest ? bundleManifest.width / bundleManifest.height : defaultAvatar || bundleManifestLoading ? DEFAULT_AGENT_AVATAR.width / DEFAULT_AGENT_AVATAR.height : 1;
     const largeAvatar = live || defaultAvatar || media || bundleManifestLoading;
     const inCanvasEditor = Boolean(useMatch("/canvas/:id"));
     const preferredAvatarHeight = defaultAvatar ? Math.min(appearance.avatarHeight, AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT) : appearance.avatarHeight;
@@ -171,7 +195,7 @@ export const AgentLauncher = memo(function AgentLauncher({
             <motion.button
                 type="button"
                 aria-label={`打开${appearance.agentName}`}
-                title={live && live2DError ? live2DError : `${approvalPending ? "Agent 等待你的审批 · " : ""}${defaultAvatar ? "双击打开" : "打开"} Agent 助手 · 拖动可调整位置，聚焦后可用方向键移动`}
+                title={live && live2DError ? live2DError : `${approvalPending ? `${appearance.agentName}等待你的审批 · ` : ""}${defaultAvatar ? "双击打开" : "打开"}${appearance.agentName} · 拖动可调整位置，聚焦后可用方向键移动`}
                 className={cn(
                     "canvas-agent-launcher fixed z-[var(--z-panel-floating)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35",
                     dragging && "is-dragging",
@@ -184,6 +208,7 @@ export const AgentLauncher = memo(function AgentLauncher({
                 )}
                 style={{ ...position, width, height, color: theme.node.text, "--canvas-agent-launcher-shadow": theme.spatial.shadow, ...(hidden ? { display: "none" } : null) } as CSSProperties}
                 aria-hidden={hidden || undefined}
+                data-near-bottom-right={position.right < 192 && position.bottom < 72 ? "true" : undefined}
                 tabIndex={hidden ? -1 : undefined}
                 data-canvas-no-zoom
                 onDragStart={(event) => event.preventDefault()}
@@ -240,7 +265,7 @@ export const AgentLauncher = memo(function AgentLauncher({
                 <button
                     type="button"
                     className="canvas-agent-launcher-toggle fixed z-[calc(var(--z-panel-floating)+1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35"
-                    style={{ ...togglePosition, color: theme.node.text }}
+                    style={{ ...togglePosition, width: AGENT_LAUNCHER_TOGGLE_SIZE, height: AGENT_LAUNCHER_TOGGLE_SIZE, color: theme.node.text }}
                     aria-label={collapsed ? `展开${appearance.agentName}形象` : `收起${appearance.agentName}形象`}
                     aria-pressed={collapsed}
                     title={collapsed ? "展开形象" : "收起形象，只保留小入口"}
@@ -273,11 +298,14 @@ function readAgentLauncherCollapsed() {
 
 export function AgentHeader({
     theme,
-    hasMessages,
     statusLabel,
+    compact = false,
+    hasMessages = false,
     statusColor,
     live = false,
     conversationTitle,
+    nodeCount = null,
+    resizeCorner,
     onNew,
     onHistory,
     onSettings,
@@ -289,12 +317,15 @@ export function AgentHeader({
     exporting,
 }: {
     theme: CanvasTheme;
-    hasMessages: boolean;
     statusLabel: string;
-    statusColor: string;
+    compact?: boolean;
+    hasMessages?: boolean;
+    statusColor?: string;
     /** 本轮正在运行：状态圆点呼吸。 */
     live?: boolean;
     conversationTitle?: string;
+    nodeCount?: number | null;
+    resizeCorner?: ReactNode;
     onNew: () => void;
     onHistory: () => void;
     onSettings: () => void;
@@ -306,13 +337,15 @@ export function AgentHeader({
     onExport: () => void;
     exporting: boolean;
 }) {
-    const appearance = useAppearanceStore((state) => state.appearance.canvas) || DEFAULT_CANVAS_APPEARANCE;
+    const appearance = useAppearanceStore(selectCanvasAppearance);
+    const title = agentPanelTitle(appearance);
+    const context = nodeCount === null ? "未关联画布" : `画布 · ${nodeCount} 个节点`;
     const modifierJ = agentModifierShortcut("J");
     const modifierEnter = agentModifierShortcut("Enter");
-    const title = hasMessages ? conversationTitle || agentCopy(appearance.panelTitle, appearance.agentName) : "新对话";
+    const conversationHeading = hasMessages ? conversationTitle || title : "新对话";
     const moreItems = [
-        ...(onToggleDock ? [{ key: "dock", icon: docked ? <PictureInPicture2 className="size-3.5" /> : <PanelRight className="size-3.5" />, label: docked ? "改为浮动窗口" : "停靠到画布右侧", onClick: onToggleDock }] : []),
-        { key: "settings", icon: <Settings2 className="size-3.5" />, label: "Agent 设置", onClick: onSettings },
+        ...(!compact && onToggleDock ? [{ key: "dock", icon: docked ? <PictureInPicture2 className="size-3.5" /> : <PanelRight className="size-3.5" />, label: docked ? "改为浮动窗口" : "停靠到画布右侧", onClick: onToggleDock }] : []),
+        { key: "settings", icon: <Settings2 className="size-3.5" />, label: `${appearance.agentName}设置`, onClick: onSettings },
         { key: "layout", icon: <Scaling className="size-3.5" />, label: docked ? "恢复默认宽度" : "恢复默认大小和位置", onClick: onResetLayout },
         { key: "export", icon: <Download className="size-3.5" />, label: exporting ? "正在导出调试记录…" : "导出调试记录（分享前请检查隐私）", disabled: exporting, onClick: onExport },
         { type: "divider" as const },
@@ -322,7 +355,7 @@ export function AgentHeader({
             label: "快捷键",
             // 只是说明，不可点：左边是动作，右边是按键。
             children: [
-                ["toggle", "打开或收起 Agent", [modifierJ]],
+                ["toggle", `打开或收起${appearance.agentName}`, [modifierJ]],
                 ["send", "发送", ["Enter"]],
                 ["newline", "换行", ["Shift+Enter"]],
                 ["queue", "运行中排队", ["Enter"]],
@@ -345,24 +378,51 @@ export function AgentHeader({
         },
     ];
     return (
-        <header data-agent-drag-handle className="agent-panel-header flex shrink-0 items-center gap-3">
-            <div className="min-w-0 flex-1">
-                <button type="button" className="agent-panel-title-button" onClick={onHistory} aria-label={`历史对话，当前：${title}`} title="切换历史对话">
-                    <span className="agent-panel-title">{title}</span>
-                    <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
-                </button>
-            </div>
-            <span className="agent-panel-status" style={{ color: statusColor }} title={statusLabel}>
-                <span className="agent-panel-status-dot" data-live={live ? "" : undefined} aria-hidden="true" />
-                <span className="sr-only">{statusLabel}</span>
-            </span>
-            <div className="agent-header-actions flex items-center gap-0.5" style={{ color: theme.node.muted }}>
+        <header data-agent-drag-handle className={cn("agent-panel-header shrink-0 items-center", compact ? "agent-chat-header gap-2" : "flex gap-3")}>
+            {compact ? (
+                <>
+                    <div className="justify-self-start">{resizeCorner}</div>
+                    <h2 className="sr-only">{title}</h2>
+                    <span className="sr-only" role="status">
+                        {statusLabel}
+                    </span>
+                    <div className="agent-panel-context truncate" title={nodeCount === null ? "可直接对话，进入画布后自动关联" : context}>
+                        {context}
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div className="min-w-0 flex-1">
+                        <button type="button" className="agent-panel-title-button" onClick={onHistory} aria-label={`历史对话，当前：${conversationHeading}`} title="切换历史对话">
+                            <span className="agent-panel-title">{conversationHeading}</span>
+                            <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <span className="agent-panel-status" style={{ color: statusColor }} title={statusLabel}>
+                        <span className="agent-panel-status-dot" data-live={live ? "" : undefined} aria-hidden="true" />
+                        <span className="sr-only">{statusLabel}</span>
+                    </span>
+                </>
+            )}
+            <div className="agent-header-actions flex items-center gap-0.5 justify-self-end" style={{ color: theme.node.muted }}>
+                {compact && onToggleDock ? (
+                    <Button
+                        type="text"
+                        shape="circle"
+                        icon={docked ? <PictureInPicture2 className="size-4" /> : <PanelRight className="size-4" />}
+                        onClick={onToggleDock}
+                        aria-pressed={docked}
+                        aria-label={docked ? "改为浮动窗口" : "停靠到画布右侧"}
+                        title={docked ? "改为浮动窗口" : "停靠到画布右侧，画布让出位置不被遮挡"}
+                    />
+                ) : null}
+                {compact ? <Button type="text" shape="circle" icon={<History className="size-4" />} onClick={onHistory} aria-label="历史对话" title="历史对话" /> : null}
                 <Button type="text" shape="circle" icon={<MessageSquarePlus className="size-4" />} onClick={onNew} aria-label="新建对话" title="新建对话" />
                 {/* 不常用的入口收进「更多」：设置、恢复默认大小、导出调试记录，以及快捷键说明。 */}
                 <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items: moreItems }}>
-                    <Button type="text" shape="circle" icon={exporting ? <LoaderCircle className="size-4 animate-spin" /> : <Ellipsis className="size-4" />} aria-label="更多" title="更多：Agent 设置、恢复默认大小、导出调试记录、快捷键" />
+                    <Button type="text" shape="circle" icon={exporting ? <LoaderCircle className="size-4 animate-spin" /> : <Ellipsis className="size-4" />} aria-label="更多" title="更多操作" />
                 </Dropdown>
-                <Button type="text" shape="circle" icon={<X className="size-4" />} onClick={onCollapse} aria-label="收起 Agent" title={`收起（${modifierJ}）`} />
+                <Button type="text" shape="circle" icon={<X className="size-4" />} onClick={onCollapse} aria-label={`收起${appearance.agentName}`} title={`收起（${modifierJ}）`} />
             </div>
         </header>
     );
@@ -392,12 +452,16 @@ export function formatContextBytes(bytes: number | undefined) {
     return `${Math.round(bytes).toLocaleString("zh-CN")} 字节`;
 }
 
-export function AgentContextRing({ view, theme }: { view: AgentContextUsageView; theme: CanvasTheme }) {
-    const [open, setOpen] = useState(false);
-    const popoverRef = usePopoverAnchorAlign(open);
+function agentContextHeading(view: AgentContextUsageView) {
+    if (view.ratio !== undefined) return `上下文已用 ${Math.round(view.ratio * 100)}%`;
+    if (view.phase === "idle") return "上下文用量";
+    if (view.phase === "unknown") return "上下文窗口未知";
+    return `上下文${view.label}`;
+}
+
+function AgentContextDetails({ view }: { view: AgentContextUsageView }) {
     const marker = view.compactRatio && view.compactRatio > 0 && view.compactRatio < 1 ? view.compactRatio : undefined;
     const percent = view.ratio === undefined ? view.label : `${Math.round(view.ratio * 100)}%`;
-    const meterLabel = view.ratio === undefined ? "—" : percent;
     const used = formatContextCount(view.inputTokens);
     const budget = formatContextCount(view.usableTokens);
     const remaining = formatContextCount(view.remainingTokens);
@@ -405,7 +469,87 @@ export function AgentContextRing({ view, theme }: { view: AgentContextUsageView;
     const usedRatio = view.ratio === undefined ? 0 : Math.max(0, Math.min(1, view.ratio));
     const phaseLabel = CONTEXT_PHASE_LABEL[view.phase];
     const sourceLabel = view.tokenSource === "pi" ? "Pi 会话估算" : "未测量";
-    const usageHeading = view.ratio !== undefined ? `上下文已用 ${percent}` : view.phase === "idle" ? "上下文用量" : view.phase === "unknown" ? "上下文窗口未知" : `上下文${view.label}`;
+    const usageHeading = agentContextHeading(view);
+    return (
+        <div className="agent-context-panel" data-phase={view.phase}>
+            <span className="agent-context-eyebrow">下一次请求 · 上下文窗口占用</span>
+            <div className="agent-context-panel-head">
+                <strong>{usageHeading}</strong>
+                {view.phase !== "ok" ? <span className={`agent-context-phase is-${view.phase}`}>{phaseLabel}</span> : null}
+            </div>
+            <div className="agent-context-summary">
+                {view.remainingTokens !== undefined && view.usableTokens !== undefined ? (
+                    <>
+                        <strong>{used}</strong>
+                        <span>/ {budget} Token</span>
+                        <em>剩余 {remaining}</em>
+                    </>
+                ) : (
+                    <>
+                        <strong>{used}</strong>
+                        <span>Token</span>
+                    </>
+                )}
+            </div>
+            <div className="agent-context-progress-head">
+                <span>上下文窗口占用</span>
+                <strong>{percent}</strong>
+            </div>
+            <div className="agent-context-progress" role="progressbar" aria-label={`上下文已用 ${percent}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={view.ratio === undefined ? undefined : Math.round(view.ratio * 100)}>
+                <span style={{ width: `${usedRatio * 100}%` }} />
+                {marker ? <i style={{ left: `${marker * 100}%` }} aria-hidden="true" /> : null}
+            </div>
+            <p className="agent-context-detail">{view.detail}</p>
+            {view.breakdown.length || view.protocolBytes !== undefined || view.remainingTokens !== undefined ? (
+                <ul className="agent-context-breakdown">
+                    {view.breakdown.map((item) => (
+                        <li key={item.key}>
+                            <span className="agent-context-breakdown-dot" aria-hidden="true" />
+                            <span className="agent-context-breakdown-label">{item.label}</span>
+                            <span className="agent-context-breakdown-value">{formatContextCount(item.tokens)}</span>
+                        </li>
+                    ))}
+                    {view.protocolBytes !== undefined ? (
+                        <li className="is-secondary">
+                            <span className="agent-context-breakdown-dot" aria-hidden="true" />
+                            <span className="agent-context-breakdown-label">协议外壳</span>
+                            <span className="agent-context-breakdown-value">{protocolBytes}</span>
+                        </li>
+                    ) : null}
+                    {view.remainingTokens !== undefined ? (
+                        <li className="is-muted">
+                            <span className="agent-context-breakdown-dot" aria-hidden="true" />
+                            <span className="agent-context-breakdown-label">未使用</span>
+                            <span className="agent-context-breakdown-value">{remaining}</span>
+                        </li>
+                    ) : null}
+                </ul>
+            ) : null}
+            <div className="agent-context-panel-foot">
+                <span>
+                    {sourceLabel}
+                    {view.tokenSource === "pi" ? " · 不是计费 Token" : ""}
+                </span>
+                {view.compactAtTokens ? <span>压缩线 {formatContextCount(view.compactAtTokens)}</span> : null}
+            </div>
+            {view.compactionError ? (
+                <p className="agent-context-note" role="status">
+                    {view.compactionError}
+                </p>
+            ) : view.lastCompaction ? (
+                <p className="agent-context-note">本轮已完成一次上下文压缩，下一次读数会刷新。</p>
+            ) : null}
+        </div>
+    );
+}
+
+export function AgentContextRing({ view, theme }: { view: AgentContextUsageView; theme: CanvasTheme }) {
+    const [open, setOpen] = useState(false);
+    const popoverRef = usePopoverAnchorAlign(open);
+    const marker = view.compactRatio && view.compactRatio > 0 && view.compactRatio < 1 ? view.compactRatio : undefined;
+    const usageHeading = agentContextHeading(view);
+    const phaseLabel = view.compactionError ? "上下文压缩异常" : CONTEXT_PHASE_LABEL[view.phase];
+    const meterLabel = view.ratio === undefined ? "—" : `${Math.round(view.ratio * 100)}%`;
 
     return (
         <Popover
@@ -420,91 +564,32 @@ export function AgentContextRing({ view, theme }: { view: AgentContextUsageView;
             // 助手面板会裁切内容；独立挂到 body，并显式携带画布主题。
             getPopupContainer={() => document.body}
             styles={{ root: { "--agent-surface-base": theme.node.panel, "--agent-ink": theme.node.text, "--agent-accent": theme.accent.primary } as CSSProperties }}
-            content={
-                <div className="agent-context-panel" data-phase={view.phase}>
-                    <span className="agent-context-eyebrow">下一次请求 · 上下文窗口占用</span>
-                    <div className="agent-context-panel-head">
-                        <strong>{usageHeading}</strong>
-                        {view.phase !== "ok" ? <span className={`agent-context-phase is-${view.phase}`}>{phaseLabel}</span> : null}
-                    </div>
-                    <div className="agent-context-summary">
-                        {view.remainingTokens !== undefined && view.usableTokens !== undefined ? (
-                            <>
-                                <strong>{used}</strong>
-                                <span>/ {budget} Token</span>
-                                <em>剩余 {remaining}</em>
-                            </>
-                        ) : (
-                            <>
-                                <strong>{used}</strong>
-                                <span>Token</span>
-                            </>
-                        )}
-                    </div>
-                    <div className="agent-context-progress-head">
-                        <span>上下文窗口占用</span>
-                        <strong>{percent}</strong>
-                    </div>
-                    <div className="agent-context-progress" role="progressbar" aria-label={`上下文已用 ${percent}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={view.ratio === undefined ? undefined : Math.round(view.ratio * 100)}>
-                        <span style={{ width: `${usedRatio * 100}%` }} />
-                        {marker ? <i style={{ left: `${marker * 100}%` }} aria-hidden="true" /> : null}
-                    </div>
-                    <p className="agent-context-detail">{view.detail}</p>
-                    {view.breakdown.length || view.protocolBytes !== undefined || view.remainingTokens !== undefined ? (
-                        <ul className="agent-context-breakdown">
-                            {view.breakdown.map((item) => (
-                                <li key={item.key}>
-                                    <span className="agent-context-breakdown-dot" aria-hidden="true" />
-                                    <span className="agent-context-breakdown-label">{item.label}</span>
-                                    <span className="agent-context-breakdown-value">{formatContextCount(item.tokens)}</span>
-                                </li>
-                            ))}
-                            {view.protocolBytes !== undefined ? (
-                                <li className="is-secondary">
-                                    <span className="agent-context-breakdown-dot" aria-hidden="true" />
-                                    <span className="agent-context-breakdown-label">协议外壳</span>
-                                    <span className="agent-context-breakdown-value">{protocolBytes}</span>
-                                </li>
-                            ) : null}
-                            {view.remainingTokens !== undefined ? (
-                                <li className="is-muted">
-                                    <span className="agent-context-breakdown-dot" aria-hidden="true" />
-                                    <span className="agent-context-breakdown-label">未使用</span>
-                                    <span className="agent-context-breakdown-value">{remaining}</span>
-                                </li>
-                            ) : null}
-                        </ul>
-                    ) : null}
-                    <div className="agent-context-panel-foot">
-                        <span>
-                            {sourceLabel}
-                            {view.tokenSource === "pi" ? " · 不是计费 Token" : ""}
-                        </span>
-                        {view.compactAtTokens ? <span>压缩线 {formatContextCount(view.compactAtTokens)}</span> : null}
-                    </div>
-                    {view.compactionError ? (
-                        <p className="agent-context-note" role="status">
-                            {view.compactionError}
-                        </p>
-                    ) : view.lastCompaction ? (
-                        <p className="agent-context-note">本轮已完成一次上下文压缩，下一次读数会刷新。</p>
-                    ) : null}
-                </div>
-            }
+            content={<AgentContextDetails view={view} />}
         >
-            <button type="button" className={`agent-context-ring is-${view.phase}`} aria-label={`${usageHeading}，${phaseLabel}。点击查看明细`} aria-expanded={open} title="查看上下文用量" onPointerDown={(event) => event.stopPropagation()}>
-                <span
-                    className="agent-context-ring-visual"
-                    aria-hidden="true"
-                    style={
-                        {
-                            "--agent-context-progress": `${view.ring * 100}%`,
-                            "--agent-context-marker-angle": `${(marker || 0) * 360}deg`,
-                        } as CSSProperties
-                    }
-                >
-                    {marker ? <span className="agent-context-ring-marker" /> : null}
-                </span>
+            <button
+                type="button"
+                className={`agent-context-ring is-${view.phase}`}
+                aria-label={`${usageHeading}，${phaseLabel}。点击查看明细`}
+                aria-expanded={open}
+                title={`查看上下文用量 · ${phaseLabel}`}
+                onPointerDown={(event) => event.stopPropagation()}
+            >
+                {view.compactionError ? (
+                    <TriangleAlert className="size-4.5 shrink-0 text-[var(--status-warning)]" aria-hidden="true" />
+                ) : (
+                    <span
+                        className="agent-context-ring-visual"
+                        aria-hidden="true"
+                        style={
+                            {
+                                "--agent-context-progress": `${view.ring * 100}%`,
+                                "--agent-context-marker-angle": `${(marker || 0) * 360}deg`,
+                            } as CSSProperties
+                        }
+                    >
+                        {marker ? <span className="agent-context-ring-marker" /> : null}
+                    </span>
+                )}
                 <span className="agent-context-meter-copy">
                     <strong>{meterLabel}</strong>
                 </span>
@@ -668,6 +753,7 @@ export function AgentConversation({
     references,
     busy,
     activity = "running",
+    compact = false,
     nodeCount = null,
     onChooseSkill,
     onDraftPrompt,
@@ -695,6 +781,7 @@ export function AgentConversation({
     references: CanvasResourceReference[];
     busy: boolean;
     activity?: "submitting" | "queued" | "running" | "stopping";
+    compact?: boolean;
     nodeCount?: number | null;
     onChooseSkill?: () => void;
     /** 欢迎页的创作入口只填草稿；历史恢复完成前不提供。 */
@@ -722,7 +809,7 @@ export function AgentConversation({
     onRetryRun?: () => void;
     retryingRun?: boolean;
 }) {
-    const appearance = useAppearanceStore((state) => state.appearance.canvas) || DEFAULT_CANVAS_APPEARANCE;
+    const appearance = useAppearanceStore(selectCanvasAppearance);
     const reducedMotion = useReducedMotion();
     const scrollRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -804,7 +891,7 @@ export function AgentConversation({
                     if (following) setUnseenCount(0);
                 }}
             >
-                {showWelcome && onDraftPrompt && onChooseSkill ? <AgentWelcome appearance={appearance} nodeCount={nodeCount} onChooseSkill={onChooseSkill} onDraftPrompt={onDraftPrompt} /> : null}
+                {showWelcome && onDraftPrompt && (compact || onChooseSkill) ? <AgentWelcome appearance={appearance} nodeCount={nodeCount} compact={compact} onChooseSkill={onChooseSkill} onDraftPrompt={onDraftPrompt} /> : null}
                 <div ref={contentRef} className="agent-conversation-messages">
                     {startIndex > 0 ? (
                         <button type="button" className="agent-load-earlier" onClick={() => setVisibleCount((count) => count + 80)}>
@@ -878,7 +965,7 @@ export function AgentConversation({
                     </AnimatePresence>
                 </div>
             </div>
-            {awayFromBottom ? (
+            {awayFromBottom && (messages.length > 0 || busy || approval) ? (
                 <button type="button" className="agent-scroll-latest" onClick={scrollToLatest} aria-label={unseenCount > 0 ? `有 ${unseenCount} 条新消息，回到底部` : "回到底部"}>
                     <ArrowDown className="size-3.5" aria-hidden="true" />
                     {unseenCount > 0 ? `${unseenCount} 条新消息` : "回到底部"}
@@ -888,31 +975,21 @@ export function AgentConversation({
     );
 }
 
-export function ComposerControls({
-    config,
-    selectedModel,
-    permissionMode,
-    theme,
-    onModelChange,
-    onPermissionChange,
-    skillsOpen,
-    onSkillsOpenChange,
-    selectedSkillCount,
-    reasoningMode,
-    onReasoningModeChange,
-}: {
+type ComposerControlsProps = {
     config: ReturnType<typeof useEffectiveConfig>;
     selectedModel: string;
     permissionMode: AgentPermissionMode;
     theme: CanvasTheme;
-    onModelChange: (model: string) => void;
     onPermissionChange: (mode: AgentPermissionMode) => void;
     skillsOpen: boolean;
     onSkillsOpenChange: (open: boolean) => void;
     selectedSkillCount: number;
     reasoningMode: AgentReasoningMode;
     onReasoningModeChange: (value: AgentReasoningMode) => void;
-}) {
+};
+
+export function ComposerControls({ config, selectedModel, permissionMode, theme, onPermissionChange, skillsOpen, onSkillsOpenChange, selectedSkillCount, reasoningMode, onReasoningModeChange }: ComposerControlsProps) {
+    const agentName = useAppearanceStore(selectAgentName);
     const [thinkingOpen, setThinkingOpen] = useState(false);
     const thinkingAnchor = usePopoverAnchorAlign(thinkingOpen);
     const thinking = modelCapabilityConfigFor(config, selectedModel).text?.thinking || LEGACY_TEXT_THINKING_CONFIG;
@@ -922,19 +999,6 @@ export function ComposerControls({
     const PermissionIcon = permissionVisual.icon;
     return (
         <div className="agent-composer-selection flex min-w-0 flex-1 flex-nowrap items-center gap-0.5">
-            <ModelPicker
-                config={config}
-                value={selectedModel}
-                capability="text"
-                onChange={onModelChange}
-                variant="creation"
-                fullWidth
-                className="agent-composer-model-trigger !h-8 !min-w-0 !w-full !max-w-full !border-0 !bg-transparent !px-2 !shadow-none"
-                popoverClassName="agent-model-picker-popover"
-                showSelectedPrice={false}
-                showOptionPrices
-                placeholder="选择文本模型"
-            />
             {levels.length ? (
                 <Popover
                     ref={thinkingAnchor}
@@ -949,13 +1013,14 @@ export function ComposerControls({
                         </div>
                     }
                 >
-                    <button type="button" className="agent-thinking-trigger" aria-label={`选择推理强度：${thinkingLabel}`} aria-expanded={thinkingOpen} onPointerDown={(event) => event.stopPropagation()}>
-                        <span>{thinkingLabel}</span>
-                        <ChevronDown className="size-3" aria-hidden="true" />
+                    <button type="button" className="agent-thinking-trigger" aria-label={`选择推理强度：${thinkingLabel}`} title={`推理强度：${thinkingLabel}`} aria-expanded={thinkingOpen} onPointerDown={(event) => event.stopPropagation()}>
+                        <BrainCircuit className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className="agent-thinking-label">{thinkingLabel}</span>
+                        <ChevronDown className="agent-thinking-chevron size-3" aria-hidden="true" />
                     </button>
                 </Popover>
             ) : null}
-            {/* 权限常显文字：只读 / 审批 / 自动，面板窄时只留图标。图标形状和颜色同时区分三种权限。 */}
+            {/* 审批模式是常驻状态，不随面板收窄而隐藏。 */}
             <Dropdown trigger={["click"]} placement="topLeft" menu={{ items: agentPermissionMenuItems(permissionMode, onPermissionChange) }}>
                 <button
                     type="button"
@@ -970,19 +1035,39 @@ export function ComposerControls({
             </Dropdown>
             <button
                 type="button"
-                className="flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[var(--fs-label)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/25"
+                className="agent-composer-skills flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[var(--fs-label)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/25"
                 style={{ color: selectedSkillCount ? theme.accent.primary : theme.node.muted, background: skillsOpen ? theme.node.fill : "transparent" }}
                 aria-label={`打开 Skills 技能库${selectedSkillCount ? `，本对话已固定 ${selectedSkillCount} 个` : ""}`}
                 aria-expanded={skillsOpen}
                 aria-haspopup="dialog"
-                title={selectedSkillCount ? `本对话已固定 ${selectedSkillCount} 个技能；其他已安装技能 Agent 会按任务自动查找` : "已安装的技能 Agent 会按任务自动查找"}
+                title={selectedSkillCount ? `打开技能库 · 本对话已固定 ${selectedSkillCount} 个；${agentName}会按需使用其他已安装技能` : `打开技能库 · ${agentName}会按需使用已安装的技能`}
                 onClick={() => onSkillsOpenChange(true)}
             >
                 <Blocks className="size-3.5" aria-hidden="true" />
-                {/* 面板窄时只留图标和数量，把位置让给模型名。 */}
                 <span className="agent-skills-label">技能</span>
                 {selectedSkillCount ? <span className="tabular-nums">{selectedSkillCount}</span> : null}
             </button>
+        </div>
+    );
+}
+
+export function ComposerModelPicker({ config, selectedModel, onModelChange }: Pick<ComposerControlsProps, "config" | "selectedModel"> & { onModelChange: (model: string) => void }) {
+    return (
+        <div className="agent-composer-model-slot">
+            <ModelPicker
+                config={config}
+                value={selectedModel}
+                capability="text"
+                onChange={onModelChange}
+                variant="creation"
+                layout="agent-compact"
+                fullWidth
+                className="agent-composer-model-trigger !h-7 !min-w-0 !w-full !border-0 !bg-transparent !px-2 !shadow-none"
+                popoverClassName="agent-model-picker-popover"
+                showSelectedPrice={false}
+                showOptionPrices
+                placeholder="选择文本模型"
+            />
         </div>
     );
 }

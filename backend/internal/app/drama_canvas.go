@@ -225,7 +225,7 @@ func dramaCanvasAsset(userID string, project *model.Project, resource model.Reso
 		"title": title, "coverUrl": coverURL, "tags": []string{}, "source": "短剧",
 		"createdAt": now.UTC().Format(time.RFC3339Nano), "updatedAt": now.UTC().Format(time.RFC3339Nano),
 		"data":     data,
-		"metadata": map[string]any{"source": "short-drama", "dramaProjectId": project.ID, "resourceKey": storageKey, "projectIds": []string{project.ID}, "projectName": project.Name},
+		"metadata": map[string]any{"source": "short-drama", "librarySaved": false, "dramaProjectId": project.ID, "resourceKey": storageKey, "projectIds": []string{project.ID}, "projectName": project.Name},
 	})
 	if err != nil {
 		return nil, err

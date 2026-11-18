@@ -201,6 +201,10 @@ func (s *Service) UpsertUserAsset(userID string, raw json.RawMessage) (UserDataS
 	return s.canvasDomain().UpsertUserAsset(userID, raw)
 }
 
+func (s *Service) SaveAssetToLibrary(userID, assetID, resourceID string) (json.RawMessage, error) {
+	return s.canvasDomain().SaveAssetToLibrary(userID, assetID, resourceID)
+}
+
 func (s *Service) DeleteUserAsset(userID string, id string) error {
 	return s.canvasDomain().DeleteUserAsset(userID, id)
 }

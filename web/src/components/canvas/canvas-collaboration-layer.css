@@ -93,8 +93,31 @@
     width: min(240px, calc(100vw - var(--space-8)));
     padding: var(--space-3);
     border-radius: var(--r-xl);
-    background: var(--collaboration-surface);
+    background: var(--collaboration-surface, var(--popover));
     box-shadow: var(--elevation-overlay);
+}
+
+.canvas-collaboration-members--toolbar {
+    position: static;
+    transform: none;
+}
+
+.canvas-collaboration-members--toolbar > summary {
+    background: transparent;
+}
+
+.canvas-collaboration-members--toolbar > summary:hover {
+    background: var(--surface-hover);
+}
+
+.canvas-collaboration-members--toolbar .canvas-collaboration-member-panel {
+    right: 0;
+    left: auto;
+    transform: none;
+}
+
+.canvas-collaboration-member-count {
+    display: none;
 }
 .canvas-collaboration-member-heading {
     padding: var(--space-1) var(--space-1) var(--space-2);
