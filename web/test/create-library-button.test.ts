@@ -20,6 +20,18 @@ function readCreateWorkspaceSource() {
 }
 
 describe("creation library button", () => {
+    test("compact home separates native reference upload from asset library selection", () => {
+        const workspace = readCreateWorkspaceSource();
+        const row = workspace.slice(workspace.indexOf('className="creation-reference-entry-row"'), workspace.indexOf('className="creation-chat-editor"'));
+
+        expect(row).toContain("本地上传");
+        expect(row).toContain("素材库");
+        expect(row).toContain("localReferenceInputRef.current?.click()");
+        expect(row).toContain("onClick={props.onOpenLibrary}");
+        expect(row).toContain("props.onUploadReferences(files)");
+        expect(readCreateSource()).toContain("onUploadReferences: uploadLocalReferences");
+    });
+
     test("keeps library selection in the reference area instead of the bottom dock", () => {
         const source = readCreateWorkspaceSource();
         const dockStart = source.indexOf('<footer className="creation-chat-dock">');
@@ -44,7 +56,7 @@ describe("creation library button", () => {
         const source = readCreateSource();
         const pickerSource = readFileSync(resolve(import.meta.dir, "../src/components/assets/asset-library-picker-modal.tsx"), "utf8");
         const uploadStart = source.indexOf("const uploadLibraryAssets = async");
-        const uploadEnd = source.indexOf("const handleLibrarySelect", uploadStart);
+        const uploadEnd = source.indexOf("const uploadLocalReferences", uploadStart);
 
         expect(uploadStart).toBeGreaterThanOrEqual(0);
         expect(uploadEnd).toBeGreaterThan(uploadStart);

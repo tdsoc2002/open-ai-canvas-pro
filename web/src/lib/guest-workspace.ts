@@ -1,3 +1,3 @@
 export function isGuestWorkspacePath(pathname: string) {
-    return pathname === "/" || pathname === "/create";
+    return pathname === "/" || pathname === "/create" || pathname === "/inspirations";
 }

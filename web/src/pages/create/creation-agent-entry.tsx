@@ -1,17 +1,19 @@
 import { useTranslation } from "react-i18next";
 import { useRef, useState } from "react";
 import { App, Button } from "antd";
-import { ArrowUpRight, FolderOpen, ArrowRight } from "lucide-react";
+import { ArrowRight, FolderOpen, Orbit } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAuthEntry } from "@/hooks/use-auth-entry";
 import { AgentOrb } from "@/components/ui/agent-orb";
 import { canvasDraftNavigationState, useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
 import { hasRemoteUserDataSyncSession } from "@/services/user-data-sync";
 
 /** 进入时只分配草稿 ID；明确提交创作时再建立同一画布的服务端记录。 */
-export function CreationAgentEntry() {
+export function CreationAgentEntry({ compact = false }: { compact?: boolean }) {
     const { t } = useTranslation();
+    const agentName = useAppearanceStore(selectAgentName);
     const navigate = useNavigate();
     const { openAuth } = useAuthEntry();
     const { message } = App.useApp();
@@ -52,21 +54,27 @@ export function CreationAgentEntry() {
         }
     };
     return (
-        <section className="creation-agent-entry" aria-label={t("create.agentEntry.region")}>
-            <div className="creation-agent-orb" aria-hidden>
-                <AgentOrb size={88} />
-            </div>
+        <section className="creation-agent-entry" aria-label={t("create.agentEntry.region", { agentName })}>
+            {compact ? (
+                <div className="creation-agent-mark" aria-hidden="true">
+                    <Orbit />
+                </div>
+            ) : (
+                <div className="creation-agent-orb" aria-hidden="true">
+                    <AgentOrb size={88} />
+                </div>
+            )}
             <div className="creation-agent-copy">
-                <span className="creation-agent-eyebrow">CANVAS AGENT</span>
+                <span className="creation-agent-eyebrow">{agentName}</span>
                 <h2>{t("create.agentEntry.title")}</h2>
-                <p>{t("create.agentEntry.description")}</p>
+                <p>{t("create.agentEntry.description", { agentName })}</p>
             </div>
             <div className="creation-agent-actions">
-                <Button type="primary" icon={<ArrowRight />} loading={busy} disabled={!hydrated} onClick={() => void start()}>
-                    {created.current ? t("create.agentEntry.retryEnter") : t("create.agentEntry.newCanvas")}
-                    <ArrowUpRight />
+                <Button type="primary" loading={busy} disabled={!hydrated} onClick={() => void start()}>
+                    {created.current ? t("create.agentEntry.retryEnter") : t("create.agentEntry.newCanvas", { agentName })}
+                    <ArrowRight aria-hidden="true" />
                 </Button>
-                <Button icon={<FolderOpen />} disabled={busy} onClick={() => navigate("/canvas?agent=1")}>
+                <Button icon={<FolderOpen aria-hidden="true" />} disabled={busy} onClick={() => navigate("/canvas?agent=1")}>
                     {t("create.agentEntry.continueExisting")}
                 </Button>
             </div>

@@ -61,6 +61,7 @@ const CanvasProjectPage = workspaceRoutePages.canvasProject;
 const SharedCanvasPage = lazy(() => import("@/pages/canvas/shared"));
 const ArkPortraitResultPage = lazy(() => import("@/pages/ark-portrait-result"));
 const CreatePage = workspaceRoutePages.create;
+const InspirationsPage = workspaceRoutePages.inspirations;
 const EcommercePage = workspaceRoutePages.ecommerce;
 const ImageWorkbenchPage = workspaceRoutePages.imageWorkbench;
 const VideoWorkbenchPage = workspaceRoutePages.videoWorkbench;
@@ -140,6 +141,7 @@ export const router = createBrowserRouter([
         children: [
             { path: "/", element: deferred(<CreatePage />) },
             { path: "/create", element: deferred(<CreatePage />) },
+            { path: "/inspirations", element: deferred(<InspirationsPage />) },
             { path: "/ecommerce", element: <RequireAuth>{deferred(<EcommercePage />)}</RequireAuth> },
             {
                 path: "/toolbox/image",

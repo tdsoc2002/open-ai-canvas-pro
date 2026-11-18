@@ -369,8 +369,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
         <section ref={sectionRef} id="creation-inspirations" className="inspiration-hall" aria-labelledby="inspiration-hall-title">
             <header className="inspiration-hall-header">
                 <div>
-                    <h2 id="inspiration-hall-title">灵感大厅</h2>
-                    <p>每天换一批推荐，新上架的排在前面。点开查看完整提示词，用喜欢的创意继续创作。</p>
+                    <h1 id="inspiration-hall-title">灵感大厅</h1>
                 </div>
                 <div className="inspiration-hall-actions">
                     <Button
@@ -505,7 +504,6 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                         icon="empty"
                         kind={hasFilters ? "no-results" : "first-use"}
                         title={hasFilters && search.trim() ? `没有找到与“${search.trim()}”相关的灵感` : view === "favorites" ? "还没有收藏" : view === "hidden" ? "没有隐藏的条目" : "没有符合条件的灵感"}
-                        description={view === "favorites" ? "点卡片右上角的爱心，把喜欢的创意留在这里。" : "试试其他类型、分类或关键词。"}
                         action={hasFilters ? <Button onClick={resetFilters}>清除筛选</Button> : undefined}
                     />
                 )}

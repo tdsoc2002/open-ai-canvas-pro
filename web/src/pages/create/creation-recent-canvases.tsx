@@ -85,7 +85,6 @@ export function CreationRecentCanvases({ onRequireLogin }: { onRequireLogin: () 
                         <span className="creation-canvas-thumbnail is-create">{creating ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}</span>
                         <span className="creation-canvas-copy">
                             <strong>{creating ? t("create.recent.creating") : t("create.recent.create")}</strong>
-                            <small>{t("create.recent.fromBlank")}</small>
                         </span>
                     </button>
                 </div>

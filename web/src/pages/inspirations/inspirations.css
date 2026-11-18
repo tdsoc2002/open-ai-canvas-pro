@@ -1,10 +1,29 @@
-/* 创作首页中的灵感大厅：标题与常用筛选常驻，完整管理功能按需展开。 */
+/* 独立灵感大厅：标题与常用筛选常驻，完整管理功能按需展开。 */
 .inspiration-hall {
     min-width: 0;
     width: 100%;
-    margin-top: var(--space-8);
     scroll-margin-block-start: var(--space-24);
     color: var(--user-ink);
+}
+
+.inspiration-source-notice {
+    margin-top: var(--space-5);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
+    line-height: 1.7;
+}
+.inspiration-source-notice summary {
+    width: fit-content;
+    padding-block: var(--space-2);
+    cursor: pointer;
+}
+.inspiration-source-notice p {
+    margin: var(--space-2) 0;
+}
+.inspiration-source-notice a {
+    color: var(--user-ink);
+    text-decoration: underline;
+    text-underline-offset: var(--space-half);
 }
 
 .inspiration-hall-header {
@@ -18,7 +37,7 @@
 .inspiration-hall-header > div:first-child {
     min-width: 0;
 }
-.inspiration-hall-header h2 {
+.inspiration-hall-header h1 {
     margin: 0;
     color: var(--user-ink);
     font-size: var(--fs-title);

@@ -1,4 +1,98 @@
 /* Creation-specific geometry. Shared controls still use the workspace tokens. */
+.creation-mode-menu .ant-dropdown-menu {
+    width: min(216px, calc(100vw - var(--space-8)));
+    max-height: calc(100dvh - var(--space-8));
+    overflow-y: auto;
+    padding: var(--space-2);
+}
+.creation-mode-menu .ant-dropdown-menu-item-group-title {
+    padding: var(--space-1) var(--space-3) var(--space-2);
+    color: var(--muted-foreground);
+    font-size: var(--fs-caption);
+    font-weight: 500;
+}
+.creation-mode-menu .ant-dropdown-menu-item-group-list {
+    margin: 0;
+}
+.creation-mode-menu .ant-dropdown-menu-item {
+    min-height: var(--space-10);
+    padding: var(--space-1) var(--space-3);
+    gap: var(--space-2);
+    border-radius: var(--control-radius);
+    color: var(--foreground);
+    font-size: var(--fs-ui);
+}
+.creation-mode-menu .ant-dropdown-menu-item-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    margin-inline-end: 0;
+    flex-shrink: 0;
+}
+.creation-mode-menu .ant-dropdown-menu-item-selected {
+    font-weight: 600;
+}
+.creation-mode-menu .ant-dropdown-menu-item:focus-visible {
+    outline: var(--focus-ring-width) solid var(--control-focus-ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+.creation-mode-menu-label {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+.creation-mode-menu-label > svg {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    flex-shrink: 0;
+    color: var(--brand, currentColor);
+}
+/* 只为创作类型菜单恢复浮层边界；通用工作区菜单仍保持无边框、无阴影。 */
+@layer utilities {
+    .creation-mode-menu.ant-dropdown .ant-dropdown-menu {
+        border: var(--control-border-width) solid var(--border) !important;
+        border-radius: var(--menu-radius) !important;
+        background: var(--popover) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+    .creation-mode-menu.ant-dropdown .ant-dropdown-menu-item:is(:hover, :focus-visible, .ant-dropdown-menu-item-active) {
+        background: var(--muted) !important;
+    }
+    .creation-mode-menu.ant-dropdown .ant-dropdown-menu-item-selected {
+        background: var(--control-selected-bg) !important;
+        color: var(--control-selected-fg) !important;
+    }
+    .creation-mode-menu.ant-dropdown .ant-dropdown-menu-item-selected:is(:hover, :focus-visible, .ant-dropdown-menu-item-active) {
+        background: var(--control-selected-hover-bg) !important;
+    }
+}
+@media (pointer: coarse) {
+    .creation-mode-menu .ant-dropdown-menu-item {
+        min-height: calc(var(--space-10) + var(--space-1));
+    }
+}
+
+/* 首页只保留窄屏上下排列，桌面双栏与画布共用布局。 */
+@media (max-width: 720px) {
+    .creation-home-model-popover .canvas-model-picker-menu:is(.is-brand-list, .is-model-list) {
+        width: calc(100vw - var(--space-12));
+    }
+    .creation-home-model-popover .canvas-model-picker-two-pane {
+        grid-template-rows: auto minmax(0, 1fr);
+    }
+    .creation-home-model-popover .canvas-model-picker-option-heading > span:first-child {
+        flex-basis: 100%;
+    }
+    .creation-home-model-popover .creation-model-picker-surface .canvas-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
+        display: grid;
+        max-height: min(30dvh, calc(var(--canvas-model-picker-available-height) * 0.38));
+        border: 0;
+        border-bottom: var(--control-border-width) solid var(--border);
+        padding: 0 0 var(--space-2);
+    }
+}
+
 /* 渐变铺满滚动背景，椭圆在四边内完全淡出，避免固定图片尺寸被截成矩形色块。 */
 .creation-home-scroll {
     --creation-ambient-tint: color-mix(in srgb, var(--product-accent-blue) 7%, transparent);
@@ -524,6 +618,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+.creation-agent-actions svg {
+    width: var(--button-icon-size);
+    height: var(--button-icon-size);
 }
 .creation-agent-error {
     grid-column: 1 / -1;

@@ -3,14 +3,38 @@ import { ImageParameterFields } from "@/components/image-parameter-fields";
 import { imageResolutionUsesQuality, imageSizePresets } from "@/lib/image-size-presets";
 import { createPortal } from "react-dom";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type RefObject } from "react";
-import { Button, Popover } from "antd";
+import { Button, Dropdown, Popover } from "antd";
+import { Check } from "lucide-react";
 import { useWorkspaceTopBarMount } from "@/components/layout/workspace-top-bar-extension";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { Reorder, LayoutGroup, motion, useReducedMotion } from "motion/react";
 import type { Transition } from "motion/react";
 import { type ThinkingLevel, type ThinkingRequest } from "@/lib/text-thinking";
 import { ThinkingLevelSlider } from "@/components/thinking-level-slider";
-import { ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Clock3, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, SlidersHorizontal, Trash2, Waves, X, Orbit, PenLine } from "lucide-react";
+import {
+    ArrowUp,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Clapperboard,
+    Clock3,
+    Film,
+    FolderOpen,
+    History,
+    Image as ImageIcon,
+    LoaderCircle,
+    Maximize2,
+    MessageSquareText,
+    Minimize2,
+    Plus,
+    SlidersHorizontal,
+    Trash2,
+    Upload,
+    Waves,
+    X,
+    Orbit,
+    PenLine,
+} from "lucide-react";
 
 import { WorkingGlow } from "@/components/ai/working-indicator";
 import { formatVideoResolutionLabel as videoResolutionLabel } from "@/lib/video-generation-options";
@@ -35,9 +59,10 @@ import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-model
 import { modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { useGenerationBatchLimit, batchQuoteTotal } from "@/lib/generation-batch-limit";
+import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { type CreationReference } from "./creation-references";
-import { creationAttachmentKind, type CreationAttachment, type CreationMode } from "./creation-assets";
+import { creationAttachmentKind, creationUploadAccept, type CreationAttachment, type CreationMode } from "./creation-assets";
 import { countOptions, modeLabels, qualityOptions, resolutionOptions, type CreationShotRailEntry } from "./creation-types";
 import { creationMessageNeedsResultSync } from "./creation-conversations";
 import "./creation-product.css";
@@ -151,12 +176,14 @@ export function CreationWorkspaceToolbar({
 
 type ComposerProps = {
     variant: "empty" | "thread";
+    modeControl?: ReactNode;
     mode: CreationMode;
     prompt: string;
     setPrompt: (value: string) => void;
     busy: boolean;
     generationActive: boolean;
     referenceReplacementBusy: boolean;
+    referenceUploadBusy: boolean;
     attachments: CreationAttachment[];
     referenceImageSize?: { width: number; height: number };
     maxReferences: number;
@@ -168,6 +195,7 @@ type ComposerProps = {
     onReplaceAttachment: (targetAttachmentId: string, replacement: CreationAttachment) => void;
     onReplaceReferenceFiles: (targetAttachmentId: string, files: File[]) => void;
     onOpenLibrary: () => void;
+    onUploadReferences: (files: File[]) => void;
     onModeChange: (mode: CreationMode) => void;
     model: string;
     modelRequirements: ModelRequirements;
@@ -207,7 +235,64 @@ type ComposerProps = {
 
 type CreationReferenceFilter = "all" | "image" | "video" | "audio" | "file";
 
+/** 与 LJCanvas 首页一致的模式入口，所有动作仍走当前页面的真实状态。 */
+export function CreationModeMenu({ mode, onModeChange, agentActive = false, onAgentSelect, disabled = false }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; agentActive?: boolean; onAgentSelect: () => void; disabled?: boolean }) {
+    const [open, setOpen] = useState(false);
+    const agentName = useAppearanceStore(selectAgentName);
+    const items = [
+        { key: "agent", label: agentName, icon: <Orbit aria-hidden="true" /> },
+        { key: "image", label: "图片生成", icon: <ImageIcon aria-hidden="true" /> },
+        { key: "video", label: "视频生成", icon: <Film aria-hidden="true" /> },
+        { key: "text", label: "文本创作", icon: <MessageSquareText aria-hidden="true" /> },
+    ] as const;
+    const activeKey = agentActive ? "agent" : mode;
+    const active = items.find((item) => item.key === activeKey)!;
+    return (
+        <Dropdown
+            trigger={["click"]}
+            placement="bottomLeft"
+            autoFocus
+            open={open}
+            onOpenChange={setOpen}
+            disabled={disabled}
+            classNames={{ root: "creation-mode-menu" }}
+            menu={{
+                selectable: true,
+                selectedKeys: [activeKey],
+                items: [
+                    {
+                        type: "group",
+                        label: "创作类型",
+                        children: items.map((item) => ({
+                            key: item.key,
+                            icon: item.icon,
+                            label: (
+                                <span className="creation-mode-menu-label">
+                                    {item.label}
+                                    {item.key === activeKey ? <Check aria-hidden="true" /> : null}
+                                </span>
+                            ),
+                        })),
+                    },
+                ],
+                onClick: ({ key }) => {
+                    setOpen(false);
+                    if (key === "agent") onAgentSelect();
+                    else if (key === "image" || key === "video" || key === "text") onModeChange(key);
+                },
+            }}
+        >
+            <button type="button" className="creation-chat-control creation-mode-trigger" disabled={disabled} aria-label={`创作模式：${active.label}`} aria-haspopup="menu" aria-expanded={open}>
+                {active.icon}
+                <span>{active.label}</span>
+                <ChevronDown aria-hidden="true" />
+            </button>
+        </Dropdown>
+    );
+}
+
 export function CreationComposer(props: ComposerProps) {
+    const isCreationHome = props.variant === "empty";
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const [promptOptimizerOpen, setPromptOptimizerOpen] = useState(false);
@@ -219,7 +304,8 @@ export function CreationComposer(props: ComposerProps) {
     const suppressAttachmentClickRef = useRef(false);
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isExpanded: true, isDragging: false });
     const previousAttachmentCountRef = useRef(0);
-    const interactionBusy = props.busy || props.referenceReplacementBusy;
+    const localReferenceInputRef = useRef<HTMLInputElement>(null);
+    const interactionBusy = props.busy || props.referenceReplacementBusy || props.referenceUploadBusy;
     // 创作页张数等于拆单数，上限按账号同时任务数，硬上限仍为 15。
     const imageBatchLimit = Math.min(15, useGenerationBatchLimit());
     const settingsError = mediaSettingIssues(props.config, props.mode, props.model)
@@ -263,7 +349,15 @@ export function CreationComposer(props: ComposerProps) {
     const generationCredits = routeQuote ? batchQuoteTotal(routeQuote.amountMicrocredits, props.mode === "image" ? imageTaskCount : 1) : credits;
     const showCost = creditsEnabled && generationCredits !== null && generationCredits !== undefined;
     const formattedCredits = generationCredits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
-    const actionLabel = props.referenceReplacementBusy ? "正在替换参考图" : interactionBusy || (props.generationActive && !canSubmit) ? "生成中" : showCost ? `${routeQuote?.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，发送` : "发送";
+    const actionLabel = props.referenceUploadBusy
+        ? "正在上传参考素材"
+        : props.referenceReplacementBusy
+          ? "正在替换参考图"
+          : interactionBusy || (props.generationActive && !canSubmit)
+            ? "生成中"
+            : showCost
+              ? `${routeQuote?.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，发送`
+              : "发送";
     // Send-button working state must span the WHOLE generation (not just the
     // submit-lock window): spinner + glow stay while a message is pending and
     // the composer is empty; typing a next prompt returns the arrow so the
@@ -388,6 +482,31 @@ export function CreationComposer(props: ComposerProps) {
     const surface = (
         <SpotlightSurface className={`creation-chat-composer is-${props.variant}`} contentClassName="contents" spotlightColor={embedded ? "transparent" : "color-mix(in srgb, var(--user-ink) 12%, transparent)"} spotlightRadius={280}>
             <div className="creation-chat-writing-surface">
+                {props.modeControl && referencesSupported ? (
+                    <div className="creation-reference-entry-row" role="group" aria-label="参考内容" aria-busy={props.referenceUploadBusy}>
+                        <input
+                            ref={localReferenceInputRef}
+                            type="file"
+                            hidden
+                            multiple
+                            accept={props.mode === "text" ? "image/*,video/*,audio/*" : creationUploadAccept(props.mode)}
+                            disabled={interactionBusy || !canAddMoreReferences}
+                            onChange={(event) => {
+                                const files = Array.from(event.currentTarget.files || []);
+                                event.currentTarget.value = "";
+                                if (files.length) props.onUploadReferences(files);
+                            }}
+                        />
+                        <button type="button" className="creation-reference-entry" onClick={() => localReferenceInputRef.current?.click()} disabled={interactionBusy || !canAddMoreReferences}>
+                            {props.referenceUploadBusy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
+                            <span>{props.referenceUploadBusy ? "上传中" : "本地上传"}</span>
+                        </button>
+                        <button type="button" className="creation-reference-entry" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences}>
+                            <FolderOpen aria-hidden="true" />
+                            <span>素材库</span>
+                        </button>
+                    </div>
+                ) : null}
                 <div className="creation-chat-editor">
                     <CanvasResourceMentionTextarea
                         ref={props.composerFocusRef}
@@ -495,7 +614,7 @@ export function CreationComposer(props: ComposerProps) {
                                             </Reorder.Item>
                                         ))}
                                         {!visibleAttachments.length && props.attachments.length ? <li className="creation-reference-filter-empty">该类型暂无参考内容</li> : null}
-                                        {referencesSupported ? (
+                                        {referencesSupported && !props.modeControl ? (
                                             <li className="creation-reference-add-slot">
                                                 <Tooltip title={addReferenceLabel}>
                                                     <button type="button" className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}>
@@ -526,8 +645,9 @@ export function CreationComposer(props: ComposerProps) {
             </div>
             <footer className="creation-chat-dock">
                 <div className="creation-chat-controls">
+                    {props.modeControl}
                     {props.variant === "thread" ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
-                    {referencesSupported && !props.attachments.length ? (
+                    {!props.modeControl && referencesSupported && !props.attachments.length ? (
                         <Tooltip title={addReferenceLabel}>
                             <button type="button" className="creation-chat-control" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}>
                                 <Plus aria-hidden="true" />
@@ -535,7 +655,7 @@ export function CreationComposer(props: ComposerProps) {
                             </button>
                         </Tooltip>
                     ) : null}
-                    <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} />
+                    {!props.modeControl ? <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} /> : null}
                     {canOptimizePrompt ? (
                         <Tooltip title="用 AI 优化提示词">
                             <button type="button" className="creation-chat-control" onClick={() => setPromptOptimizerOpen(true)} aria-label="优化提示词" aria-expanded={promptOptimizerOpen} aria-haspopup="dialog">
@@ -551,6 +671,8 @@ export function CreationComposer(props: ComposerProps) {
                         capability={props.mode}
                         requirements={props.modelRequirements}
                         className="creation-model-picker"
+                        popoverClassName={isCreationHome ? "creation-home-model-popover" : undefined}
+                        layout={isCreationHome ? "compact-two-pane" : undefined}
                         placeholder={`选择${modeLabels[props.mode]}模型`}
                         showSelectedPrice={false}
                         showOptionPrices
@@ -579,32 +701,35 @@ export function CreationComposer(props: ComposerProps) {
                         </Tooltip>
                     ) : null}
                 </div>
-                <Button
-                    type="text"
-                    className={`creation-submit ${showCost ? "has-cost" : ""}`}
-                    disabled={interactionBusy || !canSubmit}
-                    style={
-                        {
-                            position: "relative",
-                            color: "var(--user-ink)",
-                        } as CSSProperties
-                    }
-                    onClick={interactionBusy ? undefined : props.onSubmit}
-                    aria-label={actionLabel}
-                    title={!canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel}
-                >
-                    {showWorkingGlow ? <WorkingGlow active color="var(--creation-text)" radius="var(--button-radius)" /> : null}
-                    {showCost ? (
-                        <span className="creation-submit-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : undefined}>
-                            <CreditSymbol />
-                            <span>{routeQuote?.estimated ? `预估:${formattedCredits}` : formattedCredits}</span>
+                <div className={props.modeControl ? "creation-chat-submit-tools is-empty" : "contents"}>
+                    {props.modeControl ? <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} /> : null}
+                    <Button
+                        type="text"
+                        className={`creation-submit ${showCost ? "has-cost" : ""}`}
+                        disabled={interactionBusy || !canSubmit}
+                        style={
+                            {
+                                position: "relative",
+                                color: "var(--user-ink)",
+                            } as CSSProperties
+                        }
+                        onClick={interactionBusy ? undefined : props.onSubmit}
+                        aria-label={actionLabel}
+                        title={!canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel}
+                    >
+                        {showWorkingGlow ? <WorkingGlow active color="var(--creation-text)" radius="var(--button-radius)" /> : null}
+                        {showCost ? (
+                            <span className="creation-submit-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : undefined}>
+                                <CreditSymbol />
+                                <span>{routeQuote?.estimated ? `预估:${formattedCredits}` : formattedCredits}</span>
+                            </span>
+                        ) : null}
+                        <span className="creation-submit-action" aria-hidden>
+                            {showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+                            <span>{showWorkingSpinner ? "生成中" : "开始创作"}</span>
                         </span>
-                    ) : null}
-                    <span className="creation-submit-action" aria-hidden>
-                        {showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
-                        <span>{showWorkingSpinner ? "生成中" : "开始创作"}</span>
-                    </span>
-                </Button>
+                    </Button>
+                </div>
             </footer>
             {props.mode === "image" || props.mode === "video" ? (
                 <MediaSettingsNotice
@@ -625,7 +750,11 @@ export function CreationComposer(props: ComposerProps) {
         </SpotlightSurface>
     );
     const composer = embedded ? (
-        surface
+        props.modeControl ? (
+            <div className="creation-composer-shell">{surface}</div>
+        ) : (
+            surface
+        )
     ) : (
         <HoverBorderGradient as="div" duration={2.2} containerClassName="creation-composer-shell" className="creation-composer-shell-inner">
             {surface}

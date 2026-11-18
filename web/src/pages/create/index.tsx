@@ -3,7 +3,7 @@ import { App, Button, Spin } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { History, Maximize2, PenLine } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { AssetLibraryPickerItem } from "@/components/assets/asset-library-picker-modal";
@@ -85,9 +85,7 @@ import {
     reconcileCreationTaskMessages,
     type PersistedCreationTask,
 } from "./creation-conversations";
-import { CreationComposer, CreationEmptySuggest, CreationHistoryDrawer, CreationMessageView, CreationModeCard, CreationWorkspaceToolbar, creationAssetCategoryLabels } from "./creation-workspace";
-import { declaredInspirationSources } from "@/lib/inspirations/catalog";
-import { fillablePrompt } from "@/lib/inspirations/resolve";
+import { CreationComposer, CreationEmptySuggest, CreationHistoryDrawer, CreationMessageView, CreationModeCard, CreationModeMenu, CreationWorkspaceToolbar, creationAssetCategoryLabels } from "./creation-workspace";
 import { CreationRecentCanvases } from "./creation-recent-canvases";
 import { CreationAgentEntry } from "./creation-agent-entry";
 import { CreationHistoryConflicts } from "./creation-history-conflicts";
@@ -97,7 +95,6 @@ import { creationVideoConfig, creationVideoSettings } from "./creation-generatio
 import { trackSiteTrafficAction } from "@/services/site-traffic";
 
 const AssetLibraryPickerModal = lazy(() => import("@/components/assets/asset-library-picker-modal").then((module) => ({ default: module.AssetLibraryPickerModal })));
-const InspirationHall = lazy(() => import("@/pages/inspirations"));
 const loadCreationRuntime = () => import("./creation-runtime");
 type CreationRuntime = Awaited<ReturnType<typeof loadCreationRuntime>>;
 
@@ -143,10 +140,14 @@ export default function CreatePage() {
     const [agentMode, setAgentMode] = useState(false);
     const { message: toast, modal } = App.useApp();
     const navigate = useNavigate();
+    const location = useLocation();
+    const appliedInspirationKey = useRef<string | null>(null);
     const [openingCanvas, setOpeningCanvas] = useState(false);
     const openingCanvasRef = useRef(false);
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
-    const themeHomeHeading = useThemePack()?.copy?.homeHeading;
+    const themePack = useThemePack();
+    const themeHomeHeading = themePack?.copy?.homeHeading;
+    const compactHome = themePack?.creationLayout === "compact";
     const config = useEffectiveConfig();
     const composerPreferencesHydrated = useCreationPreferencesStore((state) => state.hydrated);
     const rememberMode = useCreationPreferencesStore((state) => state.rememberMode);
@@ -180,7 +181,6 @@ export default function CreatePage() {
     const historyTimerRef = useRef<number | null>(null);
     const remoteHistorySnapshots = useRef(new WeakSet<CreationConversation[]>());
     const [historySync, setHistorySync] = useState<HistorySyncStatus>({ phase: "local" });
-    const inspirationSourcesVisible = useUserStore((state) => state.features.inspirationSourcesVisible);
     const [conversationScope, setConversationScope] = useState<string | null>(() => (initialConversationSnapshot ? activeConversationScope : null));
     const [mode, setMode] = useState<CreationMode>(() => initialComposerPreferences.mode || defaultCreationMode);
     const [prompt, setPrompt] = useState("");
@@ -201,6 +201,7 @@ export default function CreatePage() {
     const [textThinkingPrefs, setTextThinkingPrefs] = useState(readThinkingLevelPrefs);
     const [busy, setBusy] = useState(false);
     const [referenceReplacementBusy, setReferenceReplacementBusy] = useState(false);
+    const [referenceUploadBusy, setReferenceUploadBusy] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const { openAuth } = useAuthEntry();
     const [libraryOpen, setLibraryOpen] = useState(false);
@@ -301,6 +302,8 @@ export default function CreatePage() {
     // 入口需要展示整个模型组的引用能力，添加素材后再由兼容路由选择具体模型。
     const videoReferenceLimits = useMemo(() => (mode === "video" ? modelGroupReferenceLimits(config, preferredModel || selectedModel, "video") || { maxImages: 0, maxVideos: 0, maxAudios: 0 } : undefined), [config, mode, preferredModel, selectedModel]);
     const maxReferences = mode === "video" ? (videoReferenceLimits?.maxImages || 0) + (videoReferenceLimits?.maxVideos || 0) + (videoReferenceLimits?.maxAudios || 0) : mode === "image" ? imageProfile.references.maxImages : 6;
+    const referenceContextRef = useRef({ mode, maxReferences, videoReferenceLimits });
+    referenceContextRef.current = { mode, maxReferences, videoReferenceLimits };
     const referenceImageSize = useMemo(() => {
         const imageAttachments = attachments.filter(isImageAttachment);
         if (imageAttachments.length !== 1) return undefined;
@@ -762,19 +765,23 @@ export default function CreatePage() {
         [assets, externalLibraryItems, mode, videoReferenceLimits],
     );
     const uploadCreationAsset = async (file: File) => {
+        const scope = getActiveUserScope();
         const { uploadImage, uploadMediaFile } = await loadCreationRuntime();
+        if (scope !== getActiveUserScope()) throw new Error("账号已切换，请重新上传");
         if (file.type.startsWith("video/")) {
             const uploaded = await uploadMediaFile(file, "create-upload");
             return {
-                asset: creationVideoAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
+                asset: creationVideoAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name, librarySaved: false } }),
                 attachment: creationAttachmentFromVideo(file, uploaded),
+                pendingRemoteUpload: uploaded.pendingRemoteUpload,
             };
         }
         if (file.type.startsWith("audio/")) {
             const uploaded = await uploadMediaFile(file, "create-upload");
             return {
-                asset: creationAudioAsset({ title: audioUploadTitleFromFileName(file.name), uploaded, metadata: { source: "create-upload", fileName: file.name } }),
+                asset: creationAudioAsset({ title: audioUploadTitleFromFileName(file.name), uploaded, metadata: { source: "create-upload", fileName: file.name, librarySaved: false } }),
                 attachment: creationAttachmentFromAudio(file, uploaded),
+                pendingRemoteUpload: uploaded.pendingRemoteUpload,
             };
         }
         if (!file.type.startsWith("image/")) {
@@ -783,25 +790,79 @@ export default function CreatePage() {
         }
         const uploaded = await uploadImage(file);
         return {
-            asset: creationImageAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
+            asset: creationImageAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name, librarySaved: false } }),
             attachment: creationAttachmentFromImage(file, uploaded),
+            pendingRemoteUpload: uploaded.pendingRemoteUpload,
         };
     };
     const uploadLibraryAssets = async (files: FileList | File[]) => {
         if (!requireCreationLogin()) return [];
         const next = Array.from(files).filter((file) => creationFileAccepted(mode, file));
         if (!next.length) return [];
+        const scope = getActiveUserScope();
         const settled = await Promise.allSettled(
             next.map(async (file) => {
                 const { asset } = await uploadCreationAsset(file);
-                return asset ? addAsset(asset) : "";
+                return asset && scope === getActiveUserScope() ? addAsset({ ...asset, metadata: { ...asset.metadata, librarySaved: true } }) : "";
             }),
         );
+        if (scope !== getActiveUserScope()) return [];
         const assetIds = settled.flatMap((entry) => (entry.status === "fulfilled" && entry.value ? [entry.value] : []));
         const failed = settled.filter((entry) => entry.status === "rejected");
         if (assetIds.length) toast.success(t("create.page.uploadSucceeded", { count: assetIds.length }));
         if (failed.length) toast.error(t("create.page.uploadFailed", { count: failed.length }));
         return assetIds;
+    };
+
+    const uploadLocalReferences = async (files: File[]) => {
+        if (busy || referenceReplacementBusy || referenceUploadBusy) return;
+        if (!requireCreationLogin()) return;
+        const accepted = files.filter((file) => creationFileAccepted(mode, file) && creationAttachmentKind(file) !== "file");
+        if (accepted.length < files.length) toast.warning("已跳过当前创作模式不支持的文件");
+        const current = attachmentsRef.current;
+        const remaining = videoReferenceLimits ? { image: videoReferenceLimits.maxImages, video: videoReferenceLimits.maxVideos, audio: videoReferenceLimits.maxAudios, file: 0 } : null;
+        if (remaining) current.forEach((item) => remaining[creationAttachmentKind(item)]--);
+        const next = accepted.filter((file) => !remaining || remaining[creationAttachmentKind(file)]-- > 0).slice(0, Math.max(0, maxReferences - current.length));
+        if (next.length < accepted.length) toast.warning(t("create.page.referenceLimitExceeded"));
+        if (!next.length) return;
+
+        const token = submitGateRef.current.tryAcquire();
+        if (!token) {
+            toast.warning(t("create.page.submitInProgress"));
+            return;
+        }
+        const scope = getActiveUserScope();
+        const conversationId = activeId;
+        setReferenceUploadBusy(true);
+        try {
+            const settled = await Promise.allSettled(
+                next.map(async (file) => {
+                    const uploaded = await uploadCreationAsset(file);
+                    if (getActiveUserScope() !== scope || !uploaded.asset) return uploaded;
+                    const id = addAsset(uploaded.asset);
+                    return { ...uploaded, attachment: { ...uploaded.attachment, id: `asset:${id}` } };
+                }),
+            );
+            if (getActiveUserScope() !== scope) return;
+            const completed = settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+            const failed = settled.length - completed.length;
+            if (failed) toast.error(t("create.page.uploadFailed", { count: failed }));
+            const context = referenceContextRef.current;
+            if (activeIdRef.current !== conversationId || context.mode !== mode) {
+                if (completed.length) toast.info("创作已切换，上传内容未添加到当前参考区");
+                return;
+            }
+            if (!completed.length) return;
+            const candidates = [...attachmentsRef.current, ...completed.map(({ attachment }) => attachment)];
+            const reconciled = context.videoReferenceLimits ? reconcileCreationAttachmentLimits(candidates, [], context.videoReferenceLimits) : reconcileCreationAttachmentLimit(candidates, [], context.maxReferences);
+            attachmentsRef.current = reconciled.attachments;
+            setAttachments(reconciled.attachments);
+            if (reconciled.attachments.length < candidates.length) toast.warning(t("create.page.referenceLimitExceeded"));
+            if (completed.some(({ pendingRemoteUpload }) => pendingRemoteUpload)) toast.warning("部分素材仅缓存在本机，尚未同步到云端");
+        } finally {
+            submitGateRef.current.release(token);
+            setReferenceUploadBusy(false);
+        }
     };
 
     const handleLibrarySelect = async (selectedIds: string[], pickedItems = libraryItems) => {
@@ -877,15 +938,17 @@ export default function CreatePage() {
     const replaceReferenceFromFiles = useCallback(
         async (targetAttachmentId: string, files: File[]) => {
             if (!requireCreationLogin()) return;
-            if (busy || referenceReplacementBusy) return;
+            if (busy || referenceReplacementBusy || referenceUploadBusy) return;
             const file = files.find((item) => item.type.startsWith("image/"));
             if (!file) {
                 toast.warning(t("create.page.dropImageToReplace"));
                 return;
             }
+            const scope = getActiveUserScope();
             setReferenceReplacementBusy(true);
             try {
                 const { asset, attachment } = await uploadCreationAsset(file);
+                if (scope !== getActiveUserScope()) return;
                 if (creationAttachmentKind(attachment) !== "image") throw new Error(t("create.page.uploadNotImage"));
                 if (asset) addAsset(asset);
                 if (replaceAttachmentReference(targetAttachmentId, attachment)) toast.success(t("create.page.referenceReplaced"));
@@ -895,7 +958,7 @@ export default function CreatePage() {
                 setReferenceReplacementBusy(false);
             }
         },
-        [addAsset, busy, referenceReplacementBusy, replaceAttachmentReference, requireCreationLogin, toast],
+        [addAsset, busy, referenceReplacementBusy, referenceUploadBusy, replaceAttachmentReference, requireCreationLogin, toast],
     );
 
     const submit = async (retryContext?: CreationRetryContext, retryLockKey?: string) => {
@@ -1456,6 +1519,25 @@ export default function CreatePage() {
         restoreMessageDraft(previous);
     };
 
+    const startPrompt = (nextMode: CreationMode, nextPrompt: string) => {
+        setAgentMode(false);
+        selectMode(nextMode);
+        setPrompt(nextPrompt);
+        threadScrollRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+        window.requestAnimationFrame(() => composerFocusRef.current?.focus({ preventScroll: true }));
+    };
+
+    useEffect(() => {
+        if (!hydrated || (!conversationStorageReady && !conversationStorageError) || !composerPreferencesInitialized || appliedInspirationKey.current === location.key) return;
+        const inspiration = location.state?.inspiration;
+        if (!inspiration || !["text", "image", "video"].includes(inspiration.mode) || typeof inspiration.prompt !== "string") return;
+        appliedInspirationKey.current = location.key;
+        if (!isEmpty) startNewConversation();
+        startPrompt(inspiration.mode, inspiration.prompt);
+        // 消费一次后清除路由草稿，刷新或返回不再覆盖用户正在编辑的内容。
+        navigate(location.pathname, { replace: true, state: null });
+    }, [location, hydrated, conversationStorageReady, conversationStorageError, composerPreferencesInitialized]);
+
     if ((!hydrated || !activeConversation) && conversationStorageError) {
         return (
             <div className="grid h-full place-items-center">
@@ -1498,14 +1580,6 @@ export default function CreatePage() {
     };
 
     const generationActive = activeConversation.messages.some((message) => message.role === "assistant" && message.status === "pending");
-    const startPrompt = (nextMode: CreationMode, nextPrompt: string) => {
-        setAgentMode(false);
-        selectMode(nextMode);
-        setPrompt(nextPrompt);
-        threadScrollRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
-        window.requestAnimationFrame(() => composerFocusRef.current?.focus({ preventScroll: true }));
-    };
-
     const composerProps = {
         mode,
         prompt,
@@ -1513,6 +1587,7 @@ export default function CreatePage() {
         busy,
         generationActive,
         referenceReplacementBusy,
+        referenceUploadBusy,
         attachments,
         referenceImageSize,
         maxReferences,
@@ -1524,6 +1599,7 @@ export default function CreatePage() {
         onReplaceAttachment: replaceReferenceFromTrack,
         onReplaceReferenceFiles: replaceReferenceFromFiles,
         onOpenLibrary: openReferenceLibrary,
+        onUploadReferences: uploadLocalReferences,
         onModeChange: selectMode,
         model: selectedModel,
         modelRequirements,
@@ -1627,72 +1703,93 @@ export default function CreatePage() {
                                 <header className="creation-start-heading">
                                     <div>
                                         <h1>{themeHomeHeading || t("create.page.heading", { brand: brandName })}</h1>
-                                        <p>{t("create.page.subheading")}</p>
+                                        {!compactHome ? <p>{t("create.page.subheading")}</p> : null}
                                     </div>
-                                    <button type="button" className="creation-history-entry" aria-label={t("create.page.viewHistory")} aria-expanded={historyOpen} onClick={() => setHistoryOpen(true)}>
-                                        <History aria-hidden="true" />
-                                        <span>{t("create.history.title")}</span>
-                                    </button>
+                                    {!compactHome ? (
+                                        <button type="button" className="creation-history-entry" aria-label={t("create.page.viewHistory")} aria-expanded={historyOpen} onClick={() => setHistoryOpen(true)}>
+                                            <History aria-hidden="true" />
+                                            <span>{t("create.history.title")}</span>
+                                        </button>
+                                    ) : null}
                                 </header>
                                 <div className={cn("creation-composer-stage is-home-mode", agentMode && "is-agent-mode")}>
-                                    <CreationModeCard
-                                        mode={mode}
-                                        agentActive={agentMode}
-                                        onAgentSelect={() => setAgentMode(true)}
-                                        onModeChange={(next) => {
-                                            setAgentMode(false);
-                                            selectMode(next);
-                                        }}
-                                    >
-                                        {agentMode ? (
-                                            <CreationAgentEntry />
-                                        ) : (
-                                            <div className="creation-empty-composer">
-                                                <CreationComposer {...composerProps} variant="empty" />
-                                            </div>
-                                        )}
-                                    </CreationModeCard>
+                                    {compactHome ? (
+                                        <>
+                                            {agentMode ? (
+                                                <div className="creation-composer-shell creation-agent-shell">
+                                                    <CreationAgentEntry compact />
+                                                    <div className="creation-agent-mode-dock">
+                                                        <CreationModeMenu
+                                                            mode={mode}
+                                                            agentActive
+                                                            onAgentSelect={() => setAgentMode(true)}
+                                                            onModeChange={(next) => {
+                                                                setAgentMode(false);
+                                                                selectMode(next);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="creation-empty-composer">
+                                                    <CreationComposer
+                                                        {...composerProps}
+                                                        variant="empty"
+                                                        modeControl={
+                                                            <CreationModeMenu
+                                                                mode={mode}
+                                                                onAgentSelect={() => setAgentMode(true)}
+                                                                onModeChange={(next) => {
+                                                                    setAgentMode(false);
+                                                                    selectMode(next);
+                                                                }}
+                                                                disabled={busy || referenceReplacementBusy || referenceUploadBusy}
+                                                            />
+                                                        }
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <CreationModeCard
+                                            mode={mode}
+                                            agentActive={agentMode}
+                                            onAgentSelect={() => setAgentMode(true)}
+                                            onModeChange={(next) => {
+                                                setAgentMode(false);
+                                                selectMode(next);
+                                            }}
+                                        >
+                                            {agentMode ? (
+                                                <CreationAgentEntry />
+                                            ) : (
+                                                <div className="creation-empty-composer">
+                                                    <CreationComposer {...composerProps} variant="empty" />
+                                                </div>
+                                            )}
+                                        </CreationModeCard>
+                                    )}
                                 </div>
-                                <CreationEmptySuggest
-                                    onStartPrompt={startPrompt}
-                                    onOpenLibrary={() => {
-                                        if (!requireCreationLogin()) return;
-                                        setAgentMode(false);
-                                        selectMode("image");
-                                        setLibraryOpen(true);
-                                    }}
-                                />
+                                {compactHome ? (
+                                    <div className="creation-launchpad-footer">
+                                        <button type="button" className="creation-history-entry" aria-label={t("create.page.viewHistory")} aria-expanded={historyOpen} onClick={() => setHistoryOpen(true)}>
+                                            <History aria-hidden="true" />
+                                            <span>{t("create.history.title")}</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <CreationEmptySuggest
+                                        onStartPrompt={startPrompt}
+                                        onOpenLibrary={() => {
+                                            if (!requireCreationLogin()) return;
+                                            setAgentMode(false);
+                                            selectMode("image");
+                                            setLibraryOpen(true);
+                                        }}
+                                    />
+                                )}
                             </section>
                             <CreationRecentCanvases onRequireLogin={() => openAuth()} />
-                            <Suspense
-                                fallback={
-                                    <div className="creation-hall-loading" role="status">
-                                        {t("create.page.hallLoading")}
-                                    </div>
-                                }
-                            >
-                                <InspirationHall onUse={(item) => startPrompt(item.mode, fillablePrompt(item))} />
-                            </Suspense>
-                            {inspirationSourcesVisible ? (
-                                <div className="creation-source-notice">
-                                    <details>
-                                        <summary>{t("create.page.sourcesSummary")}</summary>
-                                        {declaredInspirationSources().map((source) => (
-                                            <p key={source.name ?? source.label}>
-                                                {source.notice}
-                                                {source.repository ? (
-                                                    <>
-                                                        {" "}
-                                                        <a href={source.repository} target="_blank" rel="noreferrer">
-                                                            {source.name} · {source.license}
-                                                        </a>
-                                                    </>
-                                                ) : null}
-                                            </p>
-                                        ))}
-                                    </details>
-                                </div>
-                            ) : null}
                         </main>
                     </>
                 ) : (

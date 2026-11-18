@@ -21,7 +21,7 @@ describe("workspace route loading", () => {
         const modules = source("../src/lib/workspace-route-modules.ts");
         const navigation = source("../src/components/layout/workspace-sidebar-nav.tsx");
 
-        for (const route of ["projects", "canvas", "assets", "create"]) {
+        for (const route of ["projects", "canvas", "assets", "create", "inspirations"]) {
             expect(modules).toContain(`${route}: preloadableLazy(() => import`);
         }
         expect(modules).toContain('projectDetail: preloadableLazy(() => import("@/pages/projects/detail"))');
@@ -29,6 +29,21 @@ describe("workspace route loading", () => {
         expect(navigation).toContain("onPointerEnter={() => preloadWorkspaceRoute(linkTo)}");
         expect(navigation).toContain("onPointerDown={() => preloadWorkspaceRoute(linkTo)}");
         expect(navigation).toContain("onFocus={() => preloadWorkspaceRoute(linkTo)}");
+    });
+
+    test("moves inspiration browsing to a sidebar route and hands prompts back to creation", () => {
+        const router = source("../src/router.tsx");
+        const navigation = source("../src/components/layout/workspace-sidebar-nav.tsx");
+        const page = source("../src/pages/inspirations/page.tsx");
+        const create = source("../src/pages/create/index.tsx");
+        expect(router).toContain('{ path: "/inspirations", element: deferred(<InspirationsPage />) }');
+        expect(navigation).toContain('icon: Lightbulb, to: "/inspirations"');
+        expect(create).not.toContain("<InspirationHall");
+        expect(page).toContain("prompt: fillablePrompt(item)");
+        expect(create).toContain("startPrompt(inspiration.mode, inspiration.prompt)");
+        expect(create).toContain("if (!isEmpty) startNewConversation()");
+        expect(create).toContain("navigate(location.pathname, { replace: true, state: null })");
+        expect(create.indexOf("const inspiration = location.state?.inspiration")).toBeLessThan(create.indexOf("if ((!hydrated || !activeConversation) && conversationStorageError)"));
     });
 
     test("renders preloaded workspace pages without suspending the layout", async () => {

@@ -7,6 +7,7 @@ export const workspaceRoutePages = {
     canvas: preloadableLazy(() => import("@/pages/canvas")),
     canvasProject: preloadableLazy(() => import("@/pages/canvas/project")),
     create: preloadableLazy(() => import("@/pages/create")),
+    inspirations: preloadableLazy(() => import("@/pages/inspirations/page")),
     ecommerce: preloadableLazy(() => import("@/pages/ecommerce")),
     imageWorkbench: preloadableLazy(() => import("@/pages/workbench/image-workbench-route")),
     videoWorkbench: preloadableLazy(() => import("@/pages/workbench/video-workbench-page")),
@@ -26,6 +27,7 @@ export const loadCanvasProjectPage = workspaceRoutePages.canvasProject.preload;
 
 const workspaceRouteSlugs: Record<string, keyof typeof workspaceRoutePages> = {
     create: "create",
+    inspirations: "inspirations",
     canvas: "canvas",
     assets: "assets",
     projects: "projects",
