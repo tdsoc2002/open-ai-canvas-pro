@@ -333,11 +333,11 @@ handle 放错端点、格式错误或行 ID 不存在时，工具错误回执提
 
 ## 个人对象存储开关
 
-平台对象存储配置中的 `allowUserS3` 沿用现有 JSON 字段名，统一控制所有个人对象存储类型，包括阿里云 OSS、腾讯云 COS、七牛云 Kodo、火山引擎 TOS 和 S3 兼容存储。
+平台对象存储配置中的 `allowUserStorage`（默认 `false`）统一控制所有个人对象存储类型，包括阿里云 OSS、腾讯云 COS、七牛云 Kodo、火山引擎 TOS 和 S3 兼容存储。旧的 `allowUserS3` 不再授予许可；需要开放时须由管理员显式保存新开关。
 
 - 管理员通过 `GET/PATCH /api/admin/settings/oss` 查询和保存策略。
 - 关闭时，`PATCH /api/settings/oss` 和 `POST /api/settings/oss/test` 均返回 HTTP 403，任何类型及启用/停用请求都不能保存；连接测试不会发出上游请求。
-- `GET /api/settings/oss` 返回 `allowUserS3=false`、`enabled=false`；前端隐藏“我的对象存储”菜单，分类下没有其他可见项目时也隐藏整个分类。直接访问存储分类链接会转到个人信息，不提供配置表单。
+- `GET /api/settings/oss` 返回 `allowUserStorage=false`、`enabled=false`，不返回个人存储地址和凭据摘要；前端隐藏“我的对象存储”菜单，分类下没有其他可见项目时也隐藏整个分类。直接访问存储分类链接会转到个人信息，不提供配置表单。
 - 新上传和生成媒体使用平台存储；未启用平台对象存储时使用平台本地存储。已有个人存储绑定的补传任务及媒体写入也会被禁止，补传保留本地文件并按既有机制等待重试。
 - 历史个人存储文件仍按资源绑定的位置和凭据读取、删除，关闭开关不迁移或删除历史文件。
 
@@ -417,6 +417,16 @@ CANVAS_BACKEND_DATA_DIR=/明确的数据目录 ./migrate-schema repair-canvas-re
 
 已有项目上传素材的资源元数据在读取时组装为同一合同，真实大小从已记录的 `size` 映射为 `bytes`。该过程不创建新素材 ID，也不为缺少资源定位或真实文件大小的素材伪造有效数据。
 
+资产库分页及类型、分类、文件夹计数按 `metadata.librarySaved` 过滤。明确的布尔值优先；无布尔值时，来源 `generation-task`、`canvas-generation`、`canvas-upload`、`short-drama-workflow`、`short-drama`、`previs`、`public-reference-gallery` 的旧记录仍可按 ID 使用，但不出现在库列表。混用来源 `create-upload`、`canvas-manual` 及其他来源保留。按 ID、批量读取、同步快照和项目关联不使用该过滤。
+
+图片／视频工作台在实际产物类型与任务工作台类型相同时自动入库，电商中按工作台类型提交的任务沿用这条规则。其他自动登记标记为未入库，明确保存或上传到资产库才标记入库。无需数据迁移，也不据此归档或删除素材、资源及历史记录。
+
+`GET /tasks/:id/output-asset?resourceId=...` 为创作历史解析已成功任务的实际素材，返回 `{ asset }`。服务端校验当前用户、资源就绪，并要求所选资源出现在持久化任务结果的实际输出列表中，不将客户端可写的素材元数据作为依据。参数缺失或结果未就绪返回 400；归属或关联不存在、素材无法唯一确定时返回 404。若旧输出只存在于项目版本历史、没有仍指向该资源的独立素材，也返回 404。该接口只查身份。
+
+`PATCH /assets/:id/library` 仅将本人素材标记为入库，归档素材在明确主动保存时恢复，返回 `{ asset }`。历史传 `{ resourceId }`，若在查询后换了作品或素材并发更新，返回 409。画布保存无预期资源 ID 时可传空对象。此接口不接受整条素材，不复制文件、不覆盖项目引用及版本。普通素材同步和项目媒体版本写入不能用旧载荷撤销已确认的入库标记。
+
+过期回收站清理在删除事务内复核归档状态与截止时间；扫描后已恢复或重新入回收站的素材不会被按旧计划删除。
+
 ## 素材彻底删除
 
 `DELETE /assets/:id` 表示用户确认后的彻底删除，不依赖服务端当前记录是否已经同步为 `archived`。接口仍校验登录用户和素材归属，但不会因画布、任务、项目或历史快照仍有引用而拒绝；事务会删除素材及对应历史资源索引，并通过删除 Outbox 清理未被其他素材复用的物理对象。其他素材共享的同一物理对象继续保留。移入回收站仍通过素材写入接口把状态更新为 `archived`，不能用 DELETE 代替可恢复归档。
@@ -481,7 +491,7 @@ CANVAS_BACKEND_DATA_DIR=/明确的数据目录 ./migrate-schema repair-canvas-re
 
 外观设置新增 `updates: { enabled, currentVersion, releases }`，由管理员通过 `PATCH /admin/settings/appearance` 保存；关闭开关保留草稿，但 `GET /public/appearance` 返回关闭状态与空公告列表，前端恢复内置更新日志。开启时公开版本与内容块，当前版本须对应公告版本。媒体上传、管理员预览、公开引用读取及限制详见 [自定义更新公告](/docs/backend/update-announcements)。JSON 请求上限为 512KB；无数据表迁移。
 
-`GET /public/appearance` 和管理员 `GET /admin/settings/appearance` 返回 `canvas`；管理员通过 `PATCH /admin/settings/appearance` 随外观配置统一保存。字段为 `agentName`（1–24 字）、`launcherLabel`（0–24 字）、`panelTitle`（1–40 字）、`welcomeTitle`（1–100 字）、`welcomeDescription`（0–200 字）、`inputPlaceholder`（1–160 字）、`avatarType`（`orb|bundle|live2d`）、`avatarHeight`（120–360 整数）、`live2dResourceId`、`live2dEntry`、`avatarBundleResourceId` 和状态到 clip 名的 `avatarClipStates`。状态键为 `idle|queued|running|waiting_approval|completed|failed|cancelled|rejected`；状态动画包为空资源 ID 时使用内置 `/doll/avatar.json`。启用上传包时服务端核验资源归属、ZIP 与每个状态引用的 clip。名称以数据形式投影到每轮 Agent 执行上下文，不提供自由系统提示词配置，也不改变工具权限。
+`GET /public/appearance` 和管理员 `GET /admin/settings/appearance` 返回 `canvas`；管理员通过 `PATCH /admin/settings/appearance` 随外观配置统一保存。字段为 `agentName`（1–24 字）、`launcherLabel`（0–24 字）、`panelTitle`（1–40 字）、`welcomeTitle`（1–100 字）、`welcomeDescription`（0–200 字）、`inputPlaceholder`（1–160 字）、`avatarType`（`orb|bundle|live2d`）、`avatarHeight`（120–360 整数）、`live2dResourceId`、`live2dEntry`、`avatarBundleResourceId` 和状态到 clip 名的 `avatarClipStates`。状态键为 `idle|queued|running|waiting_approval|completed|failed|cancelled|rejected`；`avatarType` 为 `bundle` 且 `avatarBundleResourceId` 为空时，入口显示内置水獭形象。启用上传包时服务端核验资源归属、ZIP 与每个状态引用的 clip。名称以数据形式投影到每轮 Agent 执行上下文，不提供自由系统提示词配置，也不改变工具权限。
 
 - `POST /admin/settings/appearance/live2d`：管理员 multipart `file` 上传，受上传频率和配额限制。成功信封的 `data.model` 为 `{ resourceId, entry }`，上传不会发布。ZIP 限 128 MiB、256 条目、解压合计 384 MiB、单文件 128 MiB；只接收 model3/MOC3/PNG/JSON，拒绝路径穿越、脚本和外部资源。
 - `GET /admin/settings/appearance/live2d/:id/*file`：管理员预览，校验资源归属；其他管理员仅能查看当前外观已引用模型。
@@ -495,6 +505,12 @@ CANVAS_BACKEND_DATA_DIR=/明确的数据目录 ./migrate-schema repair-canvas-re
 部署要求与更详细的文件限制见 [画布 Agent 外观与 Live2D](/docs/backend/canvas-agent-appearance)。
 
 `GET /public/appearance` 返回当前 `activeSkin`；管理员通过 `GET/PUT /admin/settings/appearance` 读取、保存完整主题库。外观合同版本 8 新增 `tokens.buttons.light/dark`，字段为 `mode`（`solid|gradient`）、整数 `angle`（0–360）、HEX 色值 `start/end`、`hoverStart/hoverEnd`、`activeStart/activeEnd`、`foreground`。纯色模式使用既有主操作颜色，渐变仅用于主按钮。非法模式、角度、色值或修改锁定经典主题均拒绝保存；整块缺失的旧配置按主题身份补齐。此变更不增加数据表迁移。
+
+## 源点动力系统渠道模型导入
+
+`POST /admin/channels/:id/models/fetch` 只预览、不写入。OpenAI 类型且使用源点动力官方 HTTPS 地址的渠道，从同源 `/v1/catalog/models` 拉取当前 Key 可见模型；密钥不返回浏览器。除 `data.models` 外，此分支还返回 `data.catalog`：每项有 `id`，识别成功时附 `capability`、`protocol` 和 `fingerprint`，不支持时返回 `unavailableReason`。其他渠道沿用原目录发现方式。
+
+`POST /admin/channels/:id/models/import` 接收 `{ models, catalogFingerprints? }`；源点动力新模型必须同时提交以原始模型 ID 为键的预览指纹。服务端重取目录并验证所选模型；模型消失、能力变更、协议不支持或指纹不匹配时，不新增任何所选条目。新增条目预填可表达的能力参数，仍停用且未定价，不更新已有模型。动态报价等不由导入接口转换成固定价格。
 
 ## 模型规格报价
 
@@ -686,6 +702,12 @@ operations 的结构化配额在提交事务内实时统计账号的素材/画�
 `GET /public/welcome` 无需登录，信封 `data` 仅包含布尔值 `welcomeEnabled`，响应禁用缓存。读取失败按标准错误信封返回。
 
 管理员通过 `GET/PATCH /admin/settings/features` 读取和保存 `welcomeEnabled`，默认 `true`，与其他功能开关一起存入 `system_settings` 的 `feature_availability` JSON，并记录管理员审计。关闭后新访问 `/welcome` 的浏览器跳转到 `/`。
+
+## 界面多语言开放配置
+
+`GET /public/ui-language` 无需登录，信封 `data` 仅返回布尔字段 `multilingualEnabled`，响应禁用缓存。管理员通过 `GET/PATCH /admin/settings/features` 读取或更新该字段，复用功能开放设置和管理员审计。缺少该字段时默认关闭。
+
+前端在载入页面前读取策略。关闭或读取失败时固定使用简体中文，不显示切换入口，也不清除设备原先的语言偏好。管理员修改后，新打开或刷新的页面会使用新策略；该开关不影响模型生成语言。
 
 ## 云端 Agent
 
@@ -913,6 +935,14 @@ Agent 已不再注入、召回或写入下列经验条目，记忆设置页只�
 ## 管理员系统渠道
 
 `POST /api/admin/channels/:id/duplicate` 需要管理员权限，会复制指定系统渠道的连接配置、加密凭证、请求头、模型和价格档，生成新的渠道与模型 ID；复制渠道名称自动追加“ - 副本”。原渠道及其前台供应线路不受影响。
+
+### 腾讯云 VOD VS 直连
+
+系统渠道使用固定地址 `https://vod.tencentcloudapi.com`，创建或更新时用整数 `tencentVodAppId` 表示云点播 `SubAppId`；`apiKey` 填 SecretId，`secretKey` 填 SecretKey。点播应用 ID 仅在管理端渠道响应及导出中返回，导出不含密钥。普通用户不能添加此协议或提交自定义点播应用 ID、动作或签名请求头。挂载模型时请选择 `tencent-vod-vs`，由后台配置模型规格、价格和使用权限。
+
+任务后台使用 TC3 固定调用腾讯云，恢复时查询原任务，不重发创建请求；临时视频沿平台对象存储管道持久化，不改变原 COS 配置。
+
+同一腾讯云点播渠道可以挂载图片协议 `tencent-vod-og`。支持上游模型 `gpt-image-2`、`gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`，使用固定的 OG 创建/查询动作。售价档按管理员配置像素预设与画质选取，不使用云端面积折算档覆盖售价；单任务一张，按张报价。
 
 ## 信封
 

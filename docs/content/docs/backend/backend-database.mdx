@@ -738,6 +738,10 @@ schema v27 为 `channel_model_price_tiers` 和 `billing_orders` 添加 `cost_con
 
 ## 资源存储
 
+平台存储设置的 `system_settings.oss` JSON 增加 `allowUserStorage`，缺省关闭，不新增数据表或列。关闭时不删除 `user_oss_settings` 或历史存储位置，原 `resources.storage_setting_id` 继续用于历史资源读写定位；旧的 `allowUserS3` 不自动转为全供应商授权。
+
+新增的平台对象存储资源固定引用平台 `storage_locations` 记录；非 S3 平台配置没有已绑定位置时，沿用现有表创建或复用与当前连接和凭据对应的加密位置。当前有效平台配置与绑定位置完全一致时，读取、删除和补传使用轮换后的平台凭据。迁到不同位置时仍用原绑定，旧资源不回填。
+
 | 表 | 用途 | 关键边界 |
 | --- | --- | --- |
 | `resources` | 保存资源元数据和实际存储位置引用 | `user_id + upload_key` 唯一约束保证逻辑上传幂等；S3 资源必须通过 `storage_setting_id` 固定绑定创建时的位置；浏览器默认经同源接口读取 |

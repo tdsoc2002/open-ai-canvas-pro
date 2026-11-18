@@ -74,11 +74,11 @@
 
 <table>
 <tr>
-<td width="50%"><img src="assets/screenshots/create.jpg" alt="创作首页：视频、图片、文本、Agent 四种模式与灵感大厅"></td>
+<td width="50%"><img src="assets/screenshots/create.jpg" alt="创作首页：视频、图片、文本、Agent 四种模式"></td>
 <td width="50%"><img src="assets/screenshots/agent.jpg" alt="Agent 模式：新建画布并与 Agent 协作"></td>
 </tr>
 <tr>
-<td><b>创作首页</b>：最近画布、快捷入口和灵感大厅集中在一页。</td>
+<td><b>创作首页</b>：最近画布与快捷入口集中在一页，灵感大厅从左侧导航独立进入。</td>
 <td><b>画布 Agent</b>：Agent 结合素材、技能和画布上下文直接在画布上生成和修改，生成操作仍需经过审批和额度检查。</td>
 </tr>
 </table>
