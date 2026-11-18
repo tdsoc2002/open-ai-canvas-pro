@@ -3,8 +3,7 @@ import type { WorkbenchKind, WorkbenchTool } from "@/services/api/workbench";
 import { workbenchCategoryLabel } from "./workbench-catalog";
 
 /**
- * 电商出品的页面级预设：画幅用途提示、灵感短语与场景细分。
- * 这些只是帮助用户更快写出可用的提示词和选对画幅，最终参数仍以所选模型能力为准。
+ * 电商出品的页面级预设：画幅用途提示与场景细分。最终参数仍以所选模型能力为准。
  */
 
 export type RatioUsage = { label: string; title: string };
@@ -44,23 +43,6 @@ export function workbenchRatioUsage(kind: WorkbenchKind, ratio: string): RatioUs
 export const WORKBENCH_SPEC_TIPS: Record<WorkbenchKind, string> = {
     image: "主图常用 1:1、2K 以上；服饰类用 3:4，投放素材用 9:16。",
     video: "主图视频常用 1:1 或 3:4、5–10 秒；短视频投放用 9:16，开场 3 秒内露出商品。",
-};
-
-export type InspirationGroup = { key: string; label: string; phrases: string[] };
-
-export const WORKBENCH_INSPIRATIONS: Record<WorkbenchKind, InspirationGroup[]> = {
-    image: [
-        { key: "background", label: "背景", phrases: ["纯白无缝背景", "浅灰影棚背景", "大理石台面", "原木桌面", "绿植与自然光", "简约居家场景", "户外阳光", "节日氛围布景"] },
-        { key: "light", label: "光线", phrases: ["柔和棚拍光", "自然窗光", "侧逆光勾勒轮廓", "高调明亮", "低调质感光", "真实接触阴影"] },
-        { key: "composition", label: "构图", phrases: ["商品居中完整呈现", "45° 俯拍", "平视正面", "微距细节特写", "一侧留白便于排版", "多件组合陈列"] },
-        { key: "style", label: "风格", phrases: ["极简高级感", "清新日系", "奢华质感", "科技未来感", "国潮配色", "温暖生活感"] },
-    ],
-    video: [
-        { key: "camera", label: "运镜", phrases: ["镜头缓慢推近", "环绕商品展示", "平稳横移", "俯拍缓慢下降", "固定机位", "低角度跟拍"] },
-        { key: "rhythm", label: "节奏", phrases: ["节奏舒缓", "轻快明亮", "开场 3 秒内露出商品", "结尾定格 1 秒"] },
-        { key: "light", label: "光影", phrases: ["柔和棚拍光", "光线缓慢扫过商品表面", "自然窗光", "侧逆光勾边"] },
-        { key: "mood", label: "氛围", phrases: ["高级质感", "清新自然", "温暖居家", "科技感", "节日喜庆"] },
-    ],
 };
 
 export type SceneFacet = { key: string; label: string; keywords: string[] };
@@ -116,6 +98,12 @@ export function workbenchPageCategories(tools: WorkbenchTool[]) {
 export function workbenchQuickTools(tools: WorkbenchTool[], limit = 6) {
     const score = (tool: WorkbenchTool) => (tool.recommended ? 0 : 2) + (tool.categoryId === "ecommerce" || tool.categoryId === "product" ? 0 : 1);
     return [...tools].sort((a, b) => score(a) - score(b) || (a.recommendationOrder ?? a.sortOrder) - (b.recommendationOrder ?? b.sortOrder)).slice(0, limit);
+}
+
+export function workbenchSceneLibraryTools(tools: WorkbenchTool[], quickTools?: WorkbenchTool[]) {
+    if (!quickTools?.length) return tools;
+    const quickIds = new Set(quickTools.map((tool) => tool.id));
+    return [...quickTools, ...tools.filter((tool) => !quickIds.has(tool.id))];
 }
 
 export type SceneTone = "product" | "people" | "scene" | "detail" | "marketing" | "video" | "creative";

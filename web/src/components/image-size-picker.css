@@ -9,6 +9,9 @@
     font-size: var(--fs-label);
     font-weight: 600;
 }
+.image-size-resolution {
+    display: contents;
+}
 .image-size-tiers {
     display: grid;
     grid-auto-flow: column;
@@ -61,6 +64,12 @@
     border: 1px solid currentColor;
     border-radius: 4px;
     opacity: 0.6;
+}
+.image-size-ratio-adaptive-icon {
+    width: var(--space-6);
+    height: var(--space-6);
+    stroke-width: var(--button-icon-stroke);
+    opacity: 0.85;
 }
 .image-size-ratio-hint {
     margin-top: -4px;

@@ -1,14 +1,14 @@
 import { Button, Dropdown, Progress, Select, Switch } from "antd";
-import { ArrowRight, ArrowUp, Check, ChevronDown, ChevronUp, Clapperboard, FolderOpen, ImagePlus, Images, LayoutGrid, Megaphone, Mic, Palette, PenLine, ScanSearch, ShoppingBag, UserRound, X } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, ChevronDown, ChevronUp, Clapperboard, FolderOpen, ImagePlus, Images, Megaphone, Mic, Palette, PenLine, ScanSearch, ShoppingBag, UserRound, X } from "lucide-react";
 import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 
 import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
-import { promptHasPhrase } from "@/lib/prompt-phrases";
 import { cn } from "@/lib/utils";
 import type { WorkbenchKind, WorkbenchPromptPreset, WorkbenchReferenceSlot, WorkbenchTool } from "@/services/api/workbench";
+import { JoyseeCreditMark } from "@/themes/joysee-minimal/marks";
 
 import { workbenchMediaLabel } from "./workbench-catalog";
-import { workbenchRatioUsage, workbenchSceneTone, workbenchToolSubtitle, type InspirationGroup, type SceneTone } from "./workbench-presets";
+import { workbenchRatioUsage, workbenchSceneTone, workbenchToolSubtitle, type SceneTone } from "./workbench-presets";
 
 export type WorkbenchReference = {
     id: string;
@@ -206,7 +206,7 @@ function ReferenceGroup({
     items: WorkbenchReference[];
     limit: number;
     label: string;
-    detail: string;
+    detail?: string;
     onPick: () => void;
     onDrop: (files: File[]) => void;
     onOpenLibrary: () => void;
@@ -249,7 +249,7 @@ function ReferenceGroup({
                     </span>
                     <span className="wb-drop-copy">
                         <strong>{label}</strong>
-                        <small>{detail}</small>
+                        {detail ? <small>{detail}</small> : null}
                     </span>
                 </button>
             )}
@@ -267,6 +267,7 @@ export function ReferenceSection({
     references,
     referenceLimits,
     maxTotalItems,
+    compactUpload = false,
     onPick,
     onDropFiles,
     onOpenLibrary,
@@ -279,6 +280,7 @@ export function ReferenceSection({
     references: WorkbenchReference[];
     referenceLimits: Record<WorkbenchReference["kind"], number>;
     maxTotalItems?: number;
+    compactUpload?: boolean;
     onPick: (slotKey?: string) => void;
     onDropFiles: (files: File[], slotKey?: string) => void;
     onOpenLibrary: (slotKey?: string) => void;
@@ -293,7 +295,7 @@ export function ReferenceSection({
             清空
         </Button>
     ) : null;
-    const renderGroup = (items: WorkbenchReference[], options: { slotKey?: string; limit: number; label: string; detail: string }) => (
+    const renderGroup = (items: WorkbenchReference[], options: { slotKey?: string; limit: number; label: string; detail?: string }) => (
         <ReferenceGroup
             kind={kind}
             items={items}
@@ -325,7 +327,7 @@ export function ReferenceSection({
                 : `${references.length} / ${unslottedLimit} · ${mediaHint}`;
         return (
             <ComposerSection title={kind === "image" ? "商品素材" : "参考素材"} hint={hint} aside={clearAction} className={kind === "video" ? "wb-video-reference-counts" : undefined}>
-                {renderGroup(references, { limit: unslottedLimit, label: kind === "image" ? "上传商品图" : "上传参考素材", detail: kind === "image" ? "白底或实拍图，外观越清晰越好" : "图片可设为首帧或尾帧" })}
+                {renderGroup(references, { limit: unslottedLimit, label: kind === "image" ? "上传商品图" : "上传参考素材", detail: kind === "video" && !compactUpload ? "图片可设为首帧或尾帧" : undefined })}
             </ComposerSection>
         );
     }
@@ -355,34 +357,25 @@ export function ReferenceSection({
 }
 
 export function PromptSection({
-    kind,
     tool,
     preset,
     prompt,
     maxChars,
-    inspirations,
     editor,
     onChoosePreset,
-    onTogglePhrase,
     onClear,
 }: {
-    kind: WorkbenchKind;
     tool: WorkbenchTool | null;
     preset: WorkbenchPromptPreset | null;
     prompt: string;
     maxChars: number;
-    inspirations: InspirationGroup[];
     editor: ReactNode;
     onChoosePreset: (preset: WorkbenchPromptPreset) => void;
-    onTogglePhrase: (phrase: string) => void;
     onClear: () => void;
 }) {
-    const [group, setGroup] = useState(inspirations[0]?.key || "");
-    const activeGroup = inspirations.find((item) => item.key === group) || inspirations[0];
     return (
         <ComposerSection
             title="画面描述"
-            hint={kind === "image" ? "写清商品、场景、光线和需要保留的细节" : "写清主体动作、运镜、节奏和结尾画面"}
             aside={
                 prompt ? (
                     <Button size="small" type="text" className="wb-text-action" onClick={onClear}>
@@ -410,28 +403,6 @@ export function PromptSection({
                     <span>输入 @ 引用素材 · ⌘ / Ctrl + Enter 生成</span>
                 </div>
             </div>
-            {activeGroup ? (
-                <div className="wb-inspire">
-                    <div className="wb-inspire-tabs" role="tablist" aria-label="灵感词分类">
-                        {inspirations.map((item) => (
-                            <button key={item.key} type="button" role="tab" aria-selected={item.key === activeGroup.key} className={item.key === activeGroup.key ? "is-active" : ""} onClick={() => setGroup(item.key)}>
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="wb-inspire-chips" role="group" aria-label={`${activeGroup.label}灵感词，点击加入或移出描述`}>
-                        {activeGroup.phrases.map((phrase) => {
-                            const active = promptHasPhrase(prompt, phrase);
-                            return (
-                                <button key={phrase} type="button" className="wb-chip is-soft" aria-pressed={active} onClick={() => onTogglePhrase(phrase)}>
-                                    {active ? <Check /> : null}
-                                    {phrase}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            ) : null}
         </ComposerSection>
     );
 }
@@ -442,14 +413,16 @@ export function ChoiceChips({
     options,
     onChange,
     columns,
+    wrap = false,
 }: {
     label: string;
     value: string;
     options: Array<{ value: string; label: string; caption?: string; title?: string; ratio?: number }>;
     onChange: (value: string) => void;
     columns?: number;
+    wrap?: boolean;
 }) {
-    if (options.length > 8) {
+    if (!wrap && options.length > 8) {
         return (
             <label className="wb-field">
                 <span className="wb-field-label">{label}</span>
@@ -458,7 +431,7 @@ export function ChoiceChips({
         );
     }
     return (
-        <div className="wb-field">
+        <div className={cn("wb-field", wrap && "is-wrapped")}>
             <span className="wb-field-label">{label}</span>
             <div className={cn("wb-choice-grid", options.some((option) => option.caption) && "has-caption")} role="radiogroup" aria-label={label} style={columns ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` } : undefined}>
                 {options.map((option) => (
@@ -504,30 +477,30 @@ export function SwitchRow({ items }: { items: Array<{ key: string; label: string
     );
 }
 
-/** 生成数量沿用全站“[1][2][3][4▲▼]”四格规范：前三格直选，第四格为可输入的微调框。 */
-export function CountStepper({ kind, value, max, onChange }: { kind: WorkbenchKind; value: number; max: number; onChange: (value: number) => void }) {
+/** 默认保留四格微调样式；紧凑参数栏可直接展示全部可选数量。 */
+export function CountStepper({ kind, value, max, hint, showAll = false, onChange }: { kind: WorkbenchKind; value: number; max: number; hint?: string; showAll?: boolean; onChange: (value: number) => void }) {
     const limit = Math.max(1, max);
     const current = Math.min(limit, Math.max(1, Math.floor(value) || 1));
     const unit = kind === "image" ? "张" : "条";
     const stepperActive = current >= 4;
     const [draft, setDraft] = useState(String(Math.max(4, current)));
     useEffect(() => {
-        if (current >= 4) setDraft(String(current));
-    }, [current]);
+        if (!showAll && current >= 4) setDraft(String(current));
+    }, [current, showAll]);
     const commit = (next: number) => {
         const clamped = Math.min(limit, Math.max(1, Math.floor(next) || 1));
         setDraft(String(Math.max(4, clamped)));
         onChange(clamped);
     };
     const base = stepperActive ? current : Number(draft) || 4;
-    return (
+    const controls = (
         <div className="wb-count" role="group" aria-label={`生成数量，最多 ${limit} ${unit}`}>
-            {Array.from({ length: Math.min(3, limit) }, (_, index) => index + 1).map((item) => (
+            {Array.from({ length: showAll ? limit : Math.min(3, limit) }, (_, index) => index + 1).map((item) => (
                 <button key={item} type="button" className={cn("wb-count-cell", current === item && "is-active")} aria-pressed={current === item} onClick={() => onChange(item)}>
                     {item}
                 </button>
             ))}
-            {limit >= 4 ? (
+            {!showAll && limit >= 4 ? (
                 <div className={cn("wb-count-cell wb-count-stepper", stepperActive && "is-active")} onClick={() => !stepperActive && commit(base)}>
                     <input
                         type="text"
@@ -578,51 +551,84 @@ export function CountStepper({ kind, value, max, onChange }: { kind: WorkbenchKi
             ) : null}
         </div>
     );
+    return (
+        <ComposerSection title="生成数量" hint={showAll && kind === "image" ? `最多 ${limit} ${unit}` : hint}>
+            {controls}
+        </ComposerSection>
+    );
+}
+
+export function formatWorkbenchEstimate(amount: number, roundUp: boolean) {
+    return amount.toLocaleString("zh-CN", roundUp ? { minimumFractionDigits: 2, maximumFractionDigits: 2, roundingMode: "ceil" } : { maximumFractionDigits: 6 });
+}
+
+function ComposerEstimate({ estimate, roundUp }: { estimate: string | number; roundUp: boolean }) {
+    const amount = typeof estimate === "number" ? formatWorkbenchEstimate(estimate, roundUp) : null;
+    const description = amount === null ? undefined : `预计消耗 ${amount} 积分`;
+    return (
+        <div className="wb-estimate" aria-live="polite">
+            {amount !== null ? (
+                <div className="wb-estimate-amount" title={description}>
+                    <JoyseeCreditMark className="wb-estimate-mark" />
+                    <strong aria-hidden="true">{amount}</strong>
+                    <span className="sr-only">{description}</span>
+                </div>
+            ) : estimate ? (
+                <strong>{estimate}</strong>
+            ) : null}
+        </div>
+    );
 }
 
 export function ComposerFooter({
     kind,
     count,
-    taskCount,
+    model,
     estimate,
-    estimateDetail,
+    roundEstimateUp = false,
+    compactSubmit = false,
     busy,
     disabledReason,
     onSubmit,
 }: {
     kind: WorkbenchKind;
     count: number;
-    taskCount: number;
-    estimate: string;
-    estimateDetail?: string;
+    model?: ReactNode;
+    estimate?: string | number;
+    roundEstimateUp?: boolean;
+    compactSubmit?: boolean;
     busy: boolean;
     disabledReason?: string;
     onSubmit: () => void;
 }) {
-    const unit = kind === "image" ? "张" : "条";
-    const label = count > 1 ? `生成 ${count} ${unit}` : kind === "image" ? "生成图片" : "生成视频";
+    const label = kind === "image" || compactSubmit ? "提交" : count > 1 ? `生成 ${count} 条` : "生成视频";
     const button = (
         <Button className="wb-submit" type="primary" size="large" loading={busy} disabled={Boolean(disabledReason)} onClick={onSubmit}>
             <ArrowUp />
             <span>{label}</span>
         </Button>
     );
-    return (
-        <footer className="wb-footer">
-            <div className="wb-estimate" aria-live="polite">
-                <strong>{estimate || `${count} ${unit}`}</strong>
-                <span>
-                    <LayoutGrid />
-                    {estimate ? `${count} ${unit} · ` : ""}
-                    {taskCount} 个任务{estimateDetail ? ` · ${estimateDetail}` : ""}
-                </span>
-            </div>
+    const actions = (
+        <>
+            {estimate !== undefined ? <ComposerEstimate estimate={estimate} roundUp={roundEstimateUp} /> : null}
             {disabledReason ? (
                 <Tooltip title={disabledReason}>
                     <span className="wb-submit-wrap">{button}</span>
                 </Tooltip>
             ) : (
                 button
+            )}
+        </>
+    );
+    return (
+        <footer className="wb-footer">
+            {model ? (
+                <>
+                    <div className="wb-footer-model">{model}</div>
+                    <div className="wb-footer-actions">{actions}</div>
+                </>
+            ) : (
+                actions
             )}
         </footer>
     );

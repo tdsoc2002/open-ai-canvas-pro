@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import type { WorkbenchKind, WorkbenchTool } from "@/services/api/workbench";
 
 import { SceneGlyph } from "./workbench-composer";
-import { filterWorkbenchTools, toolMatchesFacet, WORKBENCH_SCENE_FACETS, workbenchPageCategories, workbenchToolSubtitle } from "./workbench-presets";
+import { filterWorkbenchTools, toolMatchesFacet, WORKBENCH_SCENE_FACETS, workbenchPageCategories, workbenchSceneLibraryTools, workbenchToolSubtitle } from "./workbench-presets";
 
 const FACET_CATEGORIES = new Set(["all", "recommended", "ecommerce", "product"]);
 
@@ -23,6 +23,7 @@ export function SceneLibraryModal({
     open,
     kind,
     tools,
+    quickTools,
     loading,
     error,
     selectedId,
@@ -33,6 +34,7 @@ export function SceneLibraryModal({
     open: boolean;
     kind: WorkbenchKind;
     tools: WorkbenchTool[];
+    quickTools?: WorkbenchTool[];
     loading: boolean;
     error: string;
     selectedId?: string;
@@ -47,17 +49,18 @@ export function SceneLibraryModal({
     const facets = WORKBENCH_SCENE_FACETS[kind];
     const showFacets = FACET_CATEGORIES.has(category);
     const facet = showFacets ? facets.find((item) => item.key === facetKey) : undefined;
-    const filtered = useMemo(() => filterWorkbenchTools(tools, category, query, facet), [category, facet, query, tools]);
+    const orderedTools = useMemo(() => workbenchSceneLibraryTools(tools, quickTools), [tools, quickTools]);
+    const filtered = useMemo(() => filterWorkbenchTools(orderedTools, category, query, facet), [category, facet, query, orderedTools]);
     const counts = useMemo(() => new Map(categories.map((item) => [item.value, filterWorkbenchTools(tools, item.value, "").length])), [categories, tools]);
     const visibleFacets = useMemo(() => facets.filter((item) => filterWorkbenchTools(tools, category, "").some((tool) => toolMatchesFacet(tool, item))), [category, facets, tools]);
 
     useEffect(() => {
         if (!open) return;
         const selected = tools.find((tool) => tool.id === selectedId);
-        setCategory(selected && categories.some((item) => item.value === selected.categoryId) ? selected.categoryId : "all");
+        setCategory(!quickTools && selected && categories.some((item) => item.value === selected.categoryId) ? selected.categoryId : "all");
         setFacetKey("");
         setQuery("");
-        // 只在打开时定位到当前场景所在分类，浏览过程中不被目录刷新打断。
+        // 图片简洁入口从全部分类开始；其他入口定位到当前分类。刷新目录不打断浏览。
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 

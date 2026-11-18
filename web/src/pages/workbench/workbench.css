@@ -61,6 +61,9 @@
 .wb-mobile-tabs {
     display: none;
 }
+.wb-shell.is-form-only {
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
 
 /* ---------- 通用小件 ---------- */
 .wb-icon-button {
@@ -125,17 +128,6 @@
     border-color: var(--wb-selected-line);
     background: var(--wb-selected-bg);
     color: var(--wb-selected-fg);
-}
-.wb-chip.is-soft {
-    border-color: transparent;
-    background: var(--wb-muted);
-}
-.wb-chip.is-soft:hover {
-    background: var(--wb-hover);
-}
-.wb-chip.is-soft[aria-pressed="true"] {
-    border-color: var(--wb-selected-line);
-    background: var(--wb-selected-bg);
 }
 .wb-chip svg {
     width: 12px;
@@ -265,6 +257,9 @@
 .wb-composer-title {
     font-size: var(--fs-heading);
     font-weight: 600;
+}
+.wb-composer-title.is-desktop-only {
+    display: none;
 }
 .wb-kind-switch {
     display: inline-flex;
@@ -808,45 +803,6 @@
 .wb-prompt-meta .is-warning {
     color: var(--status-warning);
 }
-.wb-inspire {
-    display: grid;
-    gap: var(--space-2);
-}
-.wb-inspire-tabs {
-    display: flex;
-    gap: var(--space-4);
-    border-bottom: 1px solid color-mix(in srgb, var(--wb-line) 70%, transparent);
-}
-.wb-inspire-tabs button {
-    position: relative;
-    height: 30px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--wb-ink-3);
-    font-size: var(--fs-caption);
-    cursor: pointer;
-    transition: color var(--wb-motion);
-}
-.wb-inspire-tabs button:hover,
-.wb-inspire-tabs button.is-active {
-    color: var(--wb-ink);
-}
-.wb-inspire-tabs button.is-active::after {
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    left: 0;
-    height: 2px;
-    border-radius: var(--r-full);
-    background: var(--wb-ink);
-    content: "";
-}
-.wb-inspire-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-}
 
 /* 规格 */
 .wb-composer .creation-model-picker.canvas-composer-model-picker {
@@ -1062,13 +1018,30 @@
     border-top: 1px solid var(--wb-line);
     background: var(--wb-panel);
 }
+.wb-footer:has(> .wb-footer-model) {
+    flex-wrap: wrap;
+}
+.wb-footer-model {
+    flex: 1 1 var(--space-24);
+    min-width: 0;
+    max-width: var(--wb-studio-parameter-width, 100%);
+}
+.wb-footer-model .wb-inline-error {
+    flex-wrap: wrap;
+}
+.wb-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: inherit;
+    min-width: 0;
+    margin-inline-start: auto;
+}
 .wb-estimate {
-    display: grid;
     flex: 1 1 auto;
-    gap: 2px;
     min-width: 0;
 }
 .wb-estimate strong {
+    display: block;
     overflow: hidden;
     color: var(--wb-ink);
     font-size: var(--fs-ui);
@@ -1077,20 +1050,21 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.wb-estimate span {
+.wb-estimate-amount {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    overflow: hidden;
-    color: var(--wb-ink-3);
-    font-size: var(--fs-caption);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
 }
-.wb-estimate span svg {
-    flex: 0 0 auto;
-    width: 12px;
-    height: 12px;
+.wb-estimate-mark {
+    display: inline-flex;
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    color: var(--wb-ink);
+}
+.wb-estimate-mark svg {
+    width: 100%;
+    height: 100%;
 }
 .wb-submit-wrap {
     display: inline-flex;
@@ -1100,6 +1074,9 @@
     flex: 0 0 auto;
     min-width: 148px;
     white-space: nowrap;
+}
+.wb-footer-actions .wb-submit.ant-btn {
+    min-width: var(--space-20);
 }
 .wb-submit.ant-btn > svg {
     width: var(--button-icon-size);
@@ -1980,6 +1957,15 @@
 }
 
 /* ---------- 响应式 ---------- */
+/* 侧栏在 1024px 起常驻，工作台不再重复放类型切换。 */
+@media (min-width: 1024px) {
+    .wb-kind-switch {
+        display: none;
+    }
+    .wb-composer-title.is-desktop-only {
+        display: block;
+    }
+}
 @media (max-width: 1279px) {
     .wb-shell {
         grid-template-columns: minmax(340px, 360px) minmax(0, 1fr);

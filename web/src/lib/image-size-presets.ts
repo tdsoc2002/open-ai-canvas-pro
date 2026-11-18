@@ -37,6 +37,10 @@ const standardSizes: Record<string, string[]> = {
     "21:9": ["2048x878", "3136x1344", "3808x1632"],
 };
 
+export function standardImageRatioForSize(size: string) {
+    return Object.keys(standardSizes).find((ratio) => standardSizes[ratio].includes(size));
+}
+
 export function imagePresetForRatio(tier: ImageResolutionTier, input: string): ImageResolutionOption {
     const match = input.trim().match(/^(\d{1,5})\s*[:：]\s*(\d{1,5})$/);
     if (!match) throw new Error("请输入宽高比，例如 16:9");

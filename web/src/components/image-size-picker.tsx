@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./image-size-picker.css";
 import { Input, Button } from "antd";
+import { AspectRatioGrid } from "@/components/aspect-ratio-grid";
 import type { ImageCapabilityConfig } from "@/lib/model-capabilities";
 import { imageResolutionTiers, imagePresetForRatio, imagePresetValue, imageQualityForSelection, imageQualityForTier, imageResolutionUsesQuality, imageSizePresets, imageTierAvailable, imageDeclaredSizePresets } from "@/lib/image-size-presets";
 import { buildImageResolutionOptions, type ImageResolutionOption, type ImageResolutionTier } from "@/lib/image-resolution-tiers";
@@ -154,20 +155,22 @@ export function ImageSizePicker({
     if (profile.size.parameter === "none")
         return profile.resolution.supported ? (
             <div className="image-size-picker">
-                <div className="image-size-label">分辨率</div>
-                <div className="image-size-tiers">
-                    {profile.resolution.values.map((value) => (
-                        <button type="button" key={value} aria-pressed={value === imageResolution} disabled={Boolean(canSelectResolution && !canSelectResolution(value))} onClick={() => onChange(size, undefined, value)}>
-                            {value.toUpperCase()}
-                        </button>
-                    ))}
+                <div className="image-size-resolution">
+                    <div className="image-size-label">分辨率</div>
+                    <div className="image-size-tiers">
+                        {profile.resolution.values.map((value) => (
+                            <button type="button" key={value} aria-pressed={value === imageResolution} disabled={Boolean(canSelectResolution && !canSelectResolution(value))} onClick={() => onChange(size, undefined, value)}>
+                                {value.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         ) : null;
     return (
         <div className="image-size-picker">
             {profile.resolution.supported ? (
-                <>
+                <div className="image-size-resolution">
                     <div className="image-size-label">分辨率</div>
                     <div className="image-size-tiers">
                         {profile.resolution.values.map((value) => (
@@ -186,9 +189,9 @@ export function ImageSizePicker({
                             </button>
                         ))}
                     </div>
-                </>
+                </div>
             ) : (!ungrouped || imageResolutionUsesQuality(profile)) && visibleTiers.length && (profile.size.parameter === "size" || !profile.quality.supported || imageResolutionUsesQuality(profile)) ? (
-                <>
+                <div className="image-size-resolution">
                     <div className="image-size-label">分辨率</div>
                     <div className="image-size-tiers">
                         {visibleTiers.map((value) => (
@@ -197,7 +200,7 @@ export function ImageSizePicker({
                             </button>
                         ))}
                     </div>
-                </>
+                </div>
             ) : null}
             {profile.size.values.includes("auto") ? (
                 <button
@@ -212,25 +215,20 @@ export function ImageSizePicker({
                     自动尺寸
                 </button>
             ) : null}
-            {choices.length ? <div className="image-size-label">宽高比</div> : null}
-            <div className="image-size-ratios">
-                {choices.map((preset) => {
+            <AspectRatioGrid
+                options={choices.map((preset) => {
                     const hint = ratioHint?.(preset.ratio);
-                    return (
-                        <button
-                            type="button"
-                            key={`${preset.ratio}:${preset.size}`}
-                            title={`${preset.ratio} · ${preset.width} × ${preset.height}${hint?.title ? `\n${hint.title}` : ""}`}
-                            aria-pressed={size !== "auto" && active?.size === preset.size && active?.tier === tier}
-                            onClick={() => select(preset)}
-                        >
-                            <span className="image-size-ratio-icon" style={{ width: 24 * Math.min(1, preset.width / preset.height), height: 24 * Math.min(1, preset.height / preset.width) }} />
-                            <span>{preset.ratio}</span>
-                            {hint ? <small className="image-size-ratio-hint">{hint.label}</small> : null}
-                        </button>
-                    );
+                    return {
+                        key: `${preset.ratio}:${preset.size}`,
+                        label: preset.ratio,
+                        ratio: preset.width / preset.height,
+                        title: `${preset.ratio} · ${preset.width} × ${preset.height}${hint?.title ? `\n${hint.title}` : ""}`,
+                        hint: hint?.label,
+                        selected: size !== "auto" && active?.size === preset.size && active?.tier === tier,
+                        onSelect: () => select(preset),
+                    };
                 })}
-            </div>
+            />
             {!choices.length ? <p className="image-size-hint">未配置预设尺寸{profile.size.allowCustom ? "，可输入自定义比例或尺寸" : ""}</p> : null}
             <output aria-live="polite" className="image-size-output">
                 {size === "auto" ? "尺寸由模型决定" : active ? `${active.ratio} · ${active.width} × ${active.height} px` : size.replace("x", " × ")}
