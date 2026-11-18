@@ -178,13 +178,12 @@ export default function EagleLibraryPage() {
                 <div className="studio-band">
                     <PageHeader
                         title="Eagle 素材库"
-                        description={`Eagle 是${brandName}的外部素材来源；这里复用${brandName}素材库的浏览方式，直接读取和写入 Eagle 原始文件。`}
                         meta={<span className="app-projects-header-meta assets-header-meta">{error ? "Eagle · 连接异常" : "Eagle · 已连接"}</span>}
                         actions={
                             <div className="assets-header-actions">
                                 <div className="assets-header-action-buttons">
                                     <Button className="library-primary-action" type="primary" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} disabled={working}>
-                                        写入素材
+                                        写入 Eagle 素材库
                                     </Button>
                                     <Button icon={<ArrowLeft className="size-3.5" />} onClick={() => navigate("/assets")}>
                                         {brandName}素材库

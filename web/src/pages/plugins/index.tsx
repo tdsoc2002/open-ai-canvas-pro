@@ -242,7 +242,7 @@ export default function PluginsPage() {
                 <div className="plugins-page-layout">
                     <aside className="plugins-sidebar" aria-label="插件分类">
                         <div className="plugins-sidebar-heading">
-                            <PageHeader title="插件中心" description="连接模型、素材与工作流，拓展你的创作工具。" />
+                            <PageHeader title="插件中心" />
                         </div>
                         <nav className="plugins-sidebar-nav">
                             <button type="button" className={`plugins-sidebar-item${categoryFilter === "all" ? " is-active" : ""}`} aria-current={categoryFilter === "all" ? "page" : undefined} onClick={() => selectCategory("all")}>
@@ -470,7 +470,6 @@ export default function PluginsPage() {
                                 className="min-h-[260px] rounded-[var(--plugins-card-radius)] bg-foreground/[0.03]"
                                 icon={SlidersHorizontal}
                                 title="没有匹配的插件"
-                                description="试试清空搜索词，或放宽筛选条件。"
                                 action={
                                     <Button
                                         onClick={() => {

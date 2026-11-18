@@ -48,15 +48,22 @@ describe("canvas library card", () => {
         expect(page).not.toContain("已加载全部");
         expect(page).toContain('aria-label="正在加载更多画布"');
     });
-    test("page header no longer offers deleting every loaded canvas", () => {
+    test("page keeps an accessible heading and unifies browsing and actions in one toolbar", () => {
+        expect(page).toContain('<h1 className="sr-only">我的画布</h1>');
+        expect(page).not.toContain("<PageHeader");
+        expect(page).not.toContain("app-projects-header-meta");
+        const toolbar = page.slice(page.indexOf("<CollectionToolbar"), page.indexOf("</CollectionToolbar>"));
+        for (const label of ["搜索画布", "按所属项目筛选", "画布排序", "新建画布", "导入", "创作历史"]) expect(toolbar).toContain(label);
         expect(page).not.toContain("删除当前已加载画布");
         expect(page).not.toContain("更多画布操作");
     });
-    test("grid caps at five columns and cover uses a 4:3 media mosaic", () => {
-        expect(card).toContain("quiet mosaic");
+    test("grid caps at five columns and cover uses one 16:9 preview with video support", () => {
+        expect(card).toContain("}} quiet");
+        expect(card).not.toContain("mosaic");
         expect(css).toMatch(/\.canvas-collection-grid \{[^}]*calc\(\(100% - 4 \* var\(--canvas-card-gap-x\)\) \/ 5\)/);
-        expect(css).toMatch(/\.canvas-collection-preview \{[^}]*aspect-ratio: 4 \/ 3;/);
-        expect(css).toMatch(/\.canvas-project-mosaic\[data-count="3"\] > :first-child \{ grid-row: span 2; \}/);
+        expect(css).toMatch(/\.canvas-collection-preview \{[^}]*aspect-ratio: 16 \/ 9;/);
+        expect(read("../src/components/canvas/canvas-project-card.tsx")).toContain("<ProjectPreviewVideoFrame media={media} fallback={fallback} />");
+        expect(card.indexOf("canvas-collection-body")).toBeGreaterThan(card.indexOf("canvas-collection-preview"));
     });
     test("secondary actions are revealed on hover/focus and always visible without hover", () => {
         expect(card).toContain("canvas-collection-rename");
@@ -67,8 +74,14 @@ describe("canvas library card", () => {
 
 describe("skills library", () => {
     const page = read("../src/pages/skills/index.tsx");
-    test("uses a single left rail instead of top tabs and a platform select", () => {
-        expect(page).toContain('className="skills-rail"');
+    test("技能范围与分类在顶部，卡片结果区不再有左侧栏", () => {
+        expect(page).toContain('className="skills-library-header"');
+        expect(page).not.toContain('className="skills-rail"');
+        expect(page).toContain('ariaLabel="我的技能范围"');
+        expect(page).toContain('ariaLabel={isLibraryScope ? "我的技能分类" : "技能分类"}');
+        expect(page).toContain("管理分类");
+        expect(page).toContain("按行业推荐");
+        expect(page).toContain('className="skills-results"');
         expect(page).not.toContain("SegmentedControl");
         expect(page).not.toContain("SkillCurationBrowser");
         expect(page).not.toContain("skills-tabs");

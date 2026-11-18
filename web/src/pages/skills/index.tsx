@@ -3,40 +3,11 @@ import { AppModal } from "@/components/ui/product/app-modal";
 import { App, Button, Dropdown, Input } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 
-import {
-    Boxes,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    Clapperboard,
-    FolderInput,
-    FolderPlus,
-    Globe2,
-    Heart,
-    Library,
-    LoaderCircle,
-    Lock,
-    Megaphone,
-    MoreHorizontal,
-    Palette,
-    Pencil,
-    Plus,
-    Puzzle,
-    Search,
-    ShoppingBag,
-    Sparkles,
-    Trash2,
-    UserRound,
-    Users,
-    Info,
-    LayoutGrid,
-    Store,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Check, ChevronDown, FolderInput, FolderPlus, Globe2, Heart, Info, Library, LoaderCircle, Lock, MoreHorizontal, Pencil, Plus, Search, Sparkles, Store, Trash2, UserRound, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
@@ -66,25 +37,23 @@ import {
 } from "@/services/api/skills";
 import { useUserStore } from "@/stores/use-user-store";
 import { Select } from "@/components/ui/base/select";
-import { useSkillCuration, curationQuery, curationIcon, effectiveCurationRoot } from "@/components/skills/skill-curation-browser";
+import { useSkillCuration, curationQuery, effectiveCurationRoot } from "@/components/skills/skill-curation-browser";
 import { SkillRecommendationsModal } from "@/components/skills/skill-recommendations-modal";
+import "./skill-library-layout.css";
 
-const scopeOptions: { label: string; value: SkillScope; icon: LucideIcon }[] = [
+const scopeOptions = [
     { label: "技能广场", value: "public", icon: Store },
     { label: "我的技能", value: "mine", icon: Library },
     { label: "我创建的", value: "created", icon: UserRound },
     { label: "我的收藏", value: "favorites", icon: Heart },
-];
+] as const;
 
-/* 分类图标映射：左侧导航里的分类图标，未知分类回退 Boxes。 */
-const categoryIcons: Record<string, LucideIcon> = {
-    drama: Clapperboard,
-    ecommerce: ShoppingBag,
-    creative: Palette,
-    social: Megaphone,
-    others: Puzzle,
-};
-const categoryIconOf = (value: string) => categoryIcons[value] ?? Boxes;
+const personalScopeOptions = scopeOptions.filter((option) => option.value !== "public");
+const navigationOptions = scopeOptions.filter(({ value }) => value === "public" || value === "mine");
+
+function countedOptions(options: readonly SkillCategory[]) {
+    return options.map(({ value, label, count }) => ({ value, label: count === undefined ? label : `${label} (${formatSkillCount(count)})` }));
+}
 
 const sortOptions: { label: string; value: SkillSort }[] = [
     { label: "最多加入", value: "popular" },
@@ -93,7 +62,7 @@ const sortOptions: { label: string; value: SkillSort }[] = [
 ];
 
 /**
- * 技能库：左侧一条导航（范围 → 当前范围下的分类），右侧是结果标题、搜索排序和卡片网格。
+ * 技能库：顶部选择范围和分类，结果区以全宽网格浏览。
  * 范围切换会清空分类筛选，避免切到「我的技能」后仍带着广场分类这类看不见的过滤条件。
  */
 export default function SkillsPage() {
@@ -135,6 +104,7 @@ export default function SkillsPage() {
     const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
     const isAdmin = useUserStore((state) => state.user?.role === "admin");
     const isLibraryScope = scope === "mine" || scope === "created";
+    const navigationScope = scope === "public" ? "public" : "mine";
     const libraryCategoryScope = scope === "created" ? "created" : "mine";
 
     const reload = useCallback(() => setReloadKey((value) => value + 1), []);
@@ -156,15 +126,26 @@ export default function SkillsPage() {
         setPage(1);
     };
 
-    /* 平台策展分类失效（被停用或策展关闭）时回到「全部」，原先由下拉选择器承担的校验移到这里。 */
+    const curationRoots = useMemo(() => (curation?.enabled ? (curation.roots || []).filter((root) => root.enabled !== false) : []), [curation]);
+    const curatedCategories = useMemo<SkillCategory[]>(() => {
+        if (!curation?.enabled) return [];
+        return [
+            { value: "", label: "全部分类" },
+            ...curationRoots.flatMap((root) => [
+                { value: `root:${root.id}`, label: root.name },
+                ...curation.categories.filter((category) => category.rootTag === root.id && category.enabled !== false).map((category) => ({ value: category.id, label: `${root.name} / ${category.name}` })),
+            ]),
+            { value: "__uncategorized__", label: "未细分" },
+        ];
+    }, [curation, curationRoots]);
+
+    // 停用的根分类或子分类不再出现在下拉中；已选时同步清除。
     useEffect(() => {
-        if (!platformCategory) return;
-        const valid = platformCategory === "__uncategorized__" || (platformCategory.startsWith("root:") ? curation?.roots?.some((root) => root.id === platformCategory.slice(5)) : curation?.categories.some((item) => item.id === platformCategory));
-        if (!curation?.enabled || !valid) {
+        if (platformCategory && !curatedCategories.some((category) => category.value === platformCategory)) {
             setPlatformCategory("");
             setPage(1);
         }
-    }, [curation, platformCategory]);
+    }, [curatedCategories, platformCategory]);
 
     useEffect(() => {
         let cancelled = false;
@@ -226,26 +207,21 @@ export default function SkillsPage() {
         };
     }, [libraryCategoryScope, reloadKey]);
 
-    const curationRoots = curation?.enabled ? (curation.roots || []).filter((root) => root.enabled !== false) : [];
-    const browseCategories: (SkillCategory & { iconKey?: string })[] = curation?.enabled ? curationRoots.map((root) => ({ value: root.id, label: root.name, iconKey: root.iconKey })) : categories;
-    const activeCurationCategory = curation?.enabled && platformCategory && !platformCategory.startsWith("root:") && platformCategory !== "__uncategorized__" ? curation.categories.find((item) => item.id === platformCategory) : undefined;
-    const activeCurationRootId = platformCategory.startsWith("root:") ? platformCategory.slice(5) : activeCurationCategory?.rootTag || "";
     const libraryCategories = libraryCategoryList?.categories ?? [];
     const scopeLabel = scopeOptions.find((option) => option.value === scope)?.label || "技能";
-    const viewLabel = isLibraryScope
-        ? libraryCategoryId === "all"
-            ? scopeLabel
-            : libraryCategoryId === "__uncategorized__"
-              ? "未分类"
-              : libraryCategories.find((category) => category.id === libraryCategoryId)?.name || "分类"
-        : curation?.enabled && platformCategory
-          ? platformCategory === "__uncategorized__"
-              ? "未细分"
-              : [curationRoots.find((root) => root.id === activeCurationRootId)?.name, activeCurationCategory?.name].filter(Boolean).join(" / ") || "分类"
-          : tag !== "all"
-            ? skillCategoryLabel(tag, categories)
-            : scopeLabel;
+    const selectedCategory = isLibraryScope ? libraryCategoryId : curation?.enabled ? platformCategory : tag;
+    const selectedSubcategoryName = !isLibraryScope && curation?.enabled ? curation.categories.find(({ id }) => id === selectedCategory)?.name : undefined;
+    const categoryOptions: SkillCategory[] = isLibraryScope
+        ? [
+              { value: "all", label: "全部分类", count: libraryCategoryList?.totalCount },
+              { value: "__uncategorized__", label: "未分类", count: libraryCategoryList?.uncategorizedCount },
+              ...libraryCategories.map((category) => ({ value: category.id, label: category.name, count: category.count })),
+          ]
+        : curation?.enabled
+          ? curatedCategories
+          : [{ value: "all", label: "全部分类" }, ...categories];
     const categoryFiltered = isLibraryScope ? libraryCategoryId !== "all" : Boolean(platformCategory) || tag !== "all";
+    const viewLabel = categoryFiltered ? categoryOptions.find((category) => category.value === selectedCategory)?.label || scopeLabel : scopeLabel;
     const filtersActive = Boolean(search || categoryFiltered || sort !== "popular");
     const resetFilters = useCallback(() => {
         setSearch("");
@@ -480,183 +456,151 @@ export default function SkillsPage() {
             />
         );
 
-    const railItem = ({ key, label, icon: Icon, count, active, nested = false, onClick }: { key: string; label: string; icon?: LucideIcon; count?: number; active: boolean; nested?: boolean; onClick: () => void }) => (
-        <button key={key} type="button" className={cn("skills-rail-item", nested && "is-nested")} aria-pressed={active} onClick={onClick}>
-            {Icon ? <Icon aria-hidden="true" /> : null}
-            <span className="skills-rail-item-label">{label}</span>
-            {count !== undefined ? <span className="skills-rail-count">{formatSkillCount(count)}</span> : null}
-        </button>
-    );
-
-    const marketplaceAllActive = tag === "all" && !platformCategory;
-
     return (
         <>
             <WorkspacePage className="library-page skills-library-page" grid>
-                <PageHeader title="技能库" description="把提示词、角色设定和创作方法，变成随时可用的能力。" />
-
-                <div className="skills-browser">
-                    <aside className="skills-rail" aria-label="技能导航">
-                        <nav className="skills-rail-group" aria-label="技能范围">
-                            {scopeOptions.map((option) => railItem({ key: option.value, label: option.label, icon: option.icon, count: scopeCounts[option.value], active: scope === option.value, onClick: () => selectScope(option.value) }))}
-                        </nav>
-
-                        {!isLibraryScope ? (
-                            <section className="skills-rail-section" aria-labelledby="skills-rail-categories">
-                                <div className="skills-rail-heading">
-                                    <span id="skills-rail-categories" className="collection-filter-label">
-                                        分类
-                                    </span>
-                                </div>
-                                {curationError ? (
-                                    <div className="skills-rail-error" role="alert">
-                                        {curationError}
-                                        <Button type="link" size="small" onClick={retryCuration}>
-                                            重试
-                                        </Button>
-                                    </div>
-                                ) : null}
-                                <div className="skills-rail-group">
-                                    {railItem({ key: "all", label: "全部", icon: LayoutGrid, active: marketplaceAllActive, onClick: () => selectMarketplaceCategory("all") })}
-                                    {browseCategories.map((category) => {
-                                        const Icon = curation?.enabled ? curationIcon(category.iconKey) : categoryIconOf(category.value);
-                                        if (!curation?.enabled) return railItem({ key: category.value, label: category.label, icon: Icon, count: category.count, active: tag === category.value, onClick: () => selectMarketplaceCategory(category.value) });
-                                        const children = activeCurationRootId === category.value ? curation.categories.filter((item) => item.rootTag === category.value && item.enabled !== false) : [];
-                                        return [
-                                            railItem({ key: category.value, label: category.label, icon: Icon, active: platformCategory === `root:${category.value}`, onClick: () => selectMarketplaceCategory("all", `root:${category.value}`) }),
-                                            ...children.map((child) => railItem({ key: child.id, label: child.name, nested: true, active: platformCategory === child.id, onClick: () => selectMarketplaceCategory("all", child.id) })),
-                                        ];
-                                    })}
-                                    {curation?.enabled
-                                        ? railItem({ key: "__uncategorized__", label: "未细分", icon: FolderInput, active: platformCategory === "__uncategorized__", onClick: () => selectMarketplaceCategory("all", "__uncategorized__") })
-                                        : null}
-                                </div>
-                            </section>
-                        ) : (
-                            <section className="skills-rail-section" aria-labelledby="skills-rail-library">
-                                <div className="skills-rail-heading">
-                                    <span id="skills-rail-library" className="collection-filter-label">
-                                        我的分类
-                                    </span>
-                                    <Tooltip title="新建分类">
-                                        <button type="button" className="product-icon-button skills-rail-add" aria-label="新建技能库分类" onClick={openCategoryEditor}>
-                                            <FolderPlus />
-                                        </button>
-                                    </Tooltip>
-                                </div>
-                                {libraryCategoryError ? (
-                                    <div className="skills-rail-error" role="alert">
-                                        {libraryCategoryError}
-                                        <Button type="link" size="small" onClick={reload}>
-                                            重试
-                                        </Button>
-                                    </div>
-                                ) : null}
-                                <div className="skills-rail-group">
-                                    {railItem({ key: "all", label: "全部", icon: Library, count: libraryCategoryList?.totalCount, active: libraryCategoryId === "all", onClick: () => selectLibraryCategory("all") })}
-                                    {railItem({
-                                        key: "__uncategorized__",
-                                        label: "未分类",
-                                        icon: FolderInput,
-                                        count: libraryCategoryList?.uncategorizedCount,
-                                        active: libraryCategoryId === "__uncategorized__",
-                                        onClick: () => selectLibraryCategory("__uncategorized__"),
-                                    })}
-                                    {libraryCategories.map((category) => (
-                                        <div key={category.id} className="skills-rail-row">
-                                            {railItem({
-                                                key: category.id,
-                                                label: category.name,
-                                                icon: category.scope === "platform" ? Globe2 : FolderInput,
-                                                count: category.count,
-                                                active: libraryCategoryId === category.id,
-                                                onClick: () => selectLibraryCategory(category.id),
-                                            })}
-                                            {category.scope === "personal" || isAdmin ? (
-                                                <button type="button" className="product-icon-button skills-rail-delete" aria-label={`删除分类${category.name}`} title="删除分类" onClick={() => confirmDeleteLibraryCategory(category)}>
-                                                    <Trash2 aria-hidden="true" />
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    ))}
-                                    {!libraryCategories.length && libraryCategoryList ? (
-                                        <button type="button" className="skills-rail-item is-hint" onClick={openCategoryEditor}>
-                                            <Plus aria-hidden="true" />
-                                            <span className="skills-rail-item-label">新建分类整理技能</span>
-                                        </button>
-                                    ) : null}
-                                </div>
-                            </section>
-                        )}
-                    </aside>
-
-                    <section className="skills-results" aria-labelledby="skills-results-title">
-                        <div className="skills-results-header">
-                            <div className="skills-results-title">
-                                {viewLabel !== scopeLabel ? (
-                                    <>
-                                        <button type="button" className="skills-results-scope" onClick={() => selectScope(scope)}>
-                                            {scopeLabel}
-                                        </button>
-                                        <ChevronRight className="skills-results-separator" aria-hidden="true" />
-                                    </>
-                                ) : null}
-                                <h2 id="skills-results-title">{viewLabel}</h2>
-                                <span className="app-projects-header-meta">{loading && !skills.length ? "—" : `${total} 个`}</span>
-                            </div>
-                            <CollectionToolbar
-                                label="搜索与排序技能"
-                                active={filtersActive}
-                                onReset={resetFilters}
-                                trailing={
-                                    <>
-                                        <Button icon={<Sparkles className="size-4" />} onClick={() => setRecommendationsOpen(true)}>
-                                            按行业推荐
-                                        </Button>
-                                        <Button type="primary" icon={<Plus className="size-4" />} onClick={() => setInstallOpen(true)}>
-                                            安装技能
-                                        </Button>
-                                    </>
-                                }
+                <header className="skills-library-header">
+                    <h1 className="sr-only">技能库</h1>
+                    <nav className="skills-scope-nav" aria-label="技能范围">
+                        {navigationOptions.map(({ value, label, icon: Icon }) => (
+                            <button
+                                key={value}
+                                type="button"
+                                className="skills-scope-tab"
+                                aria-pressed={navigationScope === value}
+                                onClick={() => {
+                                    if (navigationScope !== value) selectScope(value);
+                                }}
                             >
-                                <Input
-                                    className="min-w-0 sm:!w-56"
-                                    prefix={<Search />}
-                                    value={search}
-                                    allowClear
-                                    placeholder="搜索技能或作者"
-                                    aria-label="搜索技能或作者"
-                                    onChange={(event) => {
-                                        setSearch(event.target.value);
-                                        setPage(1);
-                                    }}
-                                />
-                                <Select
-                                    aria-label="技能排序"
-                                    className="w-28"
-                                    value={sort}
-                                    options={sortOptions}
-                                    onChange={(value) => {
-                                        setSort(value);
-                                        setPage(1);
-                                    }}
-                                />
-                            </CollectionToolbar>
-                        </div>
-                        {skillContent}
-                        <PaginationBar
-                            current={page}
-                            pageSize={pageSize}
-                            total={total}
-                            itemLabel="个"
-                            pageSizeOptions={[20, 40, 80]}
-                            onChange={(nextPage, nextPageSize) => {
-                                setPage(nextPageSize !== pageSize ? 1 : nextPage);
-                                setPageSize(nextPageSize);
+                                <Icon aria-hidden />
+                                <span>{label}</span>
+                                {scopeCounts[value] !== undefined ? <span className="skills-scope-count">{formatSkillCount(scopeCounts[value])}</span> : null}
+                            </button>
+                        ))}
+                    </nav>
+                    <CollectionToolbar
+                        label="筛选与搜索技能"
+                        active={filtersActive}
+                        onReset={resetFilters}
+                        trailing={
+                            <>
+                                <Button icon={<Sparkles />} onClick={() => setRecommendationsOpen(true)}>
+                                    按行业推荐
+                                </Button>
+                                <Button type="primary" icon={<Plus />} onClick={() => setInstallOpen(true)}>
+                                    安装技能
+                                </Button>
+                            </>
+                        }
+                    >
+                        <Input
+                            prefix={<Search aria-hidden />}
+                            value={search}
+                            allowClear
+                            placeholder="搜索技能或作者"
+                            aria-label="搜索技能或作者"
+                            onChange={(event) => {
+                                setSearch(event.target.value);
+                                setPage(1);
                             }}
                         />
-                    </section>
-                </div>
+                        {scope !== "public" ? (
+                            <Select<SkillScope>
+                                ariaLabel="我的技能范围"
+                                className="skills-scope-select"
+                                appearance="soft"
+                                value={scope}
+                                options={countedOptions(personalScopeOptions.map((option) => ({ ...option, count: scopeCounts[option.value] })))}
+                                onChange={selectScope}
+                            />
+                        ) : null}
+                        <Select<string>
+                            ariaLabel={isLibraryScope ? "我的技能分类" : "技能分类"}
+                            className="skills-category-select"
+                            appearance="soft"
+                            popupMatchSelectWidth={false}
+                            classNames={{ popup: { root: "skills-category-popup" } }}
+                            value={selectedCategory}
+                            options={countedOptions(categoryOptions)}
+                            labelRender={selectedSubcategoryName ? () => selectedSubcategoryName : undefined}
+                            onChange={(value) => {
+                                if (isLibraryScope) selectLibraryCategory(value);
+                                else if (curation?.enabled) selectMarketplaceCategory("all", value);
+                                else selectMarketplaceCategory(value);
+                            }}
+                        />
+                        {isLibraryScope ? (
+                            <Dropdown
+                                trigger={["click"]}
+                                placement="bottomLeft"
+                                menu={{
+                                    items: [
+                                        { key: "new", label: "新建分类", icon: <FolderPlus />, onClick: openCategoryEditor },
+                                        ...libraryCategories
+                                            .filter((category) => category.scope === "personal" || isAdmin)
+                                            .map((category) => ({
+                                                key: category.id,
+                                                label: `删除分类“${category.name}”`,
+                                                icon: <Trash2 />,
+                                                danger: true,
+                                                onClick: () => confirmDeleteLibraryCategory(category),
+                                            })),
+                                    ],
+                                }}
+                            >
+                                <Button icon={<FolderPlus />} aria-haspopup="menu">
+                                    管理分类
+                                </Button>
+                            </Dropdown>
+                        ) : null}
+                        <Select<SkillSort>
+                            ariaLabel="技能排序"
+                            className="skills-sort-select"
+                            appearance="soft"
+                            value={sort}
+                            options={sortOptions}
+                            onChange={(value) => {
+                                setSort(value);
+                                setPage(1);
+                            }}
+                        />
+                    </CollectionToolbar>
+                </header>
+
+                <section className="skills-results" aria-labelledby="skills-results-title">
+                    <h2 id="skills-results-title" className="sr-only">
+                        {viewLabel}
+                        {!loading && !loadError ? `（${total} 个技能）` : null}
+                    </h2>
+                    {!isLibraryScope && curationError ? (
+                        <div className="skills-filter-error" role="alert">
+                            {curationError}
+                            <Button type="link" size="small" onClick={retryCuration}>
+                                重试
+                            </Button>
+                        </div>
+                    ) : null}
+                    {isLibraryScope && libraryCategoryError ? (
+                        <div className="skills-filter-error" role="alert">
+                            {libraryCategoryError}
+                            <Button type="link" size="small" onClick={reload}>
+                                重试
+                            </Button>
+                        </div>
+                    ) : null}
+                    {skillContent}
+                    <PaginationBar
+                        current={page}
+                        pageSize={pageSize}
+                        total={total}
+                        itemLabel="个"
+                        pageSizeOptions={[20, 40, 80]}
+                        onChange={(nextPage, nextPageSize) => {
+                            setPage(nextPageSize !== pageSize ? 1 : nextPage);
+                            setPageSize(nextPageSize);
+                        }}
+                    />
+                </section>
             </WorkspacePage>
 
             <AppModal
@@ -730,7 +674,7 @@ export default function SkillsPage() {
                         <p>
                             {categoryScope === "platform" && isAdmin
                                 ? "平台分类对所有用户可见、可分配，并可用于各自的技能库和画布 Agent；不会替换技能广场分类。"
-                                : "个人分类只影响你的技能库和画布 Agent。短剧影视、电商营销是技能广场的共享分类，可在左侧“技能广场”下的分类中筛选。"}
+                                : "个人分类只影响你的技能库和画布 Agent。短剧影视、电商营销是技能广场的共享分类，可在顶部工具栏筛选。"}
                         </p>
                     </div>
                 </div>

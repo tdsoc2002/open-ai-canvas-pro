@@ -115,7 +115,7 @@ export default function DramaListPage() {
         <WorkspacePage className="studio-collection-page drama-library">
             <div className="drama-root" {...dragProps}>
                 <div className="studio-band">
-                    <PageHeader title="短剧" description="上传一本小说，流水线自动改编、拆集、建角色、出分镜并合成成片。" meta={<span className="app-projects-header-meta">{total} 部</span>} actions={total ? actions : undefined} />
+                    <PageHeader title="短剧" meta={<span className="app-projects-header-meta">{total} 部</span>} actions={total ? actions : undefined} />
                     {total ? (
                         <CollectionToolbar
                             label="短剧浏览工具"
@@ -168,7 +168,6 @@ export default function DramaListPage() {
                     <WorkspaceNoResultsState
                         icon="projects"
                         query={keyword}
-                        description="换一个作品名，或清除状态筛选。"
                         onClear={() => {
                             setKeyword("");
                             setStatus("all");

@@ -6,6 +6,7 @@ import { WorkspaceErrorState } from "@/components/layout/workspace-state";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { cn } from "@/lib/utils";
 import { installSkillRecommendations, listSkillRecommendations, type SkillRecommendationIndustry, type SkillRecommendationList } from "@/services/api/skills";
+import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
 
 const INDUSTRY_ICONS: Record<string, LucideIcon> = { shapes: Shapes, film: Film, "shopping-bag": ShoppingBag, megaphone: Megaphone, landmark: Landmark, palette: Palette, users: Users, wrench: Wrench };
 
@@ -35,6 +36,7 @@ function markInstalled(list: SkillRecommendationList, installed: string[]): Skil
  */
 export function SkillRecommendationsModal({ open, onClose, onInstalled }: SkillRecommendationsModalProps) {
     const { message } = App.useApp();
+    const agentName = useAppearanceStore(selectAgentName);
     const [data, setData] = useState<SkillRecommendationList | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -71,7 +73,7 @@ export function SkillRecommendationsModal({ open, onClose, onInstalled }: SkillR
         try {
             const result = await installSkillRecommendations(target.industryId, skillIds);
             setData((current) => (current ? markInstalled(current, result.installed) : current));
-            if (result.installed.length) message.success(`已安装 ${result.installed.length} 个技能，Agent 会按任务自动选用`);
+            if (result.installed.length) message.success(`已安装 ${result.installed.length} 个技能，${agentName}会按需使用`);
             else message.info("这些技能已经在你的技能库里");
             onInstalled?.(result.installed);
         } catch (cause) {
@@ -85,7 +87,7 @@ export function SkillRecommendationsModal({ open, onClose, onInstalled }: SkillR
 
     return (
         <AppModal open={open} width={760} title="按行业推荐技能" className="library-modal skill-recommendations-modal" footer={null} onCancel={onClose} mask={{ closable: !installing }}>
-            <p className="mb-4 text-sm leading-6 text-foreground/55">选一个最接近你工作的行业，装上常用技能。装好后 Agent 会在任务需要时自己查找并使用，不用每次手动选择。</p>
+            <p className="mb-4 text-sm leading-6 text-foreground/65">按行业安装常用技能，{agentName}会在需要时使用。</p>
             {loading && !data ? (
                 <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground" role="status">
                     <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

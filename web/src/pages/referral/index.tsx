@@ -50,7 +50,6 @@ export default function ReferralPage() {
         <WorkspacePage className="referral-page">
             <PageHeader
                 title="推广中心"
-                description="分享专属链接邀请新用户注册。被邀请用户在线充值积分后，你将按比例获得积分返佣。"
                 actions={
                     <Button icon={<RefreshCw className="size-3.5" />} loading={overview.isFetching} onClick={refresh}>
                         刷新
