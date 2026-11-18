@@ -4,7 +4,7 @@ import { App, Button } from "antd";
 import { appQueryClient } from "@/lib/query-client";
 import { sameAgentRequestTarget, type AgentRequestTarget } from "@/lib/agent-page-context";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { EyeOff, FileText, ImagePlus, MoveDiagonal2, SquareDashedMousePointer, X } from "lucide-react";
+import { EyeOff, FileText, ImagePlus, Maximize2, Minimize2, SquareDashedMousePointer, X } from "lucide-react";
 import { canvasNodeMentionToken } from "@/lib/canvas/canvas-resource-references";
 import { CANVAS_IMAGE_ASSET_DND_TYPE } from "@/lib/canvas/canvas-asset-dnd";
 import {
@@ -31,6 +31,7 @@ import { nanoid } from "nanoid";
 
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { canvasThemes } from "@/lib/canvas-theme";
+import type { AgentLauncherPosition } from "@/lib/canvas/agent-launcher-position";
 import { agentSubmissionErrorTitle } from "@/lib/canvas/agent-error-presentation";
 import { agentComposerPlaceholder } from "@/lib/canvas/agent-appearance";
 import { selectCanvasAppearance, useAppearanceStore } from "@/stores/use-appearance-store";
@@ -399,6 +400,14 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
         return () => window.removeEventListener("keydown", onKeyDown);
     }, []);
     const panelLayout = useAgentPanelLayout(dock);
+    const { placeAtLauncher } = panelLayout;
+    const openAtLauncher = useCallback(
+        (position: AgentLauncherPosition) => {
+            if (!dock.available || !useGlobalAgentStore.getState().dock.docked) placeAtLauncher(position);
+            onOpen();
+        },
+        [dock.available, onOpen, placeAtLauncher],
+    );
     const lastSeqRef = useRef(0);
     const replayCursorRef = useRef({ runId: "", seq: 0 });
     const canvasSyncRef = useRef<ReturnType<typeof createAgentCanvasSync> | null>(null);
@@ -2459,31 +2468,34 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
             />
         ) : null;
 
+    const { maximized } = panelLayout;
     const resizeCorner = dock.active ? null : (
         <button
             type="button"
-            aria-label="调整 Agent 面板大小"
-            title="拖动调整宽高，也可用方向键调整"
-            data-agent-resize="northwest"
-            className="agent-panel-resize-corner z-10 hidden size-5 shrink-0 cursor-nw-resize touch-none place-items-center rounded-md opacity-60 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 sm:grid"
+            aria-label={maximized ? "还原面板" : "放大面板"}
+            title={maximized ? "还原到原来的大小和位置" : "放大面板，也可拖动或按方向键调整大小"}
+            data-agent-resize={maximized ? undefined : "northwest"}
+            className="agent-panel-resize-corner z-10 hidden size-6 shrink-0 cursor-pointer touch-none place-items-center rounded-md opacity-80 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 sm:grid"
+            onClick={panelLayout.onToggleMaximized}
             onKeyDown={panelLayout.onResizeKeyDown}
             style={{ color: theme.node.muted }}
         >
-            <MoveDiagonal2 className="size-3" aria-hidden="true" />
+            {maximized ? <Minimize2 className="size-4" aria-hidden="true" /> : <Maximize2 className="size-4" aria-hidden="true" />}
         </button>
     );
 
+    const panelHidden = !reducedMotion && dock.active ? { opacity: 0, x: 24 } : { opacity: 0 };
     return (
         <>
-            <AgentLauncher theme={theme} statusColor={statusColor} approvalPending={Boolean(approval)} reducedMotion={Boolean(reducedMotion)} status={status} hidden={open} onOpen={onOpen} />
+            <AgentLauncher theme={theme} statusColor={statusColor} approvalPending={Boolean(approval)} reducedMotion={Boolean(reducedMotion)} status={status} hidden={open} onOpen={openAtLauncher} />
             <AnimatePresence>
                 {open ? (
                     <motion.aside
-                        initial={reducedMotion ? { opacity: 0 } : dock.active ? { opacity: 0, x: 24 } : { opacity: 0, y: 20, scale: 0.975 }}
-                        animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-                        exit={reducedMotion ? { opacity: 0 } : dock.active ? { opacity: 0, x: 24 } : { opacity: 0, y: 12, scale: 0.985 }}
+                        initial={panelHidden}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={panelHidden}
                         transition={{ duration: reducedMotion ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] }}
-                        className={`canvas-agent-panel fixed z-[calc(var(--z-toast)+1)] flex min-w-0 flex-col overflow-hidden${dock.active ? " is-docked" : ""}`}
+                        className={`canvas-agent-panel fixed z-[calc(var(--z-toast)+1)] flex min-w-0 flex-col overflow-hidden${dock.active ? " is-docked" : maximized ? " is-maximized" : ""}`}
                         style={
                             { ...panelLayout.style, "--agent-surface-base": theme.node.panel, "--agent-ink": theme.node.text, "--agent-accent": theme.accent.primary, "--agent-shadow-color": theme.spatial.shadow } as CSSProperties &
                                 Record<`--${string}`, string>
@@ -2519,9 +2531,13 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                             />
                         ) : (
                             <>
-                                <div data-agent-resize="north" className="absolute inset-x-5 top-0 z-10 hidden h-2 cursor-n-resize touch-none sm:block" />
-                                <div data-agent-resize="west" className="absolute bottom-5 left-0 top-5 z-10 hidden w-2 cursor-w-resize touch-none sm:block" />
-                                {view !== "chat" || !joysee ? resizeCorner : null}
+                                {!maximized ? (
+                                    <>
+                                        <div data-agent-resize="north" className="absolute inset-x-5 top-0 z-10 hidden h-2 cursor-n-resize touch-none sm:block" />
+                                        <div data-agent-resize="west" className="absolute bottom-5 left-0 top-5 z-10 hidden w-2 cursor-w-resize touch-none sm:block" />
+                                    </>
+                                ) : null}
+                                {view !== "chat" ? resizeCorner : null}
                             </>
                         )}
                         <AnimatePresence mode="wait" initial={false}>

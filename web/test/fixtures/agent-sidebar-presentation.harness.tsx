@@ -49,8 +49,10 @@ const { AgentConversation, AgentHeader, ComposerControls, ComposerModelPicker } 
 const { AgentChatComposer, AgentQuestionBar, AgentSceneCapsules } = await import("@/components/canvas/canvas-cloud-agent-chat-ui");
 const { CanvasAgentSkillLibraryModal } = await import("@/components/canvas/canvas-agent-skill-library-modal");
 const { useAgentPanelDock } = await import("@/components/canvas/use-agent-panel-dock");
+const { useAgentPanelLayout } = await import("@/components/canvas/use-agent-panel-layout");
 const { useGlobalAgentStore } = await import("@/stores/use-global-agent-store");
 const { restoreAgentPanelDock } = await import("@/lib/canvas/agent-panel-dock");
+const { AGENT_PANEL_LAYOUT_KEY } = await import("@/lib/canvas/agent-panel-layout");
 const { defaultConfig } = await import("@/stores/use-config-store");
 const { canvasThemes } = await import("@/lib/canvas-theme");
 const { selectAgentName, useAppearanceStore } = await import("@/stores/use-appearance-store");
@@ -97,6 +99,8 @@ let chosenPresets: string[];
 
 beforeEach(() => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    localStorage.removeItem(AGENT_PANEL_LAYOUT_KEY);
     useGlobalAgentStore.setState({ open: true, canvas, dock: { ...initialDock } });
     host = document.createElement("div");
     document.body.append(host);
@@ -203,8 +207,9 @@ function liveIndicators() {
 }
 
 // 这里只持有生产组件要求的受控值；开合与停靠使用真实全局 store/hook，输入区是真实编辑器。
-function SidebarFixture() {
+function SidebarFixture({ compact = false }: { compact?: boolean }) {
     const dock = useAgentPanelDock();
+    const layout = useAgentPanelLayout(dock);
     const open = useGlobalAgentStore((state) => state.open);
     const [prompt, setPrompt] = useState("");
     const [messages, setMessages] = useState<CloudAgentChatMessage[]>([]);
@@ -217,13 +222,19 @@ function SidebarFixture() {
                     重新打开 Agent
                 </button>
             ) : (
-                <aside data-testid="sidebar" data-layout={dock.active ? "docked" : "floating"}>
+                <aside data-testid="sidebar" data-layout={dock.active ? "docked" : "floating"} style={layout.style} {...layout.pointerHandlers}>
                     <AgentHeader
                         theme={theme}
+                        compact={compact}
                         hasMessages
                         conversationTitle="短片创作"
                         statusLabel="待命"
                         statusColor={theme.node.muted}
+                        resizeCorner={
+                            dock.active ? null : (
+                                <button type="button" aria-label={layout.maximized ? "还原面板" : "放大面板"} data-agent-resize={layout.maximized ? undefined : "northwest"} onClick={layout.onToggleMaximized} onKeyDown={layout.onResizeKeyDown} />
+                            )
+                        }
                         onNew={() => newClicks++}
                         onHistory={() => historyClicks++}
                         onSettings={noop}
@@ -369,6 +380,32 @@ test("显式浮窗偏好保留，改视口或开关面板不会重置偏好", as
     await click("重新打开 Agent");
     expect(layout()).toBe("floating");
     expect(useGlobalAgentStore.getState().dock.width).toBe(468);
+});
+
+test.each([false, true])("经典/乐见浮窗放大后可还原，同时保留输入及普通窗口偏好 (%s)", async (compact) => {
+    const saved = { left: 320, top: 160, width: 420, height: 500 };
+    localStorage.setItem(AGENT_PANEL_LAYOUT_KEY, JSON.stringify(saved));
+    useGlobalAgentStore.setState({ dock: { ...initialDock, docked: false } });
+    await render(<SidebarFixture compact={compact} />);
+    const panel = host.querySelector<HTMLElement>('[data-testid="sidebar"]')!;
+    const normal = () => [panel.style.left, panel.style.top, panel.style.width, panel.style.height];
+    expect(normal()).toEqual(["320px", "160px", "420px", "500px"]);
+    await type("待完善的镜头草稿");
+
+    // 普通状态仍允许键盘微调；放大不会把视口尺寸写成普通窗口偏好。
+    await act(() => {
+        button("放大面板").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    });
+    const resized = { ...saved, left: 310, width: 430 };
+    await click("放大面板");
+    expect(button("还原面板").hasAttribute("data-agent-resize")).toBe(false);
+    expect(normal()).not.toEqual(["310px", "160px", "430px", "500px"]);
+    expect(editorText()).toBe("待完善的镜头草稿");
+    await eventually(() => expect(JSON.parse(localStorage.getItem(AGENT_PANEL_LAYOUT_KEY)!)).toEqual(resized));
+
+    await click("还原面板");
+    expect(normal()).toEqual(["310px", "160px", "430px", "500px"]);
+    expect(editorText()).toBe("待完善的镜头草稿");
 });
 
 test("标题历史、新建、更多停靠与关闭均可点击，切换和开关保留输入", async () => {

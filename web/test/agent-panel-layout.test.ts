@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { changeAgentPanelLayout, clampAgentPanelLayout, defaultAgentPanelLayout, restoreAgentPanelLayout } from "@/lib/canvas/agent-panel-layout";
+import { anchorAgentPanelLayout, changeAgentPanelLayout, clampAgentPanelLayout, defaultAgentPanelLayout, restoreAgentPanelLayout } from "@/lib/canvas/agent-panel-layout";
 import { agentErrorPresentation, agentSubmissionErrorTitle } from "@/lib/canvas/agent-error-presentation";
 import { ApiError } from "@/services/api/request";
 
@@ -31,6 +31,14 @@ describe("Agent window layout", () => {
         expect(layout).toEqual({ left: 696, top: 128, width: 568, height: 660 });
         expect(layout.left + layout.width).toBe(start.left + start.width);
         expect(layout.top + layout.height).toBe(start.top + start.height);
+    });
+    it("opens at the launcher's bottom-right corner instead of the saved panel position", () => {
+        const saved = { left: 400, top: 32, width: 420, height: 500 };
+        expect(anchorAgentPanelLayout(saved, { right: 20, bottom: 20 }, viewport)).toEqual({ ...saved, left: 840, top: 280 });
+        expect(anchorAgentPanelLayout(saved, { right: 120, bottom: 175 }, viewport)).toEqual({ ...saved, left: 740, top: 125 });
+    });
+    it("stays onscreen when launched near the top-left corner", () => {
+        expect(anchorAgentPanelLayout(start, { right: 1180, bottom: 700 }, viewport)).toEqual({ ...start, left: 12, top: 12 });
     });
     it("resizes one axis at a time on an edge", () => {
         expect(changeAgentPanelLayout(start, "west", -60, 150, viewport)).toEqual({ ...start, left: 756, width: 508 });

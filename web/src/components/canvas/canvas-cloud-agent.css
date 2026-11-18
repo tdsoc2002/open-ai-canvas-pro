@@ -18,6 +18,7 @@
     container-type: inline-size;
     overscroll-behavior: contain;
     isolation: isolate;
+    transition-property: none;
     border: 0;
     border-radius: var(--agent-radius-shell);
     background: var(--agent-material-solid);
@@ -133,6 +134,12 @@
     position: absolute;
     inset-block-start: var(--space-2);
     inset-inline-start: var(--space-2);
+}
+
+@media (min-width: 640px) {
+    .canvas-agent-panel:has(> .agent-panel-resize-corner) .agent-panel-header {
+        padding-inline-start: var(--space-10);
+    }
 }
 
 .agent-panel-context {
@@ -1715,6 +1722,13 @@
     cursor: grabbing;
 }
 
+.canvas-agent-panel.is-maximized [data-agent-drag-handle],
+.canvas-agent-panel.is-maximized [data-agent-drag-handle]:active {
+    cursor: default;
+    touch-action: auto;
+    user-select: auto;
+}
+
 .agent-message-mention {
     display: inline-flex;
     max-width: 100%;
@@ -2816,25 +2830,10 @@ summary.agent-tool-step:hover {
     pointer-events: none;
 }
 
-.canvas-agent-default-avatar > img,
-.canvas-agent-otter-rig {
+.canvas-agent-default-avatar > img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-}
-
-.canvas-agent-otter-rig {
-    position: absolute;
-    inset: 0;
-    visibility: hidden;
-}
-
-.canvas-agent-default-avatar[data-otter-playing] > img {
-    visibility: hidden;
-}
-
-.canvas-agent-default-avatar[data-otter-playing] > .canvas-agent-otter-rig {
-    visibility: visible;
 }
 
 .canvas-agent-launcher-media > .canvas-agent-keyed-video {
@@ -2847,33 +2846,6 @@ summary.agent-tool-step:hover {
     opacity: 0;
 }
 
-.canvas-agent-default-avatar {
-    display: block;
-    position: relative;
-    pointer-events: none;
-}
-
-.canvas-agent-default-avatar > img,
-.canvas-agent-otter-rig {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.canvas-agent-otter-rig {
-    position: absolute;
-    inset: 0;
-    visibility: hidden;
-}
-
-.canvas-agent-default-avatar[data-otter-playing] > img {
-    visibility: hidden;
-}
-
-.canvas-agent-default-avatar[data-otter-playing] > .canvas-agent-otter-rig {
-    visibility: visible;
-}
-
 @media (prefers-reduced-motion: no-preference) {
     .canvas-agent-launcher-media > .canvas-agent-default-avatar {
         animation: canvas-agent-default-idle 3.6s ease-in-out infinite;
@@ -2881,7 +2853,6 @@ summary.agent-tool-step:hover {
     }
 
     .canvas-agent-launcher.is-dragging > .canvas-agent-default-avatar,
-    .canvas-agent-default-avatar[data-otter-playing],
     .canvas-agent-launcher.is-reduced-motion > .canvas-agent-default-avatar {
         animation-play-state: paused;
     }
@@ -2935,24 +2906,6 @@ summary.agent-tool-step:hover {
 
 .canvas-agent-launcher.is-reduced-motion .canvas-agent-launcher-loading-dots > span {
     animation: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .canvas-agent-launcher-media > .canvas-agent-default-avatar {
-        animation: canvas-agent-default-idle 3.6s ease-in-out infinite;
-        transform-origin: center 90%;
-    }
-
-    .canvas-agent-launcher.is-dragging > .canvas-agent-default-avatar,
-    .canvas-agent-default-avatar[data-otter-playing] {
-        animation-play-state: paused;
-    }
-}
-
-@keyframes canvas-agent-default-idle {
-    50% {
-        transform: translateY(-4%) rotate(-3deg) scaleY(1.04);
-    }
 }
 
 /* 大形象外框不接收指针，透明处的点击落到页面按钮上；拖拽与点击由身体热区承接，内缩比例见组件。 */

@@ -72,7 +72,6 @@ function harness(doubleClick = false) {
     const cells = [];
     let cursor = 0;
     let opens = 0;
-    let doubleOpens = 0;
     const stored = new Map();
     const listeners = new Map();
     const window = { innerWidth: 1280, innerHeight: 800, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
@@ -103,7 +102,7 @@ function harness(doubleClick = false) {
     runInNewContext(source, { module, exports: module.exports, hooks, window, localStorage: { getItem: (key) => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) }, console });
     const render = () => {
         cursor = 0;
-        return module.exports.useAgentLauncherPosition(() => opens++, 76, 76, doubleClick ? () => doubleOpens++ : undefined);
+        return module.exports.useAgentLauncherPosition(() => opens++, 76, 76, doubleClick);
     };
     let current = render();
     let captured = null;
@@ -134,9 +133,6 @@ function harness(doubleClick = false) {
         get opens() {
             return opens;
         },
-        get doubleOpens() {
-            return doubleOpens;
-        },
         get saved() {
             return [...stored.values()].map(JSON.parse);
         },
@@ -146,26 +142,25 @@ function harness(doubleClick = false) {
     };
 }
 
-test("默认形象鼠标双击只触发一次打开反馈，键盘与触屏可直接打开", () => {
+test("默认形象鼠标双击只打开一次，键盘与触屏可直接打开", () => {
     const h = harness(true);
     h.fire("onPointerDown");
     h.fire("onPointerUp");
     h.fire("onClick");
     expect(h.opens).toBe(0);
-    expect(h.doubleOpens).toBe(0);
 
     h.fire("onPointerDown");
     h.fire("onPointerUp");
     h.fire("onClick", { detail: 2 });
     h.fire("onDoubleClick", { detail: 2 });
     h.fire("onClick", { detail: 3 });
-    expect(h.doubleOpens).toBe(1);
+    expect(h.opens).toBe(1);
 
     h.fire("onClick", { detail: 0 });
     h.fire("onPointerDown", { pointerType: "touch" });
     h.fire("onPointerUp", { pointerType: "touch" });
     h.fire("onClick");
-    expect(h.opens).toBe(2);
+    expect(h.opens).toBe(3);
 });
 
 test("拖动结束不会被算作双击的第一下", () => {
@@ -178,7 +173,6 @@ test("拖动结束不会被算作双击的第一下", () => {
     h.fire("onPointerUp");
     h.fire("onClick", { detail: 2 });
     h.fire("onDoubleClick", { detail: 2 });
-    expect(h.doubleOpens).toBe(0);
     expect(h.opens).toBe(0);
 });
 

@@ -1,4 +1,7 @@
-import { expect, test } from "bun:test";
+import { expect, mock, test } from "bun:test";
+import { Window } from "happy-dom";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { AgentWelcome } from "@/components/canvas/canvas-agent-welcome";
@@ -10,9 +13,61 @@ import { DEFAULT_AGENT_AVATAR, DEFAULT_CANVAS_APPEARANCE, agentComposerPlacehold
 import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
 import { catalog as createCatalog } from "@/i18n/messages/areas/create";
 import { emptyAgentContextUsage, presentAgentContextUsage } from "@/lib/canvas/agent-context-usage";
+import { AGENT_LAUNCHER_POSITION_KEY } from "@/lib/canvas/agent-launcher-position";
 import { defaultConfig } from "@/stores/use-config-store";
 
 const noop = () => {};
+
+test("技能页双击默认水獭立即按入口当前位置打开对话", async () => {
+    const dom = new Window({ url: "http://fixture.invalid/skills", settings: { disableJavaScriptEvaluation: true } });
+    dom.happyDOM.setViewport({ width: 1280, height: 800 });
+    dom.localStorage.setItem(AGENT_LAUNCHER_POSITION_KEY, JSON.stringify({ right: 240, bottom: 100 }));
+    const globals = { window: dom, document: dom.document, localStorage: dom.localStorage, IS_REACT_ACT_ENVIRONMENT: true };
+    const original = Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const);
+    for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+    const host = dom.document.createElement("div");
+    dom.document.body.append(host);
+    const root = createRoot(host as unknown as Element);
+    const onOpen = mock(noop);
+
+    try {
+        await act(() =>
+            root.render(
+                <MemoryRouter initialEntries={["/skills"]}>
+                    <AgentLauncher theme={canvasThemes.dark} statusColor="green" approvalPending={false} reducedMotion={false} status="idle" onOpen={onOpen} />
+                </MemoryRouter>,
+            ),
+        );
+        // 如果入口仍有开场动画，模拟素材已加载，但动作尚未完成。
+        const rig = host.querySelector(".canvas-agent-otter-rig");
+        if (rig) {
+            for (const layer of rig.querySelectorAll("g")) {
+                Object.defineProperty(layer, "animate", { value: () => ({ finished: new Promise(() => {}), cancel: noop }) });
+            }
+            await act(() => {
+                rig.querySelector("image")!.dispatchEvent(new dom.Event("load"));
+            });
+        }
+        const launcher = host.querySelector(".canvas-agent-launcher-hit")!;
+        const click = (detail: number) => launcher.dispatchEvent(new dom.MouseEvent("click", { bubbles: true, detail }));
+        await act(() => {
+            click(1);
+        });
+        expect(onOpen).not.toHaveBeenCalled();
+        await act(() => {
+            click(2);
+        });
+        expect(onOpen).toHaveBeenCalledTimes(1);
+        expect(onOpen).toHaveBeenCalledWith({ right: 240, bottom: 100 });
+    } finally {
+        await act(() => root.unmount());
+        await dom.happyDOM.abort();
+        for (const [key, descriptor] of original) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+            else Reflect.deleteProperty(globalThis, key);
+        }
+    }
+});
 
 test.each([
     ["/canvas/mascot-size", false, 120],

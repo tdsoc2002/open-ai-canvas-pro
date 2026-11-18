@@ -1,3 +1,5 @@
+import type { AgentLauncherPosition } from "./agent-launcher-position";
+
 export type AgentPanelLayout = { left: number; top: number; width: number; height: number };
 export type AgentPanelViewport = { width: number; height: number };
 export type AgentPanelGesture = "move" | "north" | "west" | "northwest";
@@ -40,6 +42,11 @@ export function defaultAgentPanelLayout(viewport: AgentPanelViewport): AgentPane
     const width = 420;
     const height = viewport.height - DEFAULT_TOP - MARGIN;
     return clampAgentPanelLayout({ width, height, left: viewport.width - width - MARGIN, top: DEFAULT_TOP }, viewport);
+}
+
+/** 从入口的右下角向左上展开；空间不够时把面板夹回视口。 */
+export function anchorAgentPanelLayout(layout: AgentPanelLayout, launcher: AgentLauncherPosition, viewport: AgentPanelViewport): AgentPanelLayout {
+    return clampAgentPanelLayout({ ...layout, left: viewport.width - launcher.right - layout.width, top: viewport.height - launcher.bottom - layout.height }, viewport);
 }
 
 export function changeAgentPanelLayout(start: AgentPanelLayout, gesture: AgentPanelGesture, dx: number, dy: number, viewport: AgentPanelViewport): AgentPanelLayout {

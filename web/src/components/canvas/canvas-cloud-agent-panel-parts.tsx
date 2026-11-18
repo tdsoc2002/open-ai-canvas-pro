@@ -9,14 +9,13 @@ import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentPanelTitle,
 import { type CSSProperties, type ReactNode, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
-import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, AGENT_LAUNCHER_TOGGLE_SIZE, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition } from "@/lib/canvas/agent-launcher-position";
+import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, AGENT_LAUNCHER_TOGGLE_SIZE, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition, type AgentLauncherPosition } from "@/lib/canvas/agent-launcher-position";
 import { useMatch } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Live2DAvatar } from "./live2d-avatar";
 import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appearance";
 import { AgentAvatarVideo } from "@/components/canvas/agent-avatar-video";
-import { AgentOtterAvatar, playAgentOtterAction } from "./agent-otter-action";
 import { AgentOrb, agentOrbStateForAvatar } from "@/components/ui/agent-orb";
 import {
     ArrowDown,
@@ -89,7 +88,7 @@ export const AgentLauncher = memo(function AgentLauncher({
     reducedMotion: boolean;
     status: string;
     hidden?: boolean;
-    onOpen: () => void;
+    onOpen: (position: AgentLauncherPosition) => void;
 }) {
     const appearance = useAppearanceStore(selectCanvasAppearance);
     const appearanceResolved = useAppearanceStore((state) => state.resolved);
@@ -136,30 +135,7 @@ export const AgentLauncher = memo(function AgentLauncher({
         return () => window.removeEventListener("resize", resize);
     }, []);
     const [collapsed, setCollapsed] = useState(readAgentLauncherCollapsed);
-    const avatarImage = useRef<HTMLSpanElement>(null);
-    const openingAnimation = useRef<ReturnType<typeof playAgentOtterAction>>(null);
-    useEffect(() => () => openingAnimation.current?.cancel(), [hidden]);
-    const openWithFeedback = () => {
-        if (openingAnimation.current) return;
-        const action = !reducedMotion && avatarImage.current ? playAgentOtterAction(avatarImage.current) : null;
-        if (!action) {
-            onOpen();
-            return;
-        }
-        openingAnimation.current = action;
-        void action.finished.then(
-            () => {
-                openingAnimation.current = null;
-                onOpen();
-                action.cancel();
-            },
-            () => {
-                openingAnimation.current = null;
-            },
-        );
-    };
     const toggleCollapsed = () => {
-        openingAnimation.current?.cancel();
         const next = !collapsed;
         setCollapsed(next);
         if (next) setReadyBundleURL("");
@@ -181,7 +157,7 @@ export const AgentLauncher = memo(function AgentLauncher({
     const keepsAvatarSize = largeAvatar && !collapsed;
     const height = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? resolveAgentLauncherAvatarHeight(preferredAvatarHeight, aspectRatio, viewport, inCanvasEditor) : 76;
     const width = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
-    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar ? openWithFeedback : undefined);
+    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar);
     const { onClick, onKeyDown, onDoubleClick, ...pointerHandlers } = handlers;
     // 大形象的外框大多是透明像素：外框不接收指针，只有身体热区可点、可拖，透明处的点击落到下面的页面。
     // 键盘聚焦与激活仍在按钮上；小圆球和默认 76px 入口整块可点。
@@ -222,7 +198,9 @@ export const AgentLauncher = memo(function AgentLauncher({
             >
                 {hitInset ? <span className="canvas-agent-launcher-hit" aria-hidden="true" style={{ inset: `${hitInset.top * 100}% ${hitInset.side * 100}% ${hitInset.bottom * 100}%` }} {...pointerHandlers} /> : null}
                 {defaultAvatar ? (
-                    <AgentOtterAvatar avatarRef={avatarImage} collapsed={collapsed} />
+                    <span className={cn("canvas-agent-default-avatar", collapsed && "size-8")}>
+                        <img {...DEFAULT_AGENT_AVATAR} alt="" draggable={false} />
+                    </span>
                 ) : collapsed ? (
                     <AgentOrb state={agentOrbStateForAvatar(avatarState)} size={30} color="#7164f6" />
                 ) : !appearanceResolved ? null : live ? (
@@ -392,6 +370,7 @@ export function AgentHeader({
                 </>
             ) : (
                 <>
+                    {resizeCorner}
                     <div className="min-w-0 flex-1">
                         <button type="button" className="agent-panel-title-button" onClick={onHistory} aria-label={`历史对话，当前：${conversationHeading}`} title="切换历史对话">
                             <span className="agent-panel-title">{conversationHeading}</span>
