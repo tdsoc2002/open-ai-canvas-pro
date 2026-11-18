@@ -3,15 +3,17 @@ import { AppModal } from "@/components/ui/product/app-modal";
 import { App, Button, Dropdown, Input } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 
-import { Check, ChevronDown, FolderInput, FolderPlus, Globe2, Heart, Info, Library, LoaderCircle, Lock, MoreHorizontal, Pencil, Plus, Search, Sparkles, Store, Trash2, UserRound, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, ChevronDown, FolderInput, FolderPlus, Globe2, Heart, Info, Library, LoaderCircle, Lock, MoreHorizontal, Pencil, Plus, Search, Sparkles, Store, Trash2, UserRound } from "lucide-react";
+import { useInView } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
-import { fallbackSkillCategories, formatSkillCount, skillAccent, skillCategoryLabel, skillGlyph } from "@/pages/skills/skill-catalog";
+import { fallbackSkillCategories, formatSkillCount, skillAccent, skillCategoryLabel } from "@/pages/skills/skill-catalog";
+import { getSkillFallbackCover } from "@/pages/skills/skill-fallback-covers";
 import { SkillDetailModal } from "@/pages/skills/skill-detail-drawer";
 import { SkillEditorDrawer } from "@/pages/skills/skill-editor-drawer";
 import { SkillInstallModal } from "@/pages/skills/skill-install-modal";
@@ -729,11 +731,40 @@ export default function SkillsPage() {
     );
 }
 
-/**
- * 技能卡：分类色字形 tile + 名称（最多两行）+ 作者行，两行简介，底部是带标签的统计
- * （likeCount = 收藏数，addedCount = 加入技能库的人数）。
- * 整卡由名称按钮的伸展点击区打开详情；右上角常显紧凑的加入开关，编辑/更多在底部 hover 出现。
- */
+function SkillCover({ skill, media }: { skill: Skill; media?: Skill["showcaseMedia"][number] }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const visible = useInView(ref, { once: true, margin: "160px" });
+    const [ready, setReady] = useState(false);
+    const fallback = visible && !ready ? getSkillFallbackCover(skill) : undefined;
+
+    return (
+        <div className="skill-tile-cover" ref={ref} aria-hidden="true">
+            <div className="skill-tile-cover-summary">
+                <span>技能说明</span>
+                <p>{skill.description || skill.skillName}</p>
+                <span>查看技能详情 →</span>
+            </div>
+            {fallback ? (
+                <div className="skill-tile-cover-fallback">
+                    {fallback.crop ? (
+                        <svg viewBox={fallback.crop.viewBox} preserveAspectRatio="xMidYMid slice">
+                            <image href={fallback.src} width={fallback.crop.width} height={fallback.crop.height} />
+                        </svg>
+                    ) : (
+                        <img src={fallback.src} alt="" decoding="async" />
+                    )}
+                    <span>主题示意</span>
+                </div>
+            ) : null}
+            {media?.type === "image" ? (
+                <img src={media.showcaseUrl} alt="" loading="lazy" decoding="async" className={ready ? "is-ready" : undefined} onLoad={() => setReady(true)} onError={() => setReady(false)} />
+            ) : media?.type === "video" && visible ? (
+                <video src={media.showcaseUrl} muted playsInline preload="metadata" className={ready ? "is-ready" : undefined} onLoadedData={() => setReady(true)} onError={() => setReady(false)} />
+            ) : null}
+        </div>
+    );
+}
+
 function SkillCard({
     skill,
     accentKey,
@@ -767,7 +798,9 @@ function SkillCard({
     const libraryCategoryLabel = currentLibraryCategory?.name || (skill.libraryCategoryId ? "已归类" : "未分类");
     const author = skill.effectiveUser.name || "未知用户";
     const workbenchLabel = skill.sourceType === "github" ? "在工作台查看" : "在工作台编辑";
-    const likeLabel = `${skill.isLike ? "取消收藏" : "收藏"}，${skill.likeCount} 人已收藏`;
+    const likeLabel = `${skill.isLike ? "取消收藏" : "收藏"}：${skill.skillName}，${skill.likeCount} 人已收藏`;
+    const addedLabel = `${skill.addedCount} 人加入`;
+    const media = skill.showcaseMedia?.find(({ type, showcaseUrl }) => (type === "image" || type === "video") && /^(https?:\/\/|\/(?!\/))/i.test(showcaseUrl));
     const menuItems = [
         { key: "detail", label: "查看详情" },
         ...(skill.isOwner
@@ -775,17 +808,20 @@ function SkillCard({
             : [{ key: "toggle-added", label: skill.isAdded ? "从我的技能移除" : "加入我的技能", disabled: loading }]),
     ];
     return (
-        <article className={cn("product-collection-card skill-tile", skill.isAdded && "is-added")} data-accent={skillAccent(accentKey)}>
-            <div className="skill-tile-head">
-                <span className="skill-tile-glyph" aria-hidden="true">
-                    {skillGlyph(skill.skillName)}
+        <article className={cn("skill-tile", skill.isAdded && "is-added")} data-accent={skillAccent(accentKey)}>
+            <SkillCover key={media?.showcaseUrl} skill={skill} media={media} />
+            {skill.isOwner ? (
+                <span className="skill-tile-own" title={`你创建或导入的技能 · ${addedLabel}`}>
+                    我的
                 </span>
-                <div className="skill-tile-heading">
-                    <h3 className="skill-tile-name">
-                        <button type="button" className="skill-tile-open" title={skill.skillName} onClick={onOpen}>
-                            <span className="skill-tile-name-text">{skill.skillName}</span>
-                        </button>
-                    </h3>
+            ) : null}
+            <div className="skill-tile-body">
+                <h3 className="skill-tile-name">
+                    <button type="button" className="skill-tile-open" data-no-press title={skill.skillName} onClick={onOpen}>
+                        <span className="skill-tile-name-text">{skill.skillName}</span>
+                    </button>
+                </h3>
+                <div className="skill-tile-head">
                     <div className="skill-tile-byline">
                         <span className="skill-tile-author" title={`作者：${author}`}>
                             {author}
@@ -817,64 +853,42 @@ function SkillCard({
                             </Tooltip>
                         ) : null}
                     </div>
-                </div>
-            </div>
-
-            <p className="skill-tile-description">{skill.description || "暂无技能简介"}</p>
-
-            <div className="skill-tile-footer">
-                <Tooltip title={likeLabel}>
-                    <button type="button" disabled={loading} className="skill-tile-stat is-like" aria-pressed={skill.isLike} aria-label={likeLabel} onClick={onLike}>
-                        <Heart aria-hidden="true" />
-                        <span>{formatSkillCount(skill.likeCount)}</span>
-                    </button>
-                </Tooltip>
-                <span className="skill-tile-stat" title={`${skill.addedCount} 人已加入技能库`}>
-                    <Users aria-hidden="true" />
-                    <span>{formatSkillCount(skill.addedCount)} 人加入</span>
-                </span>
-                {/* 次要操作：hover / focus-within 显示，触屏常显；菜单展开时保持可见。 */}
-                <div className="skill-tile-actions">
-                    {skill.isOwner ? (
-                        <Tooltip title={workbenchLabel}>
-                            <button type="button" className="product-icon-button skill-tile-edit" aria-label={`${workbenchLabel}：${skill.skillName}`} onClick={onOpenWorkbench}>
-                                <Pencil />
+                    <div className="skill-tile-actions">
+                        {skill.isOwner ? (
+                            <Tooltip title={workbenchLabel}>
+                                <button type="button" className="product-icon-button skill-tile-edit" aria-label={`${workbenchLabel}：${skill.skillName}`} onClick={onOpenWorkbench}>
+                                    <Pencil />
+                                </button>
+                            </Tooltip>
+                        ) : null}
+                        <Dropdown
+                            trigger={["click"]}
+                            placement="bottomRight"
+                            menu={{
+                                items: menuItems,
+                                onClick: ({ key }) => (key === "detail" ? onOpen() : key === "workbench" ? onOpenWorkbench() : key === "edit" ? onEdit() : key === "delete" ? onDelete() : onAdd()),
+                            }}
+                        >
+                            <button type="button" className="product-icon-button skill-tile-more" aria-label={`${skill.skillName} 更多操作`} title="更多操作">
+                                <MoreHorizontal />
                             </button>
-                        </Tooltip>
-                    ) : null}
-                    <Dropdown
-                        trigger={["click"]}
-                        placement="bottomRight"
-                        menu={{
-                            items: menuItems,
-                            onClick: ({ key }) => (key === "detail" ? onOpen() : key === "workbench" ? onOpenWorkbench() : key === "edit" ? onEdit() : key === "delete" ? onDelete() : onAdd()),
-                        }}
-                    >
-                        <button type="button" className="product-icon-button skill-tile-more" aria-label={`${skill.skillName} 更多操作`} title="更多操作">
-                            <MoreHorizontal />
-                        </button>
-                    </Dropdown>
+                        </Dropdown>
+                        {skill.isOwner ? null : (
+                            <Tooltip title={`${skill.isAdded ? "已加入我的技能，点击移除" : "加入我的技能"} · ${addedLabel}`}>
+                                <button type="button" className="skill-tile-add" aria-pressed={skill.isAdded} aria-label={skill.isAdded ? `从我的技能移除 ${skill.skillName}` : `加入我的技能 ${skill.skillName}`} disabled={loading} onClick={onAdd}>
+                                    {loading ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : skill.isAdded ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                                    <span>{skill.isAdded ? "已加入" : "加入"}</span>
+                                </button>
+                            </Tooltip>
+                        )}
+                    </div>
                 </div>
             </div>
-
-            {/* 加入状态是持久业务状态，常显：未加入为细线 +，已加入为安静的对勾。
-                作者本人的技能不需要「加入」，但也不能什么都不显示——那会让用户把「没有按钮」误判成缺少操作。 */}
-            {skill.isOwner ? (
-                <div className="skill-tile-corner">
-                    <span className="skill-tile-own" title="你创建或导入的技能，其他用户可在广场加入">
-                        我的
-                    </span>
-                </div>
-            ) : (
-                <div className="skill-tile-corner">
-                    <Tooltip title={skill.isAdded ? "已加入我的技能，点击移除" : "加入我的技能"}>
-                        <button type="button" className="skill-tile-add" aria-pressed={skill.isAdded} aria-label={skill.isAdded ? `从我的技能移除 ${skill.skillName}` : `加入我的技能 ${skill.skillName}`} disabled={loading} onClick={onAdd}>
-                            {loading ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : skill.isAdded ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
-                            <span>{skill.isAdded ? "已加入" : "加入"}</span>
-                        </button>
-                    </Tooltip>
-                </div>
-            )}
+            <Tooltip title={likeLabel}>
+                <button type="button" disabled={loading} className="skill-tile-favorite" aria-pressed={skill.isLike} aria-label={likeLabel} onClick={onLike}>
+                    <Heart aria-hidden="true" />
+                </button>
+            </Tooltip>
         </article>
     );
 }
@@ -883,7 +897,12 @@ function SkillSkeleton() {
     return (
         <div className="skill-tile-grid" aria-busy="true" aria-label="正在加载技能">
             {Array.from({ length: 8 }, (_, index) => (
-                <div key={index} className="skill-tile-skeleton" />
+                <div key={index} className="skill-tile skill-tile-skeleton">
+                    <div className="skill-tile-cover" />
+                    <div className="skill-tile-body">
+                        <span />
+                    </div>
+                </div>
             ))}
         </div>
     );

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { formatAbsoluteDateTime, formatRelativeTime } from "../src/lib/relative-time";
 import { skillAccent, skillAccentNames, skillGlyph } from "../src/pages/skills/skill-catalog";
+import { getSkillFallbackCover } from "../src/pages/skills/skill-fallback-covers";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const css = read("../src/styles/workspace-product.css").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -86,13 +87,28 @@ describe("skills library", () => {
         expect(page).not.toContain("SkillCurationBrowser");
         expect(page).not.toContain("skills-tabs");
     });
-    test("cards label their stats and keep add as a compact toggle", () => {
+    test("成果封面与详情共享点击区，收藏和加入保持独立开关", () => {
         expect(page).toContain("人加入");
         expect(page).toContain("aria-pressed={skill.isAdded}");
         expect(page).toContain("aria-pressed={skill.isLike}");
         expect(page).toContain("/skills/${encodeURIComponent(skill.skillId)}/edit");
-        expect(css).toMatch(/\.skill-tile:is\(:hover, :focus-within\) \.skill-tile-actions/);
-        expect(css).toMatch(/\.skill-tile-name-text \{[^}]*-webkit-line-clamp: 2;/);
-        expect(css).toMatch(/\.skill-tile-description \{[^}]*-webkit-line-clamp: 2;/);
+        expect(page).toContain('className="skill-tile-open" data-no-press');
+        expect(css).toMatch(/\.skill-tile-cover \{[^}]*aspect-ratio: 16 \/ 9;/);
+        expect(css).toMatch(/\.skill-tile-name-text \{[^}]*text-overflow: ellipsis;/);
+        expect(css).toMatch(/\.skill-tile-favorite \{[^}]*position: absolute;/);
+        expect(css).toMatch(/\.skill-tile-actions \{[^}]*z-index: 1;/);
+    });
+    test("内置技能优先匹配专属主题图，缺少配图时使用分类封面", async () => {
+        const builtin = { sourceType: "builtin", source: 3, tag: "drama" } as const;
+        const atlas = getSkillFallbackCover({ ...builtin, skillId: "14811816970508" });
+        const individual = getSkillFallbackCover({ ...builtin, skillId: "16000000000107" });
+        const category = getSkillFallbackCover({ ...builtin, skillId: "another-builtin" });
+        expect(atlas).toEqual({ src: "/images/skill-covers/cinema.png", crop: { width: 1366, height: 1152, viewBox: "2 2 680 381" } });
+        expect(individual).toEqual({ src: "/images/skill-covers/16000000000107.webp" });
+        expect(category).toEqual({ src: "/images/skill-covers/storyboard.webp" });
+        for (const cover of [atlas, individual, category]) {
+            expect(await Bun.file(new URL(`../public${cover!.src}`, import.meta.url)).exists()).toBe(true);
+        }
+        expect(getSkillFallbackCover({ ...builtin, sourceType: "github", source: 0, skillId: "external" })).toBeUndefined();
     });
 });
