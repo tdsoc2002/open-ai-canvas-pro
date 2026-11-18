@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/base/select";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { catalogIdOf, inspirationSourceOf, inspirationSources, type CreationInspiration, type InspirationSourceId } from "@/lib/inspirations/catalog";
+import { INSPIRATION_HALL_CATEGORIES, inspirationHallCategoryOf, type InspirationHallFilter } from "@/lib/inspirations/hall-categories";
 import { isFreshInspiration, localDayKey, orderInspirationsByLatest, orderInspirationsForToday } from "@/lib/inspirations/daily-order";
 import { isCustomInspiration, resolveInspirations } from "@/lib/inspirations/resolve";
 import { loadInspirationCatalog, type InspirationCatalog } from "@/services/inspiration-catalog";
@@ -92,6 +93,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
     const [source, setSource] = useState<SourceFilter>("all");
     const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
     const [category, setCategory] = useState("all");
+    const [hallFilter, setHallFilter] = useState<InspirationHallFilter>("all");
     const [view, setView] = useState<ViewFilter>("all");
     const [sort, setSort] = useState<SortKey>("daily");
     const dayKey = useLocalDayKey();
@@ -147,7 +149,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
     // 筛选条件或推荐日期一变就回第一页，否则会停在一个已经不存在的位置上。
     useEffect(() => {
         setPage(1);
-    }, [source, modeFilter, category, view, sort, debouncedSearch, pageSize, dayKey]);
+    }, [source, modeFilter, category, hallFilter, view, sort, debouncedSearch, pageSize, dayKey]);
 
     const overlay = useMemo(() => ({ custom, overrides, hidden }), [custom, hidden, overrides]);
     const resolved = useMemo(() => (catalog ? resolveInspirations(catalog.entries, overlay) : []), [catalog, overlay]);
@@ -158,6 +160,8 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
         const hiddenSet = new Set(hidden);
         return catalog.entries.filter((item) => hiddenSet.has(catalogIdOf(item)));
     }, [catalog, hidden]);
+
+    const hallCategories = useMemo(() => new Map([...resolved, ...hiddenItems].map((item) => [catalogIdOf(item), inspirationHallCategoryOf(item)])), [resolved, hiddenItems]);
 
     const categoryLabels = useMemo(() => {
         const map = new Map<string, Map<string, string>>();
@@ -176,18 +180,19 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
         [categoryLabels],
     );
 
-    /** 分类跟随当前来源，并纳入自建和改写后的条目。 */
+    /** 细分类跟随当前创作方向和来源，并纳入自建和改写后的条目。 */
     const categoryChoices = useMemo<CategoryChoice[]>(() => {
         const merged = new Map<string, { label: string; count: number }>();
         for (const item of [...resolved, ...hiddenItems]) {
             if (source !== "all" && (item.sourceId ?? "original") !== source) continue;
+            if (hallFilter !== "all" && hallCategories.get(catalogIdOf(item)) !== hallFilter) continue;
             const value = item.category?.trim();
             if (!value) continue;
             const current = merged.get(value);
             merged.set(value, { label: current?.label ?? categoryLabel(item), count: (current?.count ?? 0) + 1 });
         }
         return [...merged.entries()].sort((left, right) => right[1].count - left[1].count || left[1].label.localeCompare(right[1].label, "zh-Hans-CN")).map(([value, { label, count }]) => ({ value, label, count }));
-    }, [categoryLabel, hiddenItems, resolved, source]);
+    }, [categoryLabel, hiddenItems, resolved, source, hallFilter, hallCategories]);
 
     const sourceCounts = useMemo(() => {
         const counts = new Map<SourceFilter, number>();
@@ -199,19 +204,28 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
         return counts;
     }, [resolved, hiddenItems]);
 
-    /** 图片 / 视频 / 文本是库里的两大主类（文本较少），按当前视图与来源统计数量。 */
-    const modeCounts = useMemo(() => {
-        const counts: Record<ModeFilter, number> = { all: 0, image: 0, video: 0, text: 0 };
+    const scopedItems = useMemo(() => {
         const pool = view === "hidden" ? hiddenItems : resolved;
         const favoriteSet = new Set(favorites);
-        for (const item of pool) {
-            if (view === "favorites" && !favoriteSet.has(catalogIdOf(item))) continue;
-            if (source !== "all" && (item.sourceId ?? "original") !== source) continue;
+        return pool.filter((item) => {
+            const id = catalogIdOf(item);
+            return (
+                (view !== "favorites" || favoriteSet.has(id)) &&
+                (source === "all" || (item.sourceId ?? "original") === source) &&
+                (hallFilter === "all" || hallCategories.get(id) === hallFilter) &&
+                (category === "all" || item.category?.trim() === category)
+            );
+        });
+    }, [view, resolved, hiddenItems, favorites, source, hallFilter, hallCategories, category]);
+
+    const modeCounts = useMemo(() => {
+        const counts: Record<ModeFilter, number> = { all: 0, image: 0, video: 0, text: 0 };
+        for (const item of scopedItems) {
             counts.all += 1;
             counts[item.mode] += 1;
         }
         return counts;
-    }, [view, resolved, hiddenItems, favorites, source]);
+    }, [scopedItems]);
 
     const modeOptions = useMemo(
         () =>
@@ -236,14 +250,9 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
     );
 
     const visible = useMemo(() => {
-        const pool = view === "hidden" ? hiddenItems : resolved;
         const keyword = debouncedSearch.trim().toLowerCase();
-        const favoriteSet = new Set(favorites);
-        const filtered = pool.filter((item) => {
-            if (view === "favorites" && !favoriteSet.has(catalogIdOf(item))) return false;
-            if (source !== "all" && (item.sourceId ?? "original") !== source) return false;
+        const filtered = scopedItems.filter((item) => {
             if (modeFilter !== "all" && item.mode !== modeFilter) return false;
-            if (category !== "all" && (item.category?.trim() ?? "") !== category) return false;
             if (!keyword) return true;
             const haystack = [item.title, item.description, item.category, categoryLabel(item), ...(item.tags ?? [])].join(" ").toLowerCase();
             return haystack.includes(keyword);
@@ -253,7 +262,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
         const own = filtered.filter((item) => isCustomInspiration(catalogIdOf(item)));
         const builtIn = filtered.filter((item) => !isCustomInspiration(catalogIdOf(item)));
         return [...own, ...(sort === "latest" ? orderInspirationsByLatest(builtIn, dayKey) : orderInspirationsForToday(builtIn, dayKey, Date.now()))];
-    }, [view, resolved, hiddenItems, debouncedSearch, favorites, source, modeFilter, category, sort, categoryLabel, dayKey]);
+    }, [scopedItems, debouncedSearch, modeFilter, sort, categoryLabel, dayKey]);
     const freshCount = useMemo(() => {
         const now = Date.now();
         return visible.filter((item) => isFreshInspiration(item, now)).length;
@@ -328,6 +337,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
             setSource("all");
             setModeFilter("all");
             setCategory("all");
+            setHallFilter("all");
             setView("all");
             setSort("daily");
             setSearch("");
@@ -355,11 +365,12 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
     );
 
     const advancedFilterCount = Number(source !== "all") + Number(category !== "all") + Number(view !== "all") + Number(sort !== "daily");
-    const hasFilters = Boolean(advancedFilterCount || modeFilter !== "all" || search.trim());
+    const hasFilters = Boolean(advancedFilterCount || hallFilter !== "all" || modeFilter !== "all" || search.trim());
     const resetFilters = () => {
         setSource("all");
         setModeFilter("all");
         setCategory("all");
+        setHallFilter("all");
         setView("all");
         setSort("daily");
         setSearch("");
@@ -402,8 +413,28 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
             </header>
 
             <div className="inspiration-hall-toolbar">
-                <SegmentedControl options={modeOptions} value={modeFilter} onChange={(value) => setModeFilter(value as ModeFilter)} ariaLabel="按创作类型筛选灵感" className="inspiration-hall-modes" />
+                <div className="inspiration-hall-directions" role="group" aria-label="按创作方向筛选灵感">
+                    {INSPIRATION_HALL_CATEGORIES.map(({ value, label }) => (
+                        <button
+                            key={value}
+                            type="button"
+                            aria-pressed={hallFilter === value}
+                            onClick={() => {
+                                if (hallFilter === value) return;
+                                setHallFilter(value);
+                                setCategory("all");
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
                 <Input allowClear prefix={<Search className="size-4" />} placeholder="搜索标题、描述或标签" aria-label="搜索灵感" value={search} onChange={(event) => setSearch(event.target.value)} className="inspiration-hall-search" />
+            </div>
+
+            <div className="inspiration-hall-secondary-toolbar">
+                <h2>{INSPIRATION_HALL_CATEGORIES.find(({ value }) => value === hallFilter)?.label}</h2>
+                <SegmentedControl options={modeOptions} value={modeFilter} onChange={(value) => setModeFilter(value as ModeFilter)} ariaLabel="按创作类型筛选灵感" className="inspiration-hall-modes" />
                 <Button type="text" icon={<SlidersHorizontal className="size-4" />} aria-expanded={filtersOpen} aria-controls="inspiration-hall-filters" onClick={() => setFiltersOpen((open) => !open)} className="inspiration-hall-filter-toggle">
                     更多筛选{advancedFilterCount ? ` · ${advancedFilterCount}` : ""}
                     <ChevronDown className={filtersOpen ? "is-open" : undefined} aria-hidden="true" />
@@ -481,7 +512,6 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                                         favorite={favorites.includes(id)}
                                         hidden={view === "hidden"}
                                         showSources={inspirationSourcesVisible}
-                                        categoryLabel={categoryLabel(item)}
                                         onOpen={() => setDetail(item)}
                                         onToggleFavorite={() => toggleFavorite(id)}
                                         onRestore={() => {
@@ -554,7 +584,6 @@ function InspirationCard({
     favorite,
     hidden,
     showSources,
-    categoryLabel,
     onOpen,
     onToggleFavorite,
     onRestore,
@@ -565,7 +594,6 @@ function InspirationCard({
     favorite: boolean;
     hidden: boolean;
     showSources: boolean;
-    categoryLabel: string;
     onOpen: () => void;
     onToggleFavorite: () => void;
     onRestore: () => void;
@@ -583,13 +611,9 @@ function InspirationCard({
                     {showSources ? <span className="inspiration-card-source">{inspirationSourceOf(item)?.label ?? "未标注来源"}</span> : null}
                 </span>
                 <span className="inspiration-card-body">
-                    <strong className="inspiration-card-title">{item.title}</strong>
-                    <span className="inspiration-card-desc">{item.description}</span>
-                    <span className="inspiration-card-tags">
-                        <span className="inspiration-chip">{categoryLabel}</span>
-                        {item.ratio ? <span className="inspiration-chip">{item.ratio}</span> : null}
-                        {showSources && item.credit ? <span className="inspiration-chip">{item.credit}</span> : null}
-                    </span>
+                    <strong className="inspiration-card-title" title={item.title}>
+                        {item.title}
+                    </strong>
                 </span>
             </button>
             <div className={`inspiration-card-actions${favorite || menuOpen ? " is-visible" : ""}`}>

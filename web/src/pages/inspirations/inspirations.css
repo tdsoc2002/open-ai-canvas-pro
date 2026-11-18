@@ -1,29 +1,10 @@
 /* 独立灵感大厅：标题与常用筛选常驻，完整管理功能按需展开。 */
 .inspiration-hall {
+    container: inspiration-hall / inline-size;
     min-width: 0;
     width: 100%;
     scroll-margin-block-start: var(--space-24);
     color: var(--user-ink);
-}
-
-.inspiration-source-notice {
-    margin-top: var(--space-5);
-    color: var(--user-ink-muted);
-    font-size: var(--fs-caption);
-    line-height: 1.7;
-}
-.inspiration-source-notice summary {
-    width: fit-content;
-    padding-block: var(--space-2);
-    cursor: pointer;
-}
-.inspiration-source-notice p {
-    margin: var(--space-2) 0;
-}
-.inspiration-source-notice a {
-    color: var(--user-ink);
-    text-decoration: underline;
-    text-underline-offset: var(--space-half);
 }
 
 .inspiration-hall-header {
@@ -31,7 +12,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
 }
 
 .inspiration-hall-header > div:first-child {
@@ -40,17 +21,10 @@
 .inspiration-hall-header h1 {
     margin: 0;
     color: var(--user-ink);
-    font-size: var(--fs-title);
+    font-size: var(--fs-section);
     font-weight: 600;
-    letter-spacing: -0.025em;
+    letter-spacing: var(--ls-title);
     line-height: 1.35;
-}
-
-.inspiration-hall-header p {
-    margin: var(--space-1) 0 0;
-    color: var(--user-ink-muted);
-    font-size: var(--fs-caption);
-    line-height: 1.6;
 }
 
 .inspiration-hall-actions {
@@ -60,12 +34,71 @@
     gap: var(--space-2);
 }
 
-.inspiration-hall-toolbar {
+.inspiration-hall-toolbar,
+.inspiration-hall-secondary-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.inspiration-hall-toolbar {
+    padding-bottom: var(--space-2);
+    border-bottom: var(--stroke-1) solid var(--user-border);
+}
+
+.inspiration-hall-directions {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: var(--space-3);
+    overflow-x: auto;
+    padding: var(--space-1);
+    scrollbar-width: thin;
+}
+
+.inspiration-hall-directions > button {
+    position: relative;
+    flex: 0 0 auto;
+    min-height: var(--user-control-height);
+    padding-inline: var(--space-2);
+    border-radius: var(--user-radius-button);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-body);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.inspiration-hall-directions > button:hover {
+    background: var(--user-surface-hover);
+}
+
+.inspiration-hall-directions > button[aria-pressed="true"] {
+    color: var(--user-ink);
+    font-weight: 600;
+}
+
+.inspiration-hall-directions > button[aria-pressed="true"]::after {
+    position: absolute;
+    inset-inline: var(--space-2);
+    bottom: 0;
+    height: var(--stroke-2);
+    border-radius: var(--r-full);
+    background: currentColor;
+    content: "";
+}
+
+.inspiration-hall-directions > button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--control-focus-ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.inspiration-hall-secondary-toolbar h2 {
+    margin: 0 auto 0 0;
+    color: var(--user-ink);
+    font-size: var(--fs-body);
+    font-weight: 600;
 }
 
 .inspiration-hall-modes {
@@ -80,7 +113,8 @@
 
 /* 搜索框与内容库工具栏同一套外观：34px、9px 圆角、透明底 + 1px 细线。 */
 .inspiration-hall-search.ant-input-affix-wrapper {
-    width: clamp(200px, 24%, 300px);
+    width: min(100%, calc(var(--space-16) * 4));
+    flex: 0 0 auto;
     height: var(--user-control-height);
     min-width: 0;
     margin-left: auto;
@@ -168,7 +202,7 @@
 .inspiration-gallery {
     display: grid;
     gap: var(--space-4);
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 4)), 1fr));
     align-items: stretch;
 }
 
@@ -177,13 +211,11 @@
     display: flex;
     min-width: 0;
     overflow: hidden;
-    border: 0;
+    border: var(--stroke-1) solid var(--user-border);
     border-radius: var(--user-radius-card);
     background: var(--library-surface);
     box-shadow: none;
-    transition:
-        transform var(--user-motion),
-        background-color var(--user-motion);
+    transition: background-color var(--user-motion);
 }
 
 .inspiration-card:hover,
@@ -198,7 +230,7 @@
     flex-direction: column;
     border: 0;
     border-radius: inherit;
-    padding: var(--space-2);
+    padding: 0;
     background: transparent;
     color: inherit;
     text-align: left;
@@ -216,9 +248,8 @@
     display: block;
     width: 100%;
     flex-shrink: 0;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 9;
     overflow: hidden;
-    border-radius: var(--user-radius-media);
     background: var(--library-cover-surface);
 }
 
@@ -261,8 +292,8 @@
 /* 操作与详情按钮是兄弟节点；收藏和展开的菜单始终可见。 */
 .inspiration-card-actions {
     position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
+    top: var(--space-3);
+    right: var(--space-3);
     display: flex;
     gap: var(--space-1);
     opacity: 0;
@@ -312,41 +343,21 @@
 }
 
 .inspiration-card-body {
-    display: flex;
+    display: block;
     width: 100%;
     min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-3) var(--space-2) var(--space-1);
+    padding: var(--space-3);
 }
 
 .inspiration-card-title {
+    display: block;
     overflow: hidden;
     color: var(--user-ink);
     font-size: var(--fs-body);
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.4;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.inspiration-card-desc {
-    display: -webkit-box;
-    overflow: hidden;
-    color: var(--user-ink-muted);
-    font-size: var(--fs-caption);
-    line-height: 1.5;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-}
-
-.inspiration-card-tags {
-    display: flex;
-    min-width: 0;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    margin-top: var(--space-2);
 }
 
 .inspiration-chip {
@@ -374,14 +385,6 @@
 .inspiration-chip:focus-visible {
     outline: var(--stroke-2) solid var(--control-focus-ring);
     outline-offset: var(--space-half);
-}
-
-.inspiration-card-tags .inspiration-chip {
-    display: block;
-    padding: var(--space-half) var(--space-2);
-    color: var(--user-ink-muted);
-    background: color-mix(in srgb, var(--user-ink) 6%, transparent);
-    font-size: var(--fs-tiny);
 }
 
 /* 详情图标按钮使用 span 与 data-icon-only，避开共享按钮的装饰 hover。 */
@@ -452,47 +455,31 @@
     word-break: break-word;
 }
 
-@media (max-width: 720px) {
+@container inspiration-hall (max-width: 720px) {
     .inspiration-hall-header {
         align-items: flex-start;
         gap: var(--space-3);
     }
-    .inspiration-hall-header h2 {
+    .inspiration-hall-header h1 {
         font-size: var(--fs-heading-lg);
     }
     .inspiration-hall-search.ant-input-affix-wrapper {
-        order: 3;
         width: 100%;
         margin-left: 0;
     }
-    .inspiration-hall-count {
-        margin-left: auto;
+    .inspiration-hall-directions,
+    .inspiration-hall-secondary-toolbar h2 {
+        flex-basis: 100%;
     }
     .inspiration-hall-filters {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .inspiration-gallery {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--space-3);
-    }
-    .inspiration-card-body {
-        padding: var(--space-2) var(--space-1) 0;
-    }
-    .inspiration-card-source {
-        font-size: var(--fs-tiny);
-    }
-    .inspiration-card-tags {
-        gap: var(--space-half);
-    }
     .inspiration-mode-count {
         display: none;
     }
-    .inspiration-detail-cover {
-        height: 224px;
-    }
 }
 
-@media (max-width: 460px) {
+@container inspiration-hall (max-width: 460px) {
     .inspiration-hall-header {
         flex-wrap: wrap;
     }
@@ -514,19 +501,24 @@
     .inspiration-card-title {
         font-size: var(--fs-caption);
     }
-    .inspiration-card-tags {
-        display: none;
-    }
 }
 
 @media (max-width: 340px) {
-    .inspiration-gallery,
     .inspiration-hall-filters {
         grid-template-columns: minmax(0, 1fr);
     }
 }
 
+@media (max-width: 720px) {
+    .inspiration-detail-cover {
+        height: 224px;
+    }
+}
+
 @media (hover: none), (pointer: coarse) {
+    .inspiration-hall-directions > button {
+        min-height: var(--control-hit-target, 44px);
+    }
     .inspiration-card-actions {
         opacity: 1;
         pointer-events: auto;
