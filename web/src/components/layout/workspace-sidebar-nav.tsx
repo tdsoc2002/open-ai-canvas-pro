@@ -55,7 +55,6 @@ function buildNav(features: FeatureAvailability, t: TFunction, historyUnread: bo
     const canvas = { ...toolItem("canvas", "/canvas", t), title: t("nav.sidebar.canvas") };
     const projects = features.shortDramaEnabled ? [{ ...toolItem("projects", "/projects", t), title: t("nav.sidebar.projects") }] : [];
     const skills = { ...toolItem("skills", "/skills", t), title: t("nav.sidebar.skills") };
-    const plugins = features.pluginCenterEnabled ? [{ ...toolItem("plugins", "/plugins", t), title: t("nav.sidebar.plugins") }] : [];
     const inspirations = { id: "inspirations", title: t("nav.sidebar.inspirations"), icon: Lightbulb, to: "/inspirations" };
     const tasks = features.taskCenterEnabled ? [{ id: "tasks", title: t("nav.sidebar.history"), icon: HistoryIcon, to: "/tasks", unread: historyUnread }] : [];
     const groups: WorkspaceNavGroup[] = [
@@ -72,13 +71,13 @@ function buildNav(features: FeatureAvailability, t: TFunction, historyUnread: bo
             items: [
                 ...(features.imageWorkbenchEnabled ? [{ id: "toolbox-image", title: t("nav.sidebar.toolboxImage"), icon: ImageIcon, to: "/toolbox/image" }] : []),
                 ...(features.videoWorkbenchEnabled ? [{ id: "toolbox-video", title: t("nav.sidebar.toolboxVideo"), icon: Video, to: "/toolbox/video" }] : []),
-                ...(joysee ? [] : [skills, ...plugins, ...tasks, inspirations]),
+                ...(joysee ? [] : [skills, ...tasks, inspirations]),
             ],
         },
         ...(joysee
             ? [
                   { heading: t("nav.sidebar.headingAssets"), items: [assets, ...tasks] },
-                  { heading: t("nav.sidebar.headingTools"), items: [skills, ...plugins, inspirations] },
+                  { heading: t("nav.sidebar.headingTools"), items: [skills, inspirations] },
               ]
             : []),
     ];

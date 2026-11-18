@@ -175,9 +175,21 @@ func runtimePluginByID(items []PluginView, pluginID string) (PluginView, bool) {
 }
 
 func (s *Service) PluginStatesForUser(actor *model.User) (map[string]PluginStateView, error) {
+	return s.pluginStates(actor, false)
+}
+
+func (s *Service) pluginStates(actor *model.User, includeSystem bool) (map[string]PluginStateView, error) {
 	items := s.Plugins()
 	result := make(map[string]PluginStateView, len(items)+len(officialApplicationPolicies))
 	for _, pluginID := range knownPluginIDs(items) {
+		if !includeSystem {
+			if _, ok := officialApplicationPolicies[pluginID]; !ok {
+				continue
+			}
+			if item, ok := runtimePluginByID(items, pluginID); ok && item.Management.ActivationScope != PluginScopeUser {
+				continue
+			}
+		}
 		state, err := s.pluginStateForUser(actor, pluginID, items)
 		if err != nil {
 			return nil, err
@@ -287,7 +299,7 @@ func (s *Service) AdminPluginStates(actor *model.User) (map[string]AdminPluginSt
 	if err := s.RequireAdmin(actor); err != nil {
 		return nil, err
 	}
-	states, err := s.PluginStatesForUser(actor)
+	states, err := s.pluginStates(actor, true)
 	if err != nil {
 		return nil, err
 	}

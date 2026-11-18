@@ -1,5 +1,5 @@
 // label 是中文源文案（用于搜索与兜底），界面显示用 labelKey 经 i18n 翻译。
-import { Blocks, CircleDollarSign, Clapperboard, Images, LibraryBig, ListTodo, PanelsTopLeft, Settings, PenTool } from "lucide-react";
+import { CircleDollarSign, Clapperboard, Images, LibraryBig, ListTodo, PanelsTopLeft, Settings, PenTool } from "lucide-react";
 
 export const navigationTools = [
     {
@@ -42,13 +42,6 @@ export const navigationTools = [
         label: "技能库",
         labelKey: "nav.tools.skills",
         icon: LibraryBig,
-        section: "工作台管理",
-    },
-    {
-        slug: "plugins",
-        label: "插件中心",
-        labelKey: "nav.tools.plugins",
-        icon: Blocks,
         section: "工作台管理",
     },
     {

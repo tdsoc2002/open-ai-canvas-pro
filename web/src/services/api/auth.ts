@@ -541,7 +541,6 @@ export function updateAdminFeatureAvailability(
             | "customChannelsEnabled"
             | "frontendModelsEnabled"
             | "pluginCenterEnabled"
-            | "systemPluginsVisibleToUsers"
             | "inspirationSourcesVisible"
             | "imageWorkbenchEnabled"
             | "videoWorkbenchEnabled"

@@ -26,7 +26,7 @@ func TestFeatureAvailabilityDefaultsToDisableFrontendModels(t *testing.T) {
 	if !setting.WelcomeEnabled {
 		t.Fatal("welcome should be enabled by default")
 	}
-	if setting.Configured || !setting.ShortDramaEnabled || !setting.TaskCenterEnabled || !setting.CreditsEnabled || !setting.CustomChannelsEnabled || setting.FrontendModelsEnabled || !setting.PluginCenterEnabled || !setting.SystemPluginsVisibleToUsers || !setting.InspirationSourcesVisible {
+	if setting.Configured || !setting.ShortDramaEnabled || !setting.TaskCenterEnabled || !setting.CreditsEnabled || !setting.CustomChannelsEnabled || setting.FrontendModelsEnabled || !setting.PluginCenterEnabled || !setting.InspirationSourcesVisible {
 		t.Fatalf("FeatureAvailability() = %#v", setting)
 	}
 }
@@ -42,7 +42,7 @@ func TestFeatureAvailabilityLegacySettingKeepsCustomChannelsEnabled(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if setting.ShortDramaEnabled || !setting.CustomChannelsEnabled || setting.FrontendModelsEnabled || !setting.PluginCenterEnabled || !setting.SystemPluginsVisibleToUsers {
+	if setting.ShortDramaEnabled || !setting.CustomChannelsEnabled || setting.FrontendModelsEnabled || !setting.PluginCenterEnabled {
 		t.Fatalf("FeatureAvailability() = %#v", setting)
 	}
 	if setting.EcommerceEnabled || setting.EcommerceVideoEnabled {
@@ -75,13 +75,13 @@ func TestWelcomeAvailabilityCanBeDisabledAndReenabled(t *testing.T) {
 func TestUpdateFeatureAvailabilityPersistsAndAudits(t *testing.T) {
 	svc, db := newFeatureAvailabilityTestService(t)
 	actor := &model.User{ID: "admin-1", Role: model.UserRoleAdmin}
-	want := FeatureAvailability{ShortDramaEnabled: false, TaskCenterEnabled: true, CreditsEnabled: false, CustomChannelsEnabled: true, PluginCenterEnabled: false, SystemPluginsVisibleToUsers: false}
+	want := FeatureAvailability{ShortDramaEnabled: false, TaskCenterEnabled: true, CreditsEnabled: false, CustomChannelsEnabled: true, PluginCenterEnabled: false}
 
 	setting, err := svc.UpdateFeatureAvailability(actor, want)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !setting.Configured || setting.ShortDramaEnabled || !setting.TaskCenterEnabled || setting.CreditsEnabled || !setting.CustomChannelsEnabled || setting.PluginCenterEnabled || setting.SystemPluginsVisibleToUsers || setting.InspirationSourcesVisible {
+	if !setting.Configured || setting.ShortDramaEnabled || !setting.TaskCenterEnabled || setting.CreditsEnabled || !setting.CustomChannelsEnabled || setting.PluginCenterEnabled || setting.InspirationSourcesVisible {
 		t.Fatalf("UpdateFeatureAvailability() = %#v", setting)
 	}
 	if enabled, err := svc.FeatureEnabled(FeaturePluginCenter); err != nil || enabled {
@@ -104,34 +104,51 @@ func TestUpdateFeatureAvailabilityPersistsAndAudits(t *testing.T) {
 	}
 }
 
-func TestPluginsForUserKeepsOfficialApplicationsAndHidesManagedPlugins(t *testing.T) {
-	svc, _ := newFeatureAvailabilityTestService(t)
-	admin := &model.User{ID: "admin-1", Role: model.UserRoleAdmin}
-	if _, err := svc.UpdateFeatureAvailability(admin, FeatureAvailability{
-		ShortDramaEnabled: true, TaskCenterEnabled: true, CreditsEnabled: true,
-		CustomChannelsEnabled: true, PluginCenterEnabled: true, SystemPluginsVisibleToUsers: false,
-	}); err != nil {
+func TestApplicationPluginCatalogExcludesManagedPlugins(t *testing.T) {
+	svc, db := newFeatureAvailabilityTestService(t)
+	if err := db.AutoMigrate(&model.PluginPlatformState{}, &model.UserPluginState{}); err != nil {
 		t.Fatal(err)
 	}
+	admin := &model.User{ID: "admin-1", Role: model.UserRoleAdmin}
+	user := &model.User{ID: "user-1", Role: model.UserRoleUser}
 	svc.pluginRuntime = &pluginRuntime{plugins: map[string]pluginRecord{
 		"bundled":  {Source: "bundled", Metadata: protocol.Metadata{ID: "bundled", Name: "系统协议", Version: "1"}},
 		"uploaded": {Source: "uploaded", Metadata: protocol.Metadata{ID: "uploaded", Name: "自定义协议", Version: "1"}},
+		"payment":  {Source: "bundled", Metadata: protocol.Metadata{ID: PaymentPluginWeChatNative, Name: "支付协议", Version: "1"}},
 		"app":      {Source: "bundled", Metadata: protocol.Metadata{ID: WorkflowPluginRunningHub, Name: "官方应用", Version: "1"}},
 	}}
 
-	visibleToUser, err := svc.PluginsForUser(&model.User{ID: "user-1", Role: model.UserRoleUser})
+	if plugins := svc.ApplicationPlugins(); len(plugins) != 1 || plugins[0].Manifest.ID != WorkflowPluginRunningHub {
+		t.Fatalf("application catalog = %#v", plugins)
+	}
+	for _, actor := range []*model.User{user, admin} {
+		states, err := svc.PluginStatesForUser(actor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !states[PluginEagleAssetConnector].CanConfigure || !states[WorkflowPluginRunningHub].CanToggle {
+			t.Fatalf("personal application states = %#v", states)
+		}
+		for _, id := range []string{"bundled", "uploaded", PaymentPluginWeChatNative} {
+			if _, ok := states[id]; ok {
+				t.Errorf("%s sees managed plugin state %q in workspace", actor.Role, id)
+			}
+		}
+	}
+	if plugins := svc.Plugins(); len(plugins) != 4 {
+		t.Fatalf("admin plugin inventory = %#v", plugins)
+	}
+	states, err := svc.AdminPluginStates(admin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(visibleToUser) != 1 || visibleToUser[0].Manifest.ID != WorkflowPluginRunningHub {
-		t.Fatalf("PluginsForUser(user) = %#v", visibleToUser)
+	for _, id := range []string{"bundled", "uploaded", PaymentPluginWeChatNative, PluginEagleAssetConnector} {
+		if _, ok := states[id]; !ok {
+			t.Errorf("admin inventory missing plugin state %q", id)
+		}
 	}
-	visibleToAdmin, err := svc.PluginsForUser(admin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(visibleToAdmin) != 3 {
-		t.Fatalf("PluginsForUser(admin) = %#v", visibleToAdmin)
+	if _, err := svc.AdminPluginStates(user); err == nil {
+		t.Fatal("ordinary user can access admin plugin states")
 	}
 }
 

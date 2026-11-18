@@ -21,7 +21,6 @@ const (
 	FeatureCustomChannels        = "customChannels"
 	FeatureFrontendModels        = "frontendModels"
 	FeaturePluginCenter          = "pluginCenter"
-	FeatureSystemPlugins         = "systemPluginsVisibleToUsers"
 	FeatureInspirationSources    = "inspirationSourcesVisible"
 	FeatureTimelineTranscription = "timelineTranscription"
 	FeatureImageWorkbench        = "imageWorkbench"
@@ -39,7 +38,6 @@ type FeatureAvailability struct {
 	CustomChannelsEnabled        bool `json:"customChannelsEnabled"`
 	FrontendModelsEnabled        bool `json:"frontendModelsEnabled"`
 	PluginCenterEnabled          bool `json:"pluginCenterEnabled"`
-	SystemPluginsVisibleToUsers  bool `json:"systemPluginsVisibleToUsers"`
 	InspirationSourcesVisible    bool `json:"inspirationSourcesVisible"`
 	TimelineTranscriptionEnabled bool `json:"timelineTranscriptionEnabled"`
 	ImageWorkbenchEnabled        bool `json:"imageWorkbenchEnabled"`
@@ -66,7 +64,6 @@ func DefaultFeatureAvailability() FeatureAvailability {
 		CustomChannelsEnabled:        true,
 		FrontendModelsEnabled:        false,
 		PluginCenterEnabled:          true,
-		SystemPluginsVisibleToUsers:  true,
 		InspirationSourcesVisible:    true,
 		TimelineTranscriptionEnabled: true,
 		ImageWorkbenchEnabled:        false,
@@ -134,8 +131,6 @@ func (s *Service) FeatureEnabled(feature string) (bool, error) {
 		return value.FrontendModelsEnabled, nil
 	case FeaturePluginCenter:
 		return value.PluginCenterEnabled, nil
-	case FeatureSystemPlugins:
-		return value.SystemPluginsVisibleToUsers, nil
 	case FeatureInspirationSources:
 		return value.InspirationSourcesVisible, nil
 	case FeatureTimelineTranscription:
@@ -174,8 +169,6 @@ func (s *Service) RequireFeature(feature string) error {
 		return kernel.Forbidden("前台模型目录暂未开放")
 	case FeaturePluginCenter:
 		return kernel.Forbidden("插件中心暂未开放")
-	case FeatureSystemPlugins:
-		return kernel.Forbidden("系统插件暂未向普通用户展示")
 	case FeatureInspirationSources:
 		return kernel.Forbidden("素材来源说明暂未开放")
 	case FeatureTimelineTranscription:

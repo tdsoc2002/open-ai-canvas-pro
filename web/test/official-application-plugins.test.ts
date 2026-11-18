@@ -15,20 +15,20 @@ describe("official application plugin classification", () => {
         expect(isOfficialApplicationPluginId("prompt-optimizer")).toBe(true);
         expect(isOfficialApplicationPluginId("eagle-asset-connector")).toBe(true);
         expect(isOfficialApplicationPluginId("runninghub-workflow-provider")).toBe(true);
+        expect(isOfficialApplicationPluginId("media-conversion")).toBe(true);
     });
 
     test("does not treat uploaded or unknown plugins as official applications", () => {
         expect(isOfficialApplicationPluginId("some-uploaded-plugin")).toBe(false);
         expect(isOfficialApplicationPluginId("")).toBe(false);
         expect(isOfficialApplicationPluginId("portrait-clearance")).toBe(false);
-        expect(isOfficialApplicationPluginId("media-conversion")).toBe(false);
         expect(isOfficialApplicationPluginId("comfyui-workflow-provider")).toBe(false);
     });
 
     test("exposes a single de-duplicated id list", () => {
         const ids = [...OFFICIAL_APPLICATION_PLUGIN_IDS];
         expect(new Set(ids).size).toBe(ids.length);
-        expect(ids).toHaveLength(5);
+        expect(ids).toHaveLength(6);
         expect(ids).toContain("user-feedback");
     });
 

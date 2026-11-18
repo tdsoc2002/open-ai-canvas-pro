@@ -152,28 +152,16 @@ func (s *Service) Plugins() []PluginView {
 	return items
 }
 
-// PluginsForUser keeps the plugin center response aligned with the public
-// feature switch. Administrators must still be able to inspect and recover
-// bundled plugins even when ordinary users cannot see them.
-func (s *Service) PluginsForUser(actor *model.User) ([]PluginView, error) {
+// ApplicationPlugins is the catalog for personal activation and settings.
+func (s *Service) ApplicationPlugins() []PluginView {
 	items := s.Plugins()
-	if actor != nil && actor.Role == model.UserRoleAdmin {
-		return items, nil
-	}
-	visible, err := s.FeatureEnabled(FeatureSystemPlugins)
-	if err != nil {
-		return nil, err
-	}
-	if visible {
-		return items, nil
-	}
-	filtered := make([]PluginView, 0, len(items))
+	filtered := make([]PluginView, 0)
 	for _, item := range items {
 		if item.Management.ActivationScope == PluginScopeUser {
 			filtered = append(filtered, item)
 		}
 	}
-	return filtered, nil
+	return filtered
 }
 
 func (s *Service) InstallPlugin(data []byte, fileName string) (PluginView, error) {
@@ -225,15 +213,18 @@ func (s *Service) InstallPluginForAdmin(actor *model.User, data []byte, fileName
 	return plugin, nil
 }
 
-func (s *Service) PluginPackage(id string) ([]byte, string, error) {
+func (s *Service) PluginPackageForUser(actor *model.User, id string) ([]byte, string, error) {
+	if actor == nil {
+		return nil, "", Forbidden("无权访问该插件包")
+	}
 	if s.pluginRuntime == nil {
 		return nil, "", fmt.Errorf("插件运行时未初始化")
 	}
 	s.pluginRuntime.mu.RLock()
 	record, ok := s.pluginRuntime.plugins[strings.TrimSpace(id)]
 	s.pluginRuntime.mu.RUnlock()
-	if !ok {
-		return nil, "", fmt.Errorf("插件 %q 不存在", id)
+	if !ok || (s.RequireAdmin(actor) != nil && pluginManagement(record.Metadata.ID, record.Source).ActivationScope != PluginScopeUser) {
+		return nil, "", Forbidden("无权访问该插件包")
 	}
 	if record.PackagePath == "" {
 		return nil, "", fmt.Errorf("插件 %q 没有可下载的包文件", id)

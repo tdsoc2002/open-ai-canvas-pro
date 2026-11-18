@@ -40,7 +40,6 @@ export type FeatureAvailability = {
     customChannelsEnabled: boolean;
     frontendModelsEnabled: boolean;
     pluginCenterEnabled: boolean;
-    systemPluginsVisibleToUsers: boolean;
     inspirationSourcesVisible: boolean;
     imageWorkbenchEnabled: boolean;
     videoWorkbenchEnabled: boolean;
@@ -60,7 +59,6 @@ export const defaultFeatureAvailability: FeatureAvailability = {
     customChannelsEnabled: true,
     frontendModelsEnabled: false,
     pluginCenterEnabled: true,
-    systemPluginsVisibleToUsers: true,
     inspirationSourcesVisible: true,
     imageWorkbenchEnabled: false,
     videoWorkbenchEnabled: false,

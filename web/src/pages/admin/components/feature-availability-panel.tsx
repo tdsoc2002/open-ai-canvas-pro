@@ -21,7 +21,6 @@ type FeatureKey =
     | "inspirationSourcesVisible"
     | "frontendModelsEnabled"
     | "pluginCenterEnabled"
-    | "systemPluginsVisibleToUsers"
     | "imageWorkbenchEnabled"
     | "videoWorkbenchEnabled"
     | "ecommerceEnabled"
@@ -64,7 +63,6 @@ const editableFeatureKeys: FeatureKey[] = [
     "ecommerceVideoEnabled",
     "frontendModelsEnabled",
     "pluginCenterEnabled",
-    "systemPluginsVisibleToUsers",
 ];
 
 const featureGroups: FeatureGroup[] = [
@@ -125,18 +123,9 @@ const featureGroups: FeatureGroup[] = [
             {
                 key: "pluginCenterEnabled",
                 title: "插件中心",
-                location: "侧栏 · 插件",
-                description: "关闭后隐藏入口，用户不能调用插件。",
+                location: "应用插件页 · Eagle 素材库",
+                description: "控制用户端的插件中心及相关接口，不影响后台插件管理。",
                 icon: <PlugZap className="size-4" aria-hidden="true" />,
-                children: [
-                    {
-                        key: "systemPluginsVisibleToUsers",
-                        title: "系统插件可见",
-                        location: "插件中心内",
-                        description: "向普通用户展示系统协议插件和管理员上传的插件。",
-                        icon: <ShieldCheck className="size-4" aria-hidden="true" />,
-                    },
-                ],
             },
             {
                 key: "taskCenterEnabled",
@@ -551,7 +540,6 @@ function parseFeatureAvailability(value: unknown): FeatureAvailability {
         ecommerceVideoEnabled: record.ecommerceVideoEnabled as boolean,
         frontendModelsEnabled: record.frontendModelsEnabled as boolean,
         pluginCenterEnabled: record.pluginCenterEnabled as boolean,
-        systemPluginsVisibleToUsers: record.systemPluginsVisibleToUsers as boolean,
         configured: typeof record.configured === "boolean" ? record.configured : undefined,
         updatedBy: typeof record.updatedBy === "string" ? record.updatedBy : undefined,
         updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : undefined,

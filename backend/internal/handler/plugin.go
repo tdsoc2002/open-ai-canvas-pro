@@ -69,15 +69,9 @@ func RegisterPluginRoutes(r *gin.RouterGroup, svc *service.Service) {
 	})
 	pluginRoutes := r.Group("/plugins")
 	pluginRoutes.Use(requirePluginCenterAccess(svc))
-	// The frontend plugin center is the single management surface. Protocol
-	// plugins are returned as kind=protocol records alongside UI plugins.
+	// The workspace catalog only contains plugins with personal activation.
 	pluginRoutes.GET("", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		plugins, err := svc.PluginsForUser(user)
 		if err != nil {
 			failService(c, err)
 			return
@@ -87,7 +81,7 @@ func RegisterPluginRoutes(r *gin.RouterGroup, svc *service.Service) {
 			failService(c, err)
 			return
 		}
-		ok(c, gin.H{"plugins": plugins, "states": states})
+		ok(c, gin.H{"plugins": svc.ApplicationPlugins(), "states": states})
 	})
 	pluginRoutes.GET("/catalog", func(c *gin.Context) {
 		if _, err := currentUser(c, svc); err != nil {
@@ -140,23 +134,7 @@ func RegisterPluginRoutes(r *gin.RouterGroup, svc *service.Service) {
 			failService(c, err)
 			return
 		}
-		visiblePlugins, err := svc.PluginsForUser(user)
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		visible := false
-		for _, plugin := range visiblePlugins {
-			if plugin.Manifest.ID == c.Param("id") {
-				visible = true
-				break
-			}
-		}
-		if !visible {
-			failService(c, service.Forbidden("无权访问该插件包"))
-			return
-		}
-		data, fileName, err := svc.PluginPackage(c.Param("id"))
+		data, fileName, err := svc.PluginPackageForUser(user, c.Param("id"))
 		if err != nil {
 			failService(c, err)
 			return

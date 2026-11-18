@@ -164,8 +164,8 @@ export default function EagleLibraryPage() {
                     </span>
                     <h2 className="mt-4 text-base font-semibold">先启用 Eagle 素材来源</h2>
                     <p className="mt-2 max-w-md text-sm leading-6 text-foreground/55">启用后，这里会直接显示 Eagle 原本的文件夹和文件，不会把素材复制成{brandName}本地素材。</p>
-                    <Button type="primary" className="mt-5" icon={<Settings2 className="size-4" />} onClick={() => navigate("/plugins")}>
-                        去插件中心启用
+                    <Button type="primary" className="mt-5" icon={<Settings2 className="size-4" />} onClick={() => navigate("/plugins?search=Eagle")}>
+                        管理 Eagle 连接
                     </Button>
                 </section>
             </WorkspacePage>
@@ -188,8 +188,8 @@ export default function EagleLibraryPage() {
                                     <Button icon={<ArrowLeft className="size-3.5" />} onClick={() => navigate("/assets")}>
                                         {brandName}素材库
                                     </Button>
-                                    <Button icon={<Settings2 className="size-3.5" />} onClick={() => navigate("/plugins")}>
-                                        插件设置
+                                    <Button icon={<Settings2 className="size-3.5" />} onClick={() => navigate("/plugins?search=Eagle")}>
+                                        Eagle 设置
                                     </Button>
                                 </div>
                             </div>
