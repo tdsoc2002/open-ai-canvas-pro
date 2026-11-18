@@ -43,6 +43,12 @@ export const DEFAULT_AGENT_AVATAR_CLIP_STATES: Record<AgentAvatarState, string> 
     rejected: "think",
 };
 
+export const DEFAULT_AGENT_AVATAR = { src: "/doll/editor-otter.webp", width: 120, height: 120 };
+
+export function usesDefaultAgentAvatar(appearance: CanvasAppearance): boolean {
+    return appearance.avatarType === "bundle" && !appearance.avatarBundleResourceId;
+}
+
 export function isAgentAvatarBundleManifest(value: unknown): value is AgentAvatarBundleManifest {
     if (typeof value !== "object" || value === null) return false;
     const manifest = value as Record<string, unknown>;

@@ -6,11 +6,13 @@ import { Live2DAvatar } from "@/components/canvas/live2d-avatar";
 import { AgentOrb } from "@/components/ui/agent-orb";
 import {
     AGENT_AVATAR_STATES,
+    DEFAULT_AGENT_AVATAR,
     DEFAULT_AGENT_AVATAR_CLIP_STATES,
     agentAvatarClipForState,
     agentCopy,
     isAgentAvatarBundleManifest,
     suggestedAgentAvatarClipStates,
+    usesDefaultAgentAvatar,
     type AgentAvatarBundleManifest,
     type AgentAvatarState,
     type CanvasAppearance,
@@ -32,14 +34,15 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
     const [bundleError, setBundleError] = useState("");
     const [selectedAvatarState, setSelectedAvatarState] = useState<AgentAvatarState>("idle");
     const url = value.live2dResourceId ? live2DModelURL(value.live2dResourceId, value.live2dEntry, true) : "";
+    const defaultAvatar = usesDefaultAgentAvatar(value);
     const bundleID = value.avatarBundleResourceId;
-    const bundleManifestURL = bundleID ? agentAvatarBundleFileURL(bundleID, "avatar.json", true) : "/doll/avatar.json";
+    const bundleManifestURL = bundleID ? agentAvatarBundleFileURL(bundleID, "avatar.json", true) : "";
     const previewClip = bundleManifest ? agentAvatarClipForState(value, selectedAvatarState, bundleManifest) : "";
     const previewFile = bundleManifest?.clips[previewClip] || "";
-    const previewBundleURL = previewFile ? (bundleID ? agentAvatarBundleFileURL(bundleID, previewFile, true) : `/doll/${encodeURIComponent(previewFile)}`) : "";
+    const previewBundleURL = bundleID && previewFile ? agentAvatarBundleFileURL(bundleID, previewFile, true) : "";
     const change = (patch: Partial<CanvasAppearance>) => onChange({ ...value, ...patch });
     useEffect(() => {
-        if (value.avatarType !== "bundle") return;
+        if (value.avatarType !== "bundle" || !bundleManifestURL) return;
         const controller = new AbortController();
         setBundleLoading(true);
         setBundleError("");
@@ -136,7 +139,7 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                     options={[
                         { label: "默认动态球", value: "orb" },
                         { label: "Live2D", value: "live2d", disabled: !url || readyURL !== url },
-                        { label: "状态动画包", value: "bundle" },
+                        { label: bundleID ? "状态动画包" : "默认水獭", value: "bundle" },
                     ]}
                     onChange={(event) => {
                         const type = event.target.value;
@@ -174,11 +177,11 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                                         setBundleError("");
                                     }}
                                 >
-                                    恢复内置动画包
+                                    恢复默认水獭
                                 </Button>
                             ) : null}
                         </div>
-                        <div className="grid gap-3 border-t border-border pt-3">
+                        <div hidden={defaultAvatar} className={defaultAvatar ? undefined : "grid gap-3 border-t border-border pt-3"}>
                             <Radio.Group
                                 className="flex flex-wrap"
                                 optionType="button"
@@ -204,12 +207,12 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                                 />
                             </label>
                         </div>
-                        {bundleManifest ? (
+                        {!defaultAvatar && bundleManifest ? (
                             <p className="text-xs text-foreground/60">
                                 {Object.keys(bundleManifest.clips).length} 个动画 · {bundleManifest.width} × {bundleManifest.height}
                             </p>
                         ) : null}
-                        {bundleError ? (
+                        {!defaultAvatar && bundleError ? (
                             <Alert
                                 type="warning"
                                 showIcon
@@ -292,6 +295,8 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                                 setError(reason);
                             }}
                         />
+                    ) : defaultAvatar ? (
+                        <img {...DEFAULT_AGENT_AVATAR} alt="戴耳机的水獭剪辑搭档" draggable={false} />
                     ) : value.avatarType === "bundle" && previewBundleURL && bundleManifest ? (
                         <div
                             className="relative mx-auto overflow-hidden"

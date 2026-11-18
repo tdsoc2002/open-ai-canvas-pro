@@ -5,17 +5,18 @@
 
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
-import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAULT_CANVAS_APPEARANCE, isAgentAvatarBundleManifest, type AgentAvatarBundleManifest } from "@/lib/canvas/agent-appearance";
+import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAULT_AGENT_AVATAR, DEFAULT_CANVAS_APPEARANCE, isAgentAvatarBundleManifest, usesDefaultAgentAvatar, type AgentAvatarBundleManifest } from "@/lib/canvas/agent-appearance";
 import { type CSSProperties, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
-import { resolveAgentLauncherAvatarHeight } from "@/lib/canvas/agent-launcher-position";
+import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition } from "@/lib/canvas/agent-launcher-position";
 import { useMatch } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Live2DAvatar } from "./live2d-avatar";
 import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appearance";
 import { AgentAvatarVideo } from "@/components/canvas/agent-avatar-video";
+import { AgentOtterAvatar, playAgentOtterAction } from "./agent-otter-action";
 import { AgentOrb, agentOrbStateForAvatar } from "@/components/ui/agent-orb";
 import { ArrowDown, ArrowLeft, Check, ChevronDown, Clock3, Download, Ellipsis, History, LoaderCircle, Maximize2, MessageSquarePlus, Minus, PanelRight, PictureInPicture2, RefreshCw, Scaling, Settings2, ShieldCheck, Trash2, X, Blocks } from "lucide-react";
 import { agentModifierShortcut } from "@/lib/canvas/agent-outbox";
@@ -71,10 +72,12 @@ export const AgentLauncher = memo(function AgentLauncher({
     const appearanceRevision = useAppearanceStore((state) => state.appearance.revision);
     const live = appearance.avatarType === "live2d" && Boolean(appearance.live2dResourceId && appearance.live2dEntry);
     const avatarState = agentAvatarStateForRunStatus(status);
-    const bundleManifestURL = appearance.avatarBundleResourceId ? agentAvatarBundleFileURL(appearance.avatarBundleResourceId, "avatar.json", false, appearanceRevision) : "/doll/avatar.json";
+    const defaultAvatar = usesDefaultAgentAvatar(appearance);
+    const bundleId = appearance.avatarType === "bundle" ? appearance.avatarBundleResourceId : "";
+    const bundleManifestURL = bundleId ? agentAvatarBundleFileURL(bundleId, "avatar.json", false, appearanceRevision) : "";
     const [bundleManifestState, setBundleManifestState] = useState<{ url: string; manifest: AgentAvatarBundleManifest | null } | null>(null);
     useEffect(() => {
-        if (appearance.avatarType !== "bundle") {
+        if (!bundleManifestURL) {
             setBundleManifestState(null);
             return;
         }
@@ -91,13 +94,13 @@ export const AgentLauncher = memo(function AgentLauncher({
             }
         })();
         return () => controller.abort();
-    }, [appearance.avatarType, bundleManifestURL]);
+    }, [bundleManifestURL]);
     const currentBundleManifestState = bundleManifestState?.url === bundleManifestURL ? bundleManifestState : null;
     const bundleManifest = currentBundleManifestState?.manifest ?? null;
-    const bundleManifestLoading = appearance.avatarType === "bundle" && currentBundleManifestState === null;
+    const bundleManifestLoading = Boolean(bundleManifestURL) && currentBundleManifestState === null;
     const clip = bundleManifest ? agentAvatarClipForState(appearance, avatarState, bundleManifest) : "";
     const clipFile = bundleManifest?.clips[clip] || "";
-    const mediaURL = appearance.avatarType === "bundle" && clipFile ? (appearance.avatarBundleResourceId ? agentAvatarBundleFileURL(appearance.avatarBundleResourceId, clipFile, false, appearanceRevision) : `/doll/${encodeURIComponent(clipFile)}`) : "";
+    const mediaURL = bundleId && clipFile ? agentAvatarBundleFileURL(bundleId, clipFile, false, appearanceRevision) : "";
     const [mediaError, setMediaError] = useState(false);
     const [readyBundleURL, setReadyBundleURL] = useState("");
     useEffect(() => setMediaError(false), [mediaURL]);
@@ -109,7 +112,30 @@ export const AgentLauncher = memo(function AgentLauncher({
         return () => window.removeEventListener("resize", resize);
     }, []);
     const [collapsed, setCollapsed] = useState(readAgentLauncherCollapsed);
+    const avatarImage = useRef<HTMLSpanElement>(null);
+    const openingAnimation = useRef<ReturnType<typeof playAgentOtterAction>>(null);
+    useEffect(() => () => openingAnimation.current?.cancel(), [hidden]);
+    const openWithFeedback = () => {
+        if (openingAnimation.current) return;
+        const action = !reducedMotion && avatarImage.current ? playAgentOtterAction(avatarImage.current) : null;
+        if (!action) {
+            onOpen();
+            return;
+        }
+        openingAnimation.current = action;
+        void action.finished.then(
+            () => {
+                openingAnimation.current = null;
+                onOpen();
+                action.cancel();
+            },
+            () => {
+                openingAnimation.current = null;
+            },
+        );
+    };
     const toggleCollapsed = () => {
+        openingAnimation.current?.cancel();
         const next = !collapsed;
         setCollapsed(next);
         if (next) setReadyBundleURL("");
@@ -122,28 +148,30 @@ export const AgentLauncher = memo(function AgentLauncher({
     };
     const media = Boolean(mediaURL && !mediaError);
     // 动作切换保留上一帧，只在首次加载或更换动画包时展示占位。
-    const avatarLoading = !collapsed && (bundleManifestLoading || !appearanceResolved || (media && readyBundleURL !== bundleManifestURL));
-    const showBuiltinPoster = appearanceResolved && !collapsed && appearance.avatarType === "bundle" && !appearance.avatarBundleResourceId && (bundleManifestLoading || media);
-    const aspectRatio = live ? 0.75 : bundleManifest ? bundleManifest.width / bundleManifest.height : appearance.avatarType === "bundle" ? 480 / 432 : 1;
-    const largeAvatar = live || media || bundleManifestLoading;
+    const avatarLoading = !collapsed && !defaultAvatar && (bundleManifestLoading || !appearanceResolved || (media && readyBundleURL !== bundleManifestURL));
+    const aspectRatio = live ? 0.75 : bundleManifest ? bundleManifest.width / bundleManifest.height : defaultAvatar ? DEFAULT_AGENT_AVATAR.width / DEFAULT_AGENT_AVATAR.height : bundleManifestLoading ? 480 / 432 : 1;
+    const largeAvatar = live || defaultAvatar || media || bundleManifestLoading;
     const inCanvasEditor = Boolean(useMatch("/canvas/:id"));
+    const preferredAvatarHeight = defaultAvatar ? Math.min(appearance.avatarHeight, AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT) : appearance.avatarHeight;
     // 收起后只留小圆球入口：不加载 Live2D / 动画，也不挡画布。位置以右下角为锚点，收起展开不跳位。
     const keepsAvatarSize = largeAvatar && !collapsed;
-    const height = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? resolveAgentLauncherAvatarHeight(appearance.avatarHeight, aspectRatio, viewport, inCanvasEditor) : 76;
+    const height = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? resolveAgentLauncherAvatarHeight(preferredAvatarHeight, aspectRatio, viewport, inCanvasEditor) : 76;
     const width = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
-    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height);
+    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar ? openWithFeedback : undefined);
     const { onClick, onKeyDown, onDoubleClick, ...pointerHandlers } = handlers;
     // 大形象的外框大多是透明像素：外框不接收指针，只有身体热区可点、可拖，透明处的点击落到下面的页面。
     // 键盘聚焦与激活仍在按钮上；小圆球和默认 76px 入口整块可点。
     const bodyHitOnly = keepsAvatarSize;
-    const hitInset = bodyHitOnly && (!avatarLoading || showBuiltinPoster) ? AGENT_LAUNCHER_HIT_INSET : null;
-    const showToggle = !hidden && (largeAvatar || collapsed) && (!avatarLoading || showBuiltinPoster);
+    const hitInset = bodyHitOnly && !avatarLoading ? AGENT_LAUNCHER_HIT_INSET : null;
+    const showToggle = !hidden && (largeAvatar || collapsed) && !avatarLoading;
+    const togglePosition =
+        defaultAvatar && !collapsed ? resolveAgentLauncherTogglePosition(position, viewport, { width, height }) : { right: position.right + width * (1 - (hitInset?.side ?? 0)) - 14, bottom: position.bottom + height * (1 - (hitInset?.top ?? 0)) - 14 };
     return (
         <>
             <motion.button
                 type="button"
                 aria-label={`打开${appearance.agentName}`}
-                title={live && live2DError ? live2DError : `${approvalPending ? "Agent 等待你的审批" : "打开 Agent 助手"} · 拖动可调整位置，聚焦后可用方向键移动`}
+                title={live && live2DError ? live2DError : `${approvalPending ? "Agent 等待你的审批 · " : ""}${defaultAvatar ? "双击打开" : "打开"} Agent 助手 · 拖动可调整位置，聚焦后可用方向键移动`}
                 className={cn(
                     "canvas-agent-launcher fixed z-[var(--z-panel-floating)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35",
                     dragging && "is-dragging",
@@ -152,7 +180,7 @@ export const AgentLauncher = memo(function AgentLauncher({
                     reducedMotion && "is-reduced-motion",
                     bodyHitOnly && "is-body-hit",
                     keepsAvatarSize && live && "canvas-agent-launcher-live2d",
-                    keepsAvatarSize && (media || bundleManifestLoading) && "canvas-agent-launcher-media",
+                    keepsAvatarSize && (defaultAvatar || media || bundleManifestLoading) && "canvas-agent-launcher-media",
                 )}
                 style={{ ...position, width, height, color: theme.node.text, "--canvas-agent-launcher-shadow": theme.spatial.shadow, ...(hidden ? { display: "none" } : null) } as CSSProperties}
                 aria-hidden={hidden || undefined}
@@ -163,13 +191,14 @@ export const AgentLauncher = memo(function AgentLauncher({
                 onClick={onClick}
                 onKeyDown={onKeyDown}
                 onDoubleClick={onDoubleClick}
-                whileHover={reducedMotion || dragging ? undefined : { scale: 1.035 }}
-                whileTap={reducedMotion || dragging ? undefined : { scale: 0.96 }}
+                whileHover={defaultAvatar || reducedMotion || dragging ? undefined : { scale: 1.035 }}
+                whileTap={defaultAvatar || reducedMotion || dragging ? undefined : { scale: 0.96 }}
                 transition={{ duration: reducedMotion ? 0 : 0.18 }}
             >
                 {hitInset ? <span className="canvas-agent-launcher-hit" aria-hidden="true" style={{ inset: `${hitInset.top * 100}% ${hitInset.side * 100}% ${hitInset.bottom * 100}%` }} {...pointerHandlers} /> : null}
-                {showBuiltinPoster ? <img src="/doll/mascot-idle.webp" className="canvas-agent-launcher-poster" alt="" aria-hidden="true" draggable={false} width={320} height={288} /> : null}
-                {collapsed ? (
+                {defaultAvatar ? (
+                    <AgentOtterAvatar avatarRef={avatarImage} collapsed={collapsed} />
+                ) : collapsed ? (
                     <AgentOrb state={agentOrbStateForAvatar(avatarState)} size={30} color="#7164f6" />
                 ) : !appearanceResolved ? null : live ? (
                     <Live2DAvatar
@@ -196,7 +225,7 @@ export const AgentLauncher = memo(function AgentLauncher({
                         <span aria-hidden="true">正在唤醒…</span>
                         <span className="sr-only">正在加载助手形象</span>
                     </span>
-                ) : appearance.launcherLabel && !collapsed ? (
+                ) : !defaultAvatar && appearance.launcherLabel && !collapsed ? (
                     <span className="canvas-agent-launcher-label">{appearance.launcherLabel}</span>
                 ) : null}
                 {live && live2DError ? (
@@ -211,8 +240,7 @@ export const AgentLauncher = memo(function AgentLauncher({
                 <button
                     type="button"
                     className="canvas-agent-launcher-toggle fixed z-[calc(var(--z-panel-floating)+1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35"
-                    // 只有身体热区可点时，按钮贴在热区左上角，而不是悬在透明外框的角上。
-                    style={{ right: position.right + width * (1 - (hitInset?.side ?? 0)) - 14, bottom: position.bottom + height * (1 - (hitInset?.top ?? 0)) - 14, color: theme.node.text } as CSSProperties}
+                    style={{ ...togglePosition, color: theme.node.text }}
                     aria-label={collapsed ? `展开${appearance.agentName}形象` : `收起${appearance.agentName}形象`}
                     aria-pressed={collapsed}
                     title={collapsed ? "展开形象" : "收起形象，只保留小入口"}

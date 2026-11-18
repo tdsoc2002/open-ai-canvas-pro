@@ -1,10 +1,25 @@
 import { expect, test } from "bun:test";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
-import { clampAgentLauncherPosition, moveAgentLauncher, restoreAgentLauncherPosition } from "../src/lib/canvas/agent-launcher-position";
+import { AGENT_LAUNCHER_TOGGLE_SIZE, clampAgentLauncherPosition, moveAgentLauncher, resolveAgentLauncherTogglePosition, restoreAgentLauncherPosition } from "../src/lib/canvas/agent-launcher-position";
 
 const viewport = { width: 1280, height: 800 };
 const start = { right: 20, bottom: 20 };
+
+test("水獭减号与头像边界不重叠，靠左拖动时自动换边", () => {
+    const avatar = { width: 120, height: 120 };
+    const left = resolveAgentLauncherTogglePosition(start, viewport, avatar);
+    expect(left.right).toBeGreaterThan(start.right + avatar.width);
+    expect(left.bottom).toBeGreaterThan(start.bottom);
+
+    const atLeftEdge = { ...start, right: viewport.width - avatar.width - 20 };
+    const right = resolveAgentLauncherTogglePosition(atLeftEdge, viewport, avatar);
+    expect(right.right + AGENT_LAUNCHER_TOGGLE_SIZE).toBeLessThan(atLeftEdge.right);
+    expect(right.right).toBeGreaterThanOrEqual(0);
+
+    const narrow = resolveAgentLauncherTogglePosition(start, { width: 160, height: 300 }, avatar);
+    expect(narrow.bottom).toBeGreaterThan(start.bottom + avatar.height);
+});
 
 test("Live2D bounds use actual rectangular dimensions when restoring and dragging", () => {
     const size = { width: 180, height: 240 };
@@ -53,10 +68,11 @@ const build = await Bun.build({
 expect(build.success).toBe(true);
 const source = await build.outputs[0].text();
 
-function harness() {
+function harness(doubleClick = false) {
     const cells = [];
     let cursor = 0;
     let opens = 0;
+    let doubleOpens = 0;
     const stored = new Map();
     const listeners = new Map();
     const window = { innerWidth: 1280, innerHeight: 800, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
@@ -87,7 +103,7 @@ function harness() {
     runInNewContext(source, { module, exports: module.exports, hooks, window, localStorage: { getItem: (key) => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) }, console });
     const render = () => {
         cursor = 0;
-        return module.exports.useAgentLauncherPosition(() => opens++);
+        return module.exports.useAgentLauncherPosition(() => opens++, 76, 76, doubleClick ? () => doubleOpens++ : undefined);
     };
     let current = render();
     let captured = null;
@@ -102,7 +118,7 @@ function harness() {
     };
     return {
         fire(name, overrides = {}) {
-            const event = { currentTarget: target, pointerId: 1, isPrimary: true, button: 0, clientX: 500, clientY: 500, detail: 1, preventDefault() {}, stopPropagation() {}, ...overrides };
+            const event = { currentTarget: target, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, clientX: 500, clientY: 500, detail: 1, preventDefault() {}, stopPropagation() {}, ...overrides };
             current.handlers[name](event);
             current = render();
         },
@@ -118,6 +134,9 @@ function harness() {
         get opens() {
             return opens;
         },
+        get doubleOpens() {
+            return doubleOpens;
+        },
         get saved() {
             return [...stored.values()].map(JSON.parse);
         },
@@ -126,6 +145,42 @@ function harness() {
         },
     };
 }
+
+test("默认形象鼠标双击只触发一次打开反馈，键盘与触屏可直接打开", () => {
+    const h = harness(true);
+    h.fire("onPointerDown");
+    h.fire("onPointerUp");
+    h.fire("onClick");
+    expect(h.opens).toBe(0);
+    expect(h.doubleOpens).toBe(0);
+
+    h.fire("onPointerDown");
+    h.fire("onPointerUp");
+    h.fire("onClick", { detail: 2 });
+    h.fire("onDoubleClick", { detail: 2 });
+    h.fire("onClick", { detail: 3 });
+    expect(h.doubleOpens).toBe(1);
+
+    h.fire("onClick", { detail: 0 });
+    h.fire("onPointerDown", { pointerType: "touch" });
+    h.fire("onPointerUp", { pointerType: "touch" });
+    h.fire("onClick");
+    expect(h.opens).toBe(2);
+});
+
+test("拖动结束不会被算作双击的第一下", () => {
+    const h = harness(true);
+    h.fire("onPointerDown");
+    h.fire("onPointerMove", { clientX: 400 });
+    h.fire("onPointerUp", { clientX: 400 });
+    h.fire("onClick");
+    h.fire("onPointerDown");
+    h.fire("onPointerUp");
+    h.fire("onClick", { detail: 2 });
+    h.fire("onDoubleClick", { detail: 2 });
+    expect(h.doubleOpens).toBe(0);
+    expect(h.opens).toBe(0);
+});
 
 test("production handlers preserve click and suppress drag-release activation", () => {
     const h = harness();

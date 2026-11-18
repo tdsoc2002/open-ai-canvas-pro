@@ -1,13 +1,40 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { AgentWelcome } from "@/components/canvas/canvas-agent-welcome";
-import { AgentConversation } from "@/components/canvas/canvas-cloud-agent-panel-parts";
+import { AgentConversation, AgentLauncher } from "@/components/canvas/canvas-cloud-agent-panel-parts";
 import { AgentChatComposer } from "@/components/canvas/canvas-cloud-agent-chat-ui";
 import { agentPermissionVisual } from "@/components/canvas/canvas-cloud-agent-settings";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { DEFAULT_CANVAS_APPEARANCE, agentCopy } from "@/lib/canvas/agent-appearance";
 
 const noop = () => {};
+
+test.each([
+    ["/canvas/mascot-size", false, 120],
+    ["/create", false, 120],
+    ["/canvas/mascot-size", true, 48],
+] as const)("默认水獭入口尺寸符合当前页面和折叠状态（%s，%s）", (path, collapsed, size) => {
+    const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+    const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "window", { configurable: true, value: Object.assign(new EventTarget(), { innerWidth: 1920, innerHeight: 900 }) });
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: (key: string) => (collapsed && key === "canvas:agent-launcher-collapsed:v1" ? "1" : null) } });
+    try {
+        const html = renderToStaticMarkup(
+            <MemoryRouter initialEntries={[path]}>
+                <AgentLauncher theme={canvasThemes.dark} statusColor="green" approvalPending={false} reducedMotion status="idle" onOpen={noop} />
+            </MemoryRouter>,
+        );
+        const launcher = html.match(/<button\b[^>]*class="canvas-agent-launcher [^"]*"[^>]*>/)?.[0];
+        expect(launcher).toContain(`width:${size}px;height:${size}px`);
+        expect(html).toContain("/doll/editor-otter.webp");
+    } finally {
+        if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+        if (originalStorage) Object.defineProperty(globalThis, "localStorage", originalStorage);
+        else Reflect.deleteProperty(globalThis, "localStorage");
+    }
+});
 
 const conversationProps = { theme: canvasThemes.light, references: [], approval: null, approvalSubmitting: false, onApprovalReasonChange: noop, onApprove: noop, onReject: noop };
 

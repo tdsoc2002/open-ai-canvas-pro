@@ -2560,7 +2560,7 @@ summary.agent-tool-step:hover {
     display: none;
 }
 
-.canvas-agent-launcher-media > img,
+.canvas-agent-launcher-media > .canvas-agent-default-avatar,
 .canvas-agent-launcher-media > .canvas-agent-keyed-video {
     width: 100%;
     height: 100%;
@@ -2570,21 +2570,60 @@ summary.agent-tool-step:hover {
     -webkit-user-drag: none;
 }
 
-.canvas-agent-launcher-media > .canvas-agent-keyed-video,
-.canvas-agent-launcher-media > .canvas-agent-launcher-poster {
+.canvas-agent-launcher-media > .canvas-agent-keyed-video {
     border-radius: 12px;
     transform: scale(1.18);
     transition: opacity var(--motion-dur-base) var(--motion-ease-out);
 }
 
-.canvas-agent-launcher-poster {
-    position: absolute;
-    inset: 0;
+.canvas-agent-launcher-media.is-loading > .canvas-agent-keyed-video {
+    opacity: 0;
 }
 
-.canvas-agent-launcher-media.is-loading > .canvas-agent-keyed-video,
-.canvas-agent-launcher-media:not(.is-loading) > .canvas-agent-launcher-poster {
-    opacity: 0;
+.canvas-agent-default-avatar {
+    display: block;
+    position: relative;
+    pointer-events: none;
+}
+
+.canvas-agent-default-avatar > img,
+.canvas-agent-otter-rig {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.canvas-agent-otter-rig {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+}
+
+.canvas-agent-default-avatar[data-otter-playing] > img {
+    visibility: hidden;
+}
+
+.canvas-agent-default-avatar[data-otter-playing] > .canvas-agent-otter-rig {
+    visibility: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .canvas-agent-launcher-media > .canvas-agent-default-avatar {
+        animation: canvas-agent-default-idle 3.6s ease-in-out infinite;
+        transform-origin: center 90%;
+    }
+
+    .canvas-agent-launcher.is-dragging > .canvas-agent-default-avatar,
+    .canvas-agent-default-avatar[data-otter-playing],
+    .canvas-agent-launcher.is-reduced-motion > .canvas-agent-default-avatar {
+        animation-play-state: paused;
+    }
+}
+
+@keyframes canvas-agent-default-idle {
+    50% {
+        transform: translateY(-4%) rotate(-3deg) scaleY(1.04);
+    }
 }
 
 .canvas-agent-launcher-loading {
@@ -2623,8 +2662,7 @@ summary.agent-tool-step:hover {
     }
 }
 
-.canvas-agent-launcher.is-reduced-motion > .canvas-agent-keyed-video,
-.canvas-agent-launcher.is-reduced-motion > .canvas-agent-launcher-poster {
+.canvas-agent-launcher.is-reduced-motion > .canvas-agent-keyed-video {
     transition: none;
 }
 
@@ -2738,8 +2776,7 @@ summary.agent-tool-step:hover {
 @media (prefers-reduced-motion: reduce) {
     .canvas-agent-launcher,
     .canvas-agent-launcher-toggle,
-    .canvas-agent-launcher > .canvas-agent-keyed-video,
-    .canvas-agent-launcher > .canvas-agent-launcher-poster {
+    .canvas-agent-launcher > .canvas-agent-keyed-video {
         transition: none !important;
     }
 

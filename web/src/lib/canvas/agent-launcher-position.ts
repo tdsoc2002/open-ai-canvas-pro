@@ -4,6 +4,7 @@ export type AgentLauncherGesture = { x: number; y: number; start: AgentLauncherP
 
 export const AGENT_LAUNCHER_POSITION_KEY = "canvas:agent-launcher-position:v1";
 export const AGENT_LAUNCHER_SIZE = 76;
+export const AGENT_LAUNCHER_TOGGLE_SIZE = 22;
 const MARGIN = 20; // Includes the label below the orb.
 /** 画布编辑器以外的页面和窄屏上，大形象会压住页面右下角的按钮，高度封顶到这个值。 */
 export const AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT = 120;
@@ -22,6 +23,19 @@ export function clampAgentLauncherPosition(position: AgentLauncherPosition, view
         return Math.min(Math.max(value, margin), available - margin);
     };
     return { right: clamp(position.right, viewport.width, size.width), bottom: clamp(position.bottom, viewport.height, size.height) };
+}
+
+/** 优先把收起按钮放在头像左侧，靠边时换到右侧或上下方。 */
+export function resolveAgentLauncherTogglePosition(position: AgentLauncherPosition, viewport: AgentLauncherViewport, size: AgentLauncherViewport): AgentLauncherPosition {
+    const gap = 4;
+    const offset = AGENT_LAUNCHER_TOGGLE_SIZE + gap;
+    const bottom = position.bottom + Math.max(0, size.height - offset);
+    if (viewport.width - position.right - size.width >= offset) return { right: position.right + size.width + gap, bottom };
+    if (position.right >= offset) return { right: position.right - offset, bottom };
+    return {
+        right: position.right + (size.width - AGENT_LAUNCHER_TOGGLE_SIZE) / 2,
+        bottom: viewport.height - position.bottom - size.height >= offset ? position.bottom + size.height + gap : Math.max(0, position.bottom - offset),
+    };
 }
 
 export function restoreAgentLauncherPosition(raw: string | null, viewport: AgentLauncherViewport, size?: AgentLauncherViewport): AgentLauncherPosition {

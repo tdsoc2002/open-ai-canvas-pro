@@ -7,7 +7,7 @@ const viewport = () => ({ width: window.innerWidth, height: window.innerHeight }
  * 入口的拖拽、点击与键盘移动。指针处理器（onPointer*）可以挂在入口按钮上，也可以挂在按钮内的身体热区上
  * （大形象外框不接收指针）；指针捕获落在挂处理器的元素上，因此该元素必须能被命中。
  */
-export function useAgentLauncherPosition(onOpen: () => void, width = 76, height = 76) {
+export function useAgentLauncherPosition(onOpen: () => void, width = 76, height = 76, onDoubleClickOpen?: () => void) {
     const size = { width, height };
     const [position, setPosition] = useState(() => {
         try {
@@ -20,6 +20,8 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
     const [dragging, setDragging] = useState(false);
     const gestureRef = useRef<(AgentLauncherGesture & { pointerId: number }) | null>(null);
     const suppressClick = useRef(false);
+    const pointerType = useRef("mouse");
+    const doubleClickArmed = useRef(false);
 
     const save = (next: AgentLauncherPosition) => {
         try {
@@ -39,6 +41,7 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
     const onPointerDown = (event: PointerEvent<HTMLElement>) => {
         event.stopPropagation();
         if (event.button !== 0 || !event.isPrimary || gestureRef.current) return;
+        pointerType.current = event.pointerType;
         suppressClick.current = false;
         gestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: position, dragged: false };
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -62,6 +65,7 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         gestureRef.current = null;
         const next = cancelled ? { dragged: gesture.dragged, position: clampAgentLauncherPosition(position, viewport(), size) } : moveAgentLauncher(gesture, event.clientX, event.clientY, viewport(), size);
         suppressClick.current = cancelled || next.dragged;
+        if (suppressClick.current) doubleClickArmed.current = false;
         setDragging(false);
         setPosition(next.position);
         if (next.dragged) save(next.position);
@@ -74,6 +78,14 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
             event.preventDefault();
             return;
         }
+        if (event.detail !== 0 && pointerType.current === "mouse" && onDoubleClickOpen) {
+            // Uses the browser's click count without delaying touch or keyboard activation.
+            const opens = event.detail === 2 && doubleClickArmed.current;
+            doubleClickArmed.current = event.detail === 1;
+            if (opens) onDoubleClickOpen();
+            return;
+        }
+        doubleClickArmed.current = false;
         onOpen();
     };
     const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
