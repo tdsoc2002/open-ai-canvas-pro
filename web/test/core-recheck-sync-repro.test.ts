@@ -9,6 +9,7 @@ import type { CanvasOperationsRequest } from "../src/services/api/user-data";
 import { CanvasNodeType } from "../src/types/canvas";
 import { applyCanvasImport } from "../src/pages/canvas/canvas-import-save";
 import { CanvasSyncPendingError } from "../src/lib/canvas/sync-recovery";
+import { ensureCanvasNodeAsset } from "../src/services/project-asset-sync";
 import type { Asset } from "../src/stores/use-asset-store";
 import type { AxiosAdapter } from "axios";
 
@@ -136,6 +137,50 @@ afterEach(async () => {
             value: originalWindow,
         });
 });
+
+for (const switchAccount of [false, true]) {
+    test(switchAccount ? "账号切换后停止旧项目的素材关联" : "关联项目只远端写当前账号的目标素材，不提交其他脏素材或画布", async () => {
+        const target = `${scope}-target`;
+        const projectId = `${scope}-project`;
+        const textAsset = (id: string): Asset => ({ id, kind: "text", title: id, coverUrl: "", tags: [], category: "other", createdAt: "2026-10-15", updatedAt: "2026-10-15", data: { content: id } });
+        useAssetStore.setState({ assets: [textAsset(target), textAsset(`${scope}-unrelated`)] });
+        useCanvasStore.getState().renameProject("canvas", "keep local draft");
+        const requests: string[] = [];
+        apiClient.defaults.adapter = async (config) => {
+            const request = `${config.method} ${config.url}`;
+            requests.push(request);
+            const response = (data: unknown, status = 200) => ({ config, status, statusText: "", headers: {}, data: { code: status === 200 ? 0 : status, data, msg: "fixture" } });
+            if (request === `get /assets/${target}`) {
+                if (switchAccount) setActiveUserScope("other-user");
+                return response(null, 404);
+            }
+            if (request === `put /assets/${target}`) {
+                expect(JSON.parse(config.data).asset).toMatchObject({ id: target, data: { content: target } });
+                return response({});
+            }
+            if (request === `post /projects/${projectId}/assets`) {
+                expect(JSON.parse(config.data).assetId).toBe(target);
+                return response({ asset: { id: target, category: "other", status: "confirmed" } });
+            }
+            throw new Error(`Unexpected scoped sync request: ${request}`);
+        };
+        const link = ensureCanvasNodeAsset({
+            canvasId: "canvas",
+            domainProjectId: projectId,
+            node: { ...node("text-node"), metadata: { assetId: target, content: target } },
+            source: "canvas-manual",
+        });
+        if (switchAccount) {
+            await expect(link).rejects.toThrow();
+            expect(requests).toEqual([`get /assets/${target}`]);
+            return;
+        }
+        expect(await link).toMatchObject({ assetId: target, linkedToProject: true, syncPending: false });
+        expect(requests).toEqual([`get /assets/${target}`, `put /assets/${target}`, `post /projects/${projectId}/assets`, `put /assets/${target}`]);
+        expect(remote.title).toBe("baseline");
+        expect(mutations).toHaveLength(0);
+    });
+}
 
 for (const withCopy of [false, true]) {
     test(`reopening a pending third-party import${withCopy ? " with a copied node" : ""} uploads its cached assets before confirming canvas operations`, async () => {

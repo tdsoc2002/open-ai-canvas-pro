@@ -126,7 +126,8 @@ export function agentWelcomeCopy(appearance: CanvasAppearance) {
     };
 }
 
-export function agentComposerPlaceholder(appearance: CanvasAppearance, inCanvas: boolean) {
+export function agentComposerPlaceholder(appearance: CanvasAppearance, inCanvas: boolean, onStoryboard = false) {
     if (appearance.inputPlaceholder !== DEFAULT_CANVAS_APPEARANCE.inputPlaceholder) return agentCopy(appearance.inputPlaceholder, appearance.agentName);
-    return inCanvas ? "说说你想做什么，@ 引用，/ 使用技能" : "说说你想做什么，/ 使用技能";
+    if (onStoryboard) return `说说这个分镜想怎么改，或让${appearance.agentName}先读本集镜头；/ 或 、 引用技能`;
+    return inCanvas ? "说说你想做什么，@ 引用节点，/ 或 、 引用技能" : "说说你想做什么，/ 或 、 引用技能";
 }

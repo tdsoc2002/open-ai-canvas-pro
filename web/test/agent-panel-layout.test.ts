@@ -88,9 +88,20 @@ describe("Agent submission sync preflight contract", () => {
     });
 
     it("syncs project assets without syncing any canvas", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/services/project-asset-sync.ts"), "utf8");
-        expect(source).toContain("await saveRemoteUserDataNow([]);");
-        expect(source).not.toContain("await saveRemoteUserDataNow();");
+        const projectSync = readFileSync(resolve(import.meta.dir, "../src/services/project-asset-sync.ts"), "utf8");
+        const link = projectSync.slice(projectSync.indexOf("async function performCanvasProjectAssetLink"), projectSync.indexOf("async function retryPendingCanvasProjectAssetLinks"));
+        const saveAsset = "await saveRemoteAssetNow(asset.id);";
+        const linkRequest = link.indexOf("await linkProjectAsset(");
+        expect(link.indexOf(saveAsset)).toBeGreaterThan(link.indexOf("if (scope !== getActiveUserScope())"));
+        expect(linkRequest).toBeGreaterThan(link.indexOf(saveAsset));
+        expect(link.lastIndexOf(saveAsset)).toBeGreaterThan(linkRequest);
+        expect(link.match(/await saveRemoteAssetNow\(asset\.id\);\s*ensureCurrentScope\(\);/g)).toHaveLength(2);
+        expect(projectSync.includes("saveRemoteUserDataNow")).toBe(false);
+
+        const sync = readFileSync(resolve(import.meta.dir, "../src/services/user-data-sync.ts"), "utf8");
+        expect(sync.includes("await waitForCanvasSync(performRemoteUserDataSave([], assetId));")).toBe(true);
+        expect(sync.includes("if (assetId) await saveRemoteUserDataBatch(new Map(), { projectId, assetId });")).toBe(true);
+        expect(sync.includes("if (options.assetId && asset.id !== options.assetId) return false;")).toBe(true);
     });
 });
 

@@ -32,7 +32,7 @@ import { nanoid } from "nanoid";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { agentSubmissionErrorTitle } from "@/lib/canvas/agent-error-presentation";
-import { agentComposerPlaceholder, DEFAULT_CANVAS_APPEARANCE } from "@/lib/canvas/agent-appearance";
+import { agentComposerPlaceholder } from "@/lib/canvas/agent-appearance";
 import { selectCanvasAppearance, useAppearanceStore } from "@/stores/use-appearance-store";
 import { useThemePack } from "@/themes/use-theme-pack";
 import { CanvasSyncPendingError, waitForCanvasSync } from "@/lib/canvas/sync-recovery";
@@ -2750,11 +2750,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         primaryDisabled={composerSubmitMode === "queue" && outboxIsFull}
                                         sending={busy}
                                         running={running}
-                                        placeholder={
-                                            pageContext && appearance.inputPlaceholder === DEFAULT_CANVAS_APPEARANCE.inputPlaceholder
-                                                ? `说说这个分镜想怎么改，或让${appearance.agentName}先读本集镜头`
-                                                : agentComposerPlaceholder(appearance, Boolean(canvasId))
-                                        }
+                                        placeholder={agentComposerPlaceholder(appearance, Boolean(canvasId), Boolean(pageContext))}
                                         theme={theme}
                                         onPromptChange={(value) => {
                                             if (!outboxEdit && !resolveAgentPromptPrefill(value, prefilledSubmissionRef.current)) prefilledSubmissionRef.current = null;

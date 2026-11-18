@@ -1,20 +1,79 @@
 import { afterAll, expect, test } from "bun:test";
 import { Window } from "happy-dom";
 import type { CanvasResourceReference } from "../../src/lib/canvas/canvas-resource-references";
+import type { Skill } from "../../src/services/api/skills";
 
 const dom = new Window({ url: "http://localhost/" });
 for (const key of ["window", "document", "navigator", "Element", "Node", "HTMLElement", "HTMLTextAreaElement", "MutationObserver", "ResizeObserver"] as const) {
     Object.defineProperty(globalThis, key, { configurable: true, value: key === "window" ? dom : dom[key] });
 }
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true, requestAnimationFrame: dom.requestAnimationFrame.bind(dom), cancelAnimationFrame: dom.cancelAnimationFrame.bind(dom) });
-const { act } = await import("react");
+const { act, useState } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { MentionMenu } = await import("../../src/components/canvas/canvas-mention-menu");
 const { CanvasResourceMentionTextarea } = await import("../../src/components/canvas/canvas-resource-mention-textarea");
 const { buildToolMentionReference, canvasResourceMentionToken } = await import("../../src/lib/canvas/canvas-resource-references");
 const { renderEditableContent, serializeEditableValue, setEditableSelection, getEditableSelection } = await import("../../src/components/canvas/canvas-mention-editable");
 const { getNineGridMenuItems } = await import("../../src/components/canvas/canvas-image-toolbar-tools");
+const { AgentChatComposer } = await import("../../src/components/canvas/canvas-cloud-agent-composer");
+const { agentComposerPlaceholder, DEFAULT_CANVAS_APPEARANCE } = await import("../../src/lib/canvas/agent-appearance");
+const { canvasThemes } = await import("../../src/lib/canvas-theme");
 afterAll(() => dom.happyDOM.abort());
+
+test("Agent 输入的 / 和中文顿号都能唤起技能并替换为同一个引用标签", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const updates: string[] = [];
+    let submitted = 0;
+    const skill = { skillId: "shot-breakdown", skillName: "镜头拆解", description: "说明", isAdded: true } as Skill;
+    const placeholder = agentComposerPlaceholder(DEFAULT_CANVAS_APPEARANCE, true);
+    function Composer() {
+        const [prompt, setPrompt] = useState("");
+        return (
+            <AgentChatComposer
+                theme={canvasThemes.light}
+                placeholder={placeholder}
+                prompt={prompt}
+                onPromptChange={(next) => {
+                    updates.push(next);
+                    setPrompt(next);
+                }}
+                onSubmit={() => submitted++}
+                slashSkills={[skill]}
+                includeAssetLibrary={false}
+            />
+        );
+    }
+    try {
+        await act(async () => root.render(<Composer />));
+        const editor = host.querySelector<HTMLElement>('[aria-label="Agent 输入"]')!;
+        expect(editor.getAttribute("aria-placeholder")).toContain("/ 或 、 引用技能");
+        const type = async (value: string) =>
+            act(async () => {
+                editor.focus();
+                editor.textContent = value;
+                editor.dispatchEvent(new dom.InputEvent("input", { bubbles: true }));
+            });
+        await type("这是中文、镜头");
+        expect(host.querySelector("[data-agent-slash-menu]")).toBeNull();
+        for (const [index, trigger] of ["/", "、"].entries()) {
+            await type(`先试 ${trigger}镜头`);
+            expect(host.querySelector("[data-agent-slash-menu]")?.textContent).toContain(skill.skillName);
+            await act(async () => {
+                if (index === 0) host.querySelector<HTMLButtonElement>("[data-agent-slash-menu] button")!.click();
+                else editor.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+            });
+            expect(updates.at(-1)).toBe("先试 @[skill:shot-breakdown] ");
+            expect(editor.querySelector("[data-mention-token]")?.textContent).toContain(skill.skillName);
+            expect(host.querySelector("[data-agent-slash-menu]")).toBeNull();
+        }
+        expect(submitted).toBe(0);
+    } finally {
+        await act(async () => root.unmount());
+        host.remove();
+    }
+});
 
 test("行首参考图前后都能放置光标，零宽锚点不进入提示词", () => {
     const editor = document.createElement("div");

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { agentComposerPlaceholder, DEFAULT_CANVAS_APPEARANCE } from "@/lib/canvas/agent-appearance";
 import { moduleGroupSource } from "./helpers/module-group-source";
 
 function source(path: string) {
@@ -130,10 +131,20 @@ describe("canvas resource mention editor", () => {
         expect(component).toContain("slash.start + 1 + slash.query.length");
         expect(component).toContain("buildSkillMentionReferences(availableSlashSkills)");
         expect(component).toContain("[/、]([^\\s/、]*)$");
-        // 保留主分支已恢复的固定 Skills 提示，不能因合并旧分支退回失效的外观配置断言。
-        expect(source("../src/lib/canvas/agent-appearance.ts")).toContain("用 / 或 、 引用 Skills");
-        // 输入框占位文字同样提示「/ 或 、」，中文输入法下打出的「、」也能唤起技能。
-        expect(moduleGroupSource("components/canvas/canvas-cloud-agent-panel.tsx") + source("../src/components/canvas/canvas-cloud-agent-panel-parts.tsx")).toContain("/ 或 、 引用技能");
+    });
+
+    test("Agent 默认占位提示两种快捷键，画布保留节点引用提示", () => {
+        const canvas = agentComposerPlaceholder(DEFAULT_CANVAS_APPEARANCE, true);
+        expect(canvas).toContain("@ 引用");
+        expect(canvas).toContain("/ 或 、 引用技能");
+        const unbound = agentComposerPlaceholder(DEFAULT_CANVAS_APPEARANCE, false);
+        expect(unbound).not.toContain("@ 引用");
+        expect(unbound).toContain("/ 或 、 引用技能");
+        const storyboard = agentComposerPlaceholder(DEFAULT_CANVAS_APPEARANCE, false, true);
+        expect(storyboard).toContain("分镜");
+        expect(storyboard).toContain("/ 或 、 引用技能");
+        const custom = { ...DEFAULT_CANVAS_APPEARANCE, agentName: "小影", inputPlaceholder: "对{agentName}说点什么" };
+        expect(agentComposerPlaceholder(custom, false, true)).toBe("对小影说点什么");
     });
 
     test("skill chips use one colored icon instead of exposing the serialized token", () => {
