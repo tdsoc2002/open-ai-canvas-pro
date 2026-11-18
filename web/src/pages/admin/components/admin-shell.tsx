@@ -51,10 +51,11 @@ import {
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
-import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
+import { APP_VERSION, AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { publishWorkspaceSidebarCollapsed, readWorkspaceSidebarCollapsed, subscribeWorkspaceSidebarCollapsed } from "@/components/layout/workspace-sidebar-state";
 import { AppFeedbackProvider } from "@/components/layout/app-feedback";
+import { updateAnnouncementVersion } from "@/lib/update-announcement";
 import { cn } from "@/lib/utils";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -239,17 +240,11 @@ function AdminShellLayout() {
                 <main id="admin-root" data-admin-root data-admin-density={density} className="admin-shell flex h-full min-h-0 overflow-hidden">
                     <aside className={cn("admin-sidebar hidden shrink-0 flex-col overflow-hidden lg:flex", collapsed && "is-collapsed")}>
                         <div className="admin-sidebar-identity shrink-0">
-                            <AdminTooltip title={collapsed ? (appearance.updates?.enabled ? "查看更新公告" : "查看更新日志") : undefined} placement="right">
-                                <AppChangelogButton
-                                    className={cn("admin-sidebar-brand-button", collapsed && "is-collapsed")}
-                                    icon={<BrandLogoFrame className="admin-sidebar-brand-mark grid shrink-0 place-items-center bg-foreground text-background" logoClassName="size-5 object-contain" alt="" fallback={<InfinityIcon className="size-4" />} />}
-                                    label={appearance.brandName}
-                                    showLabel={!collapsed}
-                                    showVersion={!collapsed}
-                                    labelClassName="admin-sidebar-brand-title"
-                                    versionClassName="admin-sidebar-brand-version"
-                                />
-                            </AdminTooltip>
+                            <div className={cn("admin-sidebar-brand", collapsed && "is-collapsed")}>
+                                <BrandLogoFrame className="admin-sidebar-brand-mark grid shrink-0 place-items-center bg-foreground text-background" logoClassName="size-5 object-contain" fallback={<InfinityIcon className="size-4" aria-hidden="true" />} />
+                                <span className={collapsed ? "sr-only" : "admin-sidebar-brand-title whitespace-nowrap"}>{appearance.brandName}</span>
+                                {!collapsed ? <span className="admin-sidebar-brand-version">{updateAnnouncementVersion(appearance.updates, APP_VERSION)}</span> : null}
+                            </div>
                         </div>
                         <AdminNavigation collapsed={collapsed} />
                         <div className={cn("admin-sidebar-footer shrink-0", collapsed && "is-collapsed")}>

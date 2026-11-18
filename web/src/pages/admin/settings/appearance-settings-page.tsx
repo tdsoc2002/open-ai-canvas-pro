@@ -18,6 +18,7 @@ import { DEFAULT_CANVAS_APPEARANCE, type CanvasAppearance } from "@/lib/canvas/a
 import { getAdminAppearance, type AdminAppearance, type AppearanceAssetSlot, resetAdminAppearance, uploadAppearanceAsset, updateAdminAppearance } from "@/services/api/appearance";
 import { normalizeDraftCopy, normalizeSingleLine, hasUnsupportedControlCharacter, validateSkinDrafts, useAppearancePreviews, AppearanceSkeleton, AssetPicker, LogoThemePreview } from "./appearance-settings-parts";
 import { type DraftFiles, FILE_RULES, type ResetState } from "./appearance-settings-parts";
+import { registeredThemePacks } from "@/themes/registry";
 
 export { type DraftFiles, FILE_RULES, type ResetState } from "./appearance-settings-parts";
 
@@ -777,6 +778,31 @@ export default function AppearanceSettingsPage() {
                                         description="经典黑白采用黑白底色与紫蓝渐变主按钮；复制后可调整浅色、深色、按钮填充及控件参数，所有修改统一保存。"
                                         status={<AdminStatusBadge label={selectedSkin.name} tone="info" />}
                                     >
+                                        {registeredThemePacks()
+                                            .filter((pack) => {
+                                                const installed = skinThemes.find((theme) => theme.id === pack.id);
+                                                return !installed || JSON.stringify(normalizeSkinDefinition(installed)) !== JSON.stringify(normalizeSkinDefinition(pack.skin));
+                                            })
+                                            .map((pack) => {
+                                                const installed = skinThemes.some((theme) => theme.id === pack.id);
+                                                return (
+                                                    <Button
+                                                        key={pack.id}
+                                                        className="mb-3"
+                                                        disabled={saving || refreshing || restoring || (!installed && skinThemes.length >= 16)}
+                                                        title={installed ? "用源码中的新版参数更新此主题草稿，保存后生效；不修改其他主题。" : "添加并选中此主题草稿，保存后生效。"}
+                                                        onClick={() => {
+                                                            if (saving || refreshing || restoring || (!installed && skinThemes.length >= 16)) return;
+                                                            setSkinThemes((current) =>
+                                                                current.some((theme) => theme.id === pack.id) ? current.map((theme) => (theme.id === pack.id ? cloneSkinDefinition(pack.skin) : theme)) : [...current, cloneSkinDefinition(pack.skin)],
+                                                            );
+                                                            setSkinId(pack.id);
+                                                        }}
+                                                    >
+                                                        {installed ? "更新" : "添加"}主题包：{pack.name}
+                                                    </Button>
+                                                );
+                                            })}
                                         <SkinThemeEditor
                                             themes={skinThemes}
                                             selectedID={skinId}

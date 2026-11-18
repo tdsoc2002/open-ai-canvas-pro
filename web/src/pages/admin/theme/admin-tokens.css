@@ -11,6 +11,7 @@
     --admin-radius-lg: 8px;
     --admin-control-h: 32px;
     --admin-control-h-sm: 28px;
+    --admin-topbar-h: calc(var(--admin-control-h) + 2 * var(--admin-space) + 1px);
     --admin-row-h: 36px;
     --admin-row-padding: 4px;
     --admin-head-h: 32px;

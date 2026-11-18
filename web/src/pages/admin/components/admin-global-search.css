@@ -2,8 +2,10 @@
     /* 暂时隐藏全局搜索栏，释放内容区高度。 */
     display: none;
     flex-shrink: 0;
+    height: var(--admin-topbar-h);
+    align-items: center;
     justify-content: flex-end;
-    padding: var(--admin-space) calc(var(--admin-space) * 2);
+    padding-inline: calc(var(--admin-space) * 2);
     border-bottom: 1px solid var(--admin-divider);
 }
 

@@ -1474,7 +1474,7 @@
     background: var(--admin-sidebar);
 }
 
-.admin-shell .admin-sidebar-brand-button {
+.admin-shell .admin-sidebar-brand {
     display: grid;
     width: 100%;
     min-width: 0;
@@ -1483,24 +1483,8 @@
     align-items: center;
     column-gap: 8px;
     padding: 8px 8px;
-    border: 1px solid transparent;
-    border-radius: 8px;
     color: var(--admin-text-primary);
     text-align: left;
-    transition:
-        background-color 160ms ease,
-        border-color 160ms ease,
-        box-shadow 160ms ease;
-}
-
-.admin-shell .admin-sidebar-brand-button:hover {
-    border-color: color-mix(in srgb, var(--foreground) 14%, transparent);
-    background: var(--admin-layer-2);
-}
-
-.admin-shell .admin-sidebar-brand-button:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--foreground) 36%, transparent);
-    outline-offset: 2px;
 }
 
 .admin-shell .admin-sidebar-brand-mark {
@@ -1537,13 +1521,13 @@
     white-space: nowrap;
 }
 
-.admin-shell .admin-sidebar-brand-button.is-collapsed {
+.admin-shell .admin-sidebar-brand.is-collapsed {
     grid-template-columns: 1fr;
     place-items: center;
     padding: 8px 0;
 }
 
-.admin-shell .admin-sidebar-brand-button.is-collapsed .admin-sidebar-brand-mark {
+.admin-shell .admin-sidebar-brand.is-collapsed .admin-sidebar-brand-mark {
     width: 32px;
     height: 32px;
     grid-column: 1;

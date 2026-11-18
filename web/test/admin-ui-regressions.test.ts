@@ -73,31 +73,13 @@ test("model editor presents protocols in a searchable inline radio browser inste
     expect(compactSource(css)).toContain(".admin-model-protocol-field { grid-column: 1 / -1;");
 });
 
-test("channel model fetch requires explicit selection before import", async () => {
-    const [componentSource, apiSource, adminCssSource] = await Promise.all([
-        Bun.file(new URL("../src/pages/admin/components/channel-model-manager.tsx", import.meta.url)).text(),
-        Bun.file(new URL("../src/services/api/wallet.ts", import.meta.url)).text(),
-        Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text(),
-    ]);
-    const component = compactSource(componentSource);
+test("拉取模型要求显式选择，目录不可用条目不能导入", () => {
+    const result = Bun.spawnSync([process.execPath, "test", "./test/fixtures/channel-model-import.harness.tsx"], { cwd: `${import.meta.dir}/..`, timeout: 30000 });
+    expect(result.exitCode, new TextDecoder().decode(result.stdout) + new TextDecoder().decode(result.stderr)).toBe(0);
+}, 35000);
 
-    expect(apiSource).toContain("http.post<ChannelCatalogDiff>(`/admin/channels/${encodeURIComponent(channelId)}/models/fetch`)");
-    expect(apiSource).toContain("http.post<{ models: string[]; added: number }>(`/admin/channels/${encodeURIComponent(channelId)}/models/import`, { models })");
-    expect(component).toContain('title="选择要导入的模型"');
-    expect(component).toContain("默认勾选已存在的模型，新模型默认不勾选");
-    expect(component).toContain("setFetchPreviewOpen(true)");
-    expect(component).toMatch(/setSelectedFetchModels\(\s*selectExistingImportModels\(\s*result\.models,/);
-    expect(component).toContain("已选择 {selectedFetchModels.length} / {fetchPreviewModels.length} 个模型");
-    expect(component).toContain("disabled={importing || !visibleFetchModels.length || allVisibleFetchModelsSelected}");
-    expect(component).toContain("onClick={() => setSelectedFetchModels((current) => selectVisibleModels(current, visibleFetchModels))}");
-    expect(component).toContain("disabled={importing || selectedVisibleFetchCount === 0}");
-    expect(component).toContain("onClick={() => setSelectedFetchModels((current) => deselectVisibleModels(current, visibleFetchModels))}");
-    expect(component).toContain("取消全选");
-    expect(component).toContain("disabled={importing}");
-    expect(component).toContain("importAdminChannelModels(channel.id, selectedFetchModels)");
-    expect(component).toContain("disabled={!selectedFetchModels.length}");
-    expect(component).not.toContain("disabled: alreadyExists");
-    expect(component).not.toContain("const result = await fetchAdminChannelModels(channel.id); await reload();");
+test("拉取模型弹窗保留复选框选中样式", async () => {
+    const adminCssSource = await Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text();
     expect(adminCssSource).toContain(".admin-model-import-modal .channel-model-import-picker .ant-checkbox-checked");
     expect(adminCssSource).toContain("border-color: var(--control-check-fg) !important");
 });
@@ -140,7 +122,7 @@ test("storage settings keep generic S3 controls and connection validation", asyn
 
     expect(compacted).toContain('{ mode: "s3", label: "S3 兼容存储"');
     expect(compacted).toContain("testAdminOSSConnection(connectionInput(values))");
-    for (const field of ["s3Preset", "sessionToken", "pathStyle", "allowUserS3"]) {
+    for (const field of ["s3Preset", "sessionToken", "pathStyle", "allowUserStorage"]) {
         expect(compacted).toContain(`name="${field}"`);
     }
     expect(compacted).toContain('["aliyun", "tencent", "qiniu", "volcengine", "s3"].includes(setting.provider || "")');
@@ -149,6 +131,23 @@ test("storage settings keep generic S3 controls and connection validation", asyn
 test("admin navigation keeps the storage resource page reachable", async () => {
     const source = await Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text();
     expect(source).toContain('path: "/admin/resources"');
+});
+
+test("后台桌面左上角只展示品牌和版本，不打开更新公告", async () => {
+    const source = await Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text();
+    const identity = sourceSection(source, 'className="admin-sidebar-identity shrink-0"', "<AdminNavigation");
+
+    expect(identity).not.toContain("<AppChangelogButton");
+    expect(identity).not.toContain("<AdminTooltip");
+    expect(identity).toContain("<BrandLogoFrame");
+    expect(identity).toContain("admin-sidebar-brand-version");
+});
+
+test("后台品牌栏和搜索栏使用同一顶栏高度", async () => {
+    const [chrome, search] = await Promise.all([Bun.file(new URL("../src/pages/admin/theme/admin-chrome.css", import.meta.url)).text(), Bun.file(new URL("../src/pages/admin/components/admin-global-search.css", import.meta.url)).text()]);
+
+    expect(sourceSection(chrome, ".admin-sidebar-identity {", ".admin-sidebar-brand {")).toContain("height: var(--admin-topbar-h);");
+    expect(sourceSection(search, ".admin-global-search-bar {", ".admin-global-search {")).toContain("height: var(--admin-topbar-h);");
 });
 
 test("nested admin pages return to their own parent entry", async () => {
