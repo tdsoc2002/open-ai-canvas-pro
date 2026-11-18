@@ -5,6 +5,7 @@ export const jaJP: DeepStringRecord<typeof zhCN> = {
         appearance: "キャンバスの外観",
         appearanceSubtitle: "配色とグリッド",
         mediaInfo: "メディア情報",
+        hideNodeConnections: "ノードの接続線を非表示",
     },
     videoPromptTools: {
         imageCount: "画像 {{count}}",

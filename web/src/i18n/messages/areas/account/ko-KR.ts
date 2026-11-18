@@ -36,6 +36,7 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
             baseUrlImported: "로컬 직접 연결 주소를 가져왔습니다",
         },
         storage: {
+            manage: "저장 공간 관리",
             used: "{{size}} 사용",
             unavailable: "용량 정보를 사용할 수 없음",
             counting: "용량 계산 중",

@@ -19,6 +19,16 @@ func RegisterFeatureAvailabilityRoutes(r *gin.RouterGroup, svc *service.Service)
 		ok(c, gin.H{"welcomeEnabled": setting.WelcomeEnabled})
 	})
 
+	r.GET("/public/ui-language", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		setting, err := svc.FeatureAvailability()
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"multilingualEnabled": setting.MultilingualEnabled})
+	})
+
 	r.GET("/features", func(c *gin.Context) {
 		if _, err := currentUser(c, svc); err != nil {
 			failService(c, err)

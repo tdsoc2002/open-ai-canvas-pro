@@ -5,6 +5,7 @@ export const frFR: DeepStringRecord<typeof zhCN> = {
         appearance: "Apparence du canevas",
         appearanceSubtitle: "Couleurs et grille",
         mediaInfo: "Infos média",
+        hideNodeConnections: "Masquer les connexions des nœuds",
     },
     videoPromptTools: {
         imageCount: "{{count}} images",

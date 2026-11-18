@@ -5,6 +5,7 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         appearance: "Canvas-Darstellung",
         appearanceSubtitle: "Farben und Raster",
         mediaInfo: "Medieninfos",
+        hideNodeConnections: "Knotenverbindungen ausblenden",
     },
     videoPromptTools: {
         imageCount: "{{count}} Bilder",

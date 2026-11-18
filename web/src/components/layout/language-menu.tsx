@@ -2,7 +2,7 @@ import { Dropdown } from "antd";
 import { Check, ChevronDown, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { switchLocale } from "@/i18n";
+import { isMultilingualEnabled, switchLocale } from "@/i18n";
 import { SUPPORTED_LOCALES, type AppLocale } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import { useLocaleStore } from "@/stores/use-locale-store";
@@ -16,6 +16,7 @@ import "./language-menu.css";
 export function LanguageMenu({ variant = "topbar", className }: { variant?: "topbar" | "auth"; className?: string }) {
     const { t } = useTranslation();
     const locale = useLocaleStore((state) => state.locale);
+    if (!isMultilingualEnabled()) return null;
     const current = SUPPORTED_LOCALES.find((item) => item.code === locale) ?? SUPPORTED_LOCALES[0];
     return (
         <Dropdown

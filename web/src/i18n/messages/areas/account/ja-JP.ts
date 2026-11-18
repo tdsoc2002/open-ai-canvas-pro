@@ -36,6 +36,7 @@ export const jaJP: DeepStringRecord<typeof zhCN> = {
             baseUrlImported: "ローカル直結アドレスをインポートしました",
         },
         storage: {
+            manage: "ストレージ管理",
             used: "{{size}} 使用中",
             unavailable: "容量情報を取得できません",
             counting: "容量を計算中",

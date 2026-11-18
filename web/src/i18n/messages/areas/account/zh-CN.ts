@@ -34,6 +34,7 @@ export const zhCN = {
             baseUrlImported: "已导入本地直连地址",
         },
         storage: {
+            manage: "管理空间",
             used: "已用 {{size}}",
             unavailable: "容量暂不可用",
             counting: "正在统计容量",

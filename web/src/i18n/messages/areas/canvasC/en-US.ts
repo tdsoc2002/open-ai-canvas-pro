@@ -5,6 +5,7 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
         appearance: "Canvas appearance",
         appearanceSubtitle: "Colors and grid",
         mediaInfo: "Media info",
+        hideNodeConnections: "Hide node connections",
     },
     videoPromptTools: {
         imageCount: "{{count}} images",

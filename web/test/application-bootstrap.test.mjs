@@ -15,11 +15,14 @@ async function prepareEntry(dev, pathname) {
             {
                 name: "entry-side-effects",
                 setup(builder) {
-                    builder.onResolve({ filter: /^(@fontsource-variable\/|@\/services\/appearance-bootstrap$|\.\/(welcome-)?application$)/ }, ({ path }) => ({ path, namespace: "entry-test" }));
+                    builder.onResolve({ filter: /^(@fontsource-variable\/|@\/services\/(appearance|locale)-bootstrap$|\.\/(welcome-)?application$)/ }, ({ path }) => ({ path, namespace: "entry-test" }));
                     builder.onLoad({ filter: /.*/, namespace: "entry-test" }, ({ path }) => {
                         if (path.startsWith("@fontsource-variable/")) return { contents: "", loader: "js" };
                         if (path === "@/services/appearance-bootstrap") {
                             return { contents: 'export function bootstrapAppearance() { events.push("appearance"); return appearanceReady; }', loader: "js" };
+                        }
+                        if (path === "@/services/locale-bootstrap") {
+                            return { contents: 'export function bootstrapLocale() { events.push("locale"); return localeReady; }', loader: "js" };
                         }
                         return { contents: `events.push(${JSON.stringify(path)}); entryLoaded();`, loader: "js" };
                     });
@@ -31,16 +34,18 @@ async function prepareEntry(dev, pathname) {
 
     const events = [];
     let resolveAppearance;
+    let resolveLocale;
     let entryLoaded;
     const appearanceReady = new Promise((resolve) => (resolveAppearance = resolve));
+    const localeReady = new Promise((resolve) => (resolveLocale = resolve));
     const loaded = new Promise((resolve) => (entryLoaded = resolve));
     const listeners = new Map();
-    runInNewContext(await build.outputs[0].text(), { window: { location: { pathname }, addEventListener: (name, listener) => listeners.set(name, listener) }, events, appearanceReady, entryLoaded });
+    runInNewContext(await build.outputs[0].text(), { window: { location: { pathname }, addEventListener: (name, listener) => listeners.set(name, listener) }, events, appearanceReady, localeReady, entryLoaded });
     expect(typeof listeners.get("vite:preloadError")).toBe("function");
-    return { events, resolveAppearance, loaded };
+    return { events, resolveAppearance, resolveLocale, loaded };
 }
 
-test("DEV previs lab loads without calling the appearance backend", async () => {
+test("DEV previs lab loads without calling the appearance or locale backend", async () => {
     const entry = await prepareEntry(true, "/dev/previs-repro");
     await entry.loaded;
     expect(entry.events).toEqual(["./application"]);
@@ -53,10 +58,12 @@ for (const [dev, pathname] of [
     [true, "/dev/previs-repro/"],
     [true, "/dev/previs-repro-other"],
 ]) {
-    test(`appearance loads in parallel with normal startup: dev=${dev} path=${pathname}`, async () => {
+    test(`normal startup waits for the locale but not the appearance: dev=${dev} path=${pathname}`, async () => {
         const entry = await prepareEntry(dev, pathname);
+        expect(entry.events).toEqual(["appearance", "locale"]);
+        entry.resolveLocale();
         await entry.loaded;
-        expect(entry.events).toEqual(["appearance", "./application"]);
+        expect(entry.events).toEqual(["appearance", "locale", "./application"]);
         entry.resolveAppearance();
     });
 }
@@ -64,9 +71,12 @@ for (const [dev, pathname] of [
 for (const pathname of ["/welcome", "/welcome/"]) {
     test(`public film entry remains independent: ${pathname}`, async () => {
         const entry = await prepareEntry(false, pathname);
+        expect(entry.events).toEqual(["appearance", "locale"]);
+        entry.resolveLocale();
         await entry.loaded;
         // 欢迎页沿用站点外观（#683），但外观请求不阻塞欢迎页入口加载。
-        expect(entry.events).toEqual(["appearance", "./welcome-application"]);
+        expect(entry.events).toEqual(["appearance", "locale", "./welcome-application"]);
+        entry.resolveAppearance();
     });
 }
 

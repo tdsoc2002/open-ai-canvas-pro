@@ -344,7 +344,7 @@ export type AdminOSSSetting = {
     sessionToken?: string;
     hasSessionToken: boolean;
     pathStyle: boolean;
-    allowUserS3: boolean;
+    allowUserStorage: boolean;
     publicBaseUrl: string;
     pathPrefix: string;
     testedAt?: string;
@@ -534,6 +534,7 @@ export function updateAdminFeatureAvailability(
         Pick<
             FeatureAvailability,
             | "welcomeEnabled"
+            | "multilingualEnabled"
             | "shortDramaEnabled"
             | "taskCenterEnabled"
             | "creditsEnabled"

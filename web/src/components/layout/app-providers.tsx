@@ -28,7 +28,7 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { applyAppearanceMetadata, useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { refreshPublicAppearance } from "@/services/appearance-bootstrap";
-import { i18n } from "@/i18n";
+import { currentLocale, i18n } from "@/i18n";
 import type { AppLocale } from "@/i18n/locales";
 import { useLocaleStore } from "@/stores/use-locale-store";
 
@@ -53,7 +53,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const theme = useActiveTheme();
     const dark = theme === "dark";
     const appearance = useAppearanceStore((state) => state.appearance);
-    const locale = useLocaleStore((state) => state.locale);
+    const locale = useLocaleStore(currentLocale);
 
     useLayoutEffect(() => {
         document.documentElement.lang = locale;

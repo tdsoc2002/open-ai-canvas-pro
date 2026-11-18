@@ -36,6 +36,7 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
             baseUrlImported: "Lokale Direktverbindungsadresse importiert",
         },
         storage: {
+            manage: "Speicher verwalten",
             used: "{{size}} belegt",
             unavailable: "Speicherinfo nicht verfügbar",
             counting: "Speicher wird berechnet",

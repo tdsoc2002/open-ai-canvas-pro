@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Skeleton } from "antd";
 import { Switch } from "@/pages/admin/ui/controls";
-import { AlertTriangle, ArrowUpRight, Boxes, Clapperboard, Coins, CornerDownRight, History, ImageIcon, MonitorCog, PlugZap, Quote, RadioTower, RefreshCw, ShieldCheck, ShoppingBag, SlidersHorizontal, Video, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Boxes, Clapperboard, Coins, CornerDownRight, History, ImageIcon, Languages, MonitorCog, PlugZap, Quote, RadioTower, RefreshCw, ShieldCheck, ShoppingBag, SlidersHorizontal, Video, Wallet } from "lucide-react";
 
 import { Link } from "react-router";
 
@@ -14,6 +14,7 @@ import "./feature-availability-panel.css";
 
 type FeatureKey =
     | "shortDramaEnabled"
+    | "multilingualEnabled"
     | "taskCenterEnabled"
     | "creditsEnabled"
     | "customChannelsEnabled"
@@ -52,6 +53,7 @@ type FeatureGroup = {
 
 const editableFeatureKeys: FeatureKey[] = [
     "shortDramaEnabled",
+    "multilingualEnabled",
     "taskCenterEnabled",
     "creditsEnabled",
     "customChannelsEnabled",
@@ -174,6 +176,13 @@ const featureGroups: FeatureGroup[] = [
         icon: <SlidersHorizontal className="size-4" aria-hidden="true" />,
         rows: [
             {
+                key: "multilingualEnabled",
+                title: "界面多语言",
+                location: "登录页 · 工作区顶栏 · 偏好设置",
+                description: "关闭后固定显示简体中文并隐藏语言入口；刷新页面后生效。不影响模型生成语言。",
+                icon: <Languages className="size-4" aria-hidden="true" />,
+            },
+            {
                 key: "inspirationSourcesVisible",
                 title: "素材来源署名",
                 location: "创作首页 · 灵感",
@@ -276,14 +285,15 @@ export default function FeatureAvailabilityPanel() {
         setSavingKey(key);
         setSaveError("");
         try {
-            const result = await updateAdminFeatureAvailability(toEditablePayload(expected));
+            const result = await updateAdminFeatureAvailability({ [key]: enabled });
             const value = parseFeatureAvailability(result.features);
-            if (!sameEditableFeatures(value, expected)) throw new Error("服务端返回的功能状态与本次保存内容不一致，请重新读取后核对");
+            if (value[key] !== enabled) throw new Error("服务端返回的功能状态与本次保存内容不一致，请重新读取后核对");
             setSavedFeatures(value);
             setDraftFeatures(value);
             setGlobalFeatures(value);
             const title = key === "frontendModelsEnabled" ? "模型来源" : featureByKey.get(key)?.title || "功能";
-            message.success(key === "frontendModelsEnabled" ? `${title}已切换为${enabled ? "前台模型目录" : "系统渠道"}` : `${title}已${enabled ? "开启" : "关闭"}，前台立即生效`);
+            const effective = key === "multilingualEnabled" ? "刷新页面后生效" : "前台立即生效";
+            message.success(key === "frontendModelsEnabled" ? `${title}已切换为${enabled ? "前台模型目录" : "系统渠道"}` : `${title}已${enabled ? "开启" : "关闭"}，${effective}`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "保存功能开放配置失败";
             setDraftFeatures(previous);
@@ -363,7 +373,7 @@ export default function FeatureAvailabilityPanel() {
         <div className="admin-settings-stack admin-feature-availability afp">
             <div className="admin-feature-command-bar">
                 <div className="afp-command-copy" aria-live="polite">
-                    <strong>{saving ? "正在保存…" : "切换即保存，前台立即生效"}</strong>
+                    <strong>{saving ? "正在保存…" : "切换即保存，生效方式见各项说明"}</strong>
                     <AdminStatusBadge label={`${openCount} / ${allFeatureRows.length} 已开放`} tone="neutral" />
                     {partialCount ? <AdminStatusBadge label={`${partialCount} 项缺少依赖`} tone="warning" /> : null}
                     {!savedFeatures.configured ? <AdminStatusBadge label="系统默认" tone="neutral" /> : null}
@@ -521,27 +531,6 @@ function ModelSourceRow({ draft, saving, onChange }: { draft: FeatureAvailabilit
     );
 }
 
-function toEditablePayload(features: FeatureAvailability) {
-    return {
-        shortDramaEnabled: features.shortDramaEnabled,
-        taskCenterEnabled: features.taskCenterEnabled,
-        creditsEnabled: features.creditsEnabled,
-        customChannelsEnabled: features.customChannelsEnabled,
-        inspirationSourcesVisible: features.inspirationSourcesVisible,
-        imageWorkbenchEnabled: features.imageWorkbenchEnabled,
-        videoWorkbenchEnabled: features.videoWorkbenchEnabled,
-        ecommerceEnabled: features.ecommerceEnabled,
-        ecommerceVideoEnabled: features.ecommerceVideoEnabled,
-        frontendModelsEnabled: features.frontendModelsEnabled,
-        pluginCenterEnabled: features.pluginCenterEnabled,
-        systemPluginsVisibleToUsers: features.systemPluginsVisibleToUsers,
-    };
-}
-
-function sameEditableFeatures(left: FeatureAvailability, right: FeatureAvailability) {
-    return editableFeatureKeys.every((key) => left[key] === right[key]);
-}
-
 function parseFeatureAvailability(value: unknown): FeatureAvailability {
     if (!value || typeof value !== "object") throw new Error("功能开放配置响应格式无效");
     const record = value as Record<string, unknown>;
@@ -550,6 +539,7 @@ function parseFeatureAvailability(value: unknown): FeatureAvailability {
     }
     return {
         welcomeEnabled: record.welcomeEnabled as boolean,
+        multilingualEnabled: record.multilingualEnabled as boolean,
         shortDramaEnabled: record.shortDramaEnabled as boolean,
         taskCenterEnabled: record.taskCenterEnabled as boolean,
         creditsEnabled: record.creditsEnabled as boolean,

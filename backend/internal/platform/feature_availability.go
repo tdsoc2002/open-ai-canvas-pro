@@ -32,6 +32,7 @@ const (
 
 type FeatureAvailability struct {
 	WelcomeEnabled               bool `json:"welcomeEnabled"`
+	MultilingualEnabled          bool `json:"multilingualEnabled"`
 	ShortDramaEnabled            bool `json:"shortDramaEnabled"`
 	TaskCenterEnabled            bool `json:"taskCenterEnabled"`
 	CreditsEnabled               bool `json:"creditsEnabled"`
@@ -58,6 +59,7 @@ func DefaultFeatureAvailability() FeatureAvailability {
 	// 缺少配置代表尚未由运维接管；前台模型需要明确配置后才开放。
 	return FeatureAvailability{
 		WelcomeEnabled:               true,
+		MultilingualEnabled:          false,
 		ShortDramaEnabled:            true,
 		TaskCenterEnabled:            true,
 		CreditsEnabled:               true,

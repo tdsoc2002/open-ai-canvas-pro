@@ -4,6 +4,7 @@ export const zhCN = {
         appearance: "画布外观",
         appearanceSubtitle: "配色与网格",
         mediaInfo: "媒体信息",
+        hideNodeConnections: "隐藏节点连线",
     },
     videoPromptTools: {
         imageCount: "{{count}} 图",

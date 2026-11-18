@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import { i18n } from "@/i18n";
+import { configureMultilingual, currentLocale, i18n, switchLocale } from "@/i18n";
 import { AREA_CATALOGS } from "@/i18n/areas";
 import { detectBrowserLocale, matchAppLocale, SUPPORTED_LOCALES } from "@/i18n/locales";
 import { deDE } from "@/i18n/messages/de-DE";
@@ -20,7 +20,26 @@ function flatten(value: unknown, prefix = ""): Record<string, string> {
 
 const placeholders = (text: string) => [...text.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort();
 
-afterEach(() => useLocaleStore.getState().setLocale("zh-CN"));
+beforeEach(async () => {
+    await configureMultilingual(true);
+});
+
+afterEach(async () => {
+    useLocaleStore.getState().setLocale("zh-CN");
+    await configureMultilingual(false);
+});
+
+test("the site policy forces Chinese without losing the saved language", async () => {
+    useLocaleStore.getState().setLocale("en-US");
+    await configureMultilingual(false);
+    switchLocale("ko-KR");
+    expect(currentLocale()).toBe("zh-CN");
+    expect(i18n.language).toBe("zh-CN");
+    expect(useLocaleStore.getState().locale).toBe("en-US");
+    await configureMultilingual(true);
+    expect(currentLocale()).toBe("en-US");
+    expect(i18n.language).toBe("en-US");
+});
 
 describe("i18n catalogs", () => {
     const source = flatten(zhCN);

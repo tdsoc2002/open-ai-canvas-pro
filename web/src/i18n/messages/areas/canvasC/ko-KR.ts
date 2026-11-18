@@ -5,6 +5,7 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
         appearance: "캔버스 외관",
         appearanceSubtitle: "색상과 그리드",
         mediaInfo: "미디어 정보",
+        hideNodeConnections: "노드 연결선 숨기기",
     },
     videoPromptTools: {
         imageCount: "이미지 {{count}}개",

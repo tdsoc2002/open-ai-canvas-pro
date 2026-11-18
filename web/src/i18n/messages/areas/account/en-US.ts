@@ -36,6 +36,7 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
             baseUrlImported: "Imported local direct-connection URL",
         },
         storage: {
+            manage: "Manage storage",
             used: "{{size}} used",
             unavailable: "Storage info unavailable",
             counting: "Calculating storage",

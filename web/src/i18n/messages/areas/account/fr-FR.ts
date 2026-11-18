@@ -36,6 +36,7 @@ export const frFR: DeepStringRecord<typeof zhCN> = {
             baseUrlImported: "Adresse de connexion directe locale importée",
         },
         storage: {
+            manage: "Gérer le stockage",
             used: "{{size}} utilisés",
             unavailable: "Capacité indisponible",
             counting: "Calcul de la capacité",
