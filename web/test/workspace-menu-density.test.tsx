@@ -20,12 +20,15 @@ test("density restores all saved choices and defaults invalid preferences to sta
 test("each density has a distinct usable card size at normal library widths", () => {
     expect(assetGridDensityOptions.map(({ value }) => value)).toEqual([6, 8, 10]);
     const widths = [6, 8, 10].map((density) => assetGridCardMinWidth[parseAssetGridDensity(density)]);
-    expect(widths).toEqual([272, 208, 160]);
+    expect(widths).toEqual([240, 176, 136]);
     // CSS auto-fill: n columns fit when n * minimum + (n - 1) * gap <= width.
-    for (const available of [720, 900, 1100]) {
+    for (const [available, expected] of [
+        [720, [2, 3, 4]],
+        [900, [3, 4, 6]],
+        [1100, [4, 5, 7]],
+    ] as const) {
         const columns = widths.map((minimum) => Math.floor((available + 16) / (minimum + 16)));
-        expect(columns[0]).toBeLessThan(columns[1]);
-        expect(columns[1]).toBeLessThan(columns[2]);
+        expect(columns).toEqual(expected);
     }
 });
 

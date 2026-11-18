@@ -67,8 +67,8 @@ describe("canvas library card", () => {
     });
     test("secondary actions are revealed on hover/focus and always visible without hover", () => {
         expect(card).toContain("canvas-collection-rename");
-        expect(css).toMatch(/\.canvas-collection-card:is\(:hover, :focus-within\) :is\(\.canvas-collection-select, \.canvas-collection-rename, \.canvas-collection-actions\)/);
-        expect(css).toMatch(/@media \(hover: none\) \{ :is\(\.canvas-collection-select, \.canvas-collection-rename, \.canvas-collection-actions\) \{ opacity: 1; \} \}/);
+        expect(css).toMatch(/\.canvas-collection-card:is\(:hover, :focus-within\) :is\(\.canvas-collection-select, \.canvas-collection-rename, \.canvas-collection-actions\)[^{]*\{\s*opacity: 1;/);
+        expect(css).toMatch(/@media \(hover: none\)\s*\{\s*:is\(\.canvas-collection-select, \.canvas-collection-rename, \.canvas-collection-actions\)\s*\{\s*opacity: 1;\s*\}\s*\}/);
     });
 });
 

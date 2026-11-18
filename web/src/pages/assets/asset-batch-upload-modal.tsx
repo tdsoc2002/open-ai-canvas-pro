@@ -25,6 +25,7 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
     const [uploading, setUploading] = useState(false);
     const [dragging, setDragging] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const uploadedScopeRef = useRef<string | null>(null);
     const doneCount = items.filter((item) => item.status === "done").length;
     const failedItems = items.filter((item) => item.status === "error");
     const hasFiles = items.length > 0;
@@ -37,6 +38,14 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
             return;
         }
         setItems((current) => [...current, ...images.map((file) => ({ id: `${file.name}-${file.lastModified}-${Math.random()}`, file, status: "queued" as const }))]);
+    };
+
+    const resetBatch = () => {
+        uploadedScopeRef.current = null;
+        setItems([]);
+        setTags([]);
+        setFolderId(defaultFolderId);
+        setDragging(false);
     };
 
     const uploadBatch = async () => {
@@ -67,6 +76,8 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
                         metadata: { source: "manual-batch", librarySaved: true },
                         data: { dataUrl: uploaded.url, storageKey: uploaded.storageKey, width: uploaded.width, height: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType },
                     });
+                    // 已保存的结果不会因用户移除或清空列表项而撤销。
+                    uploadedScopeRef.current = scope;
                     setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, status: "done", percent: 100 } : entry)));
                     succeeded++;
                 } catch (error) {
@@ -93,17 +104,19 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
         } finally {
             setUploading(false);
         }
+        if (scope !== getActiveUserScope()) return;
         if (syncError) message.warning(localSavedRemotePendingMessage(t("library.assets.batch.partialLocal"), syncError));
         // 有失败项时保留弹窗，失败标记与「重试失败项」仍可见；关闭时再刷新列表。
-        if (!failed) await onComplete();
+        if (!failed) {
+            resetBatch();
+            await onComplete();
+        }
     };
 
     const close = () => {
         if (uploading) return;
-        const hasUploaded = items.some((item) => item.status === "done");
-        setItems([]);
-        setTags([]);
-        setFolderId(defaultFolderId);
+        const hasUploaded = uploadedScopeRef.current === getActiveUserScope();
+        resetBatch();
         if (hasUploaded) void onComplete();
         else onClose();
     };
