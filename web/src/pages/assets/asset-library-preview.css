@@ -1,0 +1,299 @@
+.asset-preview-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(284px, 30vw, 360px);
+    height: min(760px, calc(100dvh - 2 * var(--space-4)));
+    background: var(--background);
+}
+
+.asset-preview-stage {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+    overflow: hidden;
+    background: var(--muted);
+}
+
+.asset-preview-stage .asset-archive-preview-note {
+    width: 100%;
+    max-width: 68ch;
+    max-height: 100%;
+    overflow-wrap: anywhere;
+}
+
+.asset-preview-stage .asset-archive-preview-model {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.asset-preview-stage .asset-archive-audio {
+    width: min(100%, 480px);
+    background: transparent;
+}
+
+.asset-archive-preview-media {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.asset-preview-info {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border-inline-start: 1px solid var(--border);
+}
+
+.asset-preview-header {
+    padding: var(--space-5) var(--space-12) var(--space-3) var(--space-5);
+}
+
+.asset-preview-header .asset-archive-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+}
+
+.asset-preview-kind,
+.asset-preview-status {
+    color: var(--muted-foreground);
+    font-size: var(--fs-label);
+}
+
+.asset-preview-kind {
+    margin-bottom: var(--space-1);
+}
+
+.asset-preview-status {
+    padding: var(--space-4);
+    text-align: center;
+}
+
+.asset-preview-details {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-2) var(--space-5) var(--space-5);
+}
+
+.asset-preview-details > * {
+    flex-shrink: 0;
+}
+
+.asset-archive-facts {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+}
+
+.asset-archive-fact {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.asset-archive-fact-label,
+.asset-archive-link,
+.asset-archive-section-title {
+    color: var(--muted-foreground);
+    font-size: var(--fs-label);
+}
+
+.asset-archive-fact-value,
+.asset-archive-link strong {
+    min-width: 0;
+    margin: 0;
+    color: var(--foreground);
+    font-size: var(--fs-label);
+    overflow-wrap: anywhere;
+    text-align: end;
+}
+
+.asset-archive-fact-value {
+    font-variant-numeric: tabular-nums;
+}
+
+.asset-archive-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.asset-archive-link > :not(strong) {
+    flex-shrink: 0;
+}
+
+.asset-archive-link svg {
+    width: var(--space-4);
+    height: var(--space-4);
+}
+
+.asset-archive-link strong {
+    margin-inline-start: auto;
+    font-weight: 500;
+}
+
+.asset-archive-section {
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-3);
+}
+
+.asset-archive-section-title {
+    font-weight: 500;
+}
+
+.asset-archive-section-body {
+    margin: 0;
+    color: var(--foreground);
+    font-size: var(--fs-label);
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.asset-archive-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    border-top: 1px solid var(--border);
+    padding: var(--space-3) var(--space-5);
+}
+
+.asset-preview-modal .asset-archive-tag {
+    max-width: 100%;
+    border-color: var(--border);
+    background: var(--muted);
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.asset-zoom-viewer {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+    overflow: hidden;
+}
+
+.asset-zoom-viewer.is-zoomed {
+    cursor: grab;
+    touch-action: none;
+}
+
+.asset-zoom-viewer.is-zoomed:active {
+    cursor: grabbing;
+}
+
+.asset-zoom-viewer .cached-resource-image-shell {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+}
+
+.asset-zoom-image {
+    transform-origin: center;
+    user-select: none;
+}
+
+.asset-zoom-controls {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
+    z-index: 1;
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--popover);
+    color: var(--popover-foreground);
+}
+
+.asset-zoom-controls button {
+    display: grid;
+    min-width: var(--space-8);
+    min-height: var(--space-8);
+    place-items: center;
+    padding-inline: var(--space-1);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    font-size: var(--fs-caption);
+    font-variant-numeric: tabular-nums;
+}
+
+.asset-zoom-controls button:hover {
+    background: var(--control-selected-bg);
+}
+
+.asset-preview-stage :focus-visible,
+.asset-preview-details:focus-visible {
+    outline: var(--focus-ring-width) solid var(--control-focus-ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+@media (width <= 720px), (height <= 480px) {
+    .asset-preview-layout {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        max-height: calc(100dvh - 2 * var(--space-4));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .asset-preview-stage {
+        height: 42dvh;
+        flex-shrink: 0;
+    }
+
+    .asset-preview-stage.is-reading {
+        height: auto;
+        grid-template-rows: auto;
+    }
+
+    .asset-preview-stage.is-reading .asset-archive-preview-note {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .asset-preview-info {
+        display: flex;
+        flex-shrink: 0;
+        flex-direction: column;
+        border-top: 1px solid var(--border);
+        border-inline-start: 0;
+    }
+
+    .asset-preview-details {
+        overflow: visible;
+    }
+
+    .asset-preview-modal .ant-modal-close {
+        background: var(--background);
+    }
+
+    .asset-zoom-controls button {
+        min-width: var(--space-10);
+        min-height: var(--space-10);
+    }
+}

@@ -1,4 +1,4 @@
-import { Coins, FileText, Image as ImageIcon, Video, type LucideIcon } from "lucide-react";
+import { Coins, FileText, Image as ImageIcon, Music2, Video, type LucideIcon } from "lucide-react";
 
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
 import { taskBillingDisplay, taskBillingLabel } from "@/lib/generation-task-billing";
@@ -68,16 +68,17 @@ export function TaskStatusPill({ task, className = "" }: { task: GenerationTask;
     );
 }
 
-export function taskMediaKind(task: GenerationTask): "text" | "image" | "video" {
+export function taskMediaKind(task: GenerationTask): "text" | "image" | "video" | "audio" {
     const value = `${task.type} ${task.operation || ""}`.toLowerCase();
     if (value.includes("video") || value.includes("视频")) return "video";
+    if (value.includes("audio") || value.includes("音频") || value.includes("speech")) return "audio";
     if (value.includes("image") || value.includes("图片") || value.includes("画面")) return "image";
-    return "text";
+    return task.outputs?.[0]?.mediaType || task.previewKind || "text";
 }
 
 export function taskKindIcon(task: GenerationTask): LucideIcon {
     const kind = taskMediaKind(task);
-    return kind === "video" ? Video : kind === "image" ? ImageIcon : FileText;
+    return kind === "video" ? Video : kind === "image" ? ImageIcon : kind === "audio" ? Music2 : FileText;
 }
 
 export function TaskDate({ value }: { value?: string }) {

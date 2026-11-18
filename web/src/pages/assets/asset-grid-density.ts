@@ -25,9 +25,9 @@ export const assetGridDensityOptions = [
 export type AssetGridDensity = 6 | 8 | 10;
 
 export const assetGridCardMinWidth: Record<AssetGridDensity, number> = {
-    6: 272,
-    8: 208,
-    10: 160,
+    6: 240,
+    8: 176,
+    10: 136,
 };
 
 export function parseAssetGridDensity(value: unknown): AssetGridDensity {

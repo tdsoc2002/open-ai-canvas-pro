@@ -2,7 +2,7 @@ import { Button } from "antd";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "@/components/ui/base/buttons";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { ChevronRight, Eye, FolderKanban, Play, RotateCcw } from "lucide-react";
+import { Eye, FolderKanban, Play, RotateCcw } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 
 import { MediaPreview } from "@/components/media-preview";
@@ -10,7 +10,7 @@ import { generationErrorMessage } from "@/lib/generation-error";
 import { formatTaskKind, generationTaskShowsProgress, generationTaskStageLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
-import { formatModelName, getTaskCanvasContext, isTaskActive, isTaskFailed, isTaskRetryBlocked, taskAttentionReason, TaskBilling, TaskDate, taskKindIcon, TaskStatusPill, taskTone } from "./task-shared";
+import { formatModelName, getTaskCanvasContext, isTaskActive, isTaskFailed, isTaskRetryBlocked, taskAttentionReason, TaskBilling, TaskDate, taskKindIcon, taskMediaKind, TaskStatusPill, taskTone } from "./task-shared";
 import { TaskVideoThumbnail } from "./task-video-thumbnail";
 import { progressFillStyle } from "@/lib/progress-fill";
 
@@ -52,11 +52,13 @@ export function TaskListRow({
         <article className="task-center-row" data-tone={taskTone(task)} onClick={openFromRow}>
             <TaskPreviewThumbnail task={task} onOpen={onPreview} />
             <div className="task-center-row-main">
-                <button type="button" className="task-center-row-title" title={task.prompt} onClick={onOpen}>
-                    {task.prompt || t("library.tasks.row.untitled")}
-                </button>
-                <div className="task-center-row-meta">
+                <div className="task-center-row-heading">
                     <TaskStatusPill task={task} />
+                    <button type="button" className="task-center-row-title" title={task.prompt} onClick={onOpen}>
+                        {task.prompt || t("library.tasks.row.untitled")}
+                    </button>
+                </div>
+                <div className="task-center-row-meta">
                     <span>{formatTaskKind(task)}</span>
                     <span>{formatModelName(effectiveConfig, task)}</span>
                     <span className="task-center-row-canvas" title={canvasLabel}>
@@ -104,7 +106,7 @@ export function TaskListRow({
                     </Tooltip>
                 ) : null}
                 <Tooltip title={t("library.tasks.row.viewDetail")}>
-                    <IconButton size="sm" variant="ghost" icon={ChevronRight} aria-label={t("library.tasks.row.viewDetail")} onClick={onOpen} />
+                    <IconButton size="sm" variant="ghost" icon={Eye} aria-label={t("library.tasks.row.viewDetail")} onClick={onOpen} />
                 </Tooltip>
             </div>
         </article>
@@ -113,11 +115,12 @@ export function TaskListRow({
 
 function TaskPreviewThumbnail({ task, onOpen }: { task: GenerationTask; onOpen: () => void }) {
     const { t } = useTranslation();
-    const isVideo = task.previewKind === "video";
+    const kind = taskMediaKind(task);
+    const isVideo = (task.previewKind || kind) === "video";
     const [unavailableUrl, setUnavailableUrl] = useState("");
-    const thumbnailUrl = isVideo ? task.previewPosterUrl : task.previewUrl;
-    const previewUnavailable = Boolean(thumbnailUrl && unavailableUrl === thumbnailUrl);
-    if (!task.previewUrl) {
+    const previewUrl = task.previewUrl;
+    const previewUnavailable = !isVideo && previewUrl === unavailableUrl;
+    if (!previewUrl || kind === "audio") {
         const Icon = taskKindIcon(task);
         return (
             <span className="task-center-thumb" aria-hidden="true">
@@ -134,10 +137,10 @@ function TaskPreviewThumbnail({ task, onOpen }: { task: GenerationTask; onOpen: 
             aria-label={previewUnavailable ? t("library.tasks.row.previewMissing") : isVideo ? t("library.tasks.row.previewVideo") : t("library.tasks.row.previewImage")}
             title={previewUnavailable ? t("library.tasks.row.previewMissing") : undefined}
         >
-            {thumbnailUrl ? (
-                <MediaPreview src={thumbnailUrl} kind="image" width={64} height={48} loading="lazy" fallbackLabel={t("library.tasks.row.previewUnavailable")} onUnavailable={() => setUnavailableUrl(thumbnailUrl)} />
+            {isVideo ? (
+                <TaskVideoThumbnail src={previewUrl} posterUrl={task.previewPosterUrl} />
             ) : (
-                <TaskVideoThumbnail src={task.previewUrl} />
+                <MediaPreview src={previewUrl} kind="image" width={64} height={48} loading="lazy" fallbackLabel={t("library.tasks.row.previewUnavailable")} onUnavailable={() => setUnavailableUrl(previewUrl)} />
             )}
             {!previewUnavailable ? <span className="task-center-thumb-hover">{isVideo ? <Play aria-hidden="true" /> : <Eye aria-hidden="true" />}</span> : null}
         </button>

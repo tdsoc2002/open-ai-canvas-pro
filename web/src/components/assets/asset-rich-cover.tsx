@@ -125,6 +125,7 @@ export function useAudioPreview(asset: AudioAsset | null, onPlayingChange?: (pla
         () => () => {
             const audio = audioRef.current;
             if (!audio) return;
+            audioRef.current = null;
             audio.pause();
             if (activePreviewAudio === audio) activePreviewAudio = null;
         },
@@ -155,7 +156,10 @@ export function useAudioPreview(asset: AudioAsset | null, onPlayingChange?: (pla
         // 首次装载或上次加载失败（多半是签名过期）时重新换取地址。
         if (!audio.src || audio.error) {
             const position = audio.currentTime;
-            audio.src = await audioPreviewSource(current);
+            const src = await audioPreviewSource(current);
+            // 预览关闭后，迟到的授权地址不能让已卸载的播放器启动。
+            if (audioRef.current !== audio) return false;
+            audio.src = src;
             if (position > 0) audio.currentTime = position;
         }
         return Boolean(audio.src);
@@ -171,12 +175,14 @@ export function useAudioPreview(asset: AudioAsset | null, onPlayingChange?: (pla
         // 先给出暂停态反馈，换取地址和缓冲期间按钮不显得没反应。
         setPlaying(true);
         try {
-            if (!(await ensureSource(audio))) throw new Error("音频地址为空");
+            const ready = await ensureSource(audio);
+            if (audioRef.current !== audio) return;
+            if (!ready) throw new Error("音频地址为空");
             if (activePreviewAudio && activePreviewAudio !== audio) activePreviewAudio.pause();
             activePreviewAudio = audio;
             await audio.play();
         } catch {
-            setPlaying(false);
+            if (audioRef.current === audio) setPlaying(false);
         }
     };
 
@@ -184,7 +190,7 @@ export function useAudioPreview(asset: AudioAsset | null, onPlayingChange?: (pla
         if (!assetRef.current) return;
         const audio = ensureAudio();
         try {
-            if (!(await ensureSource(audio))) return;
+            if (!(await ensureSource(audio)) || audioRef.current !== audio) return;
             if (audio.readyState < HTMLMediaElement.HAVE_METADATA) {
                 await new Promise<void>((resolve) => {
                     const done = () => resolve();
@@ -192,7 +198,8 @@ export function useAudioPreview(asset: AudioAsset | null, onPlayingChange?: (pla
                     audio.addEventListener("error", done, { once: true });
                 });
             }
-            const seconds = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (assetRef.current.data.durationMs || 0) / 1000;
+            if (audioRef.current !== audio) return;
+            const seconds = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (assetRef.current?.data.durationMs || 0) / 1000;
             if (!seconds) return;
             audio.currentTime = Math.min(seconds, Math.max(0, ratio * seconds));
             setCurrentMs(Math.round(audio.currentTime * 1000));

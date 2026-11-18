@@ -20,6 +20,7 @@ import { deleteAssetsWithRemoteSync, loadAssetLibraryPage, localSavedRemotePendi
 import { listProjectAssetsPage, type ProjectAsset } from "@/services/api/projects";
 
 import "./asset-library-picker-modal.css";
+import { isAssetInLibrary } from "@/lib/asset-library-membership";
 
 export type AssetPickerMediaKind = "image" | "video" | "audio" | "text";
 
@@ -230,8 +231,8 @@ export function AssetLibraryPickerModal({
     initialSelectedIdsRef.current = initialSelectedIds;
     const allItems = useMemo(() => {
         const known = new Set(items.map((item) => item.id));
-        return [...items, ...uploadedItems.filter((item) => !known.has(item.id))];
-    }, [items, uploadedItems]);
+        return [...items, ...uploadedItems.filter((item) => !known.has(item.id))].filter((item) => !remoteLibrary || !item.asset || isAssetInLibrary(item.asset));
+    }, [items, remoteLibrary, uploadedItems]);
     itemsRef.current = allItems;
     const localItems = useMemo(() => allItems.filter((item) => !item.external), [allItems]);
     // 远端成功且有可展示素材时用远端。真正的空结果保持空列表。

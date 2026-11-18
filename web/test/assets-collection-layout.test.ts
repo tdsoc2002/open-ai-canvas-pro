@@ -4,20 +4,22 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { moduleGroupSource } from "./helpers/module-group-source";
 
-describe("asset library category sidebar", () => {
-    test("keeps type, business and folder filters in a left-hand nav", () => {
+describe("资产库全宽布局", () => {
+    test("类型独立成行，业务分类与文件夹进入工具栏，移除左侧分类和独立容量条", () => {
         const page = moduleGroupSource("pages/assets/index.tsx");
-        const css = readFileSync(resolve(import.meta.dir, "../src/styles/workspace-product.css"), "utf8");
-        expect(page).toContain('className="assets-collection-layout"');
-        expect(page).toContain('aria-label={t("library.assets.page.filters")}');
-        expect(libraryZh.assets.page.filters).toBe("素材分类");
-        expect(page).toContain('title={t("library.assets.page.kindFilter")}');
-        expect(page).toContain('title={t("library.assets.batch.category")}');
-        expect(page).toContain('t("library.assets.page.myFolders")');
+        expect(page).toContain('className="collection-navigation-header assets-library-header"');
+        expect(page).toContain('className="assets-type-filter"');
+        const toolbar = page.slice(page.indexOf("<CollectionToolbar"), page.indexOf("</CollectionToolbar>"));
+        expect(toolbar).toContain('ariaLabel={t("library.assets.batch.category")}');
+        expect(toolbar).toContain("<AssetFolderFilter");
+        expect(page).not.toContain("assets-collection-filters");
+        expect(page).not.toContain("<AssetStorageUsage");
+        expect(page).toContain("onClick: openStoragePurchase");
+        expect(page).toMatch(/key: "trash"[^}]*onClick: openTrash/);
+        const kindFilter = page.slice(page.indexOf("<AssetFilterGroup"), page.indexOf("/>", page.indexOf("<AssetFilterGroup")));
+        expect(kindFilter).toContain("value={kindFilter}");
+        expect(kindFilter).not.toContain("setViewMode");
         expect(libraryZh.assets.page).toMatchObject({ kindFilter: "素材类型", myFolders: "我的分类" });
-        expect(libraryZh.assets.batch.category).toBe("业务分类");
-        expect(JSON.stringify(libraryZh)).not.toContain("全部自定义分类");
-        expect(css).toMatch(/\.assets-collection-layout\s*\{[^}]*grid-template-columns:\s*220px minmax\(0, 1fr\)/s);
     });
 });
 

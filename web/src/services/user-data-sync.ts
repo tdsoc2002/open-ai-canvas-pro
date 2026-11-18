@@ -604,6 +604,17 @@ function acceptRemoteAssets(remoteAssets: Asset[], refresh = false) {
     useAssetStore.setState({ assets: [...current.values()] });
 }
 
+/** 以服务端确认的单条记录建立新基线，并与本机未同步的编辑合并。 */
+export function commitRemoteAssetChange(write: () => Promise<Asset>) {
+    const epoch = sessionEpoch;
+    return withRemoteUserDataSyncExclusive(async () => {
+        if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
+        const asset = await write();
+        if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
+        acceptRemoteAssets([asset], true);
+    });
+}
+
 function collectAssetIds(value: unknown, ids = new Set<string>()): Set<string> {
     if (!value || typeof value !== "object") return ids;
     for (const [key, child] of Object.entries(value)) {
@@ -1126,6 +1137,11 @@ export async function saveRemoteUserDataNow(input?: string | readonly string[]) 
     await waitForCanvasSync(syncSingleFlight(key, () => performRemoteUserDataSave(input)));
 }
 
+/** 关联项目时只确认当前素材，不复用可能携带过期状态的在途写请求。 */
+export async function saveRemoteAssetNow(assetId: string) {
+    await waitForCanvasSync(performRemoteUserDataSave([], assetId));
+}
+
 export async function prepareCanvasForCloudAction(id: string) {
     try {
         useCanvasStore.getState().materializeDraft(id);
@@ -1137,7 +1153,7 @@ export async function prepareCanvasForCloudAction(id: string) {
     }
 }
 
-async function performRemoteUserDataSave(input?: string | readonly string[]) {
+async function performRemoteUserDataSave(input?: string | readonly string[], assetId?: string) {
     const projectId = input;
     const epoch = sessionEpoch;
     if (!activeRemoteUserId) throw new Error("云端同步会话尚未建立，当前内容已保留在本地");
@@ -1148,7 +1164,8 @@ async function performRemoteUserDataSave(input?: string | readonly string[]) {
     const operation = withRemoteUserDataSyncExclusive(async () => {
         requireRemoteUserDataBaseline();
         if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
-        await drainRemoteUserDataChanges({ projectId });
+        if (assetId) await saveRemoteUserDataBatch(new Map(), { projectId, assetId });
+        else await drainRemoteUserDataChanges({ projectId });
     });
     syncPromise = operation;
     let syncFailed = false;
@@ -1572,13 +1589,13 @@ async function syncRemoteAssetBatch(dirtyAssets: Asset[], uploaded: Map<string, 
     }
 }
 
-async function saveRemoteUserDataBatch(uploaded: Map<string, string>, options: { projectId?: string | readonly string[] } = {}) {
+async function saveRemoteUserDataBatch(uploaded: Map<string, string>, options: { projectId?: string | readonly string[]; assetId?: string } = {}) {
     const epoch = sessionEpoch;
     const requireCurrentSession = () => {
         if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
     };
     // 中央兜底：任何调用方只要把持久媒体写进画布，提交前都会先补齐素材记录与 assetId。
-    // 页面级入口仍主动入库，以便立即反馈；这里负责阻止遗漏入口形成远端幽灵资源。
+    // 页面级入口会及时登记工作素材；这里负责阻止遗漏入口形成远端幽灵资源。
     const projectsBeforeRepair = useCanvasStore.getState().projects;
     const selectedProjectIds = options.projectId === undefined ? undefined : new Set(typeof options.projectId === "string" ? [options.projectId] : options.projectId);
     if (selectedProjectIds && [...selectedProjectIds].some((id) => remoteDeletedProjects.has(id))) throw new ApiError("云端画布已删除，无法保存", { status: 404 });
@@ -1598,6 +1615,7 @@ async function saveRemoteUserDataBatch(uploaded: Map<string, string>, options: {
     });
     const canvasAssetIds = selectedProjectIds?.size ? new Set(currentProjects.filter((project) => selectedProjectIds.has(project.id)).flatMap((project) => [...collectAssetIds(project)])) : undefined;
     const dirtyAssets = currentAssets.filter((asset) => {
+        if (options.assetId && asset.id !== options.assetId) return false;
         const dirty = !sameEntitySnapshot(acknowledgedAssets.get(asset.id), asset);
         const selected = !canvasAssetIds || canvasAssetIds.has(asset.id) || (typeof asset.metadata?.canvasId === "string" && selectedProjectIds!.has(asset.metadata.canvasId));
         return selected && dirty;

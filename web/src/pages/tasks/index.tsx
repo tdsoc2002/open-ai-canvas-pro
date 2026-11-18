@@ -3,14 +3,14 @@ import { App, Button, Form, Input } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { AppModal } from "@/components/ui/product/app-modal";
-import { LayoutGrid, List, Plus, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, LayoutGrid, List, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router";
 import { currentLocale, translate } from "@/i18n";
 
 import { MediaPreview } from "@/components/media-preview";
-import { PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceNoResultsState, WorkspaceState } from "@/components/layout/workspace-state";
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { formatTaskKind, operationOptions } from "@/lib/generation-task-display";
@@ -33,19 +33,27 @@ import { syncGenerationTaskToCanvasStore } from "@/lib/canvas/canvas-generation-
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { resolveModelRequestConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { useTaskHistoryUnreadStore } from "@/stores/use-task-history-unread-store";
 import { listProjects, type ProjectSummary } from "@/services/api/projects";
 import { TaskDetailModal } from "./task-detail-modal";
 import { TaskGridCard } from "./task-grid-card";
 import { TaskGroupHeader, type TaskGroup } from "./task-group-header";
 import { TaskListRow } from "./task-list-row";
 import { formatModelName, getTaskCanvasContext, isTaskFailed, taskMediaKind } from "./task-shared";
-import { TaskStatusFilterBar, type TaskStatusFilter } from "./task-status-filter";
+import type { TaskStatusFilter } from "./task-status-filter";
 import { Select } from "@/components/ui/base/select";
 
 import "./tasks-page.css";
 
-type TaskKindFilter = "all" | "text" | "image" | "video";
+type TaskKindFilter = "all" | ReturnType<typeof taskMediaKind>;
 type TaskViewMode = "list" | "grid";
+const taskKindTabs = [
+    ["all", "filter.all"],
+    ["image", "page.kindImage"],
+    ["video", "page.kindVideo"],
+    ["audio", "gallery.kindAudio"],
+    ["text", "page.kindText"],
+] as const;
 
 function preferenceKeys() {
     const userId = useUserStore.getState().user?.id ?? "anon";
@@ -71,6 +79,11 @@ function writeTaskPreference(key: string, value: string): void {
 
 function taskStatusFilter(value: string | null): TaskStatusFilter {
     return value === "failed" || value === "active" || value === "succeeded" ? value : "all";
+}
+
+// 枚举外的中间态也归入「进行中」，避免筛选结果与各状态合计遗漏任务。
+function taskInProgress(task: GenerationTask) {
+    return task.status !== "succeeded" && !isTaskFailed(task);
 }
 
 export default function TasksPage() {
@@ -102,10 +115,14 @@ export default function TasksPage() {
     const [modelFilter, setModelFilter] = useState("all");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
-    const [viewMode, setViewMode] = useState<TaskViewMode>(() => (readTaskPreference(viewPreferenceKey, "list") === "grid" ? "grid" : "list"));
+    const [viewMode, setViewMode] = useState<TaskViewMode>(() => (readTaskPreference(viewPreferenceKey, "grid") === "list" ? "list" : "grid"));
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [oldestFirst, setOldestFirst] = useState(false);
+    const filtersId = useId();
     const [groupEnabled, setGroupEnabled] = useState<boolean>(() => readTaskPreference(groupPreferenceKey, "0") === "1");
     const [retryingGroup, setRetryingGroup] = useState("");
     const [detailTask, setDetailTask] = useState<GenerationTask | null>(null);
+    const detailRequest = useRef(0);
     const [detailLoading, setDetailLoading] = useState(false);
     const [taskLogs, setTaskLogs] = useState<TaskLog[]>([]);
     const [logsLoading, setLogsLoading] = useState(false);
@@ -129,9 +146,7 @@ export default function TasksPage() {
             tasks
                 .filter((task) => {
                     if (statusFilter === "all") return true;
-                    // 非终态一律视作进行中：后端可能出现枚举之外的中间态（如 Agent 控制面超时任务），
-                    // 按白名单匹配会让这些任务既不在任何 tab 里、总数也对不上。
-                    if (statusFilter === "active") return task.status !== "succeeded" && task.status !== "failed" && task.status !== "cancelled";
+                    if (statusFilter === "active") return taskInProgress(task);
                     if (statusFilter === "failed") return task.status === "failed" || task.status === "cancelled";
                     if (statusFilter === "succeeded") return task.status === "succeeded";
                     return false;
@@ -143,27 +158,40 @@ export default function TasksPage() {
                     const query = keyword.trim().toLowerCase();
                     const context = getTaskCanvasContext(task, canvasById, domainProjectNameById);
                     return !query || `${task.prompt} ${task.model || ""} ${formatTaskKind(task)} ${context.canvasName} ${context.projectName}`.toLowerCase().includes(query);
+                })
+                .sort((left, right) => {
+                    const a = Date.parse(left.createdAt);
+                    const b = Date.parse(right.createdAt);
+                    if (Number.isNaN(a)) return Number.isNaN(b) ? 0 : 1;
+                    if (Number.isNaN(b)) return -1;
+                    return oldestFirst ? a - b : b - a;
                 }),
-        [canvasById, domainProjectNameById, effectiveConfig, keyword, kindFilter, modelFilter, projectFilter, statusFilter, tasks],
+        [canvasById, domainProjectNameById, effectiveConfig, keyword, kindFilter, modelFilter, oldestFirst, projectFilter, statusFilter, tasks],
     );
     const visibleTasks = useMemo(() => filteredTasks.slice((page - 1) * pageSize, page * pageSize), [filteredTasks, page, pageSize]);
+    const dateGroups = useMemo(() => {
+        const groups = new Map<string, { date: Date; items: GenerationTask[] }>();
+        for (const task of visibleTasks) {
+            const date = new Date(task.createdAt);
+            const key = date.toDateString();
+            const group = groups.get(key);
+            if (group) group.items.push(task);
+            else groups.set(key, { date, items: [task] });
+        }
+        return [...groups];
+    }, [visibleTasks]);
     const taskStats = useMemo(() => {
-        let today = 0;
         let active = 0;
         let succeeded = 0;
         let failed = 0;
-        const now = new Date();
+        const kinds: Record<TaskKindFilter, number> = { all: tasks.length, image: 0, video: 0, audio: 0, text: 0 };
         for (const task of tasks) {
-            if (task.createdAt) {
-                const created = new Date(task.createdAt);
-                if (!Number.isNaN(created.getTime()) && created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth() && created.getDate() === now.getDate()) today += 1;
-            }
-            // 与筛选保持一致：非终态（含未知中间态）都计入「进行中」，保证各 tab 之和等于总数。
+            kinds[taskMediaKind(task)] += 1;
             if (task.status === "succeeded") succeeded += 1;
             else if (task.status === "failed" || task.status === "cancelled") failed += 1;
-            else active += 1;
+            else if (taskInProgress(task)) active += 1;
         }
-        return { total: tasks.length, today, active, succeeded, failed };
+        return { kinds, active, succeeded, failed };
     }, [tasks]);
     const groupingActive = viewMode === "list" && groupEnabled;
     const visibleTaskGroups = useMemo(() => (groupingActive ? groupTasksByCanvas(filteredTasks, canvasById, domainProjectNameById) : []), [canvasById, domainProjectNameById, filteredTasks, groupingActive]);
@@ -206,7 +234,7 @@ export default function TasksPage() {
         />
     );
 
-    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} effectiveConfig={effectiveConfig} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
+    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
 
     useEffect(() => {
         if (!shortDramaEnabled) {
@@ -258,10 +286,14 @@ export default function TasksPage() {
 
     const loadTasks = useCallback(
         async (showLoading = false) => {
+            const ownerId = useUserStore.getState().user?.id;
+            const unread = ownerId ? useTaskHistoryUnreadStore.getState().byUser[ownerId] : undefined;
             if (showLoading) setLoading(true);
             try {
                 const next = await listGenerationTasks();
+                if (ownerId !== useUserStore.getState().user?.id) return undefined;
                 setTasks((current) => reconcileTaskSummaries(current, next));
+                if (ownerId && unread) useTaskHistoryUnreadStore.getState().acknowledge(ownerId, unread);
                 void syncCompletedCanvasTasks(next);
                 return next;
             } catch (error) {
@@ -276,20 +308,32 @@ export default function TasksPage() {
 
     const openTaskDetail = useCallback(
         async (task: GenerationTask) => {
+            const request = ++detailRequest.current;
             setDetailTask(task);
             setTaskLogs([]);
             setDetailLoading(true);
             setLogsLoading(true);
-            try {
-                const [detail, logs] = await Promise.all([queryGenerationTask(task.id), listTaskLogs(task.id)]);
-                setDetailTask(detail);
-                setTaskLogs(logs);
-            } catch (error) {
-                message.error(error instanceof Error ? error.message : t("library.tasks.page.detailLoadFailed"));
-            } finally {
-                setDetailLoading(false);
-                setLogsLoading(false);
-            }
+            const showError = (error: unknown) => {
+                if (request === detailRequest.current) message.error(error instanceof Error ? error.message : t("library.tasks.page.detailLoadFailed"));
+            };
+            await Promise.all([
+                queryGenerationTask(task.id)
+                    .then((detail) => {
+                        if (request === detailRequest.current) setDetailTask(detail);
+                    })
+                    .catch(showError)
+                    .finally(() => {
+                        if (request === detailRequest.current) setDetailLoading(false);
+                    }),
+                listTaskLogs(task.id)
+                    .then((logs) => {
+                        if (request === detailRequest.current) setTaskLogs(logs);
+                    })
+                    .catch(showError)
+                    .finally(() => {
+                        if (request === detailRequest.current) setLogsLoading(false);
+                    }),
+            ]);
         },
         [message, t],
     );
@@ -341,17 +385,20 @@ export default function TasksPage() {
     };
 
     const queryProviderTask = async (task: GenerationTask) => {
+        const request = detailRequest.current;
         setActingId(task.id);
         try {
             const result = await queryFailedVideoProviderTask(task.id);
             if (!result.recovered) {
-                setTaskLogs(await listTaskLogs(task.id));
+                const logs = await listTaskLogs(task.id);
+                if (request === detailRequest.current) setTaskLogs(logs);
                 message.info(result.providerStatus ? t("library.tasks.page.upstreamPendingWithStatus", { status: result.providerStatus }) : t("library.tasks.page.upstreamPending"));
                 return;
             }
-            setDetailTask(result.task);
+            if (request === detailRequest.current) setDetailTask(result.task);
             setTasks((items) => items.map((item) => (item.id === task.id ? { ...item, ...result.task } : item)));
-            setTaskLogs(await listTaskLogs(task.id));
+            const logs = await listTaskLogs(task.id);
+            if (request === detailRequest.current) setTaskLogs(logs);
             await syncGenerationTaskToCanvasStore(result.task);
             window.dispatchEvent(new CustomEvent("wallet:updated"));
             void loadTasks(false);
@@ -406,6 +453,16 @@ export default function TasksPage() {
     };
 
     const detailContext = detailTask ? getTaskCanvasContext(detailTask, canvasById, domainProjectNameById) : null;
+    const detailSummary = detailTask ? tasks.find((task) => task.id === detailTask.id) : undefined;
+    // 计费和预览由列表摘要补充；详情返回时不能把已经存在的摘要字段清掉。
+    const detailViewTask = detailTask
+        ? {
+              ...detailTask,
+              billing: detailTask.billing ?? detailSummary?.billing,
+              previewUrl: detailTask.previewUrl || detailSummary?.previewUrl,
+              previewKind: detailTask.previewKind ?? detailSummary?.previewKind,
+          }
+        : null;
     // 搜索或筛选（不含状态）把已有任务全部过滤掉时显示「无结果」，而不是「还没有任务」。
     const searchOrFilterActive = Boolean(keyword.trim() || projectFilter !== "all" || kindFilter !== "all" || modelFilter !== "all");
     const filtersActive = searchOrFilterActive || statusFilter !== "all";
@@ -425,98 +482,118 @@ export default function TasksPage() {
 
     return (
         <>
-            <WorkspacePage grid className="library-page task-center-page">
+            <WorkspacePage className="library-page task-center-page">
                 <div className="studio-band">
-                    <PageHeader
-                        title={t("library.tasks.page.title")}
-                        description={t("library.tasks.page.description")}
-                        meta={
-                            <span className="app-projects-header-meta">
-                                {t("library.tasks.page.taskCount", { count: taskStats.total })} · {t("library.tasks.filter.today")} {taskStats.today}
-                            </span>
-                        }
-                        actions={
-                            <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
+                    <header className="history-gallery-header">
+                        <h1 className="sr-only">{t("library.tasks.page.title")}</h1>
+                        <nav className="history-kind-tabs" aria-label={t("library.tasks.page.allKinds")}>
+                            {taskKindTabs.map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    aria-pressed={kindFilter === value}
+                                    onClick={() => {
+                                        setKindFilter(value);
+                                        setPage(1);
+                                    }}
+                                >
+                                    {t(`library.tasks.${label}`)} <span>{taskStats.kinds[value]}</span>
+                                </button>
+                            ))}
+                        </nav>
+                        <div className="history-gallery-actions">
+                            <Select<TaskStatusFilter>
+                                ariaLabel={t("library.tasks.detail.status")}
+                                value={statusFilter}
+                                onChange={(value) => {
+                                    setStatusFilter(value);
+                                    setPage(1);
+                                }}
+                                options={[
+                                    { value: "all", label: t("library.tasks.gallery.allStatuses") },
+                                    { value: "active", label: `${t("library.tasks.filter.active")} ${taskStats.active}` },
+                                    { value: "succeeded", label: `${t("library.tasks.filter.succeeded")} ${taskStats.succeeded}` },
+                                    { value: "failed", label: `${t("library.tasks.filter.failed")} ${taskStats.failed}` },
+                                ]}
+                            />
+                            <Button
+                                type="text"
+                                aria-label={t("library.tasks.gallery.oldestFirst")}
+                                aria-pressed={oldestFirst}
+                                title={t(oldestFirst ? "library.tasks.gallery.oldestFirst" : "library.tasks.gallery.newestFirst")}
+                                icon={oldestFirst ? <ArrowUp /> : <ArrowDown />}
+                                onClick={() => {
+                                    setOldestFirst((value) => !value);
+                                    setPage(1);
+                                }}
+                            />
+                            <Button type="text" icon={<SlidersHorizontal />} aria-expanded={filtersOpen} aria-controls={filtersId} onClick={() => setFiltersOpen((open) => !open)}>
+                                {t("account.layout.list.filter")}
+                                {filtersActive ? <span className="history-filter-dot" aria-label={t("account.layout.list.filterActive")} /> : null}
+                            </Button>
+                            <Button type="text" icon={<Plus />} onClick={() => setCreateOpen(true)}>
                                 {t("library.tasks.page.newTask")}
                             </Button>
-                        }
-                    />
-                    {/* 第一行：状态切换和视图；第二行：搜索与筛选。分两行排，窄屏不会把控件挤成一团。 */}
-                    <div className="task-center-statusbar">
-                        <TaskStatusFilterBar
-                            stats={taskStats}
-                            value={statusFilter}
-                            onChange={(value) => {
-                                setStatusFilter(value);
-                                setPage(1);
-                            }}
-                        />
-                        <div className="task-center-view-controls">
-                            {viewMode === "list" ? (
-                                <label className="task-center-group-toggle">
-                                    <Switch size="sm" checked={groupEnabled} onChange={changeGroupEnabled} />
-                                    <span>{t("library.tasks.page.groupByCanvas")}</span>
-                                </label>
-                            ) : null}
-                            <SegmentedControl<TaskViewMode>
-                                ariaLabel={t("library.tasks.page.viewMode")}
-                                size="sm"
-                                value={viewMode}
-                                options={[
-                                    { value: "list", icon: <List className="size-3.5" />, title: t("library.tasks.page.listView") },
-                                    { value: "grid", icon: <LayoutGrid className="size-3.5" />, title: t("library.tasks.page.gridView") },
-                                ]}
-                                onChange={changeViewMode}
-                            />
                         </div>
+                    </header>
+                    <div id={filtersId} hidden={!filtersOpen}>
+                        <CollectionToolbar
+                            active={filtersActive}
+                            onReset={resetFilters}
+                            trailing={
+                                <div className="task-center-view-controls">
+                                    {viewMode === "list" ? (
+                                        <label className="task-center-group-toggle">
+                                            <Switch size="sm" checked={groupEnabled} onChange={changeGroupEnabled} />
+                                            <span>{t("library.tasks.page.groupByCanvas")}</span>
+                                        </label>
+                                    ) : null}
+                                    <SegmentedControl<TaskViewMode>
+                                        ariaLabel={t("library.tasks.page.viewMode")}
+                                        size="sm"
+                                        value={viewMode}
+                                        options={[
+                                            { value: "list", icon: <List className="size-3.5" />, title: t("library.tasks.page.listView") },
+                                            { value: "grid", icon: <LayoutGrid className="size-3.5" />, title: t("library.tasks.page.gridView") },
+                                        ]}
+                                        onChange={changeViewMode}
+                                    />
+                                </div>
+                            }
+                        >
+                            <Input
+                                id="task-search"
+                                name="taskSearch"
+                                allowClear
+                                className="app-list-search task-center-search"
+                                prefix={<Search className="size-4 text-foreground/40" />}
+                                value={keyword}
+                                placeholder={t("library.tasks.page.searchPlaceholder")}
+                                onChange={(event) => {
+                                    setKeyword(event.target.value);
+                                    setPage(1);
+                                }}
+                            />
+                            <Select
+                                className="task-center-filter is-wide"
+                                value={projectFilter}
+                                onChange={(value) => {
+                                    setProjectFilter(value);
+                                    setPage(1);
+                                }}
+                                options={[{ label: t("library.tasks.page.allCanvases"), value: "all" }, ...projectOptions]}
+                            />
+                            <Select
+                                className="task-center-filter is-wide"
+                                value={modelFilter}
+                                onChange={(value) => {
+                                    setModelFilter(value);
+                                    setPage(1);
+                                }}
+                                options={[{ label: t("library.tasks.page.allModels"), value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]}
+                            />
+                        </CollectionToolbar>
                     </div>
-                    <CollectionToolbar active={filtersActive} onReset={resetFilters}>
-                        <Input
-                            id="task-search"
-                            name="taskSearch"
-                            allowClear
-                            className="app-list-search task-center-search"
-                            prefix={<Search className="size-4 text-foreground/40" />}
-                            value={keyword}
-                            placeholder={t("library.tasks.page.searchPlaceholder")}
-                            onChange={(event) => {
-                                setKeyword(event.target.value);
-                                setPage(1);
-                            }}
-                        />
-                        <Select
-                            className="task-center-filter is-wide"
-                            value={projectFilter}
-                            onChange={(value) => {
-                                setProjectFilter(value);
-                                setPage(1);
-                            }}
-                            options={[{ label: t("library.tasks.page.allCanvases"), value: "all" }, ...projectOptions]}
-                        />
-                        <Select
-                            className="task-center-filter"
-                            value={kindFilter}
-                            onChange={(value) => {
-                                setKindFilter(value as TaskKindFilter);
-                                setPage(1);
-                            }}
-                            options={[
-                                { label: t("library.tasks.page.allKinds"), value: "all" },
-                                { label: t("library.tasks.page.kindText"), value: "text" },
-                                { label: t("library.tasks.page.kindImage"), value: "image" },
-                                { label: t("library.tasks.page.kindVideo"), value: "video" },
-                            ]}
-                        />
-                        <Select
-                            className="task-center-filter is-wide"
-                            value={modelFilter}
-                            onChange={(value) => {
-                                setModelFilter(value);
-                                setPage(1);
-                            }}
-                            options={[{ label: t("library.tasks.page.allModels"), value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]}
-                        />
-                    </CollectionToolbar>
                 </div>
 
                 <div className="collection-content task-center-content">
@@ -524,7 +601,17 @@ export default function TasksPage() {
                         <TaskCenterSkeleton viewMode={viewMode} label={t("library.tasks.page.loading")} />
                     ) : visibleTasks.length ? (
                         viewMode === "grid" ? (
-                            <div className="task-center-grid">{visibleTasks.map(renderTaskGridCard)}</div>
+                            <div className="history-date-groups">
+                                {dateGroups.map(([key, group]) => {
+                                    const label = Number.isNaN(group.date.getTime()) ? t("library.tasks.gallery.unknownDate") : group.date.toLocaleDateString(currentLocale(), { year: "numeric", month: "2-digit", day: "2-digit" });
+                                    return (
+                                        <section key={key} aria-label={label} className="history-date-group">
+                                            <h2>{label}</h2>
+                                            <div className="task-center-grid">{group.items.map(renderTaskGridCard)}</div>
+                                        </section>
+                                    );
+                                })}
+                            </div>
                         ) : groupingActive ? (
                             <div className="task-center-groups">
                                 {visibleTaskGroups.map((group) => (
@@ -542,8 +629,7 @@ export default function TasksPage() {
                     ) : (
                         <WorkspaceState
                             compact
-                            title={taskEmptyState(statusFilter).title}
-                            description={taskEmptyState(statusFilter).description}
+                            title={taskEmptyTitle(statusFilter)}
                             action={
                                 <Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
                                     {t("library.tasks.page.newTask")}
@@ -551,7 +637,7 @@ export default function TasksPage() {
                             }
                         />
                     )}
-                    {!groupingActive ? (
+                    {!groupingActive && filteredTasks.length > pageSize ? (
                         <PaginationBar
                             current={page}
                             pageSize={pageSize}
@@ -563,6 +649,7 @@ export default function TasksPage() {
                             }}
                         />
                     ) : null}
+                    {visibleTasks.length > 0 && (groupingActive || page * pageSize >= filteredTasks.length) ? <p className="history-gallery-end">{t("library.tasks.gallery.loadedEnd")}</p> : null}
                 </div>
             </WorkspacePage>
             <AppModal className="library-modal" title={t("library.tasks.create.title")} open={createOpen} onCancel={() => setCreateOpen(false)} onOk={submitTask} confirmLoading={creating} okText={t("library.tasks.create.submit")} destroyOnHidden={false}>
@@ -582,7 +669,7 @@ export default function TasksPage() {
                 </Form>
             </AppModal>
             <TaskDetailModal
-                task={detailTask}
+                task={detailViewTask}
                 loading={detailLoading}
                 logs={taskLogs}
                 logsLoading={logsLoading}
@@ -590,7 +677,10 @@ export default function TasksPage() {
                 canvasName={detailContext ? (detailContext.projectName ? `${detailContext.canvasName} · ${detailContext.projectName}` : detailContext.canvasName) : ""}
                 modelName={detailTask ? formatModelName(effectiveConfig, detailTask) : ""}
                 creditsEnabled={creditsEnabled}
-                onClose={() => setDetailTask(null)}
+                onClose={() => {
+                    detailRequest.current += 1;
+                    setDetailTask(null);
+                }}
                 onRetry={(task) => void runAction(task.id)}
                 onQueryProvider={(task) => void queryProviderTask(task)}
                 onExportDiagnostics={(task) => navigate(`/settings?section=diagnostics&taskId=${encodeURIComponent(task.id)}${task.projectId ? `&projectId=${encodeURIComponent(task.projectId)}` : ""}`)}
@@ -626,13 +716,7 @@ function TaskCenterSkeleton({ viewMode, label }: { viewMode: TaskViewMode; label
         return (
             <div className="task-center-grid" aria-busy="true" aria-label={label}>
                 {Array.from({ length: 8 }, (_, index) => (
-                    <div key={index} className="task-center-card is-skeleton" aria-hidden="true">
-                        <div className="task-center-card-media" />
-                        <div className="task-center-card-body">
-                            <span className="task-center-skeleton-line" />
-                            <span className="task-center-skeleton-line is-sm" />
-                        </div>
-                    </div>
+                    <div key={index} className="history-media-open is-skeleton" aria-hidden="true" />
                 ))}
             </div>
         );
@@ -691,9 +775,9 @@ function groupTasksByCanvas(tasks: GenerationTask[], canvasById: Map<string, { t
     return groups;
 }
 
-function taskEmptyState(status: TaskStatusFilter) {
-    if (status === "all") return { title: translate("library.tasks.empty.allTitle"), description: translate("library.tasks.empty.allDescription") };
-    if (status === "active") return { title: translate("library.tasks.empty.activeTitle"), description: translate("library.tasks.empty.activeDescription") };
-    if (status === "succeeded") return { title: translate("library.tasks.empty.succeededTitle"), description: translate("library.tasks.empty.succeededDescription") };
-    return { title: translate("library.tasks.empty.failedTitle"), description: translate("library.tasks.empty.failedDescription") };
+function taskEmptyTitle(status: TaskStatusFilter) {
+    if (status === "all") return translate("library.tasks.empty.allTitle");
+    if (status === "active") return translate("library.tasks.empty.activeTitle");
+    if (status === "succeeded") return translate("library.tasks.empty.succeededTitle");
+    return translate("library.tasks.empty.failedTitle");
 }

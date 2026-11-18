@@ -1,0 +1,149 @@
+.app-user-workspace .assets-library-page > div {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+}
+
+.assets-library-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--user-border);
+}
+
+.assets-library-header .collection-navigation-content {
+    min-width: 0;
+}
+
+.assets-library-context {
+    margin-bottom: var(--space-2);
+    font-size: var(--fs-body);
+    font-weight: 600;
+}
+
+.assets-type-filter .collection-filter-options {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-1);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-block: 2px;
+    scrollbar-width: thin;
+}
+
+.assets-type-filter .assets-filter-item {
+    width: auto;
+    height: var(--user-control-height, 34px);
+    padding-inline: var(--space-3);
+    font-size: var(--fs-body);
+}
+
+.assets-type-filter .assets-filter-item .assets-filter-count {
+    min-width: var(--space-4);
+    height: auto;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+}
+
+.app-user-workspace .assets-library-page .collection-toolbar {
+    gap: var(--space-2);
+    margin: var(--space-2) 0 var(--space-3);
+}
+
+.assets-library-page .collection-toolbar-actions {
+    flex-wrap: wrap;
+    margin-inline-start: auto;
+}
+
+.assets-library-page .collection-toolbar-controls > .ant-input-affix-wrapper {
+    width: min(100%, 280px);
+    flex: 0 1 280px;
+}
+
+.assets-library-page .assets-category-select {
+    width: min(100%, 144px);
+}
+
+.assets-library-page .assets-density-select {
+    width: 112px;
+}
+
+.assets-folder-trigger {
+    max-width: min(100%, 168px);
+}
+
+.assets-folder-trigger-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.assets-folder-menu {
+    width: min(272px, calc(100vw - 48px));
+}
+
+.assets-folder-menu .collection-folder-list {
+    display: grid;
+    gap: var(--space-1);
+    max-height: min(320px, 52dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.assets-folder-menu .asset-folder-option {
+    width: 100%;
+}
+
+.assets-folder-row .asset-folder-option {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.assets-folder-menu .collection-folder-heading {
+    margin-bottom: var(--space-2);
+}
+
+.assets-collection-content,
+.assets-collection-content > section {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.assets-collection-content > section > :is(.is-joysee-empty, .workspace-state) {
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
+@media (width < 768px) {
+    .assets-library-header {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .assets-library-header .assets-header-action-buttons {
+        justify-content: flex-start;
+    }
+
+    .assets-library-page .collection-toolbar-controls > .ant-input-affix-wrapper {
+        flex-basis: 100%;
+    }
+
+    .assets-library-page .collection-toolbar-actions {
+        margin-inline-start: 0;
+    }
+}
+
+@media (pointer: coarse) {
+    .assets-type-filter .assets-filter-item,
+    .assets-folder-menu .asset-folder-option {
+        min-height: 44px;
+    }
+}

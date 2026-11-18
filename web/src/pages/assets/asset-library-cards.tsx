@@ -3,18 +3,19 @@
 // 纯展示组件，数据与操作回调由素材库页面传入。
 
 import { Dropdown, type MenuProps } from "antd";
-import type { MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import { AlertTriangle, AudioLines, Box, Clock3, Copy, Download, FileText, FolderOpen, MoreHorizontal, PencilLine, Play, RotateCcw, ShieldAlert, ShieldCheck, ShieldX, Trash2 } from "lucide-react";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
 import { type AssetKind } from "@/stores/use-asset-store";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { AudioPreviewBar, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
-import { useAudioSampleRate } from "@/hooks/use-audio-sample-rate";
 import { translate } from "@/i18n";
 import { arkCertificationBadgeKey, arkCertificationExpired, type ArkLibraryProgress } from "@/lib/ark-assets";
 import { assetCategoryLabel } from "@/lib/asset-category";
+import { formatRelativeTime } from "@/lib/relative-time";
 import { type LibraryAsset, assetKindIcons } from "./asset-library-format";
-import { assetKindLabel, assetProjectLabel, assetSummary, assetSummaryDetail, formatAssetClock, formatAssetTime } from "./asset-library-format";
+import { assetKindLabel, formatAssetClock, formatAssetDateTime } from "./asset-library-format";
+import "./asset-library-card.css";
 
 export function formatExpirationHint(updatedAt: string, retentionDays: number) {
     if (!retentionDays || retentionDays <= 0) return "永久保留";
@@ -72,7 +73,6 @@ export function AssetCard({
     /** 这张图片最近一次方舟认证提交；已认证的展示以素材自身的 arkCertification 为准。 */
     arkProgress?: ArkLibraryProgress;
 }) {
-    const summary = assetSummary(asset);
     const menuItems: MenuProps["items"] = isTrash
         ? [{ key: "restore", icon: <RotateCcw className="size-3.5" />, label: "还原到素材库", onClick: onRestore }, { type: "divider" as const }, { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "彻底删除", onClick: onDelete }]
         : [
@@ -92,34 +92,50 @@ export function AssetCard({
         onOpen();
     };
     return (
-        <AssetLibraryCard selected={selected}>
-            <AssetCover asset={asset} selected={selected} isTrash={isTrash} onSelect={onSelect} onOpen={handleCardClick} menuItems={menuItems} arkProgress={arkProgress} />
-            <button type="button" className="asset-collection-body block w-full px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]" onClick={handleCardClick}>
-                <div className="flex min-w-0 items-center justify-between gap-2">
-                    <h2 className="truncate text-[var(--fs-body)] font-semibold text-foreground" title={asset.title}>
-                        {asset.title}
+        <AssetLibraryCard selected={selected} className="asset-collection-item canvas-collection-card">
+            <AssetCover asset={asset} selected={selected} selectionMode={selectionMode} isTrash={isTrash} onSelect={onSelect} onOpen={handleCardClick} arkProgress={arkProgress} />
+            <div className="asset-collection-body canvas-collection-body">
+                <div className="canvas-collection-heading-row">
+                    <h2 className="min-w-0 flex-1">
+                        <button type="button" className="canvas-collection-title block w-full" title={asset.title} onClick={handleCardClick} aria-pressed={selectionMode ? selected : undefined}>
+                            {asset.title}
+                        </button>
                     </h2>
-                    <span className="asset-collection-date shrink-0 tabular-nums">{formatAssetTime(asset.updatedAt)}</span>
+                    {!isTrash && !selectionMode && (asset.kind === "image" || asset.kind === "text") ? (
+                        <button type="button" className="product-icon-button canvas-collection-rename" title="编辑素材" aria-label={`编辑 ${asset.title}`} onClick={onEdit}>
+                            <PencilLine aria-hidden />
+                        </button>
+                    ) : null}
                 </div>
-                {isTrash ? (
-                    <div className="mt-1 flex items-center gap-1 text-[var(--fs-tiny)] font-medium text-amber-600 dark:text-amber-400" title={formatExpirationDate(asset.updatedAt, retentionDays)}>
-                        <AlertTriangle className="size-3 shrink-0" />
-                        <span>{formatExpirationHint(asset.updatedAt, retentionDays)}</span>
+                <div className="canvas-collection-footer">
+                    <div className="min-w-0 flex-1">
+                        {isTrash ? (
+                            <div className="asset-collection-expiry" title={formatExpirationDate(asset.updatedAt, retentionDays)}>
+                                <AlertTriangle className="size-3 shrink-0" aria-hidden />
+                                <span className="truncate">{formatExpirationHint(asset.updatedAt, retentionDays)}</span>
+                            </div>
+                        ) : null}
+                        <time className="canvas-collection-updated block truncate" dateTime={asset.updatedAt} title={formatAssetDateTime(asset.updatedAt)}>
+                            {formatRelativeTime(asset.updatedAt)}
+                        </time>
                     </div>
-                ) : asset.kind === "audio" ? (
-                    <AudioAssetSummary asset={asset} />
-                ) : (
-                    <div className="asset-collection-summary mt-1 truncate tabular-nums" title={assetSummaryDetail(asset)}>
-                        {summary}
-                    </div>
-                )}
-                <div className="asset-collection-source mt-1 flex min-w-0 items-center gap-2">
-                    <span className="truncate">{asset.source || "未标注来源"}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="truncate">{assetProjectLabel(asset)}</span>
+                    <AssetCardMenu title={asset.title} items={menuItems} />
                 </div>
-            </button>
+            </div>
         </AssetLibraryCard>
+    );
+}
+
+function AssetCardMenu({ title, items }: { title: string; items: MenuProps["items"] }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="canvas-collection-actions">
+            <Dropdown trigger={["click"]} placement="bottomRight" open={open} onOpenChange={setOpen} menu={{ items, onClick: () => setOpen(false) }}>
+                <button type="button" className="product-icon-button canvas-collection-more" aria-label={`${title}：更多素材操作`} title="更多素材操作" aria-haspopup="menu" aria-expanded={open}>
+                    <MoreHorizontal aria-hidden />
+                </button>
+            </Dropdown>
+        </div>
     );
 }
 
@@ -130,18 +146,18 @@ export function isKnownAssetKind(kind: unknown): kind is AssetKind {
 export function AssetCover({
     asset,
     selected,
+    selectionMode = false,
     isTrash = false,
     onSelect,
     onOpen,
-    menuItems,
     arkProgress,
 }: {
     asset: LibraryAsset;
     selected: boolean;
+    selectionMode?: boolean;
     isTrash?: boolean;
     onSelect: (selected: boolean, range?: boolean) => void;
     onOpen: (event: MouseEvent<HTMLButtonElement>) => void;
-    menuItems: MenuProps["items"];
     arkProgress?: ArkLibraryProgress;
 }) {
     const kind = isKnownAssetKind(asset.kind) ? asset.kind : undefined;
@@ -154,8 +170,8 @@ export function AssetCover({
     // 图片和视频的画面就是预览本身，类型与分类角标只会遮挡画面；规格写在卡片摘要里。
     const visualMedia = asset.kind === "image" || asset.kind === "video";
     return (
-        <AssetLibraryCardMedia className={isLight ? "assets-cover is-light" : "assets-cover"}>
-            <button type="button" className="assets-cover-link" onClick={onOpen} aria-label={`查看素材：${asset.title}`}>
+        <AssetLibraryCardMedia className={`assets-cover${isLight ? " is-light" : ""}${selectionMode ? " is-selecting" : ""}`}>
+            <button type="button" className="assets-cover-link" onClick={onOpen} aria-label={`${selectionMode ? "选择素材" : "查看素材"}：${asset.title}`} aria-pressed={selectionMode ? selected : undefined}>
                 {asset.kind === "audio" ? (
                     <AudioWaveCover asset={asset} />
                 ) : asset.kind === "entity" && (asset.category === "environment" || asset.category === "prop") ? (
@@ -211,11 +227,6 @@ export function AssetCover({
                 className="assets-select-check"
                 aria-label={`选择 ${asset.title}`}
             />
-            <Dropdown trigger={["click"]} menu={{ items: menuItems }}>
-                <button type="button" className="assets-cover-more" aria-label="更多素材操作" title="更多操作">
-                    <MoreHorizontal className="size-4" />
-                </button>
-            </Dropdown>
         </AssetLibraryCardMedia>
     );
 }
@@ -240,17 +251,6 @@ function ArkCoverBadge({ asset, progress }: { asset: LibraryAsset; progress?: Ar
             <Icon aria-hidden />
             {translate(`library.ark.badge.${progress.status}`)}
         </span>
-    );
-}
-
-/** 音频摘要：时长 + 源采样率。采样率需要读取文件头，读到之前只显示时长。 */
-function AudioAssetSummary({ asset }: { asset: LibraryAsset & { kind: "audio" } }) {
-    const sampleRate = useAudioSampleRate(asset.data.storageKey, asset.data.url);
-    const summary = assetSummary(asset, sampleRate);
-    return (
-        <div className="asset-collection-summary mt-1 truncate tabular-nums" title={assetSummaryDetail(asset, sampleRate)}>
-            {summary}
-        </div>
     );
 }
 

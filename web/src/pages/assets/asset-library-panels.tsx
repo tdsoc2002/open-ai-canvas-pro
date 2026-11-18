@@ -1,11 +1,12 @@
-// 素材库的批量操作条、空态、筛选组、详情抽屉与图片放大。
+// 素材库的批量操作条、空态、筛选组、预览弹窗与图片放大。
 
-import { Button, Drawer, Tag } from "antd";
-import { Box, CheckCheck, Clapperboard, Copy, Download, FileText, FileUp, Link2, Maximize2, Mic, Plus, RotateCcw, ShieldCheck, Trash2, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
+import { Button, Tag } from "antd";
+import { Box, CheckCheck, Clapperboard, Copy, Download, FileUp, Link2, Mic, Plus, RotateCcw, ShieldCheck, Trash2, ZoomIn, ZoomOut, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { StatusBadge } from "@/components/ui/base/badges";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { currentLocale } from "@/i18n";
 import { arkAssetStatusTone, arkCertificationBadgeKey, arkCertificationExpired, formatArkDate, type ArkLibraryProgress } from "@/lib/ark-assets";
@@ -16,11 +17,12 @@ import { assetCategoryLabel } from "@/lib/asset-category";
 import { formatBytes } from "@/lib/image-utils";
 import { audioAverageBitrateKbps, formatAudioSampleRate, imageResolutionTierLabel, isLosslessAudioMimeType, mediaAspectRatioLabel, mediaFormatLabel, RECOMMENDED_MIN_AUDIO_SAMPLE_RATE, videoResolutionTierLabel } from "@/lib/media-spec";
 import { useAudioSampleRate } from "@/hooks/use-audio-sample-rate";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
-import { type LibraryAsset, assetKindIcons } from "./asset-library-format";
-import { isKnownAssetKind } from "./asset-library-cards";
+import { resolveResourceVariantUrl } from "@/services/api/resources";
+import { type LibraryAsset } from "./asset-library-format";
 import { assetDownloadLabel, assetKindLabel, assetProjectLabel, assetSizeLabel, formatAssetClock, formatAssetDateTime } from "./asset-library-format";
+import "./asset-library-preview.css";
 
 export function AssetsBatchBar({
     count,
@@ -95,7 +97,17 @@ export const assetsEmptyBannerFrames = [
 export function AssetsEmptyState({ onNew, onImport, onGoCanvas }: { onNew: () => void; onImport: () => void; onGoCanvas: () => void }) {
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     // 当前皮肤的主题包带了示意图时用主题包的。
-    const frames = useThemePack()?.copy?.assetsEmptyFrames ?? assetsEmptyBannerFrames;
+    const themePack = useThemePack();
+    const frames = themePack?.copy?.assetsEmptyFrames ?? assetsEmptyBannerFrames;
+    if (themePack?.workspaceStyle === "joysee")
+        return (
+            <section className="assets-empty is-joysee-empty" aria-labelledby="assets-empty-title">
+                <h2 id="assets-empty-title">还没有素材</h2>
+                <Button type="primary" onClick={onNew}>
+                    新增素材
+                </Button>
+            </section>
+        );
     return (
         <div className="assets-empty">
             <div className="assets-empty-banner" aria-hidden="true">
@@ -155,8 +167,7 @@ export function AssetFilterGroup({
     className?: string;
 }) {
     return (
-        <div className={`collection-filter-group ${className}`}>
-            <span className="collection-filter-label">{title}</span>
+        <div className={`collection-filter-group ${className}`} role="group" aria-label={title}>
             <div className="collection-filter-options">
                 {options.map((option) => {
                     const active = value === option.value;
@@ -193,7 +204,7 @@ const CHARACTER_PROFILE_FIELDS: Array<[string, string]> = [
     ["voiceTimbre", "音色气质"],
 ];
 
-/** 素材档案里的角色卡：立绘主视觉 + 声音试听 + 已填写的设定，只读；编辑在画布角色卡里完成。 */
+/** 角色详情保留声音试听和已填写的设定，立绘由预览区单独渲染。 */
 function CharacterArchive({ asset }: { asset: Extract<LibraryAsset, { kind: "entity" }> }) {
     const definition = asset.data.definition;
     const aliases = Array.isArray(definition.aliases) ? definition.aliases.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
@@ -212,13 +223,13 @@ function CharacterArchive({ asset }: { asset: Extract<LibraryAsset, { kind: "ent
         : null;
     return (
         <div className="space-y-5">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--r-xl)]">
-                <CharacterAssetCover asset={asset} size="hero" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-4">
-                    <div className="text-[var(--fs-label)] font-medium uppercase tracking-[.24em] text-white/55">Character{asset.data.version ? ` · v${asset.data.version}` : ""}</div>
-                    {aliases.length ? <div className="mt-1 truncate text-xs text-white/70">又名 {aliases.join("、")}</div> : null}
-                </div>
-            </div>
+            {asset.data.version || aliases.length ? (
+                <p className="asset-archive-section-body wrap-anywhere">
+                    {asset.data.version ? `版本 v${asset.data.version}` : null}
+                    {asset.data.version && aliases.length ? " · " : null}
+                    {aliases.length ? `又名 ${aliases.join("、")}` : null}
+                </p>
+            ) : null}
             <div className="flex items-center gap-3 rounded-[var(--r-lg)] bg-foreground/[.04] px-4 py-3">
                 {voiceAsset ? (
                     <AudioPlayButton asset={voiceAsset} className="shrink-0" />
@@ -238,7 +249,7 @@ function CharacterArchive({ asset }: { asset: Extract<LibraryAsset, { kind: "ent
                     {rows.map(([label, value]) => (
                         <div key={label} className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 py-3 text-sm leading-6">
                             <dt className="text-foreground/45">{label}</dt>
-                            <dd className="whitespace-pre-wrap text-foreground/85">{value}</dd>
+                            <dd className="wrap-anywhere whitespace-pre-wrap text-foreground/85">{value}</dd>
                         </div>
                     ))}
                 </dl>
@@ -249,7 +260,7 @@ function CharacterArchive({ asset }: { asset: Extract<LibraryAsset, { kind: "ent
     );
 }
 
-export function AssetDrawer({
+export function AssetPreviewModal({
     asset,
     onClose,
     onCopy,
@@ -266,102 +277,110 @@ export function AssetDrawer({
     const audio = asset?.kind === "audio" ? asset : null;
     const sampleRate = useAudioSampleRate(audio?.data.storageKey, audio?.data.url || "");
     const facts = asset ? assetArchiveFacts(asset, sampleRate) : [];
-    const kind = asset && isKnownAssetKind(asset.kind) ? asset.kind : undefined;
-    const KindIcon = asset ? (kind ? assetKindIcons[kind] : FileText) : Clapperboard;
+    const character = asset?.kind === "entity" && asset.category !== "environment" && asset.category !== "prop" ? asset : null;
     return (
-        <Drawer className="library-drawer" title="素材档案" open={Boolean(asset)} size="large" onClose={onClose}>
+        <AppModal className="asset-preview-modal" classNames={{ header: "sr-only" }} title={asset?.title || "素材详情"} open={Boolean(asset)} width="min(1160px, calc(100% - 2 * var(--space-4)))" centered flush footer={null} onCancel={onClose}>
             {asset ? (
-                <div className="space-y-4">
-                    <div className="asset-archive-header">
-                        <span className="asset-archive-header-icon">
-                            <KindIcon />
-                        </span>
-                        <div className="min-w-0">
-                            <h2 className="asset-archive-title">{asset.title}</h2>
-                            <p className="asset-archive-subtitle">
-                                {assetCategoryLabel(asset.category)} · {formatAssetDateTime(asset.createdAt)} 创建
-                            </p>
-                        </div>
-                    </div>
-                    {asset.kind === "entity" && (asset.category === "environment" || asset.category === "prop") ? (
-                        <div className="asset-archive-preview-note">
-                            <p>{String(asset.data.definition.description || "待生成图片")}</p>
-                            <p>{String(asset.data.definition.prompt || "")}</p>
-                        </div>
-                    ) : asset.kind === "entity" ? (
-                        <CharacterArchive asset={asset} />
-                    ) : (
-                        <div className="asset-archive-preview">
-                            {asset.kind === "text" ? (
-                                <div className="asset-archive-preview-note">{asset.data.content}</div>
-                            ) : asset.kind === "audio" ? (
-                                <div className="asset-archive-audio">
-                                    <audio src={asset.data.url} controls />
-                                </div>
-                            ) : asset.kind === "model" ? (
-                                <div className="asset-archive-preview-model">
-                                    <Box />
-                                    <span>
-                                        {asset.data.fileName} · {formatBytes(asset.data.bytes)}
-                                    </span>
-                                </div>
-                            ) : asset.kind === "video" ? (
-                                <video src={asset.data.url} controls className="asset-archive-preview-media" />
-                            ) : (
-                                <AssetImageZoom asset={asset} />
-                            )}
-                        </div>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                        {(asset.tags || []).map((tag) => (
-                            <Tag key={tag} className="asset-archive-tag m-0">
-                                {tag}
-                            </Tag>
-                        ))}
-                        {asset.arkAssetId && !ark ? (
-                            <Tag className="m-0" color="geekblue" title="火山方舟素材 ID，生成视频时可直接 asset:// 引用">
-                                方舟 {asset.arkAssetId}
-                            </Tag>
-                        ) : null}
-                        <StorageTag asset={asset} />
-                    </div>
-                    {ark && (asset.kind === "image" || asset.arkAssetId) ? <ArkArchiveSection asset={asset} progress={ark.progress} onCertify={ark.onCertify} onManage={ark.onManage} /> : null}
-                    <div className="asset-archive-facts">
-                        {facts.map((fact) => (
-                            <div key={fact.label} className="asset-archive-fact">
-                                <span className="asset-archive-fact-label">{fact.label}</span>
-                                <span className="asset-archive-fact-value" title={fact.value}>
-                                    {fact.value}
+                <div key={asset.id} className="asset-preview-layout">
+                    <section className={cn("asset-preview-stage", (asset.kind === "text" || (asset.kind === "entity" && !character)) && "is-reading")} aria-label="素材预览">
+                        {character ? (
+                            <CharacterAssetCover asset={character} size="hero" />
+                        ) : asset.kind === "entity" ? (
+                            <div className="asset-archive-preview-note" tabIndex={0}>
+                                <p>{String(asset.data.definition.description || "待生成图片")}</p>
+                                <p>{String(asset.data.definition.prompt || "")}</p>
+                            </div>
+                        ) : asset.kind === "text" ? (
+                            <div className="asset-archive-preview-note" tabIndex={0}>
+                                {asset.data.content}
+                            </div>
+                        ) : asset.kind === "audio" ? (
+                            <div className="asset-archive-audio">
+                                <audio src={resolveResourceVariantUrl(asset.data.storageKey, "playback", asset.data.url)} controls preload="metadata" aria-label={asset.title} />
+                            </div>
+                        ) : asset.kind === "model" ? (
+                            <div className="asset-archive-preview-model">
+                                <Box aria-hidden />
+                                <span>
+                                    {asset.data.fileName} · {formatBytes(asset.data.bytes)}
                                 </span>
                             </div>
-                        ))}
-                    </div>
-                    <div className="asset-archive-link">
-                        <Link2 />
-                        <span>所属项目</span>
-                        <strong>{assetProjectLabel(asset)}</strong>
-                    </div>
-                    {asset.note ? (
-                        <div className="asset-archive-section">
-                            <span className="asset-archive-section-title">备注</span>
-                            <p className="asset-archive-section-body">{asset.note}</p>
+                        ) : asset.kind === "video" ? (
+                            <video
+                                src={resolveResourceVariantUrl(asset.data.storageKey, "playback", asset.data.url)}
+                                poster={asset.coverUrl && asset.coverUrl !== asset.data.url ? asset.coverUrl : undefined}
+                                controls
+                                playsInline
+                                preload="metadata"
+                                className="asset-archive-preview-media"
+                                aria-label={asset.title}
+                            />
+                        ) : (
+                            <AssetImageZoom asset={asset} />
+                        )}
+                    </section>
+                    <aside className="asset-preview-info" aria-label="素材信息">
+                        <header className="asset-preview-header">
+                            <p className="asset-preview-kind">{assetKindLabel(asset.kind, asset.category)}</p>
+                            <h2 className="asset-archive-title" title={asset.title}>
+                                {asset.title}
+                            </h2>
+                        </header>
+                        <div className="asset-preview-details" role="region" aria-label="素材属性" tabIndex={0}>
+                            <div className="flex flex-wrap gap-2 empty:hidden">
+                                {(asset.tags || []).map((tag) => (
+                                    <Tag key={tag} className="asset-archive-tag m-0">
+                                        {tag}
+                                    </Tag>
+                                ))}
+                                {asset.arkAssetId && !ark ? (
+                                    <Tag className="m-0" color="geekblue" title="火山方舟素材 ID，生成视频时可直接 asset:// 引用">
+                                        方舟 {asset.arkAssetId}
+                                    </Tag>
+                                ) : null}
+                                <StorageTag asset={asset} />
+                            </div>
+                            {ark && (asset.kind === "image" || asset.arkAssetId) ? <ArkArchiveSection asset={asset} progress={ark.progress} onCertify={ark.onCertify} onManage={ark.onManage} /> : null}
+                            <dl className="asset-archive-facts">
+                                {facts.map((fact) => (
+                                    <div key={fact.label} className="asset-archive-fact">
+                                        <dt className="asset-archive-fact-label">{fact.label}</dt>
+                                        <dd className="asset-archive-fact-value" title={fact.value}>
+                                            {fact.value}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                            <div className="asset-archive-link">
+                                <Link2 aria-hidden />
+                                <span>所属项目</span>
+                                <strong>{assetProjectLabel(asset)}</strong>
+                            </div>
+                            {asset.note ? (
+                                <div className="asset-archive-section">
+                                    <h3 className="asset-archive-section-title mb-2">备注</h3>
+                                    <p className="asset-archive-section-body">{asset.note}</p>
+                                </div>
+                            ) : null}
+                            {character ? <CharacterArchive asset={character} /> : null}
                         </div>
-                    ) : null}
-                    <div className="asset-archive-actions">
-                        {asset.kind === "text" ? (
-                            <Button type="primary" icon={<Copy className="size-4" />} onClick={() => onCopy(asset)}>
-                                复制文本
-                            </Button>
-                        ) : null}
-                        {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? (
-                            <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
-                                {assetDownloadLabel(asset)}
-                            </Button>
-                        ) : null}
-                    </div>
+                        <footer className="asset-archive-actions">
+                            <Button onClick={onClose}>关闭</Button>
+                            {asset.kind === "text" ? (
+                                <Button type="primary" icon={<Copy className="size-4" />} onClick={() => onCopy(asset)}>
+                                    复制文本
+                                </Button>
+                            ) : null}
+                            {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? (
+                                <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
+                                    {assetDownloadLabel(asset)}
+                                </Button>
+                            ) : null}
+                        </footer>
+                    </aside>
                 </div>
             ) : null}
-        </Drawer>
+        </AppModal>
     );
 }
 
@@ -376,10 +395,10 @@ function ArkArchiveSection({ asset, progress, onCertify, onManage }: { asset: Li
     return (
         <section className="asset-archive-section" aria-label={t("library.ark.detail.title")}>
             <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="asset-archive-section-title !mb-0 flex items-center gap-1.5">
+                <h3 className="asset-archive-section-title flex items-center gap-1.5">
                     <ShieldCheck aria-hidden className="size-3.5" />
                     {t("library.ark.detail.title")}
-                </span>
+                </h3>
                 {certification ? (
                     <StatusBadge size="sm" tone={expired ? "warning" : "success"} label={t(arkCertificationBadgeKey(certification))} />
                 ) : progress && (pending || failed) ? (
@@ -404,7 +423,7 @@ function ArkArchiveSection({ asset, progress, onCertify, onManage }: { asset: Li
                         <div className="asset-archive-fact">
                             <span className="asset-archive-fact-label">{t("library.ark.detail.arkAssetId")}</span>
                             {asset.arkAssetId ? (
-                                <button type="button" className="asset-archive-fact-value w-full text-left font-mono hover:text-foreground" title={asset.arkAssetId} onClick={() => copyText(asset.arkAssetId || "")}>
+                                <button type="button" className="asset-archive-fact-value font-mono hover:underline" title={asset.arkAssetId} onClick={() => copyText(asset.arkAssetId || "")}>
                                     {asset.arkAssetId}
                                 </button>
                             ) : (
@@ -451,20 +470,30 @@ function ArkArchiveSection({ asset, progress, onCertify, onManage }: { asset: Li
 export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image" } }) {
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const viewerRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+    useEffect(() => {
+        const viewer = viewerRef.current;
+        if (!viewer) return;
+        const zoom = (event: WheelEvent) => {
+            // 窄屏的预览与信息共用滚动区域；滚轮不能阻断向下查看素材信息。
+            if (window.matchMedia("(width <= 720px), (height <= 480px)").matches || event.ctrlKey || event.metaKey || !event.deltaY) return;
+            event.preventDefault();
+            setScale((value) => Math.min(4, Math.max(0.25, value * (event.deltaY < 0 ? 1.12 : 0.89))));
+        };
+        viewer.addEventListener("wheel", zoom, { passive: false });
+        return () => viewer.removeEventListener("wheel", zoom);
+    }, []);
     const reset = () => {
         setScale(1);
         setOffset({ x: 0, y: 0 });
     };
     return (
         <div
-            className="asset-zoom-viewer"
-            onWheel={(event) => {
-                event.preventDefault();
-                setScale((value) => Math.min(4, Math.max(0.25, value * (event.deltaY < 0 ? 1.12 : 0.89))));
-            }}
+            ref={viewerRef}
+            className={cn("asset-zoom-viewer", scale > 1 && "is-zoomed")}
             onPointerDown={(event) => {
-                if (scale <= 1) return;
+                if (scale <= 1 || event.button !== 0 || (event.target instanceof Element && event.target.closest("button"))) return;
                 event.currentTarget.setPointerCapture(event.pointerId);
                 dragRef.current = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
             }}
@@ -476,7 +505,7 @@ export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image
             onPointerUp={() => {
                 dragRef.current = null;
             }}
-            onPointerCancel={() => {
+            onLostPointerCapture={() => {
                 dragRef.current = null;
             }}
         >
@@ -485,9 +514,20 @@ export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image
                 src={asset.data.dataUrl || asset.coverUrl}
                 alt={asset.title}
                 eager
+                draggable={false}
                 decoding="async"
                 className="asset-archive-preview-media asset-zoom-image"
                 style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+                loadingFallback={
+                    <p className="asset-preview-status" role="status">
+                        正在加载图片…
+                    </p>
+                }
+                fallback={
+                    <p className="asset-preview-status" role="status">
+                        图片暂时无法预览，可关闭后重试。
+                    </p>
+                }
             />
             <div className="asset-zoom-controls" data-canvas-no-zoom>
                 <button type="button" title="缩小" aria-label="缩小" onClick={() => setScale((value) => Math.max(0.25, value / 1.25))}>
@@ -498,9 +538,6 @@ export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image
                 </button>
                 <button type="button" title="放大" aria-label="放大" onClick={() => setScale((value) => Math.min(4, value * 1.25))}>
                     <ZoomIn className="size-4" />
-                </button>
-                <button type="button" title="查看原图尺寸" aria-label="查看原图尺寸" onClick={() => setScale(1)}>
-                    <Maximize2 className="size-4" />
                 </button>
             </div>
         </div>

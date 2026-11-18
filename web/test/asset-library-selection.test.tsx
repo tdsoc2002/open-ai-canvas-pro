@@ -1,4 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { Window } from "happy-dom";
 import type { MouseEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AssetCard, AssetCover } from "@/pages/assets/asset-library-cards";
@@ -8,6 +10,29 @@ import type { Asset } from "@/stores/use-asset-store";
 
 const asset: Asset = { id: "remote-page-2", kind: "text", title: "第二页素材", coverUrl: "", tags: [], createdAt: "2026-10-01", updatedAt: "2026-10-01", data: { content: "正文" } };
 const click = (keys: Partial<MouseEvent<HTMLButtonElement>> = {}) => ({ shiftKey: false, ctrlKey: false, metaKey: false, ...keys }) as MouseEvent<HTMLButtonElement>;
+
+test("资产卡片封面保留勾选，内容区提供名称、直接编辑和更多操作", () => {
+    const { document } = new Window();
+    document.body.innerHTML = renderToStaticMarkup(
+        <AssetCard asset={asset} selected={false} onSelect={() => {}} onOpen={() => {}} onEdit={() => {}} onCopy={() => {}} onDownload={() => {}} onDelete={() => {}} folderOptions={[]} onMoveToFolder={() => {}} />,
+    );
+    expect(document.querySelector('.assets-cover input[type="checkbox"]')).not.toBeNull();
+    expect(document.querySelector(".asset-collection-body button[aria-label='编辑 第二页素材']")).not.toBeNull();
+    expect(document.querySelector(".asset-collection-body button[aria-haspopup='menu']")).not.toBeNull();
+    expect(document.querySelector(".assets-cover button[aria-haspopup]")).toBeNull();
+});
+
+test("资产页详情使用居中弹窗，预览与信息分区并保留方舟入口", () => {
+    const page = readFileSync(new URL("../src/pages/assets/index.tsx", import.meta.url), "utf8");
+    const panels = readFileSync(new URL("../src/pages/assets/asset-library-panels.tsx", import.meta.url), "utf8");
+    expect(page).toContain("<AssetPreviewModal");
+    const preview = panels.slice(panels.indexOf("export function AssetPreviewModal"), panels.indexOf("function ArkArchiveSection"));
+    expect(preview).toContain("<AppModal");
+    expect(preview).toContain("centered");
+    expect(preview).toContain('className="asset-preview-info"');
+    expect(preview).toContain("<ArkArchiveSection");
+    expect(preview).toContain("<StorageTag");
+});
 
 test.each(["/api/resources/detail-image/file", "https://old.example/expired-original.png"])("素材详情通过资源标识加载原图，解析历史地址 %s", (dataUrl) => {
     const image = {
@@ -28,7 +53,8 @@ function card(selected: boolean, selectionMode: boolean) {
     const onOpen = mock(() => {});
     const element = AssetCard({ asset, selected, selectionMode, onSelect, onOpen, onEdit: () => {}, onCopy: () => {}, onDownload: () => {}, onDelete: () => {}, folderOptions: [], onMoveToFolder: () => {} });
     const [cover, body] = element.props.children;
-    return { onSelect, onOpen, cover: AssetCover(cover.props).props.children[0], body };
+    const title = body.props.children[0].props.children[0].props.children;
+    return { onSelect, onOpen, cover: AssetCover(cover.props).props.children[0], body: title };
 }
 
 describe("素材库分页多选", () => {
