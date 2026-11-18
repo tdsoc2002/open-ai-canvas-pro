@@ -1,5 +1,6 @@
 const PAGE_TITLE_KEYS: Record<string, string> = {
     create: "nav.pageTitles.home",
+    inspirations: "nav.sidebar.inspirations",
     projects: "nav.pageTitles.projects",
     canvas: "nav.pageTitles.canvas",
     tasks: "nav.pageTitles.tasks",

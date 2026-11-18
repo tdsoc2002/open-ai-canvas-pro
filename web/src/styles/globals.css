@@ -21043,104 +21043,12 @@ html:not(.dark) .creation-custom-value {
 /* ===== 素材库 · 重构（影策影视资产） =====
    与画布库共用 studio-band 毛玻璃页头与 frame 外壳；类型化封面、accent 反白筛选、
    批量操作条、banner+欢迎卡空态、资产档案抽屉。全局保持黑白单色。 */
-/* 页头右侧一行：紧凑容量计量 + 命令组。容量是只读信息，不画成控件外框。 */
-.assets-header-actions {
-    display: flex;
-    max-width: 100%;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-2) var(--space-4);
-}
 .assets-header-action-buttons {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-2);
-}
-.assets-storage-usage {
-    display: inline-flex;
-    min-width: 0;
-    height: var(--user-control-height, 34px);
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--user-ink-muted, color-mix(in srgb, var(--foreground) 56%, transparent));
-    font-size: var(--fs-caption);
-    line-height: 1;
-}
-.assets-storage-usage-icon {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    color: var(--user-ink-soft, color-mix(in srgb, var(--foreground) 44%, transparent));
-}
-.assets-storage-usage-icon svg {
-    width: 14px;
-    height: 14px;
-    stroke-width: 1.8;
-}
-.assets-storage-usage-title {
-    flex: none;
-    font-weight: 500;
-}
-.assets-storage-usage-value {
-    flex: none;
-    color: var(--user-ink, var(--foreground));
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-}
-.assets-storage-usage-track {
-    display: block;
-    width: 56px;
-    flex: none;
-    height: 4px;
-    overflow: hidden;
-    border-radius: var(--progress-bar-radius);
-    background: var(--user-surface-hover, color-mix(in srgb, var(--foreground) 9%, transparent));
-}
-.assets-storage-usage-track > span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--user-ink-muted, var(--workspace-accent));
-    transition: transform var(--motion-state) var(--motion-ease-out);
-}
-.assets-storage-usage.has-usage .assets-storage-usage-track > span {
-    min-width: 2px;
-}
-.assets-storage-usage.is-full {
-    color: var(--status-error);
-}
-.assets-storage-usage.is-full .assets-storage-usage-track > span {
-    background: var(--progress-bar-fill-error);
-}
-.assets-storage-usage-percent {
-    flex: none;
-    color: var(--user-ink-soft, inherit);
-    font-variant-numeric: tabular-nums;
-}
-.assets-storage-usage-status {
-    min-width: 0;
-}
-.assets-storage-usage-status button {
-    margin-left: 8px;
-    color: var(--foreground);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-.assets-storage-usage-status button:focus-visible {
-    outline: 2px solid var(--control-focus-ring);
-    outline-offset: 2px;
-}
-@media (max-width: 639px) {
-    .assets-header-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-    .assets-header-action-buttons {
-        justify-content: flex-start;
-    }
 }
 /* 筛选胶囊：激活态 accent 反白 + 计数徽章反白 */
 .assets-filter-item {
@@ -21429,40 +21337,6 @@ html:not(.dark) .creation-custom-value {
 .assets-select-check:checked {
     opacity: 1;
 }
-.assets-cover-more {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 3;
-    display: grid;
-    width: 28px;
-    height: 28px;
-    place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: var(--r-md);
-    background: rgba(10, 10, 10, 0.5);
-    color: rgba(255, 255, 255, 0.85);
-    cursor: pointer;
-    backdrop-filter: blur(8px);
-    opacity: 0;
-    transition:
-        opacity 180ms ease-out,
-        background-color 180ms ease-out,
-        transform 180ms var(--motion-ease-out);
-}
-.assets-cover-more:hover {
-    background: rgba(10, 10, 10, 0.78);
-    color: #fff;
-}
-.assets-cover-more:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-}
-.asset-library-card:hover .assets-cover-more,
-.asset-library-card:focus-within .assets-cover-more {
-    opacity: 1;
-}
-
 /* 音频：频谱条占位；文本：内容摘要底纹；模型：线框图标 */
 .assets-cover-wave {
     position: relative;
@@ -21821,7 +21695,7 @@ html:not(.dark) .creation-custom-value {
     margin: var(--space-2) 0 0;
 }
 
-/* 资产档案抽屉 */
+/* 素材详情的共用信息样式 */
 .asset-archive-header {
     display: flex;
     align-items: flex-start;
@@ -21852,65 +21726,6 @@ html:not(.dark) .creation-custom-value {
     margin-top: 4px;
     color: color-mix(in srgb, var(--foreground) 46%, transparent);
     font-size: var(--fs-label);
-}
-.asset-archive-preview {
-    overflow: hidden;
-    border-radius: var(--r-xl);
-    background: #050505;
-    box-shadow: var(--elevation-hairline);
-}
-.asset-archive-preview-media {
-    display: block;
-    width: 100%;
-    max-height: 400px;
-    object-fit: contain;
-    background: #050505;
-}
-.asset-zoom-viewer {
-    position: relative;
-    display: flex;
-    min-height: 420px;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: #050505;
-    touch-action: none;
-}
-.asset-zoom-image {
-    max-height: 70vh;
-    transform-origin: center;
-    transition: transform 150ms ease-out;
-    user-select: none;
-}
-.asset-zoom-controls {
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: var(--r-md);
-    background: rgba(15, 15, 15, 0.76);
-    backdrop-filter: blur(8px);
-}
-.asset-zoom-controls button {
-    display: grid;
-    min-width: 30px;
-    height: 30px;
-    place-items: center;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.86);
-    cursor: pointer;
-    font-size: 11px;
-}
-.asset-zoom-controls button:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
 }
 .batch-upload-dropzone {
     display: flex;
@@ -22007,88 +21822,6 @@ html:not(.dark) .creation-custom-value {
 .asset-archive-audio audio {
     width: 100%;
 }
-.asset-archive-facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
-    border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--foreground) 9%, transparent);
-}
-.asset-archive-fact {
-    min-width: 0;
-    padding: 12px 16px;
-    background: var(--surface-card);
-}
-.asset-archive-fact-label {
-    display: block;
-    color: color-mix(in srgb, var(--foreground) 38%, transparent);
-    font-size: var(--fs-tiny);
-    letter-spacing: 0.04em;
-}
-.asset-archive-fact-value {
-    display: block;
-    margin-top: 4px;
-    overflow: hidden;
-    color: color-mix(in srgb, var(--foreground) 78%, transparent);
-    font-size: var(--fs-label);
-    font-weight: 500;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.asset-archive-link {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
-    border-radius: var(--r-lg);
-    background: var(--surface-card);
-    color: color-mix(in srgb, var(--foreground) 72%, transparent);
-    font-size: var(--fs-label);
-}
-.asset-archive-link svg {
-    width: 15px;
-    height: 15px;
-    color: color-mix(in srgb, var(--workspace-accent) 60%, var(--foreground));
-}
-.asset-archive-link strong {
-    margin-left: auto;
-    color: var(--foreground);
-    font-weight: 500;
-}
-.asset-archive-section {
-    padding: 16px 16px;
-    border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
-    border-radius: var(--r-lg);
-    background: var(--surface-card);
-}
-.asset-archive-section-title {
-    display: block;
-    margin-bottom: 8px;
-    color: color-mix(in srgb, var(--foreground) 40%, transparent);
-    font-size: var(--fs-tiny);
-    font-weight: 500;
-    letter-spacing: 0.05em;
-}
-.asset-archive-section-body {
-    margin: 0;
-    color: color-mix(in srgb, var(--foreground) 74%, transparent);
-    font-size: var(--fs-label);
-    line-height: 1.7;
-    white-space: pre-wrap;
-}
-.asset-archive-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-.library-drawer .asset-archive-tag {
-    border-color: color-mix(in srgb, var(--foreground) 14%, transparent) !important;
-    background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
-    color: color-mix(in srgb, var(--foreground) 72%, transparent) !important;
-}
 .library-drawer .ant-btn-primary {
     box-shadow: none;
     font-weight: 500;
@@ -22106,8 +21839,7 @@ html:not(.dark) .creation-custom-value {
     }
 }
 @media (max-width: 639px) {
-    .assets-select-check,
-    .assets-cover-more {
+    .assets-select-check {
         opacity: 1;
     }
 }
@@ -22146,15 +21878,6 @@ html:not(.dark) .creation-custom-value {
     background: color-mix(in srgb, var(--foreground) 6%, transparent);
     color: color-mix(in srgb, var(--foreground) 62%, transparent);
     line-height: 18px;
-}
-.assets-cover.is-light .assets-cover-more {
-    border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
-    background: color-mix(in srgb, var(--surface-card) 82%, transparent);
-    color: color-mix(in srgb, var(--foreground) 60%, transparent);
-}
-.assets-cover.is-light .assets-cover-more:hover {
-    background: color-mix(in srgb, var(--foreground) 9%, transparent);
-    color: var(--foreground);
 }
 .assets-cover.is-light .assets-cover-play::before {
     border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
@@ -23601,8 +23324,15 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 }
 
 .app-user-workspace .app-workspace-sidebar-brand-row.is-collapsed .app-workspace-sidebar-brand-button {
+    width: 100%;
     justify-content: center;
     padding: 0;
+}
+
+.app-user-workspace .app-workspace-sidebar-brand-row.is-collapsed {
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
 }
 
 .app-user-workspace .app-workspace-sidebar-brand-button:hover,
@@ -23905,9 +23635,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     padding: 8px 8px 8px 16px;
     border-radius: 12px;
     background: #fff;
-    box-shadow:
-        0 1px 2px color-mix(in srgb, rgba(16, 18, 22, 0.12) 50%, transparent),
-        0 10px 24px rgba(16, 18, 22, 0.12);
+    box-shadow: none;
     color: #171717;
 }
 
@@ -23994,9 +23722,6 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 
 .dark .app-user-workspace .app-workspace-sidebar-checkin {
     background: #fff;
-    box-shadow:
-        0 1px 2px color-mix(in srgb, rgba(0, 0, 0, 0.38) 50%, transparent),
-        0 12px 28px rgba(0, 0, 0, 0.38);
     color: #171717;
 }
 
@@ -24375,9 +24100,9 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 
 .app-user-workspace .app-workspace-sidebar-collapse-toggle {
     display: grid;
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
     place-items: center;
     border-radius: 8px;
     color: var(--user-ink-muted);
@@ -24398,10 +24123,15 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 .app-user-workspace .app-workspace-sidebar-collapse-toggle:hover svg {
 }
 
-.app-user-workspace .app-workspace-sidebar-nav.is-collapsed .app-workspace-sidebar-collapse-toggle {
+.app-user-workspace .app-workspace-sidebar-brand-row.is-collapsed .app-workspace-sidebar-collapse-toggle {
     width: 48px;
-    height: 48px;
-    flex: 0 0 48px;
+}
+
+@media (width < 1024px) {
+    .app-user-workspace .app-workspace-sidebar-brand-row .app-workspace-sidebar-collapse-toggle {
+        width: 44px;
+        height: 44px;
+    }
 }
 
 .dark .app-user-workspace .app-workspace-sidebar-collapse-toggle {
@@ -26535,14 +26265,14 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 .app-user-workspace .app-workspace-nav-link {
     min-height: var(--workspace-reference-row) !important;
     padding: var(--space-1) var(--space-2) !important;
+    padding-inline-start: calc(var(--space-2) + var(--workspace-nav-indent, 0px)) !important;
     border-radius: var(--r-md) !important;
     color: var(--user-ink) !important;
     font-size: var(--fs-body) !important;
     font-weight: 600 !important;
     transition:
         background var(--user-motion),
-        color var(--user-motion),
-        transform var(--user-motion);
+        color var(--user-motion);
 }
 .app-user-workspace .app-workspace-nav-link .app-workspace-nav-main {
     gap: calc(var(--space-2) - var(--space-half)) !important;
@@ -26553,7 +26283,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     height: 18px !important;
 }
 .app-user-workspace .app-workspace-nav-link.is-active {
-    background: transparent !important;
+    background: var(--workspace-nav-active-bg) !important;
     color: var(--user-ink) !important;
     font-weight: 600 !important;
 }
@@ -26563,13 +26293,40 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     color: var(--user-ink) !important;
 }
 .app-user-workspace .app-workspace-nav-group-toggle {
-    color: var(--user-ink-soft) !important;
+    padding: 0 var(--space-2);
+    color: var(--user-ink-muted) !important;
+}
+.app-user-workspace .app-workspace-nav-group-toggle .app-workspace-nav-group-label {
+    min-width: 0;
+    overflow: hidden;
+    color: inherit;
+    font-size: var(--fs-caption);
+    letter-spacing: normal;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
+}
+.app-user-workspace :is(.app-workspace-nav-link, .app-workspace-nav-group-toggle, .app-workspace-sidebar-collapse-toggle):focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: -2px;
 }
 .app-user-workspace .app-workspace-sidebar.is-collapsed .app-workspace-sidebar-scroll-area {
-    padding-inline: 8px !important;
+    padding-inline: var(--space-2) !important;
+    gap: var(--space-2) !important;
+}
+.app-user-workspace .app-workspace-sidebar.is-collapsed .app-workspace-nav-group + .app-workspace-nav-group {
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--user-border);
 }
 .app-user-workspace .app-workspace-sidebar.is-collapsed .app-workspace-nav-link {
-    width: 48px !important;
+    width: calc(var(--workspace-reference-collapsed) - 2 * var(--space-2));
+    padding-inline: 0 !important;
+}
+
+@media (width < 1024px) {
+    .app-user-workspace .app-workspace-nav-link {
+        min-height: 44px !important;
+    }
 }
 
 .app-user-workspace .app-workspace-topbar {

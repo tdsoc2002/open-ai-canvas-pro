@@ -6,6 +6,7 @@ import { LanguageOptionGrid } from "@/components/layout/language-menu";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { Switch } from "@/components/ui/base/switch";
 import { SettingsRow } from "@/components/ui/product/settings-row";
+import { isMultilingualEnabled } from "@/i18n";
 import { playGenerationSuccessSound } from "@/services/notification-sound";
 import { defaultConfig, useConfigStore } from "@/stores/use-config-store";
 import { useNotificationPreferencesStore } from "@/stores/use-notification-preferences-store";
@@ -28,7 +29,6 @@ export function PreferencesPane() {
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>{t("settings.preferences.title")}</h2>
-                    <p>{t("settings.preferences.description")}</p>
                 </div>
             </div>
             <div className="settings-section">
@@ -52,8 +52,12 @@ export function PreferencesPane() {
                             />
                         }
                     />
-                    <SettingsRow label={t("language.label")} description={t("language.description")} align="top" control={null} className="border-b-0 pb-3" />
-                    <LanguageOptionGrid />
+                    {isMultilingualEnabled() && (
+                        <>
+                            <SettingsRow label={t("language.label")} description={t("language.description")} align="top" control={null} className="border-b-0 pb-3" />
+                            <LanguageOptionGrid />
+                        </>
+                    )}
                 </section>
                 <section className="settings-preference-block">
                     <div className="settings-preference-heading">

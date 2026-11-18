@@ -256,7 +256,7 @@ export function WorkspaceWalletModal({
                                 {creditsEnabled ? t("nav.tools.wallet") : t("account.wallet.topupCenter")}
                             </span>
                             <h2>{creditsEnabled ? t("account.wallet.title") : t("account.wallet.titleStorage")}</h2>
-                            <p>{creditsEnabled ? t("account.wallet.description") : t("account.wallet.descriptionStorage")}</p>
+                            {!creditsEnabled ? <p>{t("account.wallet.descriptionStorage")}</p> : null}
                         </div>
                         <div className="workspace-wallet-stats">
                             {creditsEnabled ? (

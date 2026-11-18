@@ -264,7 +264,6 @@ export function FeedbackModal({ open, onClose, initialTab = "submit" }: Feedback
                     </span>
                     <div className="feedback-header-copy">
                         <h2>{t("account.feedback.heading")}</h2>
-                        <p>{t("account.feedback.subtitle")}</p>
                     </div>
                     <SegmentedControl
                         size="sm"

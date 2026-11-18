@@ -27,6 +27,10 @@ export type ThemePack = {
     name: string;
     /** 皮肤数据，安装脚本把它写进后台皮肤库。 */
     skin: SkinDefinition;
+    /** 首页采用居中标题、底部模式菜单和独立输入面板；省略时保持原有页签布局。 */
+    creationLayout?: "compact";
+    /** 用户工作区共享控件与内容库组件采用乐见当前源码风格。 */
+    workspaceStyle?: "joysee";
     /** 助手圆球（画布入口、首页 Agent 页签、后台外观预览）；不提供时用上游流光球。 */
     agentOrb?: ComponentType<ThemeAgentOrbProps>;
     /** 空状态 / 加载 / 错误图标的画法；不提供时用上游方框图标。 */

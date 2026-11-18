@@ -1,6 +1,6 @@
 import { App, Button } from "antd";
 import { ArrowLeft, Boxes, Bug, Cloud, Inbox, MessageSquareText, RadioTower, ShieldCheck, SlidersHorizontal, UserRound, Workflow, BookMarked } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -60,8 +60,12 @@ export default function SettingsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedSection = searchParams.get("section");
     const userId = useUserStore((state) => state.user?.id);
-    const personalStorageQuery = useQuery({ queryKey: ["personal-storage-policy", userId], queryFn: getUserOSSSetting, enabled: Boolean(userId), staleTime: 0, refetchOnWindowFocus: true });
-    const personalStorageAllowed = personalStorageQuery.isSuccess && personalStorageQuery.data.setting.allowUserS3 === true;
+    const queryClient = useQueryClient();
+    const storageQueryKey = ["settings", "personal-storage", userId] as const;
+    const storageQuery = useQuery({ queryKey: storageQueryKey, queryFn: ({ signal }) => getUserOSSSetting(signal), enabled: Boolean(userId), staleTime: 0, refetchOnWindowFocus: true });
+    const personalStorage = userId && storageQuery.isSuccess && storageQuery.data.setting?.allowUserStorage === true ? storageQuery.data.setting : undefined;
+    const personalStorageAllowed = Boolean(personalStorage);
+    const storageDenied = storageQuery.isSuccess && !personalStorageAllowed;
     const customChannelsEnabled = useUserStore((state) => state.features.customChannelsEnabled);
     const runtimeStatuses = usePluginStore((state) => state.runtimeStatuses);
     const runningHubPluginEnabled = runtimeStatuses[RUNNINGHUB_PLUGIN_ID] === "enabled";
@@ -90,17 +94,22 @@ export default function SettingsPage() {
     const isVisibleConfigSection = (value: string | null): value is ConfigSectionKey => isConfigSection(value) && visibleConfigSections.some((section) => section.key === value);
 
     useEffect(() => {
+        if (requestedSection === "storage" && storageDenied) {
+            setSearchParams(
+                (previous) => {
+                    const next = new URLSearchParams(previous);
+                    next.set("section", "profile");
+                    return next;
+                },
+                { replace: true },
+            );
+        }
         if (isVisibleConfigSection(requestedSection)) {
             setActiveTab(requestedSection);
             return;
         }
         setActiveTab(requestedSection === "channels" && !customChannelsEnabled ? "models" : "profile");
-        if (requestedSection === "storage" && !personalStorageQuery.isPending && !personalStorageAllowed) {
-            const next = new URLSearchParams(searchParams);
-            next.set("section", "profile");
-            setSearchParams(next, { replace: true });
-        }
-    }, [customChannelsEnabled, requestedSection, visibleConfigSections, personalStorageQuery.isPending, personalStorageAllowed, searchParams, setSearchParams]);
+    }, [customChannelsEnabled, requestedSection, setSearchParams, storageDenied, visibleConfigSections]);
 
     useEffect(() => {
         if (!userId) return;
@@ -198,13 +207,13 @@ export default function SettingsPage() {
                 <DiagnosticsPanel taskId={searchParams.get("taskId") || undefined} projectId={searchParams.get("projectId") || undefined} />
             </SettingsPane>
         ),
-        storage: (
+        storage: personalStorage ? (
             <SettingsPane>
                 <div className="settings-section">
-                    <UserOSSSettingsForm />
+                    <UserOSSSettingsForm key={userId} initialSetting={personalStorage} onSaved={(setting) => queryClient.setQueryData(storageQueryKey, { setting })} />
                 </div>
             </SettingsPane>
-        ),
+        ) : null,
         "ark-assets": (
             <SettingsPane>
                 <ArkAssetsPane />
@@ -248,15 +257,12 @@ export default function SettingsPage() {
                                             <button
                                                 key={item.key}
                                                 type="button"
-                                                className={`settings-nav-item flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-auto md:w-full md:items-start md:gap-3 md:py-2 ${selected ? "is-active" : "text-foreground/58 hover:bg-muted/55 hover:text-foreground"}`}
+                                                className={`settings-nav-item flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-full md:gap-3 ${selected ? "is-active" : "text-foreground/58 hover:bg-muted/55 hover:text-foreground"}`}
                                                 onClick={() => selectSection(item.key)}
                                                 aria-current={selected ? "page" : undefined}
                                             >
-                                                <span className={`shrink-0 md:mt-0.5 ${selected ? "text-[var(--workspace-accent)]" : ""}`}>{item.icon}</span>
-                                                <span className="min-w-0">
-                                                    <span className="block whitespace-nowrap text-sm font-medium">{t(`settings.sections.${item.key}.label`)}</span>
-                                                    <span className="mt-1 hidden text-[var(--fs-label)] leading-4 text-current opacity-65 md:block">{t(`settings.sections.${item.key}.description`)}</span>
-                                                </span>
+                                                <span className={`shrink-0 ${selected ? "text-[var(--workspace-accent)]" : ""}`}>{item.icon}</span>
+                                                <span className="whitespace-nowrap text-sm font-medium">{t(`settings.sections.${item.key}.label`)}</span>
                                             </button>
                                         );
                                     })}

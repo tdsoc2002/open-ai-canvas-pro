@@ -22,7 +22,7 @@
 
 :where(.ant-input:not(textarea), .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper, .ant-input-group-wrapper .ant-input-group-addon, .ant-otp-input) {
     border-color: transparent !important;
-    border-radius: var(--r-lg) !important;
+    border-radius: var(--unified-input-radius, var(--r-lg)) !important;
     background: var(--unified-input-surface) !important;
     box-shadow: none !important;
     transition:
@@ -32,7 +32,7 @@
 
 :where(textarea.ant-input, .ant-input-textarea textarea.ant-input) {
     border-color: transparent !important;
-    border-radius: var(--r-lg) !important;
+    border-radius: var(--unified-input-radius, var(--r-lg)) !important;
     background: var(--unified-input-surface) !important;
     box-shadow: none !important;
 }

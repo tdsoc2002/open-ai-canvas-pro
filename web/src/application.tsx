@@ -12,6 +12,11 @@ import { AuthDialogHost } from "@/components/auth/auth-dialog-host";
 import { AppProviders } from "@/components/layout/app-providers";
 import { router } from "@/router";
 import { installSiteTrafficCollector } from "@/services/site-traffic";
+import { applyThemePackCanvas } from "@/themes/apply";
+import { useAppearanceStore } from "@/stores/use-appearance-store";
+
+// 外观请求和 application 并行启动：请求先完成时，主题包尚未登记。
+applyThemePackCanvas(useAppearanceStore.getState().appearance.skinId);
 
 // 登录弹窗渲染在路由之外（分享页等路由也要能打开），导航直接交给 router。
 const navigateFromAuthDialog = (to: string) => void router.navigate(to);

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useLayoutEffect, useRef, type ReactNode } from "react";
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import { ConfigProvider } from "antd";
 
@@ -7,16 +7,18 @@ import { useAgentPanelDock } from "@/components/canvas/use-agent-panel-dock";
 import { cn } from "@/lib/utils";
 import { isSpatialWorkbenchPath } from "@/lib/workspace-routes";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
+import { useThemePack } from "@/themes/use-theme-pack";
 import { useGlobalAgentStore } from "@/stores/use-global-agent-store";
 import { useUserStore } from "@/stores/use-user-store";
 import "@/styles/workspace-product.css";
 import "@/styles/workspace-menus.css";
 
-const workspaceTheme = getWorkspaceAntThemeConfig();
 // 平台唯一的 Agent 面板按需加载，不拖慢首屏；画布编辑器只发布画布上下文，不再自己渲染面板。
 const GlobalAgentPanel = lazy(() => import("@/components/canvas/canvas-cloud-agent-panel").then((module) => ({ default: module.CanvasCloudAgentPanel })));
 
 export default function UserLayout({ children }: { children: ReactNode }) {
+    const workspaceStyle = useThemePack()?.workspaceStyle;
+    const workspaceTheme = useMemo(() => getWorkspaceAntThemeConfig(workspaceStyle), [workspaceStyle]);
     const { pathname } = useLocation();
     const adminWorkspace = pathname === "/admin" || pathname.startsWith("/admin/");
     const spatialWorkbench = isSpatialWorkbenchPath(pathname);

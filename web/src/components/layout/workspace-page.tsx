@@ -7,6 +7,7 @@ import { currentLocale } from "@/i18n";
 
 import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/base/select";
+import { useThemePack } from "@/themes/use-theme-pack";
 
 export function WorkspacePage({ children, className, grid = false, fluid = false, scroll = true }: { children: ReactNode; className?: string; grid?: boolean; fluid?: boolean; scroll?: boolean }) {
     return (
@@ -16,18 +17,26 @@ export function WorkspacePage({ children, className, grid = false, fluid = false
     );
 }
 
-export function PageHeader({ title, description, meta, actions }: { title: string; description?: string; meta?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, description, meta, actions, navigation }: { title: string; description?: string; meta?: ReactNode; actions?: ReactNode; navigation?: ReactNode }) {
+    const joysee = useThemePack()?.workspaceStyle === "joysee";
     return (
-        <header className="app-page-header flex min-h-14 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-                <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <h1 className="app-page-header-title truncate font-semibold leading-7">{title}</h1>
-                        {meta}
-                    </div>
-                    {description ? <p className="mt-1 text-xs leading-5 text-foreground/58">{description}</p> : null}
+        <header className={cn("app-page-header flex flex-col sm:flex-row sm:items-center sm:justify-between", joysee ? "collection-navigation-header min-h-10 gap-2" : "min-h-14 gap-3")}>
+            {joysee && navigation ? (
+                <div className="collection-navigation-content">
+                    <h1 className="sr-only">{title}</h1>
+                    {navigation}
                 </div>
-            </div>
+            ) : (
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <h1 className="app-page-header-title truncate font-semibold leading-7">{title}</h1>
+                            {meta}
+                        </div>
+                        {description ? <p className="mt-1 text-xs leading-5 text-foreground/58">{description}</p> : null}
+                    </div>
+                </div>
+            )}
             {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
     );
@@ -67,7 +76,8 @@ export function ListToolbar({
                     <>
                         {!filtersAlwaysVisible ? (
                             <Button type="default" className="admin-filter-toggle" aria-expanded={filtersOpen} icon={<ListFilter className="size-3.5" />} onClick={() => setFiltersOpen((open) => !open)}>
-                                {t("account.layout.list.filter")}{active ? <span className="admin-filter-active-dot" aria-label={t("account.layout.list.filterActive")} /> : null}
+                                {t("account.layout.list.filter")}
+                                {active ? <span className="admin-filter-active-dot" aria-label={t("account.layout.list.filterActive")} /> : null}
                             </Button>
                         ) : null}
                         <div className={cn("admin-list-toolbar-filters flex flex-wrap items-center gap-2", (filtersAlwaysVisible || filtersOpen) && "is-open")}>{filters}</div>
@@ -92,7 +102,11 @@ export function TableSurface({ children, className }: { children: ReactNode; cla
 }
 
 export function CollectionGrid({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
-    return <div className={cn("mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(248px,1fr))]", className)} style={style}>{children}</div>;
+    return (
+        <div className={cn("mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(248px,1fr))]", className)} style={style}>
+            {children}
+        </div>
+    );
 }
 
 /* 自研轻量分页：总数 + 胶囊页码组 + 跳页 + 每页条数。用户端和后台共用，外观集中在 globals.css 的 app-pagination-*。 */
@@ -139,7 +153,11 @@ export function PaginationBar({
     return (
         <nav className={cn("app-pagination-bar", className)} aria-label={t("account.layout.pagination.label")}>
             <span className="app-pagination-total">
-                {total === 0 ? <Trans i18nKey="account.layout.pagination.totalEmpty" values={{ item }} components={{ b: <b /> }} /> : <Trans i18nKey="account.layout.pagination.totalRange" values={{ start, end, total: total.toLocaleString(currentLocale()), item }} components={{ b: <b /> }} />}
+                {total === 0 ? (
+                    <Trans i18nKey="account.layout.pagination.totalEmpty" values={{ item }} components={{ b: <b /> }} />
+                ) : (
+                    <Trans i18nKey="account.layout.pagination.totalRange" values={{ start, end, total: total.toLocaleString(currentLocale()), item }} components={{ b: <b /> }} />
+                )}
             </span>
             <div className="app-pagination-controls">
                 <div className="app-pagination-pages">
@@ -152,7 +170,14 @@ export function PaginationBar({
                                 …
                             </span>
                         ) : (
-                            <button key={item} type="button" className={cn("app-pagination-btn", item === current && "is-active")} aria-current={item === current ? "page" : undefined} aria-label={t("account.layout.pagination.page", { page: item })} onClick={() => go(item)}>
+                            <button
+                                key={item}
+                                type="button"
+                                className={cn("app-pagination-btn", item === current && "is-active")}
+                                aria-current={item === current ? "page" : undefined}
+                                aria-label={t("account.layout.pagination.page", { page: item })}
+                                onClick={() => go(item)}
+                            >
                                 {item}
                             </button>
                         ),
@@ -164,12 +189,32 @@ export function PaginationBar({
                 {pages > 7 ? (
                     <label className="app-pagination-jump">
                         {t("account.layout.pagination.jumpBefore")}
-                        <input inputMode="numeric" value={jump} placeholder={String(current)} aria-label={t("account.layout.pagination.jumpLabel")} onChange={(event) => setJump(event.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(event) => { if (event.key === "Enter") submitJump(); }} onBlur={() => { if (jump) submitJump(); }} />
+                        <input
+                            inputMode="numeric"
+                            value={jump}
+                            placeholder={String(current)}
+                            aria-label={t("account.layout.pagination.jumpLabel")}
+                            onChange={(event) => setJump(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") submitJump();
+                            }}
+                            onBlur={() => {
+                                if (jump) submitJump();
+                            }}
+                        />
                         {t("account.layout.pagination.jumpAfter")}
                     </label>
                 ) : null}
                 {pageSizeOptions.length > 1 ? (
-                    <Select size="small" value={pageSize} className="app-pagination-size" popupMatchSelectWidth={false} ariaLabel={t("account.layout.pagination.pageSize")} options={pageSizeOptions.map((size) => ({ value: size, label: t("account.layout.pagination.perPage", { size, item }) }))} onChange={(value) => onChange(1, Number(value))} />
+                    <Select
+                        size="small"
+                        value={pageSize}
+                        className="app-pagination-size"
+                        popupMatchSelectWidth={false}
+                        ariaLabel={t("account.layout.pagination.pageSize")}
+                        options={pageSizeOptions.map((size) => ({ value: size, label: t("account.layout.pagination.perPage", { size, item }) }))}
+                        onChange={(value) => onChange(1, Number(value))}
+                    />
                 ) : null}
             </div>
         </nav>

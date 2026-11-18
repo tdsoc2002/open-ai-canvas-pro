@@ -1,4 +1,4 @@
-import { HardDrive } from "lucide-react";
+import { ChevronRight, HardDrive } from "lucide-react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -16,7 +16,7 @@ function StorageGlyph() {
     );
 }
 
-export function WorkspaceSidebarStorageMeter({ collapsed }: { collapsed: boolean }) {
+export function WorkspaceSidebarStorageMeter({ collapsed, onOpen }: { collapsed: boolean; onOpen?: () => void }) {
     const { t } = useTranslation();
     const query = useAccountFileStorageUsage();
     const meter = accountStorageMeter(query.data);
@@ -71,6 +71,7 @@ export function WorkspaceSidebarStorageMeter({ collapsed }: { collapsed: boolean
     return (
         <Link
             to="/assets"
+            onClick={onOpen}
             className={cn(
                 "app-workspace-sidebar-storage",
                 collapsed && "is-collapsed",
@@ -85,20 +86,27 @@ export function WorkspaceSidebarStorageMeter({ collapsed }: { collapsed: boolean
             onFocus={() => preloadWorkspaceRoute("/assets")}
             onPointerEnter={() => preloadWorkspaceRoute("/assets")}
         >
-            <StorageGlyph />
             {collapsed ? (
-                track
+                <>
+                    <StorageGlyph />
+                    {track}
+                </>
             ) : (
                 <span className="app-workspace-sidebar-storage-body">
-                    <span className="app-workspace-sidebar-storage-copy">
-                        <span className="app-workspace-sidebar-storage-meta">
-                            <span className="app-workspace-sidebar-storage-used">{usedText}</span>
-                            {totalText ? <span className="app-workspace-sidebar-storage-total">{totalText}</span> : null}
+                    <span className="app-workspace-sidebar-storage-meta">
+                        <span className="app-workspace-sidebar-storage-used">
+                            <StorageGlyph />
+                            <span>{usedText}</span>
                         </span>
+                        {totalText ? <span className="app-workspace-sidebar-storage-total">{totalText}</span> : null}
                     </span>
+                    {track}
                     <span className="app-workspace-sidebar-storage-foot">
-                        {track}
                         {remainingText ? <span className="app-workspace-sidebar-storage-remain">{remainingText}</span> : null}
+                        <span className="app-workspace-sidebar-storage-action" aria-hidden="true">
+                            {t("account.layout.storage.manage")}
+                            <ChevronRight />
+                        </span>
                     </span>
                 </span>
             )}

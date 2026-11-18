@@ -1,0 +1,255 @@
+/* LJCanvas 当前工作区组件节奏；只作用于本主题，业务页面继续拥有自己的结构与状态。 */
+:root[data-skin="joysee-minimal"] {
+    --joysee-content-max: 1600px;
+    --joysee-hit-target: 44px;
+}
+:root[data-skin="joysee-minimal"] :is(.app-user-workspace, .app-user-overlays) {
+    --button-height: 40px;
+    --button-height-sm: 32px;
+    --button-font-size: 14px;
+    --button-font-size-sm: 14px;
+    --button-gap: var(--space-2);
+    --button-secondary-bg: var(--card);
+    --button-secondary-hover-bg: var(--control-selected-bg);
+    --button-secondary-active-bg: var(--control-selected-hover-bg);
+    --button-secondary-fg: var(--foreground);
+    --button-secondary-border: var(--border);
+    --button-secondary-hover-border: var(--input);
+    --button-secondary-shadow: none;
+    --button-ghost-fg: var(--muted-foreground);
+    --button-ghost-hover-fg: var(--foreground);
+    --button-ghost-hover-bg: var(--control-selected-bg);
+    --button-ghost-active-bg: var(--control-selected-hover-bg);
+}
+:root[data-skin="joysee-minimal"] :is(.app-user-workspace, .app-user-overlays) {
+    --fs-ui: 14px;
+    --fs-body: 14px;
+    --fs-title: 32px;
+    --unified-input-radius: var(--input-radius);
+    --user-control-height: var(--button-height);
+    --user-control-height-sm: var(--button-height-sm);
+    --user-button-font-size: var(--button-font-size);
+    --user-button-font-weight: 500;
+    --user-radius-card: var(--card-radius);
+    --user-radius-media: var(--card-radius);
+    --user-card-hover: var(--control-selected-bg);
+    --library-surface: var(--card);
+    --library-surface-hover: var(--control-selected-bg);
+    --library-cover-surface: var(--muted);
+    --library-icon-surface: var(--muted);
+    --product-focus-ring: var(--ring);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .app-workspace-grid {
+    background: var(--background);
+    background-image: none;
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .app-user-content > div {
+    width: 100%;
+    max-width: var(--joysee-content-max);
+    margin-inline: auto;
+    padding: var(--space-6) var(--space-8) var(--space-12);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .app-page-header {
+    margin-bottom: var(--space-4);
+    min-height: var(--button-height);
+    background: transparent;
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .app-page-header-title {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .collection-navigation-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: var(--control-border-width) solid var(--user-border);
+}
+:root[data-skin="joysee-minimal"] .collection-navigation-content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+:root[data-skin="joysee-minimal"] .collection-scope-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+}
+:root[data-skin="joysee-minimal"] .collection-scope-navigation > button {
+    display: inline-flex;
+    width: auto;
+    min-height: var(--button-height-sm);
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border: 0;
+    border-radius: var(--button-radius);
+    background: transparent;
+    color: var(--user-ink-muted);
+    font-size: var(--fs-ui);
+}
+:root[data-skin="joysee-minimal"] .collection-scope-navigation > button:is([aria-pressed="true"], :hover) {
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .collection-toolbar.is-compact {
+    margin: var(--space-2) 0 var(--space-3);
+    gap: var(--space-2);
+    --user-control-height: var(--button-height-sm);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .canvas-list-page .collection-toolbar.is-compact {
+    margin-top: 0;
+}
+:root[data-skin="joysee-minimal"] .collection-toolbar-controls {
+    justify-content: flex-end;
+}
+:root[data-skin="joysee-minimal"] .collection-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-inline-start: auto;
+}
+:root[data-skin="joysee-minimal"] .collection-toolbar-controls > * {
+    max-width: 100%;
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .assets-empty.is-joysee-empty {
+    display: flex;
+    min-height: 280px;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-12) var(--space-4);
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+:root[data-skin="joysee-minimal"] .assets-empty.is-joysee-empty h2 {
+    margin: 0;
+    color: var(--user-ink);
+    font-size: var(--fs-body);
+    font-weight: 500;
+}
+:root[data-skin="joysee-minimal"] .plugins-sidebar {
+    border: 0;
+    background: var(--user-surface-muted);
+    border-radius: var(--card-radius);
+}
+:root[data-skin="joysee-minimal"] :is(.plugins-sidebar-item, .assets-filter-item, .assets-folder-item) {
+    border-radius: var(--button-radius);
+    box-shadow: none;
+}
+:root[data-skin="joysee-minimal"] :is(.plugins-sidebar-item, .assets-filter-item, .assets-folder-item):is([aria-pressed="true"], .is-active) {
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .skill-tile {
+    border: var(--control-border-width) solid var(--border);
+    border-radius: var(--card-radius);
+    background: var(--card);
+    box-shadow: none;
+    transition: border-color var(--button-motion);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .skill-tile:is(:hover, :focus-within) {
+    border-color: var(--input);
+    box-shadow: none;
+    transform: none;
+}
+:root[data-skin="joysee-minimal"] .skill-tile-body {
+    gap: var(--space-2);
+    padding: var(--space-3);
+}
+:root[data-skin="joysee-minimal"] .skill-tile-name {
+    font-size: var(--fs-body);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .app-user-content.canvas-list-page > div {
+    padding-top: var(--space-3);
+}
+:root[data-skin="joysee-minimal"] :is(.asset-library-card, .plugin-card, .project-library-card, .task-center-card, .task-center-row) {
+    border-radius: var(--card-radius);
+    box-shadow: none;
+    transform: none;
+}
+:root[data-skin="joysee-minimal"] :is(.task-center-card, .task-center-row, .settings-section, .profile-section) {
+    background: var(--card);
+    border-color: var(--border);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace :is(.settings-channel, .settings-preference-block) {
+    border: var(--control-border-width) solid var(--border);
+    border-radius: var(--card-radius);
+    background: var(--card);
+    box-shadow: none;
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .settings-nav-panel {
+    background: var(--muted);
+    border-color: var(--border);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .settings-nav-item.is-active {
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+}
+:root[data-skin="joysee-minimal"] .app-user-workspace .workspace-state {
+    min-height: 256px;
+    padding-block: var(--space-8);
+}
+:root[data-skin="joysee-minimal"] .workspace-state h2 {
+    font-size: var(--fs-body);
+}
+:root[data-skin="joysee-minimal"] .plugins-page-layout {
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-8);
+}
+/* 既有内容卡的 important 材质规则在 utilities 层，限定同层覆盖，不新增全局控件补丁。 */
+@layer utilities {
+    :root[data-skin="joysee-minimal"] .app-user-workspace .product-collection-card {
+        border: 0 !important;
+        background: var(--card) !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+    :root[data-skin="joysee-minimal"] .app-user-workspace .product-collection-card:is(:hover, :focus-within) {
+        background: var(--control-selected-bg) !important;
+        box-shadow: none !important;
+    }
+    :root[data-skin="joysee-minimal"] .app-user-workspace .product-collection-card.canvas-collection-card {
+        background: transparent !important;
+    }
+}
+@media (max-width: 767px) {
+    :root[data-skin="joysee-minimal"] :is(.app-user-workspace, .app-user-overlays) {
+        --fs-title: 24px;
+    }
+    :root[data-skin="joysee-minimal"] .app-user-workspace .app-user-content > div,
+    :root[data-skin="joysee-minimal"] .plugins-page-layout {
+        padding: var(--space-4);
+    }
+    :root[data-skin="joysee-minimal"] .app-user-workspace .collection-navigation-header {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    :root[data-skin="joysee-minimal"] .collection-toolbar-controls {
+        flex-basis: 100%;
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 480px) {
+    :root[data-skin="joysee-minimal"] .app-user-workspace .canvas-collection-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+@media (pointer: coarse) {
+    :root[data-skin="joysee-minimal"] .collection-toolbar.is-compact {
+        --user-control-height: var(--joysee-hit-target);
+    }
+    :root[data-skin="joysee-minimal"] .collection-scope-navigation > button {
+        min-height: var(--joysee-hit-target);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root[data-skin="joysee-minimal"] .skill-tile {
+        transition: none;
+    }
+}

@@ -288,7 +288,6 @@ export function ProfilePane() {
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>{t("settings.sections.profile.label")}</h2>
-                    <p>{t("account.settings.profile.description")}</p>
                 </div>
                 <Button icon={<RefreshCw className="size-4" />} loading={profileQuery.isFetching} disabled={!!pending} onClick={() => void profileQuery.refetch()}>
                     {t("account.settings.profile.refresh")}
@@ -314,7 +313,6 @@ export function ProfilePane() {
                     <section className="profile-overview" aria-labelledby="profile-avatar-title">
                         <div className="profile-overview-heading">
                             <h3 id="profile-avatar-title">{t("account.settings.profile.avatarTitle")}</h3>
-                            <p>{t("account.settings.profile.avatarDescription")}</p>
                         </div>
                         <div className="profile-overview-main">
                             <UserAvatar user={profile.user} className="profile-avatar-preview" />

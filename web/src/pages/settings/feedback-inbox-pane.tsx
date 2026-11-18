@@ -40,10 +40,7 @@ export function FeedbackInboxPane() {
         <section className="space-y-4" aria-label={t("account.feedback.tabInbox")}>
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-4">
-                <div>
-                    <h3 className="text-base font-semibold text-foreground">{t("account.settings.feedbacks.title")}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t("account.settings.feedbacks.description")}</p>
-                </div>
+                <h3 className="text-base font-semibold text-foreground">{t("account.settings.feedbacks.title")}</h3>
                 <div className="flex items-center gap-2">
                     <Button size="small" icon={<RefreshCw className={cn("size-3.5", loading && "animate-spin")} />} onClick={() => void loadData()}>
                         {t("common.refresh")}
@@ -78,10 +75,7 @@ export function FeedbackInboxPane() {
             ) : feedbacks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-xs gap-3 rounded-2xl border border-dashed border-border/60 bg-muted/10">
                     <Inbox className="size-10 text-muted-foreground/30" />
-                    <div className="text-center">
-                        <p className="font-medium text-foreground">{t("account.settings.feedbacks.empty")}</p>
-                        <p className="text-[var(--fs-label)] text-muted-foreground/80 mt-1">{t("account.settings.feedbacks.emptyHint")}</p>
-                    </div>
+                    <p className="text-center font-medium text-foreground">{t("account.settings.feedbacks.empty")}</p>
                     <Button type="primary" size="small" onClick={() => setSubmitModalOpen(true)}>
                         {t("account.feedback.submitFirst")}
                     </Button>

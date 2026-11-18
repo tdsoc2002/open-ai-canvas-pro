@@ -49,13 +49,16 @@ describe("account storage meter", () => {
 });
 
 describe("workspace sidebar storage meter", () => {
-    test("sits above the signed-in profile and shows used, remaining and total", () => {
+    test("account menu shows used, remaining and total while retaining the asset destination", () => {
         const sidebar = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-sidebar-nav.tsx"), "utf8");
+        const account = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-account-card.tsx"), "utf8");
         const meter = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-sidebar-storage-meter.tsx"), "utf8");
         const css = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
 
-        expect(sidebar).toContain("<WorkspaceSidebarStorageMeter collapsed={collapsed} />");
-        expect(sidebar.indexOf("WorkspaceSidebarStorageMeter")).toBeLessThan(sidebar.indexOf("app-workspace-sidebar-profile-row"));
+        expect(sidebar).not.toContain("WorkspaceSidebarStorageMeter");
+        expect(account).toContain("<WorkspaceSidebarStorageMeter collapsed={false} onOpen={onNavigate} />");
+        expect(account.indexOf("workspace-account-card-storage")).toBeGreaterThan(account.indexOf("workspace-account-card-wallet"));
+        expect(account.indexOf("workspace-account-card-storage")).toBeLessThan(account.indexOf("workspace-account-card-actions"));
         expect(meter).toContain("HardDrive");
         expect(meter).toContain("app-workspace-sidebar-storage-icon");
         expect(meter).toContain('t("account.layout.storage.used", { size: meter.usedLabel })');
@@ -64,6 +67,8 @@ describe("workspace sidebar storage meter", () => {
         expect(meter).toContain('t("account.layout.storage.total", { size: meter.totalLabel })');
         expect(accountZh.layout.storage).toMatchObject({ remaining: "剩余 {{size}}", total: "共 {{size}}" });
         expect(meter).toContain('to="/assets"');
+        expect(meter).toContain("onClick={onOpen}");
+        expect(accountZh.layout.storage.manage).toBe("管理空间");
         expect(css).toContain(".app-workspace-sidebar-storage-icon");
         expect(css).toMatch(/\.app-workspace-sidebar-storage-used\s*\{[^}]*font-variant-numeric:\s*tabular-nums/s);
         expect(css).toContain(".app-workspace-sidebar-storage.is-warn");

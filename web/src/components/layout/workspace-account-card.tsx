@@ -1,5 +1,5 @@
 import { Button } from "antd";
-import { ArrowUpRight, Coins, Gift, LogOut, RefreshCw, Settings, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Gift, LogOut, RefreshCw, Settings, ShieldCheck } from "lucide-react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { currentLocale } from "@/i18n";
@@ -9,6 +9,8 @@ import { useWorkspaceLogout } from "@/hooks/use-workspace-logout";
 import { useUserStore } from "@/stores/use-user-store";
 import { UserAvatar } from "./user-avatar";
 import { UserGroupAvatarRing, UserGroupBadge } from "./user-group-badge";
+import { WorkspaceCreditGiftMark } from "./workspace-credit-gift-mark";
+import { WorkspaceSidebarStorageMeter } from "./workspace-sidebar-storage-meter";
 import "./workspace-account-card.css";
 
 /** 同一账户卡片用于顶部和侧栏；余额与退出均复用真实服务。 */
@@ -39,7 +41,7 @@ export function WorkspaceAccountCard({ onWallet, onNavigate }: { onWallet: () =>
                 <div className="workspace-account-card-wallet">
                     <div className="workspace-account-card-balance">
                         <span>
-                            <Coins />
+                            <WorkspaceCreditGiftMark />
                             {t("shell.account.availableCredits")}
                         </span>
                         <strong>{availableMicrocredits === null ? "—" : formatCreditDisplay(availableMicrocredits, currentLocale())}</strong>
@@ -56,6 +58,9 @@ export function WorkspaceAccountCard({ onWallet, onNavigate }: { onWallet: () =>
                     )}
                 </div>
             ) : null}
+            <div className="workspace-account-card-storage">
+                <WorkspaceSidebarStorageMeter collapsed={false} onOpen={onNavigate} />
+            </div>
             <nav className="workspace-account-card-actions" aria-label={t("shell.account.actions")}>
                 <Link to="/settings?section=profile" onClick={onNavigate}>
                     <Settings />

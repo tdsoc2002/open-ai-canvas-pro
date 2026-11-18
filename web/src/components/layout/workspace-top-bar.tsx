@@ -50,8 +50,8 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
                 {creditsEnabled ? (
                     <button type="button" className="app-workspace-topbar-credit-pill" aria-label={t("shell.openWallet", { balance })} onClick={() => openWorkspaceWallet()}>
                         <WorkspaceCreditGiftMark />
-                        <span>{t("shell.credits")}</span>
                         <strong>{balance}</strong>
+                        <span>{t("shell.credits")}</span>
                     </button>
                 ) : null}
                 {user ? <SystemAnnouncementCenter userId={user.id} className="app-workspace-topbar-icon-button" autoOpen /> : null}

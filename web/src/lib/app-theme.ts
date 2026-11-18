@@ -185,8 +185,12 @@ export function getAntThemeConfig(dark: boolean, skinID: unknown = "classic"): T
                 skin.shadowStyle === "none"
                     ? "none"
                     : skin.shadowStyle === "strong"
-                      ? dark ? "0 1px 3px rgba(0, 0, 0, 0.5), 0 28px 84px rgba(0, 0, 0, 0.6)" : "0 1px 3px rgba(15, 23, 42, 0.12), 0 26px 72px rgba(15, 23, 42, 0.2)"
-                      : dark ? "0 1px 2px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.44)" : "0 1px 2px rgba(15, 23, 42, 0.08), 0 20px 56px rgba(15, 23, 42, 0.12)",
+                      ? dark
+                          ? "0 1px 3px rgba(0, 0, 0, 0.5), 0 28px 84px rgba(0, 0, 0, 0.6)"
+                          : "0 1px 3px rgba(15, 23, 42, 0.12), 0 26px 72px rgba(15, 23, 42, 0.2)"
+                      : dark
+                        ? "0 1px 2px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.44)"
+                        : "0 1px 2px rgba(15, 23, 42, 0.08), 0 20px 56px rgba(15, 23, 42, 0.12)",
             // 圆角四档 4/8/12/16：控件 8、卡片与浮层 12、弹窗 16、小元素 4。
             borderRadius: skin.borderRadius || 8,
             borderRadiusLG: skin.borderRadiusLG || 12,
@@ -411,15 +415,23 @@ export function getAntThemeConfig(dark: boolean, skinID: unknown = "classic"): T
  * 管理后台使用更高密度的控件节奏；只在 AdminShell 内挂载，避免改变创作端的视觉契约。
  */
 /** 用户端与后台共享业务控件，但使用独立的产品尺寸和柔和表面。 */
-export function getWorkspaceAntThemeConfig(): ThemeConfig {
+export function getWorkspaceAntThemeConfig(style?: "joysee"): ThemeConfig {
+    const joysee = style === "joysee";
     return {
         // 控件尺度与 globals.css 的 --user-control-height / --user-radius-button 保持同值：
-        // 34px 常规、28px 紧凑、8px 圆角；按钮、输入框、选择器在同一工具栏里等高对齐。
+        // 默认34/28px，乐见40/32px；均为8px圆角，按钮、输入框和选择器在同一工具栏等高。
         token: {
-            borderRadius: 8, borderRadiusLG: 12, borderRadiusSM: 4,
-            controlHeight: 34, controlHeightSM: 28, controlHeightLG: 40,
+            borderRadius: 8,
+            borderRadiusLG: 12,
+            borderRadiusSM: 4,
+            controlHeight: joysee ? 40 : 34,
+            controlHeightSM: joysee ? 32 : 28,
+            controlHeightLG: 40,
+            ...(joysee ? { fontSize: 14, fontSizeSM: 14 } : {}),
             // 进入 150–250ms；antd 的 Slow 用于浮层进出，不超过 250ms。
-            motionDurationFast: "0.15s", motionDurationMid: "0.2s", motionDurationSlow: "0.25s",
+            motionDurationFast: joysee ? "0.12s" : "0.15s",
+            motionDurationMid: joysee ? "0.18s" : "0.2s",
+            motionDurationSlow: joysee ? "0.22s" : "0.25s",
             motionEaseInOut: "cubic-bezier(0.16, 1, 0.3, 1)",
             motionEaseOut: "cubic-bezier(0.16, 1, 0.3, 1)",
             // antd 默认 Back 曲线会越界（Checkbox 勾选、Badge 弹出像回弹），工作台统一不越界。
@@ -430,18 +442,39 @@ export function getWorkspaceAntThemeConfig(): ThemeConfig {
             // 用户工作台与根主题、后台共用同一套按钮规范（docs/ui-design-system.md §3.0），这里只收紧高度。
             // 主按钮实底由 primary-buttons.css 接管；次要按钮是带 1px 边缘的实体键，文字按钮悬停才出现底色。
             Button: {
-                borderRadius: 8, borderRadiusSM: 8, borderRadiusLG: 8,
-                fontWeight: 500, contentFontSize: 13, contentFontSizeSM: 12, contentFontSizeLG: 14,
-                paddingInline: 12, paddingInlineSM: 8, paddingInlineLG: 16,
-                iconGap: 6, onlyIconSize: 16, onlyIconSizeSM: 14, onlyIconSizeLG: 16,
-                defaultBg: "var(--button-secondary-bg)", defaultColor: "var(--button-secondary-fg)", defaultBorderColor: "var(--button-secondary-border)",
-                defaultHoverBg: "var(--button-secondary-hover-bg)", defaultHoverColor: "var(--button-secondary-fg)", defaultHoverBorderColor: "var(--button-secondary-hover-border)",
-                defaultActiveBg: "var(--button-secondary-active-bg)", defaultActiveColor: "var(--button-secondary-fg)", defaultActiveBorderColor: "var(--button-secondary-hover-border)",
-                textTextColor: "var(--button-ghost-fg)", textTextHoverColor: "var(--button-ghost-hover-fg)", textTextActiveColor: "var(--button-ghost-hover-fg)",
+                borderRadius: 8,
+                borderRadiusSM: 8,
+                borderRadiusLG: 8,
+                fontWeight: 500,
+                contentFontSize: joysee ? 14 : 13,
+                contentFontSizeSM: joysee ? 14 : 12,
+                contentFontSizeLG: 14,
+                paddingInline: 12,
+                paddingInlineSM: 8,
+                paddingInlineLG: 16,
+                iconGap: 6,
+                onlyIconSize: 16,
+                onlyIconSizeSM: 14,
+                onlyIconSizeLG: 16,
+                defaultBg: "var(--button-secondary-bg)",
+                defaultColor: "var(--button-secondary-fg)",
+                defaultBorderColor: "var(--button-secondary-border)",
+                defaultHoverBg: "var(--button-secondary-hover-bg)",
+                defaultHoverColor: "var(--button-secondary-fg)",
+                defaultHoverBorderColor: "var(--button-secondary-hover-border)",
+                defaultActiveBg: "var(--button-secondary-active-bg)",
+                defaultActiveColor: "var(--button-secondary-fg)",
+                defaultActiveBorderColor: "var(--button-secondary-hover-border)",
+                textTextColor: "var(--button-ghost-fg)",
+                textTextHoverColor: "var(--button-ghost-hover-fg)",
+                textTextActiveColor: "var(--button-ghost-hover-fg)",
                 // antd 6 文字按钮按下态取 colorFill（color-light-active）。
-                textHoverBg: "var(--button-ghost-hover-bg)", colorFill: "var(--button-ghost-active-bg)",
+                textHoverBg: "var(--button-ghost-hover-bg)",
+                colorFill: "var(--button-ghost-active-bg)",
                 defaultBgDisabled: "var(--button-secondary-bg)",
-                defaultShadow: "none", primaryShadow: "none", dangerShadow: "none",
+                defaultShadow: "none",
+                primaryShadow: "none",
+                dangerShadow: "none",
             },
             Input: {
                 borderRadius: 8,
@@ -458,11 +491,15 @@ export function getWorkspaceAntThemeConfig(): ThemeConfig {
             },
             Select: {
                 borderRadius: 8,
-                colorBgElevated: "var(--user-surface-raised)", boxShadowSecondary: "none",
-                colorFillTertiary: "var(--user-surface-muted)", colorFillSecondary: "var(--user-surface-hover)",
+                colorBgElevated: "var(--user-surface-raised)",
+                boxShadowSecondary: "none",
+                colorFillTertiary: "var(--user-surface-muted)",
+                colorFillSecondary: "var(--user-surface-hover)",
                 activeOutlineColor: "transparent",
-                optionSelectedBg: "var(--user-surface-hover)", optionSelectedColor: "var(--user-ink)",
-                optionActiveBg: "var(--user-surface-muted)", optionPadding: "8px 12px",
+                optionSelectedBg: "var(--user-surface-hover)",
+                optionSelectedColor: "var(--user-ink)",
+                optionActiveBg: "var(--user-surface-muted)",
+                optionPadding: "8px 12px",
             },
             Dropdown: { borderRadiusLG: 12, colorBgElevated: "var(--user-surface-raised)", boxShadowSecondary: "none", controlItemBgHover: "var(--user-surface-muted)", paddingBlock: 8 },
             Popover: { borderRadiusLG: 12, colorBgElevated: "var(--user-surface-raised)", boxShadowSecondary: "none" },
