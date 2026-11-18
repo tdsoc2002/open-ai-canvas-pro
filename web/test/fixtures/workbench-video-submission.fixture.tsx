@@ -113,6 +113,7 @@ try {
             );
             assert.ok(setPrompt);
             assert.ok(submit);
+            assert.deepEqual(Array.from(host.querySelectorAll(".wb-field-label"), (element) => element.textContent).slice(0, 3), ["分辨率", "宽高比", "时长"]);
             await act(async () => setPrompt!("测试提示词"));
             await act(async () => submit!());
             const request = requests.pop();

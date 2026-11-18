@@ -229,7 +229,12 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const requestedCount = Math.min(batchLimit, Math.max(1, Math.floor(count) || 1));
     const plan = useMemo(() => planWorkbenchBatch(kind, requestedCount, maxOutputsPerTask), [kind, maxOutputsPerTask, requestedCount]);
     const promptMaxChars = kind === "image" ? imageProfile?.references.promptMaxChars || 32000 : videoProfile?.references.promptMaxChars || 8000;
-    const unslottedLimit = kind === "image" ? imageProfile?.references.maxImages || 0 : (videoProfile?.references.maxImages || 0) + (videoProfile?.references.maxVideos || 0) + (videoProfile?.references.maxAudios || 0);
+    const referenceLimits = {
+        image: (kind === "image" ? imageProfile?.references.maxImages : videoProfile?.references.maxImages) || 0,
+        video: kind === "video" ? videoProfile?.references.maxVideos || 0 : 0,
+        audio: kind === "video" ? videoProfile?.references.maxAudios || 0 : 0,
+    };
+    const unslottedLimit = referenceLimits.image + referenceLimits.video + referenceLimits.audio;
     const quickTools = useMemo(() => workbenchQuickTools(tools), [tools]);
     const promptRequired = workbenchPromptRequired(tool);
     const missingInput = missingWorkbenchInput(tool, references);
@@ -664,16 +669,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         setPresetPending(nextPreset);
     };
 
-    const referenceLimitFor = useCallback(
-        (mediaKind: MediaKind) => {
-            if (kind === "image") return mediaKind === "image" ? imageProfile?.references.maxImages || 0 : 0;
-            if (mediaKind === "image") return videoProfile?.references.maxImages || 0;
-            if (mediaKind === "video") return videoProfile?.references.maxVideos || 0;
-            return videoProfile?.references.maxAudios || 0;
-        },
-        [imageProfile, kind, videoProfile],
-    );
-
     /** 换场景时尽量保留已上传素材：按媒体类型放进新场景的槽位，放不下的才移除。 */
     const reassignReferences = (next: WorkbenchTool | null) => {
         const slots = next?.inputContract?.slots || [];
@@ -683,7 +678,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         for (const reference of referencesRef.current) {
             if (!slots.length) {
                 const sameKind = kept.filter((item) => item.kind === reference.kind).length;
-                if (sameKind < referenceLimitFor(reference.kind)) kept.push({ ...reference, slotKey: undefined });
+                if (sameKind < referenceLimits[reference.kind]) kept.push({ ...reference, slotKey: undefined });
                 else dropped.push(reference);
                 continue;
             }
@@ -777,7 +772,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 slotKey = target.key;
             } else {
                 const sameKind = [...referencesRef.current, ...pending].filter((entry) => entry.kind === item.kind).length;
-                const limit = referenceLimitFor(item.kind);
+                const limit = referenceLimits[item.kind];
                 if (sameKind >= limit) {
                     rejected.add(limit ? `${mediaLabel(item.kind)}最多 ${limit} 个` : `当前模型不支持参考${mediaLabel(item.kind)}`);
                     if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
@@ -1414,20 +1409,20 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             </>
         ) : videoProfile ? (
             <>
-                {videoProfile.durationSupported !== false && durationOptions.length ? (
+                {videoProfile.resolutions.length ? (
                     <ChoiceChips
-                        label="时长"
-                        value={seconds}
-                        options={durationOptions}
+                        label="分辨率"
+                        value={videoQuality}
+                        options={videoProfile.resolutions.map((value) => ({ value: value.replace(/p$/i, ""), label: value }))}
                         onChange={(value) => {
-                            setSeconds(value);
-                            rememberVideoSettings({ seconds: value });
+                            setVideoQuality(value);
+                            rememberVideoSettings({ videoQuality: value });
                         }}
                     />
                 ) : null}
                 {videoProfile.ratios.length ? (
                     <ChoiceChips
-                        label="画幅"
+                        label="宽高比"
                         value={ratio}
                         options={videoRatioOptions(videoProfile.ratios)}
                         columns={videoProfile.ratios.length <= 4 ? videoProfile.ratios.length : 3}
@@ -1437,14 +1432,14 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                         }}
                     />
                 ) : null}
-                {videoProfile.resolutions.length ? (
+                {videoProfile.durationSupported !== false && durationOptions.length ? (
                     <ChoiceChips
-                        label="清晰度"
-                        value={videoQuality}
-                        options={videoProfile.resolutions.map((value) => ({ value: value.replace(/p$/i, ""), label: value }))}
+                        label="时长"
+                        value={seconds}
+                        options={durationOptions}
                         onChange={(value) => {
-                            setVideoQuality(value);
-                            rememberVideoSettings({ videoQuality: value });
+                            setSeconds(value);
+                            rememberVideoSettings({ seconds: value });
                         }}
                     />
                 ) : null}
@@ -1505,7 +1500,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                             kind={kind}
                             tool={tool}
                             references={references}
-                            unslottedLimit={unslottedLimit}
+                            referenceLimits={referenceLimits}
+                            maxTotalItems={kind === "video" ? videoProfile?.references.maxTotalItems : undefined}
                             onPick={(slotKey) => {
                                 setUploadSlotKey(slotKey);
                                 window.setTimeout(() => fileRef.current?.click(), 0);
@@ -1681,7 +1677,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                         accept={(() => {
                             const slot = tool?.inputContract?.slots.find((item) => item.key === assetPicker.slotKey);
                             if (slot) return slot.mediaTypes;
-                            return kind === "image" ? (["image"] as const) : (["image", "video", "audio"] as const).filter((mediaKind) => referenceLimitFor(mediaKind) > 0);
+                            return kind === "image" ? (["image"] as const) : (["image", "video", "audio"] as const).filter((mediaKind) => referenceLimits[mediaKind] > 0);
                         })()}
                         maxCount={(() => {
                             const slot = tool?.inputContract?.slots.find((item) => item.key === assetPicker.slotKey);

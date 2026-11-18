@@ -104,6 +104,7 @@ export type ImageCapabilityConfig = {
 
 export type VideoCapabilityConfig = {
     references: {
+        maxTotalItems?: number;
         promptMaxChars: number;
         minImages: number;
         maxImages: number;

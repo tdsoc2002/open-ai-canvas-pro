@@ -353,6 +353,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.wb-video-reference-counts .wb-section-title span {
+    white-space: normal;
+}
 .wb-section-aside {
     display: flex;
     flex: 0 0 auto;

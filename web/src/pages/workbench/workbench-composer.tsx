@@ -265,7 +265,8 @@ export function ReferenceSection({
     kind,
     tool,
     references,
-    unslottedLimit,
+    referenceLimits,
+    maxTotalItems,
     onPick,
     onDropFiles,
     onOpenLibrary,
@@ -276,7 +277,8 @@ export function ReferenceSection({
     kind: WorkbenchKind;
     tool: WorkbenchTool | null;
     references: WorkbenchReference[];
-    unslottedLimit: number;
+    referenceLimits: Record<WorkbenchReference["kind"], number>;
+    maxTotalItems?: number;
     onPick: (slotKey?: string) => void;
     onDropFiles: (files: File[], slotKey?: string) => void;
     onOpenLibrary: (slotKey?: string) => void;
@@ -306,6 +308,7 @@ export function ReferenceSection({
         />
     );
     if (!slots.length) {
+        const unslottedLimit = referenceLimits.image + referenceLimits.video + referenceLimits.audio;
         if (unslottedLimit <= 0) {
             return (
                 <ComposerSection title={kind === "image" ? "商品素材" : "参考素材"} hint="当前模型不接受参考素材">
@@ -313,8 +316,15 @@ export function ReferenceSection({
                 </ComposerSection>
             );
         }
+        const hint =
+            kind === "video"
+                ? [
+                      ...(["image", "video", "audio"] as const).map((media) => `${workbenchMediaLabel(media)} ${references.filter((reference) => reference.kind === media).length}/${referenceLimits[media]}`),
+                      `总计 ${references.length}/${Math.min(maxTotalItems ?? unslottedLimit, unslottedLimit)}`,
+                  ].join(" · ")
+                : `${references.length} / ${unslottedLimit} · ${mediaHint}`;
         return (
-            <ComposerSection title={kind === "image" ? "商品素材" : "参考素材"} hint={`${references.length} / ${unslottedLimit} · ${mediaHint}`} aside={clearAction}>
+            <ComposerSection title={kind === "image" ? "商品素材" : "参考素材"} hint={hint} aside={clearAction} className={kind === "video" ? "wb-video-reference-counts" : undefined}>
                 {renderGroup(references, { limit: unslottedLimit, label: kind === "image" ? "上传商品图" : "上传参考素材", detail: kind === "image" ? "白底或实拍图，外观越清晰越好" : "图片可设为首帧或尾帧" })}
             </ComposerSection>
         );
