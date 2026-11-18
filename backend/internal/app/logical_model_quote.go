@@ -3,6 +3,7 @@ package app
 import (
 	"strings"
 
+	"yingce/backend/internal/kernel"
 	"yingce/backend/internal/model"
 )
 
@@ -190,12 +191,12 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 	switch routed.LogicalModel.BillingMode {
 	case "fixed_request":
 		quantity = 1
-		amount, err = creditAmount(routed.LogicalModel.UnitPriceMicrocredits, 1, groupBPS)
+		amount, err = kernel.UnitBillingAmountRounded(routed.LogicalModel.UnitPriceMicrocredits, 1, groupBPS)
 	case "per_second":
 		if (capability != "video" && capability != "audio") || quantity <= 0 {
 			return nil, BadAuthRequest("当前模型按时长计费，但请求未提供有效时长")
 		}
-		amount, err = creditAmount(routed.LogicalModel.UnitPriceMicrocredits, quantity, groupBPS)
+		amount, err = kernel.UnitBillingAmountRounded(routed.LogicalModel.UnitPriceMicrocredits, quantity, groupBPS)
 	case "token":
 		if routed.ChannelModel.Capability != capability || !supportsTokenBilling(capability, routed.ChannelModel.Protocol) {
 			return nil, BadAuthRequest("当前供应线路不支持前台模型的 Token 计费方式")
@@ -209,7 +210,7 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 			CachedTokenPriceMicrocredits:     routed.LogicalModel.CachedPriceMicrocredits,
 			CacheWriteTokenPriceMicrocredits: routed.LogicalModel.CacheWritePriceMicrocredits,
 		}
-		amount, err = tokenEstimateAmount(tokenPricing, tokenEstimate, groupBPS)
+		amount, err = tokenEstimateAmountForOrder(tokenPricing, tokenEstimate, groupBPS, true)
 		quantity = tokenEstimate.InputTokens + tokenEstimate.OutputTokens
 	default:
 		return nil, BadAuthRequest("当前模型计费方式暂不支持")

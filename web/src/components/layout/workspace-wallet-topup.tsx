@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { PaymentBrandIcon } from "@/components/payment-brand-icons";
-import { formatCredits } from "@/constant/credits";
+import { formatCreditDisplay } from "@/constant/credits";
 import { currentLocale, translate } from "@/i18n";
 import { accountStorageMeter, accountStorageStateMessage, formatStorageCapacity, formatStorageDate, formatStorageDuration } from "@/lib/account-storage-usage";
 import { estimatePaymentCharge, type PaymentOption } from "@/lib/payment-options";
@@ -37,7 +37,7 @@ function productAvailability(product: TopupProduct) {
 
 /** 选中商品的权益摘要，结算栏与卡片共用。 */
 export function topupProductValue(product: TopupProduct) {
-    return product.kind === "storage" ? `+${formatStorageCapacity(product.storageBytes)}` : translate("account.wallet.topup.creditsValue", { amount: formatCredits(product.creditsMicrocredits, 6) });
+    return product.kind === "storage" ? `+${formatStorageCapacity(product.storageBytes)}` : translate("account.wallet.topup.creditsValue", { amount: formatCreditDisplay(product.creditsMicrocredits, currentLocale()) });
 }
 
 function ProductCard({ product, selected, onSelect }: { product: TopupProduct; selected: boolean; onSelect: () => void }) {

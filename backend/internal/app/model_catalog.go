@@ -358,7 +358,8 @@ func publicTokenPriceRules(capability string, tier model.ChannelModelPriceTier) 
 	return rules
 }
 
-// effectiveCatalogPrice 是展示用单价：价格 × 倍率并向上取整。实际扣费在数量相乘后再取整，误差不超过 1 微积分。
+// effectiveCatalogPrice 保留目录的整数微积分单价。截去不足一个微积分的部分，
+// 避免展示再舍入到分时提前跨过半分；极小正价仍与免费档区分。
 func effectiveCatalogPrice(price int64, multiplierBPS int64) int64 {
 	if price <= 0 {
 		return price
@@ -366,6 +367,9 @@ func effectiveCatalogPrice(price int64, multiplierBPS int64) int64 {
 	amount, err := creditAmount(price, 1, multiplierBPS)
 	if err != nil {
 		return price
+	}
+	if price*multiplierBPS%10_000 != 0 {
+		return max(1, amount-1)
 	}
 	return amount
 }

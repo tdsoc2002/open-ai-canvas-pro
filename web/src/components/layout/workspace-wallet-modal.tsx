@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { WalletTopupPanel, type TopupCategory } from "@/components/layout/workspace-wallet-topup";
 import { usePaymentOrderFlow } from "@/components/payment/use-payment-order-flow";
 import { AppModal } from "@/components/ui/product/app-modal";
-import { formatCredits } from "@/constant/credits";
+import { formatCreditDisplay, formatCredits } from "@/constant/credits";
 import { currentLocale } from "@/i18n";
 import { useAccountFileStorageUsage } from "@/hooks/use-account-file-storage-usage";
 import { accountFileStorageUsageQueryKey, accountStorageMeter } from "@/lib/account-storage-usage";
@@ -262,8 +262,8 @@ export function WorkspaceWalletModal({
                             {creditsEnabled ? (
                                 <div className="workspace-wallet-balance">
                                     <span>{t("shell.account.availableCredits")}</span>
-                                    <strong>{wallet ? formatCredits(available, 6) : "--"}</strong>
-                                    <small>{t("account.wallet.reserved", { amount: wallet ? formatCredits(wallet.account.reservedMicrocredits, 6) : "--" })}</small>
+                                    <strong>{wallet ? formatCreditDisplay(available, currentLocale()) : "--"}</strong>
+                                    <small>{t("account.wallet.reserved", { amount: wallet ? formatCreditDisplay(wallet.account.reservedMicrocredits, currentLocale()) : "--" })}</small>
                                 </div>
                             ) : null}
                             <button type="button" className="workspace-wallet-balance is-storage" aria-label={t("account.wallet.viewStorage")} onClick={() => focusProducts("storage")}>
@@ -451,9 +451,9 @@ function WalletLedgerRow({ entry }: { entry: CreditLedgerEntry }) {
                 <span>{(arkGroup ? [note] : [entry.scene, entry.model, note]).filter(Boolean).join(" · ") || t("account.wallet.ledger.change")}</span>
             </div>
             <time>{new Date(entry.createdAt).toLocaleString(currentLocale(), { hour12: false })}</time>
-            <b className={positive ? "is-income" : "is-consume"}>
+            <b className={positive ? "is-income" : "is-consume"} title={formatCredits(entry.amountMicrocredits)}>
                 {positive ? "+" : ""}
-                {formatCredits(entry.amountMicrocredits, 6)}
+                {formatCreditDisplay(entry.amountMicrocredits, currentLocale())}
             </b>
         </article>
     );

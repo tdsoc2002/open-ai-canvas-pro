@@ -6,6 +6,32 @@ import (
 	"testing"
 )
 
+func TestModelBillingRoundsOnlyFinalAmount(t *testing.T) {
+	for _, tc := range []struct {
+		price, want int64
+	}{
+		{4_999_999_999, 0}, // 4,999.999999 微积分；不能先向上取整到 5,000。
+		{5_000_000_000, 10_000},
+		{1_235_000_000_000, 1_240_000},
+	} {
+		got, err := TokenBillingAmountRounded(10_000, TokenBillingTerm{Tokens: 1, PriceMicrocredits: tc.price})
+		if err != nil || got != tc.want {
+			t.Fatalf("price %d: got %d, %v; want %d", tc.price, got, err, tc.want)
+		}
+	}
+	got, err := TokenBillingAmountRounded(10_000, TokenBillingTerm{Tokens: 1, PriceMicrocredits: 2_500_000_000}, TokenBillingTerm{Tokens: 1, PriceMicrocredits: 2_500_000_000})
+	if err != nil || got != 10_000 {
+		t.Fatalf("combined amount = %d, %v", got, err)
+	}
+	got, err = UnitBillingAmountRounded(5_000, 1, 9_999)
+	if err != nil || got != 0 {
+		t.Fatalf("unit amount just below half = %d, %v", got, err)
+	}
+	if _, err := UnitBillingAmountRounded(math.MaxInt64, 2, 10_000); !errors.Is(err, ErrTokenBillingOverflow) {
+		t.Fatalf("overflow error = %v", err)
+	}
+}
+
 func TestTokenBillingAmount(t *testing.T) {
 	for _, test := range []struct {
 		name       string

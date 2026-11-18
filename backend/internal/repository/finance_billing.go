@@ -454,7 +454,11 @@ func (r *Repository) settleBillingOrder(id string, providerRequestID string, aud
 				quantity += (order.ReferenceVideoMillis + 999) / 1000
 			}
 			var err error
-			actual, err = audioBillingAmount(order.UnitPriceMicrocredits, quantity, order.MultiplierBasisPoints)
+			calculate := audioBillingAmount
+			if order.RoundChargeToCent {
+				calculate = kernel.UnitBillingAmountRounded
+			}
+			actual, err = calculate(order.UnitPriceMicrocredits, quantity, order.MultiplierBasisPoints)
 			if err != nil {
 				return err
 			}
@@ -879,7 +883,11 @@ func tokenUsageAmount(order model.BillingOrder, usage *BillingUsage) (int64, int
 			kernel.TokenBillingTerm{Tokens: usage.CacheWriteTokens, PriceMicrocredits: prices.CacheWrite},
 		)
 	}
-	amount, err := kernel.TokenBillingAmount(order.MultiplierBasisPoints, terms...)
+	calculate := kernel.TokenBillingAmount
+	if order.RoundChargeToCent {
+		calculate = kernel.TokenBillingAmountRounded
+	}
+	amount, err := calculate(order.MultiplierBasisPoints, terms...)
 	if err != nil {
 		return 0, 0, errors.New("invalid token usage amount")
 	}

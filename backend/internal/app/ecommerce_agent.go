@@ -287,7 +287,8 @@ func (s *Service) ecommerceAgentOrder(userID, runID, key string, req ecommerceag
 		modelKey = cfg.ImageModel
 	}
 	intent := ModelRequestIntent{Capability: "image", Operation: "image_to_image", Inputs: map[string]int{"image": 1}, Options: map[string]any{}}
-	order, err := s.newBillingOrderWithPriceTier(userID, runID, "ecommerce:"+key, channelID, modelKey, "image", "ecommerce_agent", 1, tokenBillingEstimate{}, "", intent)
+	// 电商按成功页数结算，保留其逐页单价，而非通用模型订单的总额舍入。
+	order, err := s.newBillingOrderWithPriceTierAt(time.Now(), false, userID, runID, "ecommerce:"+key, channelID, modelKey, "image", "ecommerce_agent", 1, tokenBillingEstimate{}, "", intent)
 	if err != nil {
 		return nil, 0, err
 	}

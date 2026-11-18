@@ -183,9 +183,9 @@ func TestRetryTaskReleasesLeftoverReservationBeforeNewSuccess(t *testing.T) {
 				t.Fatalf("old order after success=%+v err=%v", oldOrder, err)
 			}
 			account, err := s.repo.CreditAccount(task.UserID)
-			wantAvailable := int64(9900)
+			wantAvailable := int64(9_900_000)
 			if mode == "free_retry" {
-				wantAvailable = 10000
+				wantAvailable = 10_000_000
 			}
 			if err != nil || account.AvailableMicrocredits != wantAvailable || account.ReservedMicrocredits != 0 {
 				t.Fatalf("account=%+v err=%v", account, err)

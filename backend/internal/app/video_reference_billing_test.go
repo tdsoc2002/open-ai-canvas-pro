@@ -25,7 +25,7 @@ func TestVideoTokenReferenceBillingDisabledIgnoresReferenceVideos(t *testing.T) 
 	svc, db, channel, channelModel, _ := newVideoTokenQuoteFixture(t)
 	quote := videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 1)
 	// 开关关闭：挂参考视频的报价与不挂完全一致，只按 5 秒生成时长计 Token。
-	assertVideoTokenQuote(t, quote, 1_900_800)
+	assertVideoTokenQuote(t, quote, 1_900_000)
 	assertVideoQuoteHasNoFinancialWrites(t, db)
 }
 
@@ -38,15 +38,15 @@ func TestVideoTokenReferenceBillingEnabledUsesReferencePrice(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 不挂参考视频仍用原价。
-	assertVideoTokenQuote(t, videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 0), 1_900_800)
+	assertVideoTokenQuote(t, videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 0), 1_900_000)
 
 	// 挂参考视频：沿用含参考视频的公式（报价未知时长按 15 秒预估），乘以带参考视频的 Token 单价。
 	quote := videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 1)
 	if quote.VideoTokenEstimate == nil || quote.VideoTokenEstimate.ReferenceSeconds != 15 || quote.VideoTokenEstimate.FormulaTokens != 432_000 {
 		t.Fatalf("reference estimate = %#v", quote.VideoTokenEstimate)
 	}
-	if quote.Quantity != 475_200 || quote.AmountMicrocredits != 15_206_400 {
-		t.Fatalf("reference quote = %#v, want 475200 tokens and 15206400 microcredits", quote)
+	if quote.Quantity != 475_200 || quote.AmountMicrocredits != 15_210_000 {
+		t.Fatalf("reference quote = %#v, want 475200 tokens and 15210000 microcredits", quote)
 	}
 	assertVideoQuoteHasNoFinancialWrites(t, db)
 }

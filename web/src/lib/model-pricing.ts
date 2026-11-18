@@ -3,6 +3,7 @@ import { mediaSettingIssues, resolvedMediaConfig } from "@/lib/media-settings";
 import { videoResolutionComparisonKey } from "@/lib/video-generation-options";
 import { imagePriceSelector, normalizeImagePriceSelector } from "@/lib/image-pricing";
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
+import { formatCreditDisplay, formatCreditPoints } from "@/lib/credit-format";
 import type { LogicalModelQuote, ModelQuoteRequest, ModelRequestIntent } from "@/services/api/logical-models";
 import { modelOptionName, resolveModelChannel, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 
@@ -89,18 +90,17 @@ export function tokenPriceRuleDescription(rule: NonNullable<ModelPriceTier["toke
     const dayLabel = days.length === 7 ? "每天" : contiguous ? `周${WEEKDAY_LABELS[days[0]]}至周${WEEKDAY_LABELS[days[days.length - 1]]}` : days.map((day) => `周${WEEKDAY_LABELS[day]}`).join("、");
     const format = (value: number) => value.toLocaleString("zh-CN");
     const context = rule.maxInputTokens > 0 ? `输入 ${format(rule.minInputTokens)}–${format(rule.maxInputTokens)} Token` : rule.minInputTokens > 0 ? `输入 ≥ ${format(rule.minInputTokens)} Token` : "";
-    const price = (value: number) => (value / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
-    return `${[`${dayLabel} ${rule.start}–${rule.end}`, context].filter(Boolean).join(" · ")}：输入 ${price(rule.inputTokenPriceMicrocredits)} / 输出 ${price(rule.outputTokenPriceMicrocredits)} / 缓存读取 ${price(rule.cachedTokenPriceMicrocredits)} 积分/百万 Token`;
+    return `${[`${dayLabel} ${rule.start}–${rule.end}`, context].filter(Boolean).join(" · ")}：输入 ${formatCreditDisplay(rule.inputTokenPriceMicrocredits)} / 输出 ${formatCreditDisplay(rule.outputTokenPriceMicrocredits)} / 缓存读取 ${formatCreditDisplay(rule.cachedTokenPriceMicrocredits)} 积分/百万 Token`;
 }
 
 export function formatPriceRange(values: number[], suffix: string) {
-    const unique = Array.from(new Set(values)).sort((left, right) => left - right);
-    const format = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
-    return unique.length === 1 ? `${format(unique[0])} ${suffix}` : `${format(unique[0])}-${format(unique[unique.length - 1])} ${suffix}`;
+    const min = formatCreditPoints(Math.min(...values));
+    const max = formatCreditPoints(Math.max(...values));
+    return `${min === max ? min : `${min}-${max}`} ${suffix}`;
 }
 
 export function modelQuoteDescription(quote: LogicalModelQuote) {
-    const amount = (quote.amountMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    const amount = formatCreditDisplay(quote.amountMicrocredits);
     const descriptions = [`${quote.estimated ? "预计" : "本次"}消耗 ${amount} 积分`];
     const breakdown = referenceVideoQuoteBreakdown(quote.referenceVideo);
     if (breakdown) descriptions.push(breakdown);

@@ -2,6 +2,7 @@ import type { ComponentProps } from "react";
 import { Coins } from "lucide-react";
 
 export { requestCreditCost } from "@/lib/model-pricing";
+export { formatCreditDisplay } from "@/lib/credit-format";
 
 export function CreditSymbol({ className, ...props }: ComponentProps<"span">) {
     return (

@@ -380,6 +380,9 @@ func TestArkVirtualGroupRefundsWhenCreationFailsAndRespectsLimit(t *testing.T) {
 	})
 	ctx := context.Background()
 	user := &model.User{ID: "user", Role: model.UserRoleUser}
+	if err := db.Model(&model.CreditAccount{}).Where("user_id = ?", "user").Update("available_microcredits", 0).Error; err != nil {
+		t.Fatal(err)
+	}
 	if _, err := s.CreateArkVirtualGroup(ctx, user, ArkGroupInput{Name: "二次元少女"}); err == nil || !strings.Contains(err.Error(), "积分不足") {
 		t.Fatalf("virtual group without credits = %v", err)
 	}

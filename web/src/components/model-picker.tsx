@@ -4,6 +4,7 @@ import { Popover } from "antd";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 
 import { imageQualityLabel } from "@/lib/image-quality";
+import { formatCreditDisplay, formatCreditPoints } from "@/lib/credit-format";
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, videoDurationOptions } from "@/lib/model-capabilities";
 import { formatPriceRange, modelQuoteDescription, modelQuoteRequest, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection, tokenPriceRuleDescription } from "@/lib/model-pricing";
@@ -606,7 +607,7 @@ function tierSpecificationLabel(tier: NonNullable<NonNullable<AiConfig["channels
 
 function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice | null | undefined; quote?: LogicalModelQuote; compact?: boolean }) {
     if (quote) {
-        const amount = (quote.amountMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+        const amount = formatCreditDisplay(quote.amountMicrocredits);
         const label = quote.estimated ? `预估:${amount}` : `${amount}`;
         return (
             <span className="model-picker-price inline-flex shrink-0 items-center gap-1 text-[var(--fs-tiny)] font-semibold tabular-nums" aria-label={modelQuoteDescription(quote)}>
@@ -636,7 +637,7 @@ function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice |
     return (
         <span className="model-picker-price inline-flex shrink-0 items-center gap-1 text-[var(--fs-tiny)] font-semibold tabular-nums">
             <Coins className="model-picker-price-icon" aria-hidden="true" />
-            {price.value.toLocaleString("zh-CN", { maximumFractionDigits: compact ? 3 : 6 })}
+            {formatCreditPoints(price.value)}
             {compact ? "/" : " 积分/"}
             {price.unit}
         </span>

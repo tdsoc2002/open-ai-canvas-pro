@@ -36,8 +36,8 @@ func TestUserGroupChannelVisibilityDiscountAndCurrencyPricing(t *testing.T) {
 		return 0, false
 	}
 
-	if amount, err := quote(); err != nil || amount != 100 {
-		t.Fatalf("default group quote = %d, %v; want 100", amount, err)
+	if amount, err := quote(); err != nil || amount != 100_000 {
+		t.Fatalf("default group quote = %d, %v; want 100000", amount, err)
 	}
 
 	vip, err := s.CreateUserGroup(admin, UserGroupRequest{Code: "vip", Name: "VIP", BadgeLabel: "VIP", BadgeStyle: "vip", RatioBasisPoints: 8_000, PointsPerUSD: 7 * CreditScale, PointsPerCNY: CreditScale})
@@ -60,28 +60,28 @@ func TestUserGroupChannelVisibilityDiscountAndCurrencyPricing(t *testing.T) {
 	if _, err := s.UpdateUserGroup(admin, vip.ID, update); err != nil {
 		t.Fatal(err)
 	}
-	if amount, err := quote(); err != nil || amount != 40 {
-		t.Fatalf("vip quote = %d, %v; want 100 x 0.8 x 0.5 = 40", amount, err)
+	if amount, err := quote(); err != nil || amount != 40_000 {
+		t.Fatalf("vip quote = %d, %v; want 100000 x 0.8 x 0.5 = 40000", amount, err)
 	}
-	if price, visible := catalogUnitPrice(); !visible || price != 40 {
-		t.Fatalf("vip catalog price = %d (visible %v); want 40", price, visible)
+	if price, visible := catalogUnitPrice(); !visible || price != 40_000 {
+		t.Fatalf("vip catalog price = %d (visible %v); want 40000", price, visible)
 	}
 
-	// 100 微美元 × 7 积分/美元 = 700 微积分，再乘 0.4 倍率。
+	// 100,000 微美元 × 7 积分/美元 = 700,000 微积分，再乘 0.4 倍率。
 	if err := db.Model(&model.ChannelModel{}).Where("id = ?", "cm").Update("price_currency", model.PriceCurrencyUSD).Error; err != nil {
 		t.Fatal(err)
 	}
-	if amount, err := quote(); err != nil || amount != 280 {
-		t.Fatalf("usd quote = %d, %v; want 280", amount, err)
+	if amount, err := quote(); err != nil || amount != 280_000 {
+		t.Fatalf("usd quote = %d, %v; want 280000", amount, err)
 	}
-	if price, _ := catalogUnitPrice(); price != 280 {
-		t.Fatalf("usd catalog price = %d; want 280", price)
+	if price, _ := catalogUnitPrice(); price != 280_000 {
+		t.Fatalf("usd catalog price = %d; want 280000", price)
 	}
 	order, err := s.newBillingOrder("user", "task", "group-test", "channel", "text-test", "text", "test", 1, tokenBillingEstimate{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if order.UserGroup != "vip" || order.PriceCurrency != model.PriceCurrencyUSD || order.CurrencyRateMicrocredits != 7*CreditScale || order.UnitPriceMicrocredits != 700 || order.MultiplierBasisPoints != 4_000 || order.AmountMicrocredits != 280 {
+	if order.UserGroup != "vip" || order.PriceCurrency != model.PriceCurrencyUSD || order.CurrencyRateMicrocredits != 7*CreditScale || order.UnitPriceMicrocredits != 700_000 || order.MultiplierBasisPoints != 4_000 || order.AmountMicrocredits != 280_000 {
 		t.Fatalf("billing snapshot = %+v", order)
 	}
 

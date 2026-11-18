@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { modelQuoteDescription } from "../src/lib/model-pricing";
+import { formatPriceRange, modelQuoteDescription } from "../src/lib/model-pricing";
 import { quoteModel, type LogicalModelQuote, type ModelRequestIntent } from "../src/services/api/logical-models";
 import { apiClient } from "../src/services/api/request";
 
@@ -47,9 +47,20 @@ describe("model quote API targets", () => {
 test("video estimates disclose platform reserves, unknown references and final settlement", () => {
     const description = modelQuoteDescription({
         ...quote,
-        videoTokenEstimate: { formulaTokens: 100_000, reservedTokens: 110_000, outputWidth: 1280, outputHeight: 720, framesPerSecond: 24, outputSeconds: 5, referenceSeconds: 15, referenceDurationEstimated: true, dimensionsEstimated: true, reservationMarginPercent: 10 },
+        videoTokenEstimate: {
+            formulaTokens: 100_000,
+            reservedTokens: 110_000,
+            outputWidth: 1280,
+            outputHeight: 720,
+            framesPerSecond: 24,
+            outputSeconds: 5,
+            referenceSeconds: 15,
+            referenceDurationEstimated: true,
+            dimensionsEstimated: true,
+            reservationMarginPercent: 10,
+        },
     });
-    expect(description).toContain("预计消耗 0.5 积分");
+    expect(description).toContain("预计消耗 0.50 积分");
     expect(description).toContain("公式预估 100,000 视频 Token");
     expect(description).toContain("平台额外预留 10%");
     expect(description).toContain("15 秒");
@@ -57,6 +68,12 @@ test("video estimates disclose platform reserves, unknown references and final s
     expect(description).toContain("未返回用量时按火山引擎公式结算");
     expect(description).toContain("额外预留不计入公式结算");
     expect(description).toContain("补扣或退回差额");
+});
+
+test("model prices round to two decimals and collapse identical displayed endpoints", () => {
+    expect(formatPriceRange([2], "积分/百万 Token")).toBe("2.00 积分/百万 Token");
+    expect(formatPriceRange([0.044, 0.045], "积分")).toBe("0.04-0.05 积分");
+    expect(formatPriceRange([0.041, 0.044], "积分")).toBe("0.04 积分");
 });
 
 test("text Token quotes retain upstream usage settlement without a video formula", () => {

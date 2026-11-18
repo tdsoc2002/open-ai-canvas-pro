@@ -203,6 +203,9 @@ func TestImageParametersLegacyChannelUsesLiveContractForRouteAndBilling(t *testi
 	if err := db.AutoMigrate(&model.SystemSetting{}); err != nil {
 		t.Fatal(err)
 	}
+	if err := db.Model(&model.ChannelModelPriceTier{}).Where("id = ?", "resolution").Update("unit_price_microcredits", 45_000).Error; err != nil {
+		t.Fatal(err)
+	}
 	stored, err := svc.repo.ChannelModel(channelModel.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -238,7 +241,7 @@ func TestImageParametersLegacyChannelUsesLiveContractForRouteAndBilling(t *testi
 		t.Fatalf("billing projection = %#v, %v", tier, err)
 	}
 	quote, err := svc.QuoteLogicalModel(testGroupUserID(svc), "logical", ModelRequestIntent{Capability: "image", Options: map[string]any{"imageResolution": "2k"}})
-	if err != nil || quote == nil || quote.AmountMicrocredits != tier.UnitPriceMicrocredits {
+	if err != nil || quote == nil || tier.UnitPriceMicrocredits != 45_000 || quote.AmountMicrocredits != 50_000 {
 		t.Fatalf("quote drift: %#v, %v", quote, err)
 	}
 	if _, err := svc.channelModelPriceTierForBilling(*stored, "resolution", "image", ModelRequestIntent{Capability: "image", Options: map[string]any{"imageResolution": "4k"}}); err == nil {

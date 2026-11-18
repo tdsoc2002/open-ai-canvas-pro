@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { currentLocale } from "@/i18n";
+import { formatCreditDisplay } from "@/constant/credits";
 
 import { TopbarFeedbackButton } from "@/components/feedback/topbar-feedback-button";
 import { SystemAnnouncementCenter } from "@/components/layout/system-announcement-center";
@@ -28,7 +29,7 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
     const { pathname } = useLocation();
     const sectionKey = workspacePageTitleKey(pathname);
     const pageTitle = sectionKey ? t(sectionKey) : brandName;
-    const balance = availableMicrocredits === null ? "--" : (availableMicrocredits / 1_000_000).toLocaleString(currentLocale(), { maximumFractionDigits: 2 });
+    const balance = availableMicrocredits === null ? "--" : formatCreditDisplay(availableMicrocredits, currentLocale());
 
     return (
         <header className="app-workspace-topbar">

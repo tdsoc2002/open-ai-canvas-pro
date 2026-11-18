@@ -44,15 +44,15 @@ test("candidate rows show their configured prices instead of applying the previo
     const config = fixture();
     for (const theme of [canvasThemes.light, canvasThemes.dark]) {
         const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={theme} creationVariant showConfiguredModelName={false} requirements={requirements} showPrice showDescription />);
-        expect(markup).toContain("0.1-0.2 积分/秒");
+        expect(markup).toContain("0.10-0.20 积分/秒");
         expect(markup).not.toContain("当前规格无报价");
     }
 });
 
-test("video Token badges use compact units while retaining exact rates and full pricing descriptions", () => {
+test("video Token badges use compact units, two decimals and full pricing descriptions", () => {
     for (const [rates, expected] of [
-        [[0], "0 /M Token"],
-        [[1], "0.000001 /M Token"],
+        [[0], "0.00 /M Token"],
+        [[1], "0.00 /M Token"],
         [[21_980_000], "21.98 /M Token"],
         [[24_750_000, 48_510_000], "24.75-48.51 /M Token"],
     ] as const) {
@@ -98,7 +98,7 @@ test("model rows omit reference video billing labels for paid and free reference
         const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
         expect(markup).not.toContain("参考视频另计费");
         expect(markup).not.toContain("参考视频不计费");
-        expect(markup).toContain("0.1-0.2 积分/秒");
+        expect(markup).toContain("0.10-0.20 积分/秒");
         expect(markup).toContain("视×3");
     }
 });
@@ -132,7 +132,7 @@ test("model rows preserve multiple promotional labels and colors without alterin
         const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={theme} creationVariant showConfiguredModelName={false} showPrice showDescription />);
         expect(markup).toContain('data-color="purple">限时特价');
         expect(markup).toContain('data-color="gold">官方1折');
-        expect(markup).toContain("0.1-0.2 积分/秒");
+        expect(markup).toContain("0.10-0.20 积分/秒");
     }
     config.channels[0].modelCosts![0].tags = [];
     const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} showDescription />);
@@ -179,7 +179,7 @@ test("the selected model and request estimate still require an exact specificati
     const cost = (value: ModelRequirements) => requestCreditCost({ channelMode: "remote", modelCosts: config.channels[0].modelCosts, model: "h3-multi", capability: "video", config, requirements: value, seconds: "6" });
     expect(cost(requirements)).toBeNull();
     const matching = { ...requirements, videoSeconds: "6", options: { vquality: "720p" } };
-    expect(render(matching)).toContain("0.2 积分/秒");
+    expect(render(matching)).toContain("0.20 积分/秒");
     expect(render(matching)).not.toContain("当前规格无报价");
     expect(cost(matching)).toBeCloseTo(1.2);
 });

@@ -310,7 +310,9 @@ func (r *Repository) SwitchTaskLogicalRoute(taskID string, expectedRouteID strin
 		updates["cost_quantity"] = cost.CostQuantity
 		updates["cost_video_formula_tokens"] = cost.CostVideoFormulaTokens
 		if replacement != nil {
-			if replacement.UserID != order.UserID || replacement.TaskID != taskID || replacement.AmountMicrocredits <= 0 {
+			if replacement.UserID != order.UserID || replacement.TaskID != taskID ||
+				replacement.RoundChargeToCent != order.RoundChargeToCent ||
+				replacement.AmountMicrocredits < 0 || (replacement.AmountMicrocredits == 0 && !order.RoundChargeToCent) {
 				return ErrBillingStateConflict
 			}
 			// The new supplier price cannot expand the user's original authorization.

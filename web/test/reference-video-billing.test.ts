@@ -32,7 +32,7 @@ describe("reference video billing labels", () => {
             estimated: false,
             referenceVideo: { count: 1, billed: true, generatedSeconds: 5, referenceSeconds: 7.2, billedSeconds: 8, estimated: false },
         });
-        expect(description).toBe("本次消耗 26 积分；生成 5 秒 + 参考视频 8 秒（参考视频另计费）");
+        expect(description).toBe("本次消耗 26.00 积分；生成 5 秒 + 参考视频 8 秒（参考视频另计费）");
     });
 });
 

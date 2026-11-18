@@ -62,6 +62,8 @@ type BillingOrder struct {
 	Quantity                   int64  `json:"quantity"`
 	AmountMicrocredits         int64  `json:"amountMicrocredits"`
 	ReservedAmountMicrocredits int64  `json:"reservedAmountMicrocredits"`
+	// 下单时固定金额精度；历史订单仍按原微积分规则结算。
+	RoundChargeToCent bool `json:"-" gorm:"not null;default:false"`
 	// ChargeLimitSet distinguishes an authorized zero price from an uncapped order.
 	// All Agent prices remain capped across route changes and settlement.
 	ChargeLimitSet                   bool  `json:"chargeLimitSet,omitempty" gorm:"not null;default:false"`

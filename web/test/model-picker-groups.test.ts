@@ -52,7 +52,7 @@ test("same model display name groups all channels and preserves their prices", (
             ],
         ],
     ]);
-    expect(config.channels.map((channel) => priceTierSummaryLabel(priceTiersForCurrentSelection(channel.modelCosts![0].logicalPriceTiers!, "video", config)))).toEqual(["0.3 积分/秒", "0.3 积分/秒", "0.2 积分/秒"]);
+    expect(config.channels.map((channel) => priceTierSummaryLabel(priceTiersForCurrentSelection(channel.modelCosts![0].logicalPriceTiers!, "video", config)))).toEqual(["0.30 积分/秒", "0.30 积分/秒", "0.20 积分/秒"]);
 });
 
 test("grouping uses display name even when model keys differ, without merging channel options", () => {

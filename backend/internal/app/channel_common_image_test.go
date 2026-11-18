@@ -103,7 +103,7 @@ func TestCommonImageMissingDeclarationsUseTargetEncodingAcrossProtocolChanges(t 
 						}
 					}
 					quote, err := svc.QuoteChannelModel(testGroupUserID(svc), ChannelModelQuoteRequest{ChannelID: "channel", ModelKey: "fixture", Intent: ModelRequestIntent{Capability: "image", Options: map[string]any{"size": size, "imageResolution": "2k"}}})
-					if err != nil || quote.AmountMicrocredits != 12345 {
+					if err != nil || quote.AmountMicrocredits != 10_000 {
 						t.Fatalf("quote: %#v %v", quote, err)
 					}
 					config := providerConfig{Model: "fixture", InterfaceType: "target-fixture", Size: size, ImageResolution: "2k"}

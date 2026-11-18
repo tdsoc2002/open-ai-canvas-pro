@@ -1,3 +1,4 @@
+import { formatCreditDisplay } from "@/constant/credits";
 import type { UserGroup, UserGroupBadgeStyle, UserGroupInput } from "@/services/api/user-groups";
 
 const MICRO = 1_000_000;
@@ -81,5 +82,5 @@ export function userGroupInput(values: UserGroupFormValues): UserGroupInput {
 }
 
 export function formatPoints(microcredits: number) {
-    return (microcredits / MICRO).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    return formatCreditDisplay(microcredits);
 }

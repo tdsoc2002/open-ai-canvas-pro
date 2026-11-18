@@ -3,8 +3,9 @@ import { useState } from "react";
 import { Gift, LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { formatCredits } from "@/constant/credits";
+import { formatCreditDisplay } from "@/constant/credits";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
+import { currentLocale } from "@/i18n";
 import { sidebarCheckinTitle, shouldShowSidebarCheckin } from "@/lib/sidebar-checkin";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/services/api/request";
@@ -28,7 +29,7 @@ export function WorkspaceSidebarCheckin({ collapsed }: { collapsed: boolean }) {
     });
     if (!user || !visible || !policy) return null;
 
-    const amount = formatCredits(policy.checkinBonusMicrocredits, 2);
+    const amount = formatCreditDisplay(policy.checkinBonusMicrocredits, currentLocale());
     const title = sidebarCheckinTitle(brandName);
     const summary = t("account.layout.checkin.summary", { title, amount });
 

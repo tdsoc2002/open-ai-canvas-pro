@@ -315,7 +315,7 @@ func TestCloudAgentMediaBatchApprovalEditsRefreshQuoteAndSubmittedTasks(t *testi
 			if err := db.Create(&alternative).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := db.Create(&model.ChannelModelPriceTier{ID: "alternative-tier", ChannelModelID: alternative.ID, SelectorKey: "{}", SelectorJSON: "{}", BillingMode: "per_second", UnitPriceMicrocredits: 2, PriceConfigured: true, Enabled: true}).Error; err != nil {
+			if err := db.Create(&model.ChannelModelPriceTier{ID: "alternative-tier", ChannelModelID: alternative.ID, SelectorKey: "{}", SelectorJSON: "{}", BillingMode: "per_second", UnitPriceMicrocredits: 15_000, PriceConfigured: true, Enabled: true}).Error; err != nil {
 				t.Fatal(err)
 			}
 			args := agentMediaBatchArgs("v1", "v2")
@@ -351,7 +351,7 @@ func TestCloudAgentMediaBatchApprovalEditsRefreshQuoteAndSubmittedTasks(t *testi
 				if stored.ChannelModelKey != alternative.ModelKey || stored.Duration != wantDuration || item.Duration != wantDuration || stored.Prompt != previous.Prompt || creationHash(stored.ReferenceNodeIDs) != creationHash(previous.ReferenceNodeIDs) || item.NodeID != previous.NodeID {
 					t.Fatalf("edited item lost approved intent: %+v", stored)
 				}
-				if item.Amount != int64(wantDuration*2) || item.SpecHash == before.MediaBatch.Items[index].SpecHash || item.ResolvedHash == before.MediaBatch.Items[index].ResolvedHash {
+				if item.Amount != int64(wantDuration)*15_000 || item.SpecHash == before.MediaBatch.Items[index].SpecHash || item.ResolvedHash == before.MediaBatch.Items[index].ResolvedHash {
 					t.Fatalf("quote/hashes were not refreshed: %+v", item)
 				}
 				sum += item.Amount
@@ -507,6 +507,11 @@ func TestCloudAgentMediaBatchApprovalEditRevalidatesEntireBatch(t *testing.T) {
 	for _, scenario := range []string{"generation_budget", "duration_budget", "credit_budget", "second_item_reference"} {
 		t.Run(scenario, func(t *testing.T) {
 			s, db := agentMediaBatchFixture(t)
+			if scenario == "credit_budget" {
+				if err := db.Model(&model.ChannelModelPriceTier{}).Where("id = ?", "video-tier").Update("unit_price_microcredits", 10_000).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
 			run, state := agentMediaBatchRun(t, s, agentMediaBatchArgs("v1", "v2"), 4)
 			if err := s.advanceCloudAgentTool(run, &state); err != nil {
 				t.Fatal(err)
@@ -518,7 +523,7 @@ func TestCloudAgentMediaBatchApprovalEditRevalidatesEntireBatch(t *testing.T) {
 			case "duration_budget":
 				state.Request.Budget.MaxVideoSeconds = 15
 			case "credit_budget":
-				state.Request.Budget.MaxCredits = 15 / float64(CreditScale)
+				state.Request.Budget.MaxCredits = 0.15
 			case "second_item_reference":
 				if err := db.Model(&model.Resource{}).Where("id = ?", "ref-one").Update("user_id", "other").Error; err != nil {
 					t.Fatal(err)

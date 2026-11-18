@@ -251,8 +251,8 @@ describe("model request pricing", () => {
             tiers: [{ selector: {}, billingMode: "per_second", unitPriceMicrocredits: 0 }],
         });
 
-        expect(priceTierSummaryLabel(resolveModelChannel(fixedConfig, fixedConfig.model).modelCosts![0]!.logicalPriceTiers!)).toBe("0 积分");
-        expect(priceTierSummaryLabel(resolveModelChannel(perSecondConfig, perSecondConfig.model).modelCosts![0]!.logicalPriceTiers!)).toBe("0 积分/秒");
+        expect(priceTierSummaryLabel(resolveModelChannel(fixedConfig, fixedConfig.model).modelCosts![0]!.logicalPriceTiers!)).toBe("0.00 积分");
+        expect(priceTierSummaryLabel(resolveModelChannel(perSecondConfig, perSecondConfig.model).modelCosts![0]!.logicalPriceTiers!)).toBe("0.00 积分/秒");
     });
 
     test("uses reference count and operation to avoid a text-video price tier", () => {
@@ -340,8 +340,8 @@ describe("model request pricing", () => {
             ],
         });
         const tiers = resolveModelChannel(config, config.model).modelCosts![0]!.logicalPriceTiers!;
-        expect(priceTierSummaryLabel(tiers, "video")).toBe("0-0.000001 积分/百万视频 Token");
-        expect(priceTierSummaryLabel(tiers.slice(0, 1), "video")).toBe("0 积分/百万视频 Token");
+        expect(priceTierSummaryLabel(tiers, "video")).toBe("0.00 积分/百万视频 Token");
+        expect(priceTierSummaryLabel(tiers.slice(0, 1), "video")).toBe("0.00 积分/百万视频 Token");
     });
 
     test("builds a direct system-video quote without inventing a logical model ID", () => {

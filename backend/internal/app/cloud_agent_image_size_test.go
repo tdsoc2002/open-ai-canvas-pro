@@ -30,7 +30,7 @@ func agentPixelImageFixture(t *testing.T) (*Service, *gorm.DB, cloudAgentMediaAr
 	}
 	for _, preset := range presets {
 		selector := fmt.Sprintf(`{"size":%q}`, preset.Size)
-		price := map[string]int64{"1k": 100, "1.5k": 150, "2k": 200}[preset.Tier]
+		price := map[string]int64{"1k": 10_000, "1.5k": 20_000, "2k": 30_000}[preset.Tier]
 		if err := db.Create(&model.ChannelModelPriceTier{ID: "pixel-" + preset.Size, ChannelModelID: "pixel-cm", SelectorKey: selector, SelectorJSON: selector, BillingMode: "fixed_request", UnitPriceMicrocredits: price, PriceConfigured: true, Enabled: true}).Error; err != nil {
 			t.Fatal(err)
 		}
@@ -50,14 +50,14 @@ func TestCloudAgentPixelImageReferenceReachesApproval(t *testing.T) {
 		multiple, canonical     bool
 		price                   int64
 	}{
-		{name: "explicit 1k", size: "1424x800", want: "1424x800", price: 100},
-		{name: "omitted", want: "1424x800", price: 100},
-		{name: "explicit 1.5k", size: "2048x1152", want: "2048x1152", price: 150},
-		{name: "explicit 2k", size: "2816x1584", want: "2816x1584", price: 200},
-		{name: "inherit ratio within 1.5k", size: "1536x1536", want: "2048x1152", price: 150},
-		{name: "multiple references", size: "2048x2048", want: "2048x2048", multiple: true, price: 200},
-		{name: "flat draft", size: "2816x1584", draft: "1424x800", want: "1424x800", price: 100},
-		{name: "canonical draft", size: "1424x800", draft: "2816x1584", want: "2816x1584", canonical: true, price: 200},
+		{name: "explicit 1k", size: "1424x800", want: "1424x800", price: 10_000},
+		{name: "omitted", want: "1424x800", price: 10_000},
+		{name: "explicit 1.5k", size: "2048x1152", want: "2048x1152", price: 20_000},
+		{name: "explicit 2k", size: "2816x1584", want: "2816x1584", price: 30_000},
+		{name: "inherit ratio within 1.5k", size: "1536x1536", want: "2048x1152", price: 20_000},
+		{name: "multiple references", size: "2048x2048", want: "2048x2048", multiple: true, price: 30_000},
+		{name: "flat draft", size: "2816x1584", draft: "1424x800", want: "1424x800", price: 10_000},
+		{name: "canonical draft", size: "1424x800", draft: "2816x1584", want: "2816x1584", canonical: true, price: 30_000},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s, db, a := agentPixelImageFixture(t)

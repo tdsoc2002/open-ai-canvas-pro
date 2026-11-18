@@ -533,13 +533,13 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 	amount := int64(0)
 	switch logicalModel.BillingMode {
 	case "fixed_request":
-		amount, err = creditAmount(logicalModel.UnitPriceMicrocredits, 1, groupBPS)
+		amount, err = kernel.UnitBillingAmountRounded(logicalModel.UnitPriceMicrocredits, 1, groupBPS)
 	case "per_second":
 		quantity = requestedBillingQuantity(capability, config)
 		if (capability != "video" && capability != "audio") || quantity <= 0 {
 			return nil, BadAuthRequest("当前模型按时长计费，但请求未提供有效时长")
 		}
-		amount, err = creditAmount(logicalModel.UnitPriceMicrocredits, quantity, groupBPS)
+		amount, err = kernel.UnitBillingAmountRounded(logicalModel.UnitPriceMicrocredits, quantity, groupBPS)
 	case "token":
 		if channelModel.Capability != capability || !supportsTokenBilling(capability, channelModel.Protocol) {
 			return nil, BadAuthRequest("当前供应线路不支持前台模型的 Token 计费方式")
@@ -548,7 +548,7 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 			return nil, BadAuthRequest("视频 Token 仅按视频用量定价，请将输入与缓存价格设为 0")
 		}
 		tokenPricing := &model.ChannelModel{InputTokenPriceMicrocredits: logicalModel.InputPriceMicrocredits, OutputTokenPriceMicrocredits: logicalModel.OutputPriceMicrocredits, CachedTokenPriceMicrocredits: logicalModel.CachedPriceMicrocredits, CacheWriteTokenPriceMicrocredits: logicalModel.CacheWritePriceMicrocredits}
-		amount, err = tokenEstimateAmount(tokenPricing, tokenEstimate, groupBPS)
+		amount, err = tokenEstimateAmountForOrder(tokenPricing, tokenEstimate, groupBPS, true)
 		quantity = tokenEstimate.InputTokens + tokenEstimate.OutputTokens
 	default:
 		return nil, BadAuthRequest("当前模型计费方式暂不支持")
@@ -573,7 +573,7 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 		Scene: truncateRunes(firstNonEmpty(strings.TrimSpace(task.Operation), task.Type), 80), BillingMode: logicalModel.BillingMode, PriceVersion: int64(revision.Version),
 		UnitPriceMicrocredits: logicalModel.UnitPriceMicrocredits, MultiplierBasisPoints: groupBPS, Quantity: quantity, AmountMicrocredits: amount,
 		UserGroup: pricing.GroupCode, PriceCurrency: pricing.Currency, CurrencyRateMicrocredits: pricing.RateMicrocredits,
-		ReservedAmountMicrocredits: amount, InputTokenPriceMicrocredits: logicalModel.InputPriceMicrocredits,
+		ReservedAmountMicrocredits: amount, RoundChargeToCent: true, InputTokenPriceMicrocredits: logicalModel.InputPriceMicrocredits,
 		OutputTokenPriceMicrocredits: logicalModel.OutputPriceMicrocredits, CachedTokenPriceMicrocredits: logicalModel.CachedPriceMicrocredits,
 		CacheWriteTokenPriceMicrocredits: logicalModel.CacheWritePriceMicrocredits,
 		VideoFormulaTokens:               videoFormulaTokens,
@@ -622,12 +622,12 @@ func (s *Service) newBillingOrder(userID string, taskID string, idempotencyKey s
 }
 
 func (s *Service) newBillingOrderWithPriceTier(userID string, taskID string, idempotencyKey string, channelID string, modelKey string, capability string, scene string, requestedQuantity int64, tokenEstimate tokenBillingEstimate, priceTierID string, intents ...ModelRequestIntent) (*model.BillingOrder, error) {
-	return s.newBillingOrderWithPriceTierAt(time.Now(), userID, taskID, idempotencyKey, channelID, modelKey, capability, scene, requestedQuantity, tokenEstimate, priceTierID, intents...)
+	return s.newBillingOrderWithPriceTierAt(time.Now(), true, userID, taskID, idempotencyKey, channelID, modelKey, capability, scene, requestedQuantity, tokenEstimate, priceTierID, intents...)
 }
 
 // newBillingOrderWithPriceTierAt 用 pricedAt 判定分时 Token 规则的时段；新订单传当前时间，
 // 同一任务换供应线路时传原订单的创建时间，保证时段在任务创建时锁定。
-func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, userID string, taskID string, idempotencyKey string, channelID string, modelKey string, capability string, scene string, requestedQuantity int64, tokenEstimate tokenBillingEstimate, priceTierID string, intents ...ModelRequestIntent) (*model.BillingOrder, error) {
+func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent bool, userID string, taskID string, idempotencyKey string, channelID string, modelKey string, capability string, scene string, requestedQuantity int64, tokenEstimate tokenBillingEstimate, priceTierID string, intents ...ModelRequestIntent) (*model.BillingOrder, error) {
 	item, err := s.repo.ChannelModelByKey(channelID, modelKey)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, BadAuthRequest("当前模型暂时不可用，请重新选择")
@@ -733,7 +733,9 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, userID stri
 		if rule, ok := model.MatchBillingTokenPriceRule(tokenRules, tokenEstimate.InputTokens); ok {
 			holdPrices = tierCreditPrices{Input: rule.Input, Output: rule.Output, Cached: rule.Cached, CacheWrite: rule.CacheWrite}
 		}
-		amount, err = tokenEstimateAmount(&model.ChannelModel{InputTokenPriceMicrocredits: holdPrices.Input, OutputTokenPriceMicrocredits: holdPrices.Output, CachedTokenPriceMicrocredits: holdPrices.Cached, CacheWriteTokenPriceMicrocredits: holdPrices.CacheWrite}, tokenEstimate, multiplierBPS)
+		amount, err = tokenEstimateAmountForOrder(&model.ChannelModel{InputTokenPriceMicrocredits: holdPrices.Input, OutputTokenPriceMicrocredits: holdPrices.Output, CachedTokenPriceMicrocredits: holdPrices.Cached, CacheWriteTokenPriceMicrocredits: holdPrices.CacheWrite}, tokenEstimate, multiplierBPS, roundToCent)
+	} else if roundToCent {
+		amount, err = kernel.UnitBillingAmountRounded(prices.Unit, quantity, multiplierBPS)
 	} else {
 		amount, err = creditAmount(prices.Unit, quantity, multiplierBPS)
 	}
@@ -749,7 +751,7 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, userID stri
 		ChannelID: channelID, ChannelModelID: item.ID, PriceTierID: tier.ID, PriceTierVersion: tier.PriceVersion, PriceSelectorJSON: tier.SelectorJSON, Model: modelKey, Capability: capability,
 		Scene: truncateRunes(scene, 80), BillingMode: tier.BillingMode, PriceVersion: item.PriceVersion,
 		UnitPriceMicrocredits: prices.Unit, MultiplierBasisPoints: multiplierBPS, Quantity: quantity, AmountMicrocredits: amount,
-		ReservedAmountMicrocredits: amount, InputTokenPriceMicrocredits: prices.Input,
+		ReservedAmountMicrocredits: amount, RoundChargeToCent: roundToCent, InputTokenPriceMicrocredits: prices.Input,
 		OutputTokenPriceMicrocredits: prices.Output, CachedTokenPriceMicrocredits: prices.Cached, CacheWriteTokenPriceMicrocredits: prices.CacheWrite,
 		UserGroup: pricing.GroupCode, PriceCurrency: pricing.Currency, CurrencyRateMicrocredits: pricing.RateMicrocredits,
 		VideoFormulaTokens:   videoFormulaTokens,
@@ -927,13 +929,21 @@ func maxOutputTokens(payload map[string]any) int64 {
 // Token 单价按每百万 Token 配置；预授权按输入价与缓存写入价中较高者估算全部输入 Token，
 // 缓存写入通常贵于普通输入，避免写入缓存后实际费用超出预留。真实结算再按 usage 拆分。
 func tokenEstimateAmount(item *model.ChannelModel, estimate tokenBillingEstimate, multiplierBPS int64) (int64, error) {
+	return tokenEstimateAmountForOrder(item, estimate, multiplierBPS, false)
+}
+
+func tokenEstimateAmountForOrder(item *model.ChannelModel, estimate tokenBillingEstimate, multiplierBPS int64, roundToCent bool) (int64, error) {
 	if estimate.Err != nil {
 		return 0, estimate.Err
 	}
 	if item == nil || estimate.InputTokens < 0 || estimate.OutputTokens <= 0 || multiplierBPS <= 0 {
 		return 0, errors.New("Token 计费参数无效")
 	}
-	amount, err := kernel.TokenBillingAmount(multiplierBPS,
+	calculate := kernel.TokenBillingAmount
+	if roundToCent {
+		calculate = kernel.TokenBillingAmountRounded
+	}
+	amount, err := calculate(multiplierBPS,
 		kernel.TokenBillingTerm{Tokens: estimate.InputTokens, PriceMicrocredits: max(item.InputTokenPriceMicrocredits, item.CacheWriteTokenPriceMicrocredits)},
 		kernel.TokenBillingTerm{Tokens: estimate.OutputTokens, PriceMicrocredits: item.OutputTokenPriceMicrocredits},
 	)
