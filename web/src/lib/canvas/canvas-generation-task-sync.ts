@@ -71,6 +71,7 @@ export function imageMetadata(image: UploadedImage): CanvasNodeMetadata {
 export function videoMetadata(video: UploadedFile): CanvasNodeMetadata {
     return {
         content: video.url,
+        previewContent: undefined,
         storageKey: video.storageKey,
         status: "success",
         naturalWidth: video.width,
@@ -238,6 +239,8 @@ export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: 
     if (mode === "video") {
         if (!result.video?.storageKey && !result.video?.dataUrl) throw new Error("后端任务没有返回视频");
         const video = result.video.storageKey ? await resolveGeneratedStoredVideo({ ...result.video, storageKey: result.video.storageKey }) : await storeGeneratedVideo({ url: result.video.dataUrl, mimeType: result.video.mimeType || "video/mp4" });
+        const poster = task.previewPosterUrl?.trim();
+        const previewContent = outputIndex === 0 && task.previewKind !== "image" && poster && poster !== result.video.dataUrl && poster !== video.url ? poster : undefined;
         const videoSize = fitNodeSize(video.width || node.width || VIDEO_NODE_MAX_SIZE.width, video.height || node.height || VIDEO_NODE_MAX_SIZE.height, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
         const geometry = node.metadata?.locked
             ? {}
@@ -250,7 +253,7 @@ export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: 
             ...node,
             type: CanvasNodeType.Video,
             ...geometry,
-            metadata: applyGeneratedMediaResultMetadata(node, videoMetadata(video), { prompt, ...completedTaskMetadata(task) }, task.model),
+            metadata: applyGeneratedMediaResultMetadata(node, { ...videoMetadata(video), previewContent }, { prompt, ...completedTaskMetadata(task) }, task.model),
         };
     }
 
@@ -331,6 +334,7 @@ export async function applyMaterializedGenerationTaskResultToNodes(nodes: Canvas
     const asset = useAssetStore.getState().assets.find((candidate) => candidate.id === output.materializedAssetId);
     if (!asset) throw new Error("生成任务输出素材不存在");
     const result = parseBackendGenerationResult(task);
+    let previewPosterUrl = task.previewPosterUrl;
     if (asset.kind === "image") {
         const images = [...(result.images || [])];
         // materialize 已保存整个任务；画布按真实输出序号接收每张图及其素材绑定。
@@ -349,12 +353,13 @@ export async function applyMaterializedGenerationTaskResultToNodes(nodes: Canvas
         result.images = images;
     } else if (asset.kind === "video") {
         result.video = { dataUrl: asset.data.url, ...asset.data };
+        previewPosterUrl = (asset.coverUrl !== asset.data.url ? asset.coverUrl : "") || (output.outputIndex === 0 ? task.previewPosterUrl : undefined);
     } else if (asset.kind === "audio") {
         result.audio = { dataUrl: asset.data.url, ...asset.data };
     } else {
         throw new Error("生成任务输出素材类型不支持画布节点");
     }
-    const { node: updatedNode, additionalNodes } = await buildGenerationTaskNodeResults(node, { ...task, resultJson: JSON.stringify(result) }, nodes);
+    const { node: updatedNode, additionalNodes } = await buildGenerationTaskNodeResults(node, { ...task, previewPosterUrl, resultJson: JSON.stringify(result) }, nodes);
     const stamp = (item: CanvasNodeData) => ({ ...item, metadata: applyGenerationConsumerEffect(item.metadata || {}, effectKey, (metadata) => metadata).value });
     const durableNode = stamp({
         ...updatedNode,

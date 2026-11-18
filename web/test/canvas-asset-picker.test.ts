@@ -42,13 +42,13 @@ describe("canvas asset picker", () => {
                 external: {
                     sourceId: "eagle",
                     sourceName: "Eagle",
-                    item: { id: "video-1", title: "外部视频", kind: "video", fileUrl: "http://127.0.0.1/video.mp4", width: 1920, height: 1080, bytes: 2048, mimeType: "video/mp4" },
+                    item: { id: "video-1", title: "外部视频", kind: "video", fileUrl: "http://127.0.0.1/video.mp4", thumbnailUrl: "http://127.0.0.1/poster.jpg", width: 1920, height: 1080, bytes: 2048, mimeType: "video/mp4" },
                 },
             },
         ];
 
         expect(assetPickerItemsToInsertPayloads(["external-video", image.id, text.id], items)).toEqual([
-            { kind: "video", url: "http://127.0.0.1/video.mp4", title: "外部视频", width: 1920, height: 1080, bytes: 2048, mimeType: "video/mp4", assetId: "external:eagle:video-1" },
+            { kind: "video", url: "http://127.0.0.1/video.mp4", coverUrl: "http://127.0.0.1/poster.jpg", title: "外部视频", width: 1920, height: 1080, bytes: 2048, mimeType: "video/mp4", assetId: "external:eagle:video-1" },
             { kind: "image", dataUrl: "data:image/png;base64,AAAA", storageKey: "resource:image-1", title: "场景图", width: 1280, height: 720, bytes: 1024, mimeType: "image/png", assetId: "image-1" },
             { kind: "text", content: "夜色渐深。", title: "旁白", assetId: "text-1" },
         ]);

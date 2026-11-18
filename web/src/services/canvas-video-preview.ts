@@ -1,3 +1,4 @@
+import { buildLibTVVideoSourceUrl } from "@/lib/canvas/libtv-import";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { captureVideoPoster } from "@/lib/video-poster";
 import { loadCachedResourceObjectUrl } from "@/services/resource-blob-cache";
@@ -26,12 +27,13 @@ export type HydratedCanvasVideoPreview = {
 export function hydrateCanvasVideoPreview(node: CanvasNodeData, signal?: AbortSignal) {
     const sourceKey = node.metadata?.storageKey || node.metadata?.content || "";
     if (!sourceKey) return Promise.resolve(null);
-    const key = `${getActiveUserScope()}:${sourceKey}`;
+    const scope = getActiveUserScope();
+    const key = `${scope}:${sourceKey}`;
     let entry = canvasVideoHydrationBySource.get(key);
     if (!entry) {
         const controller = new AbortController();
         entry = { promise: Promise.resolve(null), controller, subscribers: 0, settled: false };
-        const request = generateCanvasVideoPreview(node, controller.signal).then(
+        const request = generateCanvasVideoPreview(node, scope, controller.signal).then(
             (result) => {
                 entry!.settled = true;
                 return result;
@@ -81,22 +83,32 @@ function clearCanvasVideoHydration(key: string, entry: CanvasVideoHydrationEntry
     if (canvasVideoHydrationBySource.get(key) === entry) canvasVideoHydrationBySource.delete(key);
 }
 
-async function generateCanvasVideoPreview(node: CanvasNodeData, signal?: AbortSignal): Promise<HydratedPoster | null> {
+async function generateCanvasVideoPreview(node: CanvasNodeData, scope: string, signal: AbortSignal): Promise<HydratedPoster | null> {
     await waitForBrowserIdle(signal);
     throwIfAborted(signal);
+    if (getActiveUserScope() !== scope) return null;
     const storageKey = node.metadata?.storageKey;
     const lease = storageKey ? await loadCachedResourceObjectUrl(storageKey).catch(() => null) : null;
-    let captured: Awaited<ReturnType<typeof captureVideoPoster>>;
+    let captured: Awaited<ReturnType<typeof captureVideoPoster>> | undefined;
     try {
         throwIfAborted(signal);
-        const source = lease?.url || (await resolveVideoMediaUrl(node.metadata?.storageKey, node.metadata?.content || ""));
-        if (!source) return null;
-        captured = await captureVideoPoster(source, { signal, maxWidth: 400 });
+        if (getActiveUserScope() !== scope) return null;
+        if (lease) captured = await captureVideoPoster(lease.url, { signal, maxWidth: 400 });
     } finally {
         lease?.release();
     }
+    if (!captured?.poster) {
+        throwIfAborted(signal);
+        if (getActiveUserScope() !== scope) return null;
+        // 缓存可能是无法解码的原件；失败时再尝试受鉴权的兼容播放地址。
+        const content = node.metadata?.content || "";
+        const fallback = node.metadata?.importSource?.provider === "libtv" ? buildLibTVVideoSourceUrl(content) : content;
+        const playbackSource = await resolveVideoMediaUrl(storageKey, fallback);
+        if (!playbackSource) return null;
+        captured = await captureVideoPoster(playbackSource, { signal, maxWidth: 400 });
+    }
     throwIfAborted(signal);
-    if (!captured.poster) return null;
+    if (!captured.poster || getActiveUserScope() !== scope) return null;
     const persisted = uploadImage(captured.poster)
         .then((preview) => ({
             content: preview.url,

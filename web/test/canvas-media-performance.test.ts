@@ -69,15 +69,19 @@ describe("large canvas media rendering", () => {
 
     test("keeps inactive video nodes on a viewport-gated static first frame", () => {
         const inactivePreviewSource = canvasNodeContentSource.match(/function InactiveVideoPreview[\s\S]*?\n}\n\n(?:export )?function VideoPreviewPlayButton/)?.[0] || "";
-        expect(canvasNodeContentSource).toContain("if (hasPersistedPreview || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMetadataRef.current)");
         expect(canvasNodeContentSource).not.toContain("hydrateMediaPreview");
-        expect(inactivePreviewSource).toContain("hasPersistedPreview || !nearViewport");
+        expect(inactivePreviewSource).toContain("const canHydrate = !showPersistedPreview && nearViewport");
         expect(inactivePreviewSource).toContain("URL.revokeObjectURL(localPreviewUrlRef.current)");
         expect(inactivePreviewSource).not.toContain("<video");
         expect(inactivePreviewSource).toContain("hydrateCanvasVideoPreview(node, controller.signal)");
-        expect(canvasVideoPreviewSource).toContain("captureVideoPoster(source, { signal, maxWidth: 400 })");
+        expect(canvasVideoPreviewSource).toContain("captureVideoPoster(playbackSource, { signal, maxWidth: 400 })");
         expect(inactivePreviewSource).toContain("hydrated.persisted.then");
         expect(inactivePreviewSource).not.toContain("autoPlay");
+        expect(inactivePreviewSource).not.toContain("bindCanvasVideoHoverPreview");
+        expect(inactivePreviewSource).toContain('(asset.data.storageKey || asset.data.url) !== sourceKey');
+        expect(inactivePreviewSource).toContain("onUnavailable={markPreviewUnavailable}");
+        expect(inactivePreviewSource).toContain("currentPreview?.src !== persistedPreviewSource");
+        expect(canvasNodeContentSource).toContain("<InactiveVideoPreview node={node} theme={theme} />");
         expect(inactivePreviewSource).toContain("<VideoPreviewPlayButton");
         expect(canvasNodeContentSource).toContain("useVideoPlaybackUrl(node, mediaActive)");
         expect(canvasNodeContentSource).toContain("onMediaPlayRequest?.(node.id)");
@@ -91,9 +95,8 @@ describe("large canvas media rendering", () => {
     test("routes resource-backed video playback through a browser-compatible variant", () => {
         expect(fileStorageSource).toContain('getResourceAccess(storageKey, "display", variant)');
         expect(fileStorageSource).toContain('return resolveMediaUrl(storageKey, fallback, "playback");');
-        expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(node.metadata?.storageKey, fallback)");
         expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(storageKey, fallback)");
-        expect(canvasVideoPreviewSource).toContain('resolveVideoMediaUrl(node.metadata?.storageKey, node.metadata?.content || "")');
+        expect(canvasVideoPreviewSource).toContain("resolveVideoMediaUrl(storageKey, fallback)");
         expect(canvasGenerationTaskSource).toContain('resolveVideoMediaUrl(result.storageKey, result.dataUrl || "")');
         expect(canvasProjectGenerationSource).toContain("node.type === CanvasNodeType.Video ? await resolveVideoMediaUrl");
     });

@@ -802,6 +802,7 @@ export function useCanvasUpload({ canvasId, domainProjectId, nodesRef, selectedN
                 height: size.height,
                 metadata: {
                     content: payload.url,
+                    previewContent: payload.coverUrl,
                     storageKey: payload.storageKey,
                     originalFileName: payload.originalFileName,
                     status: NODE_STATUS_SUCCESS,

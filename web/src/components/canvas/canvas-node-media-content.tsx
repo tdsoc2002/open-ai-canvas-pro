@@ -1,7 +1,6 @@
 // 画布节点的媒体内容：图片、视频、音频的预览、懒加载与失活占位。
 //
-// 视频只有在进入视口且被激活时才加载真实播放地址（useNearViewport / useVideoPlaybackUrl），
-// 避免大画布上同时拉取大量视频。
+// 视频节点优先展示静态封面，缺图才按需抽帧，点击后才启动播放器。
 
 import { Image as ImageIcon, ImageOff, LoaderCircle, Music2, Play, RotateCw, Video } from "lucide-react";
 import "./canvas-image-state.css";
@@ -16,12 +15,12 @@ import { CanvasSubtitleOverlay } from "./canvas-subtitle-overlay";
 import { type CanvasNodeData, CanvasNodeType } from "@/types/canvas";
 import { CanvasAudioPlayer } from "./canvas-audio-player";
 import { buildLibTVImagePreviewUrl, buildLibTVVideoSourceUrl } from "@/lib/canvas/libtv-import";
-import { bindCanvasVideoHoverPreview } from "@/lib/canvas/canvas-video-hover-preview";
 import { resolveVideoMediaUrl } from "@/services/file-storage";
 import { hydrateCanvasVideoPreview } from "@/services/canvas-video-preview";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { fitImageMaterialNodeSize, fitImageNodeSize, fitVideoNodeToSource } from "@/lib/canvas/canvas-node-size";
 import { getActiveUserScope } from "@/lib/user-scope";
+import { useAssetStore } from "@/stores/use-asset-store";
 import { isCanvasImageActive, prepareCanvasImage, subscribeCanvasImageActivity } from "@/services/canvas-image-loader";
 import { useCachedResourceUrl } from "@/hooks/use-cached-resource-url";
 import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
@@ -226,32 +225,35 @@ export function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     return <CanvasAudioPlayer node={node} theme={theme} />;
 }
 
-export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { onPlay: () => void }) {
+export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { onPlay?: () => void }) {
     const previewRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(previewRef);
+    const sourceKey = node.metadata?.storageKey || node.metadata?.content;
+    const assetId = node.metadata?.assetId;
     const persistedPreview = canvasNodeVideoPreviewReference(node);
-    const persistedPreviewSource = persistedPreview?.src || "";
-    const persistedPreviewStorageKey = persistedPreview?.storageKey || "";
-    const hasPersistedPreview = Boolean(persistedPreviewSource || persistedPreviewStorageKey);
-    const { updateMetadata, updateMediaNode } = useCanvasNodeActions();
-    const updateMetadataRef = useRef(updateMetadata);
+    const persistedPreviewSource = persistedPreview?.src;
+    const persistedPreviewStorageKey = persistedPreview?.storageKey;
+    const linkedCover = useAssetStore(({ assets }) => {
+        if (persistedPreview || !assetId || !sourceKey) return undefined;
+        const asset = assets.find((item) => item.id === assetId);
+        if (asset?.kind !== "video" || (asset.data.storageKey || asset.data.url) !== sourceKey) return undefined;
+        return asset.coverUrl !== asset.data.url ? asset.coverUrl : undefined;
+    });
+    const previewKey = persistedPreview || linkedCover ? JSON.stringify([sourceKey, persistedPreviewStorageKey, persistedPreviewSource || linkedCover]) : "";
+    const [failedPreviewKey, setFailedPreviewKey] = useState("");
+    const markPreviewUnavailable = useCallback(() => setFailedPreviewKey(previewKey), [previewKey]);
+    const showPersistedPreview = Boolean(previewKey && failedPreviewKey !== previewKey);
+    const { updateMediaNode } = useCanvasNodeActions();
     const updateMediaNodeRef = useRef(updateMediaNode);
+    const canHydrate = !showPersistedPreview && nearViewport && Boolean(sourceKey && updateMediaNode);
     const [hydrating, setHydrating] = useState(false);
-    const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+    const [localPreview, setLocalPreview] = useState<{ sourceKey: string | undefined; url: string }>();
+    const localPreviewUrl = localPreview?.sourceKey === sourceKey ? localPreview?.url : undefined;
     const localPreviewUrlRef = useRef("");
 
     useEffect(() => {
-        const element = previewRef.current;
-        if (!element) return;
-        const content = node.metadata?.content || "";
-        const fallback = node.metadata?.importSource?.provider === "libtv" ? buildLibTVVideoSourceUrl(content) : content;
-        return bindCanvasVideoHoverPreview(element, () => resolveVideoMediaUrl(node.metadata?.storageKey, fallback));
-    }, [node.metadata?.content, node.metadata?.storageKey, node.metadata?.importSource?.provider]);
-
-    useEffect(() => {
-        updateMetadataRef.current = updateMetadata;
         updateMediaNodeRef.current = updateMediaNode;
-    }, [updateMediaNode, updateMetadata]);
+    }, [updateMediaNode]);
 
     useEffect(
         () => () => {
@@ -261,20 +263,16 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
     );
 
     useEffect(() => {
-        if (hasPersistedPreview || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMetadataRef.current) {
-            if (hasPersistedPreview && localPreviewUrlRef.current) {
-                URL.revokeObjectURL(localPreviewUrlRef.current);
-                localPreviewUrlRef.current = "";
-                setLocalPreviewUrl("");
-            }
-            setHydrating(false);
-            return;
-        }
         if (localPreviewUrlRef.current) {
             URL.revokeObjectURL(localPreviewUrlRef.current);
             localPreviewUrlRef.current = "";
-            setLocalPreviewUrl("");
+            setLocalPreview(undefined);
         }
+        if (!canHydrate) {
+            setHydrating(false);
+            return;
+        }
+        const scope = getActiveUserScope();
         const controller = new AbortController();
         setHydrating(true);
         void hydrateCanvasVideoPreview(node, controller.signal)
@@ -285,16 +283,14 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                 }
                 if (localPreviewUrlRef.current) URL.revokeObjectURL(localPreviewUrlRef.current);
                 localPreviewUrlRef.current = hydrated.localUrl;
-                setLocalPreviewUrl(hydrated.localUrl);
+                setLocalPreview({ sourceKey, url: hydrated.localUrl });
                 void hydrated.persisted.then((videoPreview) => {
-                    if (controller.signal.aborted || !videoPreview) return;
-                    const update = updateMediaNodeRef.current;
-                    if (!update) {
-                        updateMetadataRef.current?.(node.id, { videoPreview });
-                        return;
-                    }
+                    if (controller.signal.aborted || !videoPreview || getActiveUserScope() !== scope) return;
                     // 首帧就是画面本身：未播放过的节点也按首帧比例校正，不再横着显示竖屏视频。
-                    update(node.id, (current) => {
+                    updateMediaNodeRef.current?.(node.id, (current) => {
+                        if (current.type !== CanvasNodeType.Video || (current.metadata?.storageKey || current.metadata?.content) !== sourceKey || getActiveUserScope() !== scope) return current;
+                        const currentPreview = canvasNodeVideoPreviewReference(current);
+                        if (currentPreview?.src !== persistedPreviewSource || currentPreview?.storageKey !== persistedPreviewStorageKey) return current;
                         const withPreview = { ...current, metadata: { ...current.metadata, videoPreview } };
                         const natural = current.metadata?.naturalWidth && current.metadata.naturalHeight ? { width: current.metadata.naturalWidth, height: current.metadata.naturalHeight } : { width: videoPreview.width, height: videoPreview.height };
                         return fitVideoNodeToSource(withPreview, natural.width, natural.height);
@@ -308,14 +304,16 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
         return () => {
             controller.abort();
         };
-    }, [hasPersistedPreview, nearViewport, node.id, node.metadata?.content, node.metadata?.storageKey, persistedPreviewSource, persistedPreviewStorageKey]);
+    }, [canHydrate, node.id, node.metadata?.importSource?.provider, sourceKey, persistedPreviewSource, persistedPreviewStorageKey]);
 
-    if (hasPersistedPreview || localPreviewUrl) {
+    const playButton = onPlay ? <VideoPreviewPlayButton title={node.title || "视频"} onPlay={onPlay} /> : null;
+    if (showPersistedPreview || localPreviewUrl) {
         return (
             <div ref={previewRef} className="group/video-preview relative size-full overflow-hidden rounded-[var(--node-radius)] bg-black">
-                {hasPersistedPreview ? (
+                {showPersistedPreview ? (
                     <CanvasVideoPreviewImage
                         node={node}
+                        fallbackSrc={linkedCover}
                         alt={`${node.title || "视频"} 静态预览`}
                         loading="lazy"
                         decoding="sync"
@@ -323,18 +321,19 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                         className="pointer-events-none size-full select-none object-contain"
                         loadingFallback={<LoaderCircle className="size-5 animate-spin text-white/55" />}
                         fallback={<Video className="size-7 text-white/40" />}
+                        onUnavailable={markPreviewUnavailable}
                     />
                 ) : (
                     <img src={localPreviewUrl} alt={`${node.title || "视频"} 静态预览`} loading="lazy" decoding="sync" draggable={false} className="pointer-events-none size-full select-none object-contain" />
                 )}
-                <VideoPreviewPlayButton title={node.title || "视频"} onPlay={onPlay} />
+                {playButton}
             </div>
         );
     }
     return (
         <div ref={previewRef} className="group/video-preview relative size-full">
-            <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={hydrating ? "正在生成首帧" : nearViewport ? "点击播放视频" : "进入视口后加载首帧"} theme={theme} />
-            <VideoPreviewPlayButton title={node.title || "视频"} onPlay={onPlay} />
+            <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={hydrating ? "正在生成首帧" : !nearViewport ? "进入视口后加载首帧" : onPlay ? "点击播放视频" : ""} theme={theme} />
+            {playButton}
         </div>
     );
 }
@@ -483,7 +482,7 @@ export function InactiveMediaCard({ icon, title, hint, theme }: { icon: ReactNod
             <span className="max-w-full truncate text-xs font-medium" title={title}>
                 {title}
             </span>
-            <span className="text-[var(--fs-tiny)] opacity-50">{hint}</span>
+            {hint ? <span className="text-[var(--fs-tiny)] opacity-50">{hint}</span> : null}
         </div>
     );
 }

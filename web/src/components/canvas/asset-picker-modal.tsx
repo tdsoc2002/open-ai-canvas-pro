@@ -16,7 +16,7 @@ type InsertableAsset = Extract<Asset, { kind: "text" | "image" | "video" | "audi
 export type InsertAssetPayload = { originalFileName?: string } & (
     | { kind: "text"; content: string; title: string; assetId?: string }
     | { kind: "image"; dataUrl: string; title: string; url?: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string; assetId?: string }
-    | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number; durationMs?: number; hasAudio?: boolean; bytes?: number; mimeType?: string; assetId?: string }
+    | { kind: "video"; url: string; title: string; coverUrl?: string; storageKey?: string; width?: number; height?: number; durationMs?: number; hasAudio?: boolean; bytes?: number; mimeType?: string; assetId?: string }
     | { kind: "audio"; url: string; title: string; storageKey?: string; durationMs?: number; bytes?: number; mimeType?: string; assetId?: string }
     | {
           kind: "character";
@@ -125,6 +125,7 @@ function localAssetToInsertPayload(asset: InsertableAsset): InsertAssetPayload {
         return {
             kind: "video",
             url: asset.data.url,
+            coverUrl: asset.coverUrl && asset.coverUrl !== asset.data.url ? asset.coverUrl : undefined,
             storageKey: asset.data.storageKey,
             title: asset.title,
             width: asset.data.width,
@@ -144,7 +145,7 @@ export function externalAssetToInsertPayload(reference: ExternalAssetPickerRefer
     if (!url) throw new Error(translate("canvasA.assetPicker.externalUnreadable", { title: item.title }));
     const assetId = `external:${reference.sourceId}:${item.id}`;
     if (item.kind === "image") return { kind: "image", dataUrl: url, url, title: item.title || translate("canvasA.assetPicker.defaultImageTitle"), width: item.width, height: item.height, bytes: item.bytes, mimeType: item.mimeType, assetId };
-    if (item.kind === "video") return { kind: "video", url, title: item.title, width: item.width, height: item.height, bytes: item.bytes, mimeType: item.mimeType, assetId };
+    if (item.kind === "video") return { kind: "video", url, title: item.title, coverUrl: item.thumbnailUrl !== url ? item.thumbnailUrl : undefined, width: item.width, height: item.height, bytes: item.bytes, mimeType: item.mimeType, assetId };
     if (item.kind === "audio") return { kind: "audio", url, title: item.title, bytes: item.bytes, mimeType: item.mimeType, assetId };
     throw new Error(translate("canvasA.assetPicker.notInsertableMedia", { title: item.title }));
 }

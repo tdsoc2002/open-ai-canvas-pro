@@ -18,7 +18,6 @@ import { isResourceUrl } from "@/services/api/resources";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
-import { CanvasVideoPreviewImage } from "./canvas-video-preview-image";
 import { CanvasFileUploadContent } from "./canvas-file-upload-content";
 import { MarkdownTextPreview } from "./canvas-markdown-text-preview";
 import { ColorGradeNodeContent } from "./nodes/color-grade-node";
@@ -26,7 +25,7 @@ import { PanoramaNodeContent } from "./nodes/panorama-node";
 import { ArtCritiqueNodeContent } from "./nodes/ai-art-critique-node";
 import { MediaConversionNodeContent } from "./nodes/media-conversion-node";
 import { MEDIA_CONVERSION_NODE_TYPE } from "@/lib/media-conversion/contracts";
-import { AudioNodeContent, EmptyImageContent, ImageNodeContent, VideoNodeContent } from "./canvas-node-media-content";
+import { AudioNodeContent, EmptyImageContent, ImageNodeContent, InactiveVideoPreview, VideoNodeContent } from "./canvas-node-media-content";
 import { ErrorContent, LoadingContent, UnknownNodeContent } from "./canvas-node-status-content";
 
 export type CanvasNodeContentProps = {
@@ -135,18 +134,8 @@ function CanvasNodePreviewContent({ node, theme }: { node: CanvasNodeData; theme
             />
         );
     }
-    if (node.type === CanvasNodeType.Video && (node.metadata?.content || node.metadata?.storageKey)) {
-        return (
-            <CanvasVideoPreviewImage
-                node={node}
-                alt={node.title}
-                loading="lazy"
-                decoding="async"
-                draggable={false}
-                className="pointer-events-none block size-full select-none object-contain"
-                fallback={<CanvasNodeShellContent node={node} theme={theme} />}
-            />
-        );
+    if (node.type === CanvasNodeType.Video && (node.metadata?.content || node.metadata?.storageKey) && node.metadata?.status !== "loading" && node.metadata?.status !== "error") {
+        return <InactiveVideoPreview node={node} theme={theme} />;
     }
     return <CanvasNodeShellContent node={node} theme={theme} />;
 }

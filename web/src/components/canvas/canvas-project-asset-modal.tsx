@@ -148,15 +148,18 @@ export function toInsertPayload(item: ProjectPickerItem): InsertAssetPayload {
         const resourceId = resourceIdFromStorageKey(project.storageKey);
         const remoteUrl = resourceId ? resourceFileUrl(resourceId) : "";
         if (project.mediaType === "text" && project.previewText) return { kind: "text", content: project.previewText, title: project.title, assetId: project.id };
-        if (project.mediaType === "video" && remoteUrl)
+        if (project.mediaType === "video" && remoteUrl) {
+            const matchingVideo = asset?.kind === "video" && asset.data.storageKey === project.storageKey ? asset : undefined;
             return {
-                ...(asset?.kind === "video" && asset.data.storageKey === project.storageKey ? asset.data : { durationMs: project.durationMs }),
+                ...(matchingVideo?.data ?? { durationMs: project.durationMs }),
                 kind: "video",
                 url: remoteUrl,
+                coverUrl: matchingVideo && matchingVideo.coverUrl !== matchingVideo.data.url ? matchingVideo.coverUrl : undefined,
                 storageKey: project.storageKey,
                 title: project.title,
                 assetId: project.id,
             };
+        }
         if (project.mediaType === "audio" && remoteUrl)
             return {
                 ...(asset?.kind === "audio" && asset.data.storageKey === project.storageKey ? asset.data : { durationMs: project.durationMs }),
@@ -176,6 +179,7 @@ export function toInsertPayload(item: ProjectPickerItem): InsertAssetPayload {
         return {
             kind: "video",
             url: projectAssetMediaUrl(asset.data.storageKey, asset.data.url),
+            coverUrl: asset.coverUrl && asset.coverUrl !== asset.data.url ? asset.coverUrl : undefined,
             storageKey: asset.data.storageKey,
             title: asset.title,
             width: asset.data.width,

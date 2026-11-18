@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { applyGeneratedMediaResultMetadata, applyGenerationTaskResultToNodes, generationTaskOutputsApplied, shouldRecoverCanvasImageOutputs, videoMetadata } from "@/lib/canvas/canvas-generation-task-sync";
+import { applyGeneratedMediaResultMetadata, applyGenerationTaskResultToNodes, buildGenerationTaskNodeResult, generationTaskOutputsApplied, shouldRecoverCanvasImageOutputs, videoMetadata } from "@/lib/canvas/canvas-generation-task-sync";
 import { commitCanvasGenerationResult } from "@/lib/canvas/canvas-generation-result";
 import { resetGenerationTaskMetadata } from "@/lib/canvas/canvas-task-state";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
@@ -21,7 +21,7 @@ function videoNode(assetId: string, storageKey: string): CanvasNodeData {
         position: { x: 0, y: 0 },
         width: 320,
         height: 180,
-        metadata: { assetId, storageKey, content: "https://example.test/old.mp4", prompt: "旧提示词" },
+        metadata: { assetId, storageKey, content: "https://example.test/old.mp4", previewContent: "https://example.test/old.jpg", prompt: "旧提示词" },
     };
 }
 
@@ -93,9 +93,20 @@ describe("applyGeneratedMediaResultMetadata", () => {
         }), { prompt: "新提示词" });
 
         expect(next.assetId).toBeUndefined();
+        expect(next.previewContent).toBeUndefined();
         expect(next.storageKey).toBe("video:new");
         expect(next.content).toBe("https://example.test/new.mp4");
         expect(next.prompt).toBe("新提示词");
         expect(next.status).toBe("success");
+    });
+    test("生成视频优先使用本次结果的封面，而不是旧节点封面", async () => {
+        const node = videoNode("asset-old", "video:old");
+        const task = {
+            id: "task", type: "canvas_video", status: "succeeded" as const, prompt: "", attempts: 1, createdAt: "", updatedAt: "",
+            previewKind: "video" as const, previewPosterUrl: "https://example.test/new.jpg",
+            resultJson: JSON.stringify({ video: { dataUrl: "https://example.test/new.mp4" } }),
+        };
+        const result = await buildGenerationTaskNodeResult(node, task);
+        expect(result.metadata?.previewContent).toBe(task.previewPosterUrl);
     });
 });

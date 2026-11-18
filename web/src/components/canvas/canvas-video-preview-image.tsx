@@ -8,7 +8,9 @@ type CanvasVideoPreviewImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "s
     node: CanvasNodeData;
     fallback?: ReactNode;
     loadingFallback?: ReactNode;
+    fallbackSrc?: string;
     eager?: boolean;
+    onUnavailable?: () => void;
 };
 
 /**
@@ -16,14 +18,14 @@ type CanvasVideoPreviewImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "s
  * their resource storage key so remote media is served by OSS/CDN rather than
  * an obsolete platform proxy URL embedded in older canvas snapshots.
  */
-export function CanvasVideoPreviewImage({ node, fallback = null, loadingFallback = fallback, eager = false, ...props }: CanvasVideoPreviewImageProps) {
+export function CanvasVideoPreviewImage({ node, fallback = null, loadingFallback = fallback, fallbackSrc, eager = false, ...props }: CanvasVideoPreviewImageProps) {
     const preview = canvasNodeVideoPreviewReference(node);
-    if (!preview) return <>{fallback}</>;
+    if (!preview && !fallbackSrc) return <>{fallback}</>;
     return (
         <CachedResourceImage
             {...props}
-            storageKey={preview.storageKey}
-            src={preview.src}
+            storageKey={preview?.storageKey}
+            src={preview?.src ?? fallbackSrc}
             fallback={fallback}
             loadingFallback={loadingFallback}
             eager={eager}

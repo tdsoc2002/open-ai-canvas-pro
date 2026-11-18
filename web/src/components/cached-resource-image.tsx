@@ -12,6 +12,7 @@ type CachedResourceImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src">
     loadingFallback?: ReactNode;
     eager?: boolean;
     variant?: ResourceAccessVariant;
+    onUnavailable?: () => void;
 };
 
 /**
@@ -19,7 +20,7 @@ type CachedResourceImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src">
  * Blob 缓存仍可用于导出、抽帧等字节处理，但不作为媒体展示 src，避免把
  * `blob:http(s)://...` 泄露到节点、素材库和浏览器媒体链路中。
  */
-export function CachedResourceImage({ storageKey, src = "", fallback = null, loadingFallback = fallback, eager = false, variant = "original", onError, ...props }: CachedResourceImageProps) {
+export function CachedResourceImage({ storageKey, src = "", fallback = null, loadingFallback = fallback, eager = false, variant = "original", onError, onUnavailable, ...props }: CachedResourceImageProps) {
     const resourceId = resourceIdFromStorageKey(storageKey);
     const remoteResource = Boolean(resourceId);
     const localImageResource = Boolean(storageKey && storageKey.startsWith("image:"));
@@ -32,6 +33,10 @@ export function CachedResourceImage({ storageKey, src = "", fallback = null, loa
     displayedRef.current = displayed;
     const [failedIdentity, setFailedIdentity] = useState("");
     const cachedSrc = displayed?.identity === identity ? displayed.src : "";
+
+    useEffect(() => {
+        if (failedIdentity === identity) onUnavailable?.();
+    }, [failedIdentity, identity, onUnavailable]);
 
     useEffect(() => {
         if (!remoteResource || eager) {
