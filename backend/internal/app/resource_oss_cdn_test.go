@@ -57,7 +57,7 @@ func TestBoundS3ResourcesUseCurrentCDNPolicyFromTheirScope(t *testing.T) {
 			if test.otherScope {
 				opposite := historical
 				opposite.CDNBaseURL = "https://other-scope.example.com"
-				opposite.AllowUserS3 = true
+				opposite.AllowUserStorage = true
 				opposite.Delivery.CDNAuthMode = "public"
 				encoded, err := json.Marshal(opposite)
 				if err != nil {

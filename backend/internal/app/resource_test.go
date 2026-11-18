@@ -393,6 +393,62 @@ func TestPlatformProviderSwitchKeepsHistoricalCredentials(t *testing.T) {
 	}
 }
 
+func TestBoundPlatformResourceCredentialsFollowOnlyTheSameActiveLocation(t *testing.T) {
+	svc, _ := newResourceFallbackTestService(t)
+	original := ossSettingValue{
+		Enabled: true, Provider: aliyunOSSProvider, Endpoint: "https://oss-cn-hangzhou.aliyuncs.com",
+		Bucket: "platform", Region: "oss-cn-hangzhou", PathPrefix: "yingce",
+		AccessKeyID: "old-id", AccessKeySecret: "old-secret", SessionToken: "old-token",
+	}
+	id, err := svc.platformResourceStorageBinding(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resource := &model.Resource{Provider: original.Provider, Endpoint: original.Endpoint, Bucket: original.Bucket, StorageSettingID: id}
+	for _, tc := range []struct {
+		name   string
+		change func(*ossSettingValue)
+	}{
+		{name: "same location"},
+		{name: "different provider", change: func(v *ossSettingValue) { v.Provider = qiniuKodoProvider }},
+		{name: "different endpoint", change: func(v *ossSettingValue) { v.Endpoint = "https://oss-cn-shanghai.aliyuncs.com" }},
+		{name: "different bucket", change: func(v *ossSettingValue) { v.Bucket = "other" }},
+		{name: "different region", change: func(v *ossSettingValue) { v.Region = "oss-cn-shanghai" }},
+		{name: "different prefix", change: func(v *ossSettingValue) { v.PathPrefix = "other" }},
+		{name: "disabled", change: func(v *ossSettingValue) { v.Enabled = false }},
+		{name: "incomplete", change: func(v *ossSettingValue) { v.AccessKeySecret = "" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			current := original
+			current.AccessKeyID, current.AccessKeySecret, current.SessionToken = "new-id", "new-secret", ""
+			expected := current
+			if tc.change != nil {
+				tc.change(&current)
+				expected = original
+			}
+			data, err := json.Marshal(current)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := svc.repo.SaveSystemSetting(&model.SystemSetting{Key: ossSettingKey, ValueJSON: string(data)}); err != nil {
+				t.Fatal(err)
+			}
+			for _, resolve := range []func(string, *model.Resource) (ossSettingValue, error){svc.ossSettingForResource, svc.ossSettingForResourceRetry} {
+				got, err := resolve("resource-owner", resource)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got.AccessKeyID != expected.AccessKeyID || got.AccessKeySecret != expected.AccessKeySecret || got.SessionToken != expected.SessionToken {
+					t.Fatal("unexpected credential selection for the bound resource")
+				}
+				if storageLocationDigest(got) != storageLocationDigest(original) || got.StorageLocationID != id {
+					t.Fatal("historical resource binding or location changed")
+				}
+			}
+		})
+	}
+}
+
 func TestArchivedProviderCredentialsAreEncryptedAtRest(t *testing.T) {
 	svc := &Service{dataDir: t.TempDir()}
 	value := ossSettingValue{
@@ -595,7 +651,7 @@ func TestCurrentUserCDNSettingAppliesToHistoricalResourcesInSameStorage(t *testi
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 	svc := newResourceTestService(t)
-	setPersonalStorageAllowed(t, svc, true)
+	permitPersonalStorage(t, svc)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{
 		Enabled: true, Provider: aliyunOSSProvider, Endpoint: server.URL, Bucket: "private-bucket",
@@ -645,7 +701,7 @@ func TestBoundHistoricalUserResourceDoesNotFollowCurrentProviderCDN(t *testing.T
 	defer qiniuCDN.Close()
 
 	svc := newResourceTestService(t)
-	setPersonalStorageAllowed(t, svc, true)
+	permitPersonalStorage(t, svc)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{
 		Enabled: true, Provider: aliyunOSSProvider, Endpoint: aliyunEndpoint.URL, CDNBaseURL: aliyunCDN.URL, Bucket: "aliyun-bucket",
@@ -695,7 +751,7 @@ func TestHistoricalUserResourceWithoutStorageSettingIDKeepsItsProviderCDN(t *tes
 	defer qiniuEndpoint.Close()
 	defer qiniuCDN.Close()
 	svc := newResourceTestService(t)
-	setPersonalStorageAllowed(t, svc, true)
+	permitPersonalStorage(t, svc)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{
 		Enabled: true, Provider: aliyunOSSProvider, Endpoint: aliyunEndpoint.URL, CDNBaseURL: aliyunCDN.URL, Bucket: "aliyun-bucket",
@@ -922,7 +978,7 @@ func TestActiveResourceOSSSettingPrefersUserVersion(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 	svc := newResourceTestService(t)
-	systemJSON, _ := json.Marshal(ossSettingValue{Enabled: true, AllowUserS3: true, Provider: "aliyun", Endpoint: server.URL, Bucket: "system", AccessKeyID: "system-id", AccessKeySecret: "system-secret"})
+	systemJSON, _ := json.Marshal(ossSettingValue{Enabled: true, Provider: "aliyun", Endpoint: server.URL, Bucket: "system", AccessKeyID: "system-id", AccessKeySecret: "system-secret", AllowUserStorage: true})
 	if err := svc.repo.SaveSystemSetting(&model.SystemSetting{Key: ossSettingKey, ValueJSON: string(systemJSON)}); err != nil {
 		t.Fatal(err)
 	}
@@ -945,7 +1001,7 @@ func TestUserOSSSettingVersionsKeepHistoricalSecrets(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 	svc := newResourceTestService(t)
-	setPersonalStorageAllowed(t, svc, true)
+	permitPersonalStorage(t, svc)
 	actor := &model.User{ID: "user-1"}
 	if _, err := svc.UpdateUserOSSSetting(actor, OSSSettingRequest{Enabled: true, Provider: "aliyun", Endpoint: server.URL, Bucket: "old", AccessKeyID: "old-id", AccessKeySecret: "old-secret"}); err != nil {
 		t.Fatal(err)

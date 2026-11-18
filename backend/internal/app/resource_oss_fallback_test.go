@@ -39,6 +39,7 @@ func newResourceFallbackTestService(t *testing.T) (*Service, *gorm.DB) {
 func TestStoreResourceFailsWhenOSSUnavailable(t *testing.T) {
 	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
 	service, db := newResourceFallbackTestService(t)
+	permitPersonalStorage(t, service)
 	seedOSSEnabled(t, db, "user-1", "http://127.0.0.1:1")
 
 	resource, created, err := service.storeResource(
@@ -73,6 +74,7 @@ func TestStoreResourceFailsWhenOSSUnavailable(t *testing.T) {
 // TestStoreResourceLocalPathUnaffectedByOSS 未启用 OSS 时上传仍走本地存储，不受其他用户 OSS 设置影响。
 func TestStoreResourceLocalPathUnaffectedByOSS(t *testing.T) {
 	service, db := newResourceFallbackTestService(t)
+	permitPersonalStorage(t, service)
 	seedOSSEnabled(t, db, "user-other", "http://127.0.0.1:1")
 
 	resource, created, err := service.storeResource(
@@ -99,9 +101,6 @@ func TestStoreResourceLocalPathUnaffectedByOSS(t *testing.T) {
 
 func seedOSSEnabled(t *testing.T, db *gorm.DB, userID string, endpoint string) {
 	t.Helper()
-	if err := db.Create(&model.SystemSetting{Key: ossSettingKey, ValueJSON: `{"allowUserS3":true}`}).Error; err != nil {
-		t.Fatal(err)
-	}
 	setting := model.UserOSSSetting{
 		ID:        newID(),
 		UserID:    userID,

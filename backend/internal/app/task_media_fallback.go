@@ -168,8 +168,8 @@ func (s *Service) fallbackTaskMediaToLocal(task *model.Task, resource *model.Res
 
 // taskMediaObjectWriter 是生成作品的对象写入器：平台存储可兜底时限时直传，失败或熔断
 // 时改存本地。*fallbackCause 记录触发兜底的存储错误，供调用方写请求日志。
-func (s *Service) taskMediaObjectWriter(task *model.Task, stagedPath string, fallbackCause *error) func(*model.Resource, string, io.Reader) (string, error) {
-	return func(resource *model.Resource, _ string, body io.Reader) (string, error) {
+func (s *Service) taskMediaObjectWriter(task *model.Task, stagedPath string, fallbackCause *error) func(*model.Resource, ossSettingValue, io.Reader) (string, error) {
+	return func(resource *model.Resource, setting ossSettingValue, body io.Reader) (string, error) {
 		if resource.Provider == "local" {
 			return "", writeLocalResourceObject(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)), body)
 		}
@@ -188,7 +188,7 @@ func (s *Service) taskMediaObjectWriter(task *model.Task, stagedPath string, fal
 			ctx, cancel = context.WithTimeout(ctx, generatedUploadBudget(resource.Size))
 			defer cancel()
 		}
-		etag, err := s.storeTaskMediaObjectContext(ctx, resource, body)
+		etag, err := putOSSObjectContext(ctx, s.storageSettingWithRuntimePolicy(setting), resource.ObjectKey, resource.MimeType, resource.Size, body)
 		mediaStorageBreaker.record(key, err)
 		if err == nil {
 			return etag, nil

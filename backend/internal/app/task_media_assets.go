@@ -126,7 +126,8 @@ func (s *Service) registerRecoveredMediaAssets(task model.Task) error {
 			data["url"] = url
 		}
 		title := map[string]string{"image": "生成图片", "video": "生成视频", "audio": "生成音频"}[checkpoint.Mode]
-		metadata := map[string]any{"source": "generation-task", "generationEffectKey": effectKey, "taskId": task.ID, "outputIndex": index}
+		librarySaved := task.WorkbenchKind == checkpoint.Mode && (checkpoint.Mode == model.WorkbenchKindImage || checkpoint.Mode == model.WorkbenchKindVideo)
+		metadata := map[string]any{"source": "generation-task", "librarySaved": librarySaved, "generationEffectKey": effectKey, "taskId": task.ID, "outputIndex": index}
 		if projectID != "" {
 			metadata["projectIds"] = []string{projectID}
 		}

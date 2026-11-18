@@ -346,11 +346,15 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 		if resource.UserID != task.UserID || resource.Size != info.Size() || resource.MimeType != mimeType {
 			return nil, nil, errors.New("恢复文件与原始资源不一致")
 		}
+		setting, settingErr := s.ossSettingForResourceRetry(task.UserID, resource)
+		if settingErr != nil {
+			return nil, nil, settingErr
+		}
 		resource.DurationMs = durationMs
 		if kind == "video" && width > 0 && height > 0 {
 			resource.Width, resource.Height = width, height
 		}
-		resource.ETag, err = writeObject(resource, "generated."+extensionFromMimeType(mimeType), file)
+		resource.ETag, err = writeObject(resource, setting, file)
 		if err == nil {
 			resource.Status, resource.Error, resource.UpdatedAt = model.ResourceStatusReady, "", time.Now()
 			err = s.saveResourceWithinStorageLimit(resource, "")
@@ -372,16 +376,6 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 		s.maybeStartPlaybackTranscode(resource)
 	}
 	return resource, fallbackCause, nil
-}
-
-// storeTaskMediaObjectContext 直传对象存储。是否改存本地由 taskMediaObjectWriter
-// 决定：只有平台存储失败才会兜底，并且总会登记补传任务，不会静默改变存储位置。
-func (s *Service) storeTaskMediaObjectContext(ctx context.Context, resource *model.Resource, body io.Reader) (string, error) {
-	setting, err := s.ossSettingForResourceWrite(resource.UserID, resource)
-	if err != nil {
-		return "", err
-	}
-	return putOSSObjectContext(ctx, s.storageSettingWithRuntimePolicy(setting), resource.ObjectKey, resource.MimeType, resource.Size, body)
 }
 
 // Cleanup is best effort only after durable completion. Expired leftovers are

@@ -11,7 +11,7 @@ describe("OSS settings helpers", () => {
     test("only connection fields invalidate a previous test", () => {
         expect(changesRequireOSSRetest({ endpoint: "https://s3.example.com" })).toBe(true);
         expect(changesRequireOSSRetest({ enabled: true })).toBe(false);
-        expect(changesRequireOSSRetest({ allowUserS3: true })).toBe(false);
+        expect(changesRequireOSSRetest({ allowUserStorage: true })).toBe(false);
     });
 
     test("uses the product path prefix by default", () => {

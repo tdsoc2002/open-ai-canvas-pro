@@ -38,26 +38,36 @@ const (
 
 const unsupportedOSSProviderMessage = "仅支持阿里云 OSS、腾讯云 COS、七牛云 Kodo、火山引擎 TOS 和通用 S3"
 
+func (s *Service) requireUserStorageAllowed() error {
+	_, platform, err := s.readOSSSetting()
+	if err != nil {
+		return err
+	}
+	if !platform.AllowUserStorage {
+		return Forbidden("平台未开放用户自有存储")
+	}
+	return nil
+}
+
 func supportedOSSProvider(provider string) bool {
 	return oneOf(provider, aliyunOSSProvider, tencentCOSProvider, qiniuKodoProvider, volcengineTOSProvider, s3Provider)
 }
 
 type OSSSettingRequest struct {
-	Enabled         bool   `json:"enabled"`
-	Provider        string `json:"provider"`
-	Region          string `json:"region"`
-	Endpoint        string `json:"endpoint"`
-	CDNBaseURL      string `json:"cdnBaseUrl"`
-	Bucket          string `json:"bucket"`
-	AccessKeyID     string `json:"accessKeyId"`
-	AccessKeySecret string `json:"accessKeySecret"`
-	PublicBaseURL   string `json:"publicBaseUrl"`
-	PathPrefix      string `json:"pathPrefix"`
-	S3Preset        string `json:"s3Preset"`
-	PathStyle       bool   `json:"pathStyle"`
-	SessionToken    string `json:"sessionToken"`
-	// Retained wire name; controls all personal object storage providers.
-	AllowUserS3       bool   `json:"allowUserS3"`
+	Enabled           bool   `json:"enabled"`
+	Provider          string `json:"provider"`
+	Region            string `json:"region"`
+	Endpoint          string `json:"endpoint"`
+	CDNBaseURL        string `json:"cdnBaseUrl"`
+	Bucket            string `json:"bucket"`
+	AccessKeyID       string `json:"accessKeyId"`
+	AccessKeySecret   string `json:"accessKeySecret"`
+	PublicBaseURL     string `json:"publicBaseUrl"`
+	PathPrefix        string `json:"pathPrefix"`
+	S3Preset          string `json:"s3Preset"`
+	PathStyle         bool   `json:"pathStyle"`
+	SessionToken      string `json:"sessionToken"`
+	AllowUserStorage  bool   `json:"allowUserStorage"`
 	CDNAuthMode       string `json:"cdnAuthMode"`
 	RequireCDN        bool   `json:"requireCDN"`
 	AllowPrivateProxy bool   `json:"allowPrivateProxy"`
@@ -82,7 +92,7 @@ type PublicOSSSetting struct {
 	TestedDigest            string     `json:"testedDigest,omitempty"`
 	HistoryCount            int64      `json:"historyCount"`
 	ReferencedResourceCount int64      `json:"referencedResourceCount"`
-	AllowUserS3             bool       `json:"allowUserS3"`
+	AllowUserStorage        bool       `json:"allowUserStorage"`
 	CDNAuthMode             string     `json:"cdnAuthMode"`
 	RequireCDN              bool       `json:"requireCDN"`
 	AllowPrivateProxy       bool       `json:"allowPrivateProxy"`
@@ -118,6 +128,7 @@ func (s *Service) UpdateOSSSetting(actor *model.User, req OSSSettingRequest) (*P
 	if err != nil {
 		return nil, err
 	}
+	next.AllowUserStorage = req.AllowUserStorage
 	if !next.Enabled {
 		if next.PublicBaseURL == "" {
 			return nil, BadAuthRequest("服务器本地存储需要填写服务器访问地址")
@@ -175,15 +186,19 @@ func (s *Service) UserOSSSetting(actor *model.User) (*PublicOSSSetting, error) {
 	if actor == nil {
 		return nil, Unauthorized("请先登录")
 	}
-	setting, value, err := s.readUserOSSSetting(actor.ID)
-	if err != nil {
-		return nil, err
-	}
 	_, platform, err := s.readOSSSetting()
 	if err != nil {
 		return nil, err
 	}
-	public, err := s.publicUserOSSSetting(setting, value, actor.ID, platform.AllowUserS3)
+	if !platform.AllowUserStorage {
+		public, err := s.publicUserOSSSetting(nil, normalizeOSSSetting(ossSettingValue{}), actor.ID, false)
+		return &public, err
+	}
+	setting, value, err := s.readUserOSSSetting(actor.ID)
+	if err != nil {
+		return nil, err
+	}
+	public, err := s.publicUserOSSSetting(setting, value, actor.ID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -194,13 +209,8 @@ func (s *Service) UpdateUserOSSSetting(actor *model.User, req OSSSettingRequest)
 	if actor == nil {
 		return nil, Unauthorized("请先登录")
 	}
-	_, platform, err := s.readOSSSetting()
-	if err != nil {
+	if err := s.requireUserStorageAllowed(); err != nil {
 		return nil, err
-	}
-	// The existing allowUserS3 field now gates every personal storage provider.
-	if !platform.AllowUserS3 {
-		return nil, Forbidden("平台管理员尚未允许个人对象存储")
 	}
 	_, currentValue, err := s.readUserOSSSetting(actor.ID)
 	if err != nil {
@@ -241,7 +251,7 @@ func (s *Service) UpdateUserOSSSetting(actor *model.User, req OSSSettingRequest)
 			return nil, err
 		}
 	}
-	public, err := s.publicUserOSSSetting(&setting, next, actor.ID, platform.AllowUserS3)
+	public, err := s.publicUserOSSSetting(&setting, next, actor.ID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +612,6 @@ func ossSettingFromRequest(req OSSSettingRequest, current ossSettingValue) (ossS
 		S3Preset:        strings.TrimSpace(req.S3Preset),
 		PathStyle:       req.PathStyle,
 		SessionToken:    strings.TrimSpace(req.SessionToken),
-		AllowUserS3:     req.AllowUserS3,
 		Delivery:        storage.DeliverySettings{CDNAuthMode: strings.ToLower(strings.TrimSpace(req.CDNAuthMode)), RequireCDN: req.RequireCDN, AllowPrivateProxy: req.AllowPrivateProxy},
 	})
 	if next.Delivery.CDNAuthMode != "" && next.Delivery.CDNAuthMode != "public" && next.Delivery.CDNAuthMode != "qiniu" {
@@ -717,7 +726,7 @@ func (s *Service) publicOSSSetting(setting *model.SystemSetting, value ossSettin
 		PathStyle:          value.PathStyle,
 		HasSessionToken:    value.SessionToken != "",
 		StorageLocationID:  value.StorageLocationID,
-		AllowUserS3:        value.AllowUserS3,
+		AllowUserStorage:   value.AllowUserStorage,
 		CDNAuthMode:        value.Delivery.CDNAuthMode,
 		RequireCDN:         value.Delivery.RequireCDN,
 		AllowPrivateProxy:  value.Delivery.AllowPrivateProxy,
@@ -733,7 +742,7 @@ func (s *Service) publicOSSSetting(setting *model.SystemSetting, value ossSettin
 	return result, nil
 }
 
-func (s *Service) publicUserOSSSetting(setting *model.UserOSSSetting, value ossSettingValue, ownerID string, allowUserS3 bool) (PublicOSSSetting, error) {
+func (s *Service) publicUserOSSSetting(setting *model.UserOSSSetting, value ossSettingValue, ownerID string, allowUserStorage bool) (PublicOSSSetting, error) {
 	result := PublicOSSSetting{
 		Enabled:            value.Enabled,
 		Provider:           value.Provider,
@@ -749,13 +758,10 @@ func (s *Service) publicUserOSSSetting(setting *model.UserOSSSetting, value ossS
 		PathStyle:          value.PathStyle,
 		HasSessionToken:    value.SessionToken != "",
 		StorageLocationID:  value.StorageLocationID,
-		AllowUserS3:        allowUserS3,
+		AllowUserStorage:   allowUserStorage,
 		CDNAuthMode:        value.Delivery.CDNAuthMode,
 		RequireCDN:         value.Delivery.RequireCDN,
 		AllowPrivateProxy:  value.Delivery.AllowPrivateProxy,
-	}
-	if !allowUserS3 {
-		result.Enabled = false
 	}
 	if setting != nil {
 		result.UpdatedBy = setting.UserID

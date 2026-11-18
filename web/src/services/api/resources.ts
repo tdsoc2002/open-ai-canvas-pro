@@ -43,8 +43,7 @@ export type UserOSSSetting = {
     sessionToken?: string;
     hasSessionToken: boolean;
     pathStyle: boolean;
-    /** Existing API field controlling every personal object storage provider. */
-    allowUserS3: boolean;
+    allowUserStorage: boolean;
     publicBaseUrl: string;
     pathPrefix: string;
     testedAt?: string;
@@ -229,8 +228,8 @@ export function resourceStorageKey(id: string) {
     return `resource:${id}`;
 }
 
-export function getUserOSSSetting() {
-    return http.get<{ setting: UserOSSSetting }>("/settings/oss");
+export function getUserOSSSetting(signal?: AbortSignal) {
+    return http.get<{ setting: UserOSSSetting }>("/settings/oss", { signal });
 }
 
 export function updateUserOSSSetting(input: UserOSSSettingInput) {

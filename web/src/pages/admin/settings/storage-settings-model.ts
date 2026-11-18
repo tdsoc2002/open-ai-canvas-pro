@@ -24,7 +24,7 @@ export type OSSFormValues = {
     pathPrefix: string;
     s3Preset: S3Preset;
     pathStyle: boolean;
-    allowUserS3: boolean;
+    allowUserStorage: boolean;
 };
 
 export type StoragePayload = Pick<
@@ -45,7 +45,7 @@ export type StoragePayload = Pick<
     | "pathPrefix"
     | "s3Preset"
     | "pathStyle"
-    | "allowUserS3"
+    | "allowUserStorage"
 >;
 
 export function formValues(setting: AdminOSSSetting): OSSFormValues {
@@ -65,7 +65,7 @@ export function formValues(setting: AdminOSSSetting): OSSFormValues {
         pathPrefix: setting.pathPrefix || DEFAULT_OSS_PATH_PREFIX,
         s3Preset: setting.s3Preset || "custom",
         pathStyle: setting.pathStyle === true,
-        allowUserS3: setting.allowUserS3 === true,
+        allowUserStorage: setting.allowUserStorage === true,
     };
 }
 
@@ -129,7 +129,7 @@ export function normalizeStoragePayload(values: Partial<OSSFormValues>, setting:
         pathPrefix: (values.pathPrefix?.trim() || DEFAULT_OSS_PATH_PREFIX).replace(/^\/+|\/+$/g, ""),
         s3Preset: values.s3Preset || "custom",
         pathStyle: provider === "volcengine" ? false : values.pathStyle === true,
-        allowUserS3: values.allowUserS3 === true,
+        allowUserStorage: values.allowUserStorage === true,
     };
 }
 
@@ -180,7 +180,23 @@ export function validatePublicBaseURL(value: string) {
 
 export function storageResponseMatches(setting: AdminOSSSetting, expected: StoragePayload) {
     const actual = normalizeStoragePayload(formValues(setting), setting);
-    const fields: Array<keyof StoragePayload> = ["enabled", "provider", "region", "endpoint", "cdnBaseUrl", "cdnAuthMode", "requireCDN", "allowPrivateProxy", "bucket", "accessKeyId", "publicBaseUrl", "pathPrefix", "s3Preset", "pathStyle", "allowUserS3"];
+    const fields: Array<keyof StoragePayload> = [
+        "enabled",
+        "provider",
+        "region",
+        "endpoint",
+        "cdnBaseUrl",
+        "cdnAuthMode",
+        "requireCDN",
+        "allowPrivateProxy",
+        "bucket",
+        "accessKeyId",
+        "publicBaseUrl",
+        "pathPrefix",
+        "s3Preset",
+        "pathStyle",
+        "allowUserStorage",
+    ];
     if (expected.accessKeySecret && !setting.hasAccessKeySecret) return false;
     if (expected.sessionToken && !setting.hasSessionToken) return false;
     return fields.every((key) => actual[key] === expected[key]);
@@ -204,7 +220,7 @@ export function isAdminOSSSetting(value: unknown): value is AdminOSSSetting {
         typeof setting.hasAccessKeySecret === "boolean" &&
         typeof setting.hasSessionToken === "boolean" &&
         typeof setting.pathStyle === "boolean" &&
-        typeof setting.allowUserS3 === "boolean" &&
+        typeof setting.allowUserStorage === "boolean" &&
         typeof setting.publicBaseUrl === "string" &&
         typeof setting.pathPrefix === "string"
     );

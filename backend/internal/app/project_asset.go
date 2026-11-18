@@ -195,6 +195,7 @@ func (s *Service) assetFromUploadedResource(userID string, resourceID string, ti
 		return nil, BadAuthRequest("资源缺少媒体类型，无法导入")
 	}
 	payload, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{"librarySaved": false},
 		"data": map[string]any{
 			"storageKey": "resource:" + resource.ID,
 			"mimeType":   resource.MimeType,

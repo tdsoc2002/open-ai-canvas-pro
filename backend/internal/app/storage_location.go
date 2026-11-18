@@ -44,12 +44,8 @@ func (s *Service) TestUserOSSSetting(actor *model.User, req OSSSettingRequest) (
 	if actor == nil {
 		return nil, Unauthorized("请先登录")
 	}
-	_, platform, err := s.readOSSSetting()
-	if err != nil {
+	if err := s.requireUserStorageAllowed(); err != nil {
 		return nil, err
-	}
-	if !platform.AllowUserS3 {
-		return nil, Forbidden("平台管理员尚未允许个人对象存储")
 	}
 	_, current, err := s.readUserOSSSetting(actor.ID)
 	if err != nil {
@@ -256,6 +252,30 @@ func (s *Service) storageLocationValue(id string) (*model.StorageLocation, ossSe
 	}
 	value.StorageLocationID = location.ID
 	return location, normalizeOSSSetting(value), nil
+}
+
+// 非 S3 平台配置可能没有位置 ID。新资源要显式记录平台来源，避免同桶个人历史配置抢占解析。
+func (s *Service) platformResourceStorageBinding(value ossSettingValue) (string, error) {
+	const scope = "platform"
+	digest := storageTestDigest(value)
+	location, err := s.repo.StorageLocationByDigest(scope, "", value.Provider, digest)
+	if err == nil {
+		return location.ID, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
+	}
+	value.ArchivedCredentials = nil
+	stored, err := s.encryptOSSSettingSecrets(value)
+	if err != nil {
+		return "", err
+	}
+	encoded, err := json.Marshal(stored)
+	if err != nil {
+		return "", err
+	}
+	location = &model.StorageLocation{ID: newID(), Scope: scope, Provider: value.Provider, LocationDigest: digest, ValueJSON: string(encoded)}
+	return s.repo.EnsureStorageLocation(location)
 }
 
 func (s *Service) requireTestedS3Location(scope string, ownerID string, value ossSettingValue) (*model.StorageLocation, error) {

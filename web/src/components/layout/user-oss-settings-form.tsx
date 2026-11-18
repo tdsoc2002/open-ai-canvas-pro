@@ -1,14 +1,13 @@
 import { App, Button, Form, Input, Tag } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { Cloud, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { currentLocale } from "@/i18n";
 
 import { changesRequireOSSRetest, DEFAULT_OSS_PATH_PREFIX, getS3PresetHints, S3_PRESET_OPTIONS, validateOSSConnectionDraft, VOLCENGINE_TOS_REGION_HINT, type OSSConnectionTestResult, type OSSProvider, type S3Preset } from "@/lib/oss-settings";
-import { getUserOSSSetting, testUserOSSConnection, updateUserOSSSetting, type UserOSSSetting } from "@/services/api/resources";
-import { useUserStore } from "@/stores/use-user-store";
+import { testUserOSSConnection, updateUserOSSSetting, type UserOSSSetting } from "@/services/api/resources";
 import { StatusBadge } from "@/components/ui/base/badges";
 import { Select } from "@/components/ui/base/select";
 
@@ -30,16 +29,14 @@ type OSSFormValues = {
     pathStyle?: boolean;
 };
 
-export function UserOSSSettingsForm() {
+export function UserOSSSettingsForm({ initialSetting, onSaved }: { initialSetting: UserOSSSetting; onSaved: (setting: UserOSSSetting) => void }) {
     const { t } = useTranslation();
-    const actor = useUserStore((state) => state.user);
     const { message } = App.useApp();
     const [form] = Form.useForm<OSSFormValues>();
-    const [setting, setSetting] = useState<UserOSSSetting | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [setting, setSetting] = useState(initialSetting);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
-    const [testResult, setTestResult] = useState<OSSConnectionTestResult | null>(null);
+    const [testResult, setTestResult] = useState<OSSConnectionTestResult | null>(() => (initialSetting.testedAt ? { ok: true, testedAt: initialSetting.testedAt, testedDigest: initialSetting.testedDigest } : null));
     const [testStale, setTestStale] = useState(false);
     const savedAt = formatSavedAt(setting?.updatedAt);
     const provider = Form.useWatch("provider", form) || "aliyun";
@@ -52,31 +49,9 @@ export function UserOSSSettingsForm() {
     const accessKeyIdLabel = isTencentCOS ? "SecretId" : isQiniuKodo ? "AccessKey" : isVolcengineTOS ? "Access Key ID" : "AccessKey ID";
     const accessKeySecretLabel = isTencentCOS ? "SecretKey" : isQiniuKodo ? "SecretKey" : isVolcengineTOS ? "Secret Access Key" : "AccessKey Secret";
 
-    useEffect(() => {
-        if (!actor?.id) return;
-        let active = true;
-        setLoading(true);
-        void getUserOSSSetting()
-            .then((data) => {
-                if (!active) return;
-                setSetting(data.setting);
-                form.setFieldsValue(toFormValues(data.setting));
-                setTestResult(data.setting.testedAt ? { ok: true, testedAt: data.setting.testedAt, testedDigest: data.setting.testedDigest } : null);
-            })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : t("account.layout.oss.loadFailed")))
-            .finally(() => active && setLoading(false));
-        return () => {
-            active = false;
-        };
-    }, [actor?.id, form, message, t]);
-
-    if (!actor) {
-        return <div className="rounded-md border border-dashed border-border px-5 py-10 text-center text-sm text-foreground/55">{t("account.layout.oss.loginRequired")}</div>;
-    }
-
     const save = async () => {
         const values = await form.validateFields();
-        if (!setting?.allowUserS3) return message.error(t("account.layout.oss.s3NotAllowed"));
+        if (!setting.allowUserStorage) return message.error(t("account.layout.oss.s3NotAllowed"));
         setSaving(true);
         try {
             const data = await updateUserOSSSetting({
@@ -97,6 +72,7 @@ export function UserOSSSettingsForm() {
                 pathStyle: values.pathStyle === true,
             });
             setSetting(data.setting);
+            onSaved(data.setting);
             form.setFieldsValue(toFormValues(data.setting));
             setTestResult(data.setting.testedAt ? { ok: true, testedAt: data.setting.testedAt, testedDigest: data.setting.testedDigest } : null);
             setTestStale(false);
@@ -109,7 +85,7 @@ export function UserOSSSettingsForm() {
     };
 
     const testConnection = async () => {
-        if (!setting?.allowUserS3) return message.error(t("account.layout.oss.s3NotAllowed"));
+        if (!setting.allowUserStorage) return message.error(t("account.layout.oss.s3NotAllowed"));
         const values = await form.validateFields();
         const validationError = validateOSSConnectionDraft(values);
         if (validationError) {
@@ -130,16 +106,16 @@ export function UserOSSSettingsForm() {
         }
     };
 
-    if (!setting || !setting.allowUserS3) {
+    if (!setting.allowUserStorage) {
         return (
             <div role="status" className="rounded-md border border-dashed border-border px-5 py-10 text-center text-sm text-foreground/55">
-                {!setting ? (loading ? t("common.loading") : t("account.layout.oss.loadFailed")) : t("account.layout.oss.s3NotAllowed")}
+                {t("account.layout.oss.s3NotAllowed")}
             </div>
         );
     }
 
     return (
-        <Form form={form} layout="vertical" requiredMark={false} disabled={loading} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
+        <Form form={form} layout="vertical" requiredMark={false} initialValues={toFormValues(initialSetting)} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 text-sm font-semibold">

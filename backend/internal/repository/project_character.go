@@ -245,7 +245,7 @@ func saveCharacterVersion(tx *gorm.DB, asset *model.Asset, version *model.AssetV
 	}
 	result := tx.Model(&model.Asset{}).Where("id = ? AND user_id = ?", asset.ID, asset.UserID).Updates(map[string]any{
 		"kind": asset.Kind, "category": asset.Category, "status": asset.Status, "primary_version_id": asset.PrimaryVersionID,
-		"title": asset.Title, "payload_json": asset.PayloadJSON, "updated_at": asset.UpdatedAt,
+		"title": asset.Title, "payload_json": assetPayloadKeepingLibrarySave(tx, asset.PayloadJSON), "updated_at": asset.UpdatedAt,
 	})
 	if result.Error != nil {
 		return result.Error

@@ -629,8 +629,8 @@ export default function StorageSettingsPage() {
                                 </>
                             )}
                             <div className="admin-storage-form-section">
-                                <FormSectionTitle icon={<ShieldCheck className="size-4" />} title="用户自有存储" description="统一控制所有个人对象存储。关闭后禁止配置、保存和连接测试，新上传使用平台存储；历史文件仍可读取。" />
-                                <Form.Item name="allowUserS3" label="允许个人对象存储" valuePropName="checked">
+                                <FormSectionTitle icon={<ShieldCheck className="size-4" />} title="用户自有存储" description="关闭后，用户不能保存或测试个人存储；新增文件按平台配置存储。历史文件仍从原位置读取，不会迁移或删除。" />
+                                <Form.Item name="allowUserStorage" label="允许用户自有存储" valuePropName="checked">
                                     <Switch checkedChildren="允许" unCheckedChildren="不允许" />
                                 </Form.Item>
                             </div>

@@ -23,7 +23,7 @@ func (s *Service) activeResourceOSSSetting(userID string) (ossSettingValue, stri
 	if err != nil {
 		return ossSettingValue{}, "", false, err
 	}
-	if systemValue.AllowUserS3 {
+	if systemValue.AllowUserStorage {
 		userSetting, value, err := s.readUserOSSSetting(userID)
 		if err != nil {
 			return ossSettingValue{}, "", false, err
@@ -40,58 +40,60 @@ func (s *Service) activeResourceOSSSetting(userID string) (ossSettingValue, stri
 	return systemValue, systemValue.StorageLocationID, true, err
 }
 
-func (s *Service) ossSettingForResourceWrite(userID string, resource *model.Resource) (ossSettingValue, error) {
-	_, platform, err := s.readOSSSetting()
-	if err != nil {
-		return ossSettingValue{}, err
-	}
-	if !platform.AllowUserS3 {
-		personal := false
-		if resource.StorageSettingID != "" {
-			location, lookupErr := s.repo.StorageLocation(resource.StorageSettingID)
-			err = lookupErr
-			if err == nil {
-				personal = location.Scope == "user"
-			} else if errors.Is(err, gorm.ErrRecordNotFound) {
-				_, err = s.repo.UserOSSSettingForUser(userID, resource.StorageSettingID)
-				personal = err == nil
-			}
-		} else {
-			_, err = s.userOSSSettingForResource(userID, resource)
-			personal = err == nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return ossSettingValue{}, err
-		}
-		if personal {
-			return ossSettingValue{}, Forbidden("平台管理员尚未允许个人对象存储")
-		}
-	}
-	return s.ossSettingForResource(userID, resource)
+func (s *Service) ossSettingForResource(userID string, resource *model.Resource) (ossSettingValue, error) {
+	return s.resolveResourceOSSSetting(userID, resource, false)
 }
 
-func (s *Service) ossSettingForResource(userID string, resource *model.Resource) (ossSettingValue, error) {
+// Historical reads keep their original binding; a retry that writes must still be allowed.
+func (s *Service) ossSettingForResourceRetry(userID string, resource *model.Resource) (ossSettingValue, error) {
+	if resource.Provider == "local" {
+		return ossSettingValue{}, nil
+	}
+	return s.resolveResourceOSSSetting(userID, resource, true)
+}
+
+func (s *Service) resolveResourceOSSSetting(userID string, resource *model.Resource, write bool) (ossSettingValue, error) {
 	var setting ossSettingValue
 	var err error
 	if resource.StorageSettingID != "" {
 		var location *model.StorageLocation
 		location, setting, err = s.storageLocationValue(resource.StorageSettingID)
+		personal := location != nil && location.Scope == "user"
+		if personal && location.OwnerID != userID {
+			return ossSettingValue{}, gorm.ErrRecordNotFound
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			_, setting, err = s.readUserOSSSettingByID(userID, resource.StorageSettingID)
+			personal = true
 		}
-		if err == nil {
+		if err == nil && write && personal {
+			if err := s.requireUserStorageAllowed(); err != nil {
+				return ossSettingValue{}, err
+			}
+		}
+		platformRotation := location != nil && location.Scope == "platform" && setting.Provider != s3Provider
+		if err == nil && (!write || platformRotation) {
 			var current ossSettingValue
 			var currentErr error
-			if location != nil && location.Scope == "platform" {
-				_, current, currentErr = s.readOSSSetting()
-			} else {
+			if personal {
 				_, current, currentErr = s.readUserOSSSetting(userID)
+			} else {
+				_, current, currentErr = s.readOSSSetting()
 			}
-			if currentErr != nil {
+			if currentErr != nil && !write {
 				return ossSettingValue{}, currentErr
 			}
-			// 密钥固定在资源绑定的历史版本；只有存储位置完全一致时，才允许沿用当前 CDN。
-			if resourceStorageMatches(current, resource) {
+			sameLocation := currentErr == nil && resourceStorageMatches(current, resource)
+			if platformRotation {
+				sameLocation = sameLocation && storageLocationDigest(current) == storageLocationDigest(setting)
+				// 拒绝跨位置复用平台密钥；个人与 S3 绑定仍按历史凭据处理。
+				if sameLocation {
+					if active, validationErr := validateActiveOSSSetting(current, "管理员尚未启用 OSS", "平台 OSS 配置不完整，请联系管理员"); validationErr == nil {
+						setting.AccessKeyID, setting.AccessKeySecret, setting.SessionToken = active.AccessKeyID, active.AccessKeySecret, active.SessionToken
+					}
+				}
+			}
+			if sameLocation && !write {
 				setting.CDNBaseURL = current.CDNBaseURL
 				// CDN 的鉴权方式和回退策略属于分发配置，而不是资源创建时的
 				// 凭据。存储位置未变时沿用当前策略，避免历史资源因管理员
@@ -103,6 +105,11 @@ func (s *Service) ossSettingForResource(userID string, resource *model.Resource)
 		// 早期资源没有 StorageSettingID，但资源本身仍记录了 provider/endpoint/bucket。
 		// 先从用户 OSS 历史版本中按存储位置反查，不能把当前七牛配置猜给历史阿里云对象。
 		setting, err = s.userOSSSettingForResource(userID, resource)
+		if err == nil && write {
+			if err := s.requireUserStorageAllowed(); err != nil {
+				return ossSettingValue{}, err
+			}
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			_, setting, err = s.readOSSSetting()
 		}

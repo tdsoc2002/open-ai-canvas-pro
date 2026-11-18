@@ -48,7 +48,7 @@ func TestRenderSaveFailureMessages(t *testing.T) {
 func TestRenderStorageFailureRetainsCauseAndTaskMessage(t *testing.T) {
 	svc, db := newTimelineTaskTestService(t)
 	_, _, err := svc.storeResourceWithWriter("usr-render-test", "media", "render.mp4", "video/mp4", 1, 1, 1, 1,
-		strings.NewReader("x"), nil, true, func(_ *model.Resource, _ string, _ io.Reader) (string, error) {
+		strings.NewReader("x"), nil, true, func(_ *model.Resource, _ ossSettingValue, _ io.Reader) (string, error) {
 			return "", io.ErrUnexpectedEOF
 		})
 	var writeErr *resourceObjectWriteError

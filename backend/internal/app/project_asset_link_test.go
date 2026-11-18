@@ -82,6 +82,9 @@ func TestLinkProjectAssetCreatesAssetFromUploadedResource(t *testing.T) {
 		t.Errorf("summary.Source = %q, want canvas", summary.Source)
 	}
 	var payload struct {
+		Metadata struct {
+			LibrarySaved *bool `json:"librarySaved"`
+		} `json:"metadata"`
 		Data struct {
 			Source string `json:"source"`
 		} `json:"data"`
@@ -91,6 +94,9 @@ func TestLinkProjectAssetCreatesAssetFromUploadedResource(t *testing.T) {
 	}
 	if payload.Data.Source != AssetSourceCanvas {
 		t.Errorf("payload.source = %q, want canvas", payload.Data.Source)
+	}
+	if payload.Metadata.LibrarySaved == nil || *payload.Metadata.LibrarySaved {
+		t.Errorf("automatic project import did not opt out of the library: %s", asset.PayloadJSON)
 	}
 	if _, err := assetFromJSON("user-1", json.RawMessage(asset.PayloadJSON)); err != nil {
 		t.Fatalf("uploaded asset must persist a complete library document: %v; %s", err, asset.PayloadJSON)

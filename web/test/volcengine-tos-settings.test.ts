@@ -51,7 +51,7 @@ describe("Volcengine TOS storage settings", () => {
             hasAccessKeySecret: true,
             hasSessionToken: false,
             pathStyle: false,
-            allowUserS3: false,
+            allowUserStorage: false,
             publicBaseUrl: "",
             pathPrefix: "open-ai-canvas",
         };

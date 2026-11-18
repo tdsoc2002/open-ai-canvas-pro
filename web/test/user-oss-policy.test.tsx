@@ -55,13 +55,30 @@ function LocationProbe() {
     return <output data-location>{useLocation().search}</output>;
 }
 
-async function renderPolicy(allowed: boolean, settingsPage = false) {
+async function renderPolicy(allowed: boolean, settingsPage = false, legacyOnly = false) {
+    const setting = {
+        enabled: false,
+        provider: "aliyun",
+        s3Preset: "custom",
+        allowUserStorage: allowed,
+        ...(legacyOnly ? { allowUserS3: true } : {}),
+        bucket: "",
+        endpoint: "",
+        region: "",
+        accessKeyId: "",
+        pathPrefix: "",
+        cdnBaseUrl: "",
+        cdnAuthMode: "",
+        requireCDN: false,
+        allowPrivateProxy: false,
+        hasAccessKeySecret: false,
+        hasSessionToken: false,
+        pathStyle: false,
+        publicBaseUrl: "",
+    } as const;
     apiClient.defaults.adapter = async (config) => {
         if (config.method !== "get") throw new Error("Unexpected storage write");
-        const data =
-            config.url === "/settings/oss"
-                ? { setting: { enabled: false, provider: "aliyun", allowUserS3: allowed, bucket: "", endpoint: "", region: "", accessKeyId: "", pathPrefix: "", cdnBaseUrl: "" } }
-                : { enabled: false, channels: [], models: [], settings: { consumptionReportEnabled: false }, user: useUserStore.getState().user };
+        const data = config.url === "/settings/oss" ? { setting } : { enabled: false, channels: [], models: [], settings: { consumptionReportEnabled: false }, user: useUserStore.getState().user };
         return {
             config,
             status: 200,
@@ -86,7 +103,7 @@ async function renderPolicy(allowed: boolean, settingsPage = false) {
                         </QueryClientProvider>
                     </MemoryRouter>
                 ) : (
-                    <UserOSSSettingsForm />
+                    <UserOSSSettingsForm initialSetting={setting} onSaved={() => {}} />
                 )}
             </App>,
         ),
@@ -114,6 +131,12 @@ test("an enabled policy still allows configuring personal storage", async () => 
     expect(host.querySelector("form")).not.toBeNull();
     expect(host.querySelector("input")).not.toBeNull();
     expect(host.textContent).toContain("保存个人对象存储");
+});
+
+test("legacy S3 allowance does not enable personal object storage", async () => {
+    await renderPolicy(false, true, true);
+    expect(host.querySelector("nav")?.textContent).not.toContain("我的对象存储");
+    expect(host.querySelector("[data-location]")?.textContent).toBe("?section=profile");
 });
 
 test("disabled storage has no menu or empty integrations group, and direct links return to profile", async () => {

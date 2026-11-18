@@ -71,6 +71,24 @@ func (r *Repository) CreateStorageLocation(location *model.StorageLocation) erro
 	return r.db.Create(location).Error
 }
 
+func (r *Repository) EnsureStorageLocation(location *model.StorageLocation) (string, error) {
+	result := r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "scope"}, {Name: "owner_id"}, {Name: "provider"}, {Name: "location_digest"}},
+		DoNothing: true,
+	}).Create(location)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	if result.RowsAffected > 0 {
+		return location.ID, nil
+	}
+	existing, err := r.StorageLocationByDigest(location.Scope, location.OwnerID, location.Provider, location.LocationDigest)
+	if err != nil {
+		return "", err
+	}
+	return existing.ID, nil
+}
+
 func (r *Repository) SaveStorageLocation(location *model.StorageLocation) error {
 	return r.db.Save(location).Error
 }

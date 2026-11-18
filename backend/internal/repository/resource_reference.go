@@ -485,6 +485,14 @@ func (r *Repository) DeleteAssetAndResources(userID string, assetID string, reso
 }
 
 func (r *Repository) DeleteAssetsAndResources(userID string, assetIDs []string, resourceIDs []string, deletionJobs []model.ResourceDeletionJob, deleteReferencedResources bool) error {
+	return r.deleteAssetsAndResources(userID, assetIDs, resourceIDs, deletionJobs, deleteReferencedResources, nil)
+}
+
+func (r *Repository) DeleteExpiredAssetAndResources(userID, assetID string, resourceIDs []string, deletionJobs []model.ResourceDeletionJob, cutoff time.Time) error {
+	return r.deleteAssetsAndResources(userID, []string{assetID}, resourceIDs, deletionJobs, true, &cutoff)
+}
+
+func (r *Repository) deleteAssetsAndResources(userID string, assetIDs []string, resourceIDs []string, deletionJobs []model.ResourceDeletionJob, deleteReferencedResources bool, archiveBefore *time.Time) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		logReferences, err := New(tx).APICallLogResourceReferences(userID, resourceIDs)
 		if err != nil {
@@ -495,6 +503,9 @@ func (r *Repository) DeleteAssetsAndResources(userID string, assetIDs []string, 
 		}
 		var ownedAssets []model.Asset
 		query := tx.Where("user_id = ? AND id IN ?", userID, assetIDs).Order("id")
+		if archiveBefore != nil {
+			query = query.Where("status = ? AND updated_at <= ?", model.AssetVersionStatusArchived, *archiveBefore)
+		}
 		if r.Dialect() == "postgres" {
 			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
 		}

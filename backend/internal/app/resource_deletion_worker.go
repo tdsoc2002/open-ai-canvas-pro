@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"math"
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
 	"yingce/backend/internal/model"
 )
 
@@ -151,7 +153,13 @@ func (s *Service) cleanupExpiredArchivedAssets() {
 	for _, asset := range expired {
 		// 自动清理与用户手动删除走同一条强校验路径：先检查业务引用，
 		// 再以事务 + Outbox 删除资源记录和物理对象，不能从 repository 旁路。
-		if err := s.DeleteUserAsset(asset.UserID, asset.ID); err != nil {
+		err := (canvasHost{svc: s}).WithStorageLock(func() error {
+			return s.deleteAssetsWithResources(asset.UserID, []string{asset.ID}, false, &cutoff)
+		})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			continue
+		}
+		if err != nil {
 			log.Printf("expired archived asset delete failed for %s: %v", asset.ID, err)
 			continue
 		}

@@ -21,6 +21,10 @@ func (s *Service) deleteUserAssetWithResources(userID string, assetID string, pu
 }
 
 func (s *Service) deleteUserAssetsWithResources(userID string, ids []string, purge bool) error {
+	return s.deleteAssetsWithResources(userID, ids, purge, nil)
+}
+
+func (s *Service) deleteAssetsWithResources(userID string, ids []string, purge bool, archiveBefore *time.Time) error {
 	if strings.TrimSpace(userID) == "" || len(ids) == 0 || len(ids) > 1000 {
 		return BadAuthRequest("每次删除须提供 1–1000 个素材 ID 和有效用户")
 	}
@@ -42,6 +46,9 @@ func (s *Service) deleteUserAssetsWithResources(userID string, ids []string, pur
 	}
 	if len(assetRecords) != len(assetIDs) {
 		return NotFound("素材不存在或无权删除")
+	}
+	if archiveBefore != nil && (assetRecords[0].Status != model.AssetVersionStatusArchived || assetRecords[0].UpdatedAt.After(*archiveBefore)) {
+		return gorm.ErrRecordNotFound
 	}
 	// 删除语义（产品约定，勿收紧）：
 	//   - purge=true 是用户在素材库确认后的「彻底删除」（单个 DELETE、批量删除、清空回收站），
@@ -202,7 +209,15 @@ func (s *Service) deleteUserAssetsWithResources(userID string, ids []string, pur
 	deletionJobs := resourceDeletionJobs(userID, physicalObjects)
 	// 业务记录和 Outbox 必须在同一事务提交。事务失败时物理文件完全不动；
 	// 提交成功后由幂等 worker 清理，进程退出或对象存储暂时失败都可继续重试。
-	if err := s.repo.DeleteAssetsAndResources(userID, assetIDs, ownedIDs, deletionJobs, deleteReferencedResources); err != nil {
+	if archiveBefore != nil {
+		err = s.repo.DeleteExpiredAssetAndResources(userID, assetIDs[0], ownedIDs, deletionJobs, *archiveBefore)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	} else {
+		err = s.repo.DeleteAssetsAndResources(userID, assetIDs, ownedIDs, deletionJobs, deleteReferencedResources)
+	}
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return NotFound("素材不存在或无权删除")
 		}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -500,6 +501,34 @@ func RegisterUserDataRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		asset, err := svc.UpsertUserAsset(user.ID, req.Asset)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"asset": asset})
+	})
+	r.PATCH("/assets/:id/library", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		policy, available := loadRuntimePolicy(c, svc)
+		if !available || !enforceRateLimit(c, "assets-write:"+user.ID, policy.Request.AssetWritePerMinute, time.Minute) {
+			return
+		}
+		body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, 4<<10))
+		var req map[string]json.RawMessage
+		if err != nil || json.Unmarshal(body, &req) != nil || req == nil {
+			failService(c, service.BadAuthRequest("保存素材请求必须是 JSON 对象"))
+			return
+		}
+		var resourceID string
+		if len(req) != 0 && (len(req) != 1 || json.Unmarshal(req["resourceId"], &resourceID) != nil || resourceID == "" || strings.TrimSpace(resourceID) != resourceID || len(resourceID) > 36) {
+			failService(c, service.BadAuthRequest("保存素材请求仅允许有效的 resourceId"))
+			return
+		}
+		asset, err := svc.SaveAssetToLibrary(user.ID, c.Param("id"), resourceID)
 		if err != nil {
 			failService(c, err)
 			return

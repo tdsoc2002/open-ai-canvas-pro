@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -411,6 +412,47 @@ func TestExpiredArchivedAssetCleanupDeletesReferencedAssetAndUsesDeletionOutbox(
 	}
 	if assetCount != 0 || resourceCount != 0 || jobCount != 1 {
 		t.Fatalf("referenced archived asset was not force deleted through outbox: asset=%d resource=%d jobs=%d", assetCount, resourceCount, jobCount)
+	}
+}
+
+func TestExpiredArchivedAssetDeleteSkipsRestoredOrRecentlyArchivedRows(t *testing.T) {
+	svc, db, _ := newResourceDeletionTestService(t)
+	now := time.Now()
+	cutoff := now.Add(-30 * 24 * time.Hour)
+	for i, update := range []map[string]any{
+		{"status": model.AssetVersionStatusConfirmed},
+		{"updated_at": now},
+	} {
+		id := "asset-cleanup-race-" + string(rune('a'+i))
+		resource := model.Resource{ID: id + "-resource", UserID: "user-1", Provider: "local", Status: model.ResourceStatusReady}
+		asset := model.Asset{ID: id, UserID: "user-1", Status: model.AssetVersionStatusArchived, PayloadJSON: "{}", UpdatedAt: cutoff.Add(-time.Hour)}
+		if err := db.Create(&resource).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Create(&asset).Error; err != nil {
+			t.Fatal(err)
+		}
+		if stale, err := svc.repo.FindExpiredArchivedAssets(cutoff, 100); err != nil || len(stale) != 1 || stale[0].ID != id {
+			t.Fatalf("worker did not see archived candidate: %+v, %v", stale, err)
+		}
+		if err := db.Model(&asset).UpdateColumns(update).Error; err != nil {
+			t.Fatal(err)
+		}
+		job := model.ResourceDeletionJob{ID: id + "-job", UserID: "user-1", ResourceID: resource.ID}
+		err := svc.repo.DeleteExpiredAssetAndResources("user-1", id, []string{resource.ID}, []model.ResourceDeletionJob{job}, cutoff)
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			t.Fatalf("stale cleanup = %v, want no matching archived row", err)
+		}
+		if _, err := svc.repo.AssetForUser("user-1", id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := svc.repo.ResourceForUser("user-1", resource.ID); err != nil {
+			t.Fatal(err)
+		}
+		var jobs int64
+		if err := db.Model(&model.ResourceDeletionJob{}).Where("id = ?", job.ID).Count(&jobs).Error; err != nil || jobs != 0 {
+			t.Fatalf("stale cleanup queued %d jobs: %v", jobs, err)
+		}
 	}
 }
 

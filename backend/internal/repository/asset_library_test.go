@@ -73,6 +73,59 @@ func TestUserAssetsPagePaginatesAndIsolatesUsers(t *testing.T) {
 	}
 }
 
+func TestUserAssetLibraryMembershipFiltersPagesAndFacetsOnly(t *testing.T) {
+	repo, db := newAssetLibraryTestRepository(t)
+	for i, tc := range []struct {
+		id, owner, status, payload string
+	}{
+		{"legacy-manual", "user", "confirmed", `{"metadata":{"source":"canvas-manual"}}`},
+		{"unknown", "user", "confirmed", `{"metadata":{"source":"future"}}`},
+		{"saved", "user", "confirmed", `{"metadata":{"source":"generation-task","librarySaved":true}}`},
+		{"generation-task", "user", "confirmed", `{"metadata":{"source":"generation-task","librarySaved":"true"}}`},
+		{"canvas-generation", "user", "confirmed", `{"metadata":{"source":"canvas-generation","librarySaved":null}}`},
+		{"canvas-upload", "user", "confirmed", `{"metadata":{"source":"canvas-upload","librarySaved":1}}`},
+		{"short-drama-workflow", "user", "confirmed", `{"metadata":{"source":"short-drama-workflow"}}`},
+		{"short-drama", "user", "confirmed", `{"metadata":{"source":"short-drama"}}`},
+		{"previs", "user", "confirmed", `{"metadata":{"source":"previs"}}`},
+		{"public-reference-gallery", "user", "confirmed", `{"metadata":{"source":"public-reference-gallery"}}`},
+		{"explicit-hidden", "user", "confirmed", `{"metadata":{"source":"canvas-manual","librarySaved":false}}`},
+		{"legacy-empty", "user", "confirmed", ""},
+		{"legacy-archived", "user", "archived", `{}`},
+		{"hidden-archived", "user", "archived", `{"metadata":{"source":"short-drama"}}`},
+		{"foreign", "other", "confirmed", `{"metadata":{"librarySaved":true}}`},
+	} {
+		asset := model.Asset{ID: tc.id, UserID: tc.owner, Kind: "image", Category: model.AssetCategoryMaterial, FolderID: "folder", Title: "Match", Status: model.AssetVersionStatus(tc.status), PayloadJSON: tc.payload, UpdatedAt: time.Unix(int64(i), 0)}
+		if err := db.Create(&asset).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	page, total, err := repo.UserAssetsPage("user", 2, 2, UserAssetPageFilter{Status: "active", Query: "match"})
+	if err != nil || total != 4 || len(page) != 2 || page[0].ID != "unknown" || page[1].ID != "legacy-manual" {
+		t.Fatalf("filtered page: %#v, total=%d, err=%v", page, total, err)
+	}
+	kinds, categories, folders, err := repo.UserAssetFacets("user", "active")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for label, rows := range map[string][]UserAssetFacetRow{"kind": kinds, "category": categories, "folder": folders} {
+		if len(rows) != 1 || rows[0].Count != total {
+			t.Errorf("%s facets: %#v, want %d", label, rows, total)
+		}
+	}
+	archived, total, err := repo.UserAssetsPage("user", 1, 20, UserAssetPageFilter{Status: "archived"})
+	if err != nil || total != 1 || len(archived) != 1 || archived[0].ID != "legacy-archived" {
+		t.Fatalf("archived page: %#v, total=%d, err=%v", archived, total, err)
+	}
+	asset, err := repo.AssetForUser("user", "short-drama")
+	if err != nil || asset.PayloadJSON != `{"metadata":{"source":"short-drama"}}` || asset.Status != "confirmed" {
+		t.Fatalf("library visibility changed project asset: %#v, err=%v", asset, err)
+	}
+	assets, err := repo.Assets("user")
+	if err != nil || len(assets) != 14 {
+		t.Fatalf("full sync read: %d assets, err=%v", len(assets), err)
+	}
+}
+
 func TestDeleteAssetFolderMovesAssetsToUncategorized(t *testing.T) {
 	repo, db := newAssetLibraryTestRepository(t)
 	now := time.Now().UTC()

@@ -31,7 +31,7 @@ type Settings struct {
 	PathStyle         bool             `json:"pathStyle"`
 	SessionToken      string           `json:"sessionToken"`
 	StorageLocationID string           `json:"storageLocationId"`
-	AllowUserS3       bool             `json:"allowUserS3"`
+	AllowUserStorage  bool             `json:"allowUserStorage"`
 	Runtime           RuntimePolicy    `json:"-"`
 	// 平台切换云厂商后仍需读取历史资源，因此仅归档非当前厂商的访问密钥。
 	ArchivedCredentials map[string]Credentials `json:"archivedCredentials,omitempty"`

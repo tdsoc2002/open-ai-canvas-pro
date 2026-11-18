@@ -103,10 +103,9 @@ func ClientAssetListPayload(asset model.Asset) json.RawMessage {
 		return raw
 	}
 	if metadata, ok := payload["metadata"].(map[string]any); ok {
-		// 列表只需要项目归属提示。canvasId 仍保留，避免列表卡片把画布素材
-		// 错显示成“未关联项目”；节点 ID、生成提示和其他同步上下文在详情路径读取。
+		// 列表保留归属提示和入库标记；节点 ID、生成提示等从详情读取。
 		for key := range metadata {
-			if key != "projectName" && key != "projectIds" && key != "canvasId" {
+			if key != "projectName" && key != "projectIds" && key != "canvasId" && key != "librarySaved" {
 				delete(metadata, key)
 			}
 		}

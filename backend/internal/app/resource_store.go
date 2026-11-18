@@ -297,7 +297,7 @@ type resourceObjectWriteError struct {
 func (e *resourceObjectWriteError) Error() string { return e.err.Error() }
 func (e *resourceObjectWriteError) Unwrap() error { return e.err }
 
-func (s *Service) storeResourceWithWriter(userID string, kind string, fileName string, mimeType string, size int64, width int, height int, durationMs int64, body io.Reader, uploadKey *string, forceLocal bool, writeObject func(*model.Resource, string, io.Reader) (string, error), reservationIDs ...string) (*model.Resource, bool, error) {
+func (s *Service) storeResourceWithWriter(userID string, kind string, fileName string, mimeType string, size int64, width int, height int, durationMs int64, body io.Reader, uploadKey *string, forceLocal bool, writeObject func(*model.Resource, ossSettingValue, io.Reader) (string, error), reservationIDs ...string) (*model.Resource, bool, error) {
 	reservationID := ""
 	if len(reservationIDs) > 0 {
 		reservationID = reservationIDs[0]
@@ -327,6 +327,12 @@ func (s *Service) storeResourceWithWriter(userID string, kind string, fileName s
 		if err != nil {
 			return nil, false, err
 		}
+		if useOSS && storageSettingID == "" {
+			storageSettingID, err = s.platformResourceStorageBinding(setting)
+			if err != nil {
+				return nil, false, err
+			}
+		}
 	}
 	provider := "local"
 	objectKey := localObjectKey(userID, kind, fileName, mimeType, now)
@@ -353,7 +359,7 @@ func (s *Service) storeResourceWithWriter(userID string, kind string, fileName s
 		return nil, false, err
 	}
 	var etag string
-	etag, err = writeObject(&resource, fileName, body)
+	etag, err = writeObject(&resource, setting, body)
 	resource.UpdatedAt = time.Now()
 	if err != nil {
 		err = &resourceObjectWriteError{provider: resource.Provider, err: err}
@@ -407,16 +413,12 @@ func writeLocalResourceObject(filePath string, body io.Reader) error {
 // storeResourceObject writes to the configured origin. When object storage is
 // enabled, a failed origin write must fail the resource instead of silently
 // changing its storage location to local disk.
-func (s *Service) storeResourceObject(resource *model.Resource, fileName string, body io.Reader) (string, error) {
+func (s *Service) storeResourceObject(resource *model.Resource, setting ossSettingValue, body io.Reader) (string, error) {
 	if resource == nil {
 		return "", errors.New("资源不存在")
 	}
 	if resource.Provider == "local" {
 		return "", writeLocalResourceObject(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)), body)
-	}
-	setting, settingErr := s.ossSettingForResourceWrite(resource.UserID, resource)
-	if settingErr != nil {
-		return "", settingErr
 	}
 	etag, err := putOSSObject(s.storageSettingWithRuntimePolicy(setting), resource.ObjectKey, resource.MimeType, resource.Size, body)
 	if err != nil {
@@ -438,6 +440,10 @@ func (s *Service) retryStoredResource(userID string, resource *model.Resource, k
 	}
 	if resource.Status == model.ResourceStatusReady {
 		return resource, nil
+	}
+	setting, err := s.ossSettingForResourceRetry(userID, resource)
+	if err != nil {
+		return nil, err
 	}
 	claimed, err := s.repo.ClaimFailedResourceUpload(userID, resource.ID)
 	if err != nil {
@@ -467,7 +473,7 @@ func (s *Service) retryStoredResource(userID string, resource *model.Resource, k
 		return nil, err
 	}
 	var etag string
-	etag, err = s.storeResourceObject(resource, "", body)
+	etag, err = s.storeResourceObject(resource, setting, body)
 	resource.UpdatedAt = time.Now()
 	if err != nil {
 		s.releaseRetryUploadQuota(userID, day, size)

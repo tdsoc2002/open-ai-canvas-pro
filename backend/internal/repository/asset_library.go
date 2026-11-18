@@ -57,6 +57,21 @@ func (r *Repository) UserAssetFacets(userID string, status string) ([]UserAssetF
 }
 
 func userAssetFilteredQuery(query *gorm.DB, filter UserAssetPageFilter, includeSearch bool) *gorm.DB {
+	// 工作素材仍保留资产身份；历史来源判定只用于资产库分页和分面计数。
+	automaticSources := []string{"generation-task", "canvas-generation", "canvas-upload", "short-drama-workflow", "short-drama", "previs", "public-reference-gallery"}
+	if query.Dialector.Name() == "postgres" {
+		query = query.Where(`CASE
+			WHEN NOT COALESCE(pg_input_is_valid(payload_json, 'jsonb'), FALSE) THEN TRUE
+			WHEN payload_json::jsonb #> '{metadata,librarySaved}' = 'true'::jsonb THEN TRUE
+			WHEN payload_json::jsonb #> '{metadata,librarySaved}' = 'false'::jsonb THEN FALSE
+			ELSE COALESCE(payload_json::jsonb #>> '{metadata,source}', '') NOT IN ? END`, automaticSources)
+	} else {
+		query = query.Where(`CASE
+			WHEN NOT json_valid(payload_json) THEN TRUE
+			WHEN json_type(payload_json, '$.metadata.librarySaved') = 'true' THEN TRUE
+			WHEN json_type(payload_json, '$.metadata.librarySaved') = 'false' THEN FALSE
+			ELSE COALESCE(json_extract(payload_json, '$.metadata.source'), '') NOT IN ? END`, automaticSources)
+	}
 	if value := strings.TrimSpace(filter.Kind); value != "" {
 		query = query.Where("kind = ?", value)
 	}

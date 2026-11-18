@@ -94,7 +94,7 @@ func TestClientAssetPayloadDoesNotInventMissingMedia(t *testing.T) {
 }
 
 func TestClientAssetListPayloadDropsVerboseMetadata(t *testing.T) {
-	asset := model.Asset{PayloadJSON: `{"id":"asset-1","kind":"image","title":"列表","coverUrl":"https://example.com/a.png","tags":[],"data":{"dataUrl":"https://example.com/a.png","width":2,"height":3,"bytes":1,"mimeType":"image/png"},"metadata":{"prompt":"很长的生成提示词","nodeId":"node-1","projectIds":["project-1"]}}`}
+	asset := model.Asset{PayloadJSON: `{"id":"asset-1","kind":"image","title":"列表","coverUrl":"https://example.com/a.png","tags":[],"data":{"dataUrl":"https://example.com/a.png","width":2,"height":3,"bytes":1,"mimeType":"image/png"},"metadata":{"prompt":"很长的生成提示词","nodeId":"node-1","projectIds":["project-1"],"librarySaved":true}}`}
 	var payload map[string]any
 	if err := json.Unmarshal(ClientAssetListPayload(asset), &payload); err != nil {
 		t.Fatal(err)
@@ -108,6 +108,9 @@ func TestClientAssetListPayloadDropsVerboseMetadata(t *testing.T) {
 	}
 	if metadata["projectIds"].([]any)[0] != "project-1" {
 		t.Fatalf("list payload dropped useful metadata: %#v", metadata)
+	}
+	if metadata["librarySaved"] != true {
+		t.Fatalf("list payload dropped library membership: %#v", metadata)
 	}
 	if payload["coverUrl"] != "" {
 		t.Fatalf("duplicate cover URL was not removed: %#v", payload["coverUrl"])

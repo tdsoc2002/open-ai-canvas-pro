@@ -53,7 +53,7 @@ func (r *Repository) CommitProjectAssetImage(projectID string, expectedVersionID
 		result := tx.Model(&model.Asset{}).
 			Where("id = ? AND user_id = ? AND primary_version_id = ? AND category = ?", asset.ID, asset.UserID, expectedVersionID, asset.Category).
 			Where("id IN (?)", tx.Model(&model.ProjectAssetLink{}).Select("asset_id").Where("project_id = ?", projectID)).
-			Updates(map[string]any{"kind": asset.Kind, "payload_json": asset.PayloadJSON, "primary_version_id": version.ID, "status": asset.Status, "updated_at": asset.UpdatedAt})
+			Updates(map[string]any{"kind": asset.Kind, "payload_json": assetPayloadKeepingLibrarySave(tx, asset.PayloadJSON), "primary_version_id": version.ID, "status": asset.Status, "updated_at": asset.UpdatedAt})
 		if result.Error != nil {
 			return result.Error
 		}

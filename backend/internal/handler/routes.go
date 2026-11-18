@@ -87,6 +87,19 @@ func RegisterTaskRoutes(r *gin.RouterGroup, svc *service.Service) {
 		}
 		ok(c, task)
 	})
+	r.GET("/tasks/:id/output-asset", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		asset, err := svc.TaskOutputAsset(user.ID, c.Param("id"), c.Query("resourceId"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"asset": asset})
+	})
 	r.POST("/tasks/:id/text-deltas", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {
