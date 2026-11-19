@@ -8,20 +8,12 @@
     --joysee-editor-shadow: var(--elevation-overlay);
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-shell:not(.is-expanded) {
-    top: 50%;
-    bottom: auto;
-    max-height: calc(100% - var(--space-4));
-    margin-block: 0;
-    transform: translateY(-50%);
-}
-
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-shell {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
 }
 
-/* 侧轨收起后位于画布中部，顶栏不再为它预留整列宽度。 */
+/* 侧轨与标题由工作区统一排列，其他顶栏控件仍以画布全宽布局。 */
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar {
     left: 0;
     padding-inline: var(--space-2);
