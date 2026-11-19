@@ -80,7 +80,8 @@ async function run(scenario: string) {
         throw new UploadError(true);
     };
     mock.module("../../src/services/api/resources", () => ({
-        resourceIdFromStorageKey: (key: string) => (key.startsWith("resource:") ? key.slice(9) : ""),
+        resourceIdFromStorageKey: (key?: string) => (key?.startsWith("resource:") ? key.slice(9) : ""),
+        ensureResourceVideoPoster: async (id: string) => ({ id: `${id}-poster`, width: 320, height: 180, size: 100, mimeType: "image/jpeg" }),
         resourceStorageKey: (id: string) => `resource:${id}`,
         resourceFileUrl: (id: string) => `/api/resources/${id}/file`,
         getResourceBlob: async () => {
@@ -145,6 +146,11 @@ async function run(scenario: string) {
         await assert.rejects(pending, { name: "AbortError" });
         await tick();
         assert.deepEqual(revoked, created);
+        const uncached = { ...node, metadata: { storageKey: "resource:uncached-video" } };
+        const preview = await hydrateCanvasVideoPreview(uncached);
+        assert.equal(preview?.localUrl, "");
+        assert.equal((await preview?.persisted)?.storageKey, "resource:uncached-video-poster");
+        assert.equal(downloadCalls, 0);
     } else if (scenario === "memory-budget") {
         const huge = sized(33 * 1024 * 1024);
         await cache.primeResourceBlobCache("resource:a", huge);

@@ -4225,6 +4225,25 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+  /resources/{id}/video-poster:
+    post:
+      tags: [resources]
+      summary: 生成或取得当前用户视频的静态 JPEG 封面
+      description: 只接受当前用户已就绪的视频资源 ID，幂等返回小图资源，不转发或重新上传原视频。
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
   /resources/{id}/file:
     get:
       tags: [resources]

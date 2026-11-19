@@ -23,7 +23,7 @@ import { getActiveUserScope } from "@/lib/user-scope";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { isCanvasImageActive, prepareCanvasImage, subscribeCanvasImageActivity } from "@/services/canvas-image-loader";
 import { useCachedResourceUrl } from "@/hooks/use-cached-resource-url";
-import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
+import { getResourceAccess, refreshResource, resourceFileUrl, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
 import { ErrorContent, LoadingContent } from "./canvas-node-status-content";
 
@@ -237,7 +237,9 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
         if (persistedPreview || !assetId || !sourceKey) return undefined;
         const asset = assets.find((item) => item.id === assetId);
         if (asset?.kind !== "video" || (asset.data.storageKey || asset.data.url) !== sourceKey) return undefined;
-        return asset.coverUrl !== asset.data.url ? asset.coverUrl : undefined;
+        const id = resourceIdFromStorageKey(asset.data.storageKey);
+        if (asset.coverUrl === asset.data.url || asset.coverUrl === node.metadata?.content || (id && asset.coverUrl === resourceFileUrl(id))) return undefined;
+        return asset.coverUrl;
     });
     const previewKey = persistedPreview || linkedCover ? JSON.stringify([sourceKey, persistedPreviewStorageKey, persistedPreviewSource || linkedCover]) : "";
     const [failedPreviewKey, setFailedPreviewKey] = useState("");
@@ -281,9 +283,11 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                     if (hydrated?.localUrl) URL.revokeObjectURL(hydrated.localUrl);
                     return;
                 }
-                if (localPreviewUrlRef.current) URL.revokeObjectURL(localPreviewUrlRef.current);
-                localPreviewUrlRef.current = hydrated.localUrl;
-                setLocalPreview({ sourceKey, url: hydrated.localUrl });
+                if (hydrated.localUrl) {
+                    if (localPreviewUrlRef.current) URL.revokeObjectURL(localPreviewUrlRef.current);
+                    localPreviewUrlRef.current = hydrated.localUrl;
+                    setLocalPreview({ sourceKey, url: hydrated.localUrl });
+                }
                 void hydrated.persisted.then((videoPreview) => {
                     if (controller.signal.aborted || !videoPreview || getActiveUserScope() !== scope) return;
                     // 首帧就是画面本身：未播放过的节点也按首帧比例校正，不再横着显示竖屏视频。

@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/sync/singleflight"
+
 	"yingce/backend/internal/auth"
 	"yingce/backend/internal/canvas"
 	"yingce/backend/internal/inspirations"
@@ -38,6 +40,7 @@ type Service struct {
 	billingAutoRefund        billingAutoRefundScan
 	storageMu                sync.Mutex
 	storageTestMu            sync.Mutex
+	videoPosterRequests      singleflight.Group
 	workerRuntimeMu          sync.Mutex
 	agentSchedulerMu         sync.Mutex
 	agentSchedulerWake       chan struct{}

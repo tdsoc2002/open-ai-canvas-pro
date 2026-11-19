@@ -590,6 +590,11 @@ export function resourceFileUrl(id: string) {
     return `${base}/resources/${encodeURIComponent(id)}/file`;
 }
 
+export async function ensureResourceVideoPoster(id: string, signal?: AbortSignal) {
+    const { resource } = await http.post<{ resource: Pick<RemoteResource, "id" | "size" | "width" | "height" | "mimeType"> }>(`/resources/${encodeURIComponent(id)}/video-poster`, undefined, { signal, timeout: 60_000 });
+    return resource;
+}
+
 export function resolveResourceUrl(storageKey?: string, fallback = "") {
     const id = resourceIdFromStorageKey(storageKey);
     // 资源引用本身已经包含稳定 ID；恢复/展示阶段不需要再查一遍元数据。

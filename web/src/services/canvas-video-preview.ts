@@ -1,13 +1,14 @@
 import { buildLibTVVideoSourceUrl } from "@/lib/canvas/libtv-import";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { captureVideoPoster } from "@/lib/video-poster";
-import { loadCachedResourceObjectUrl } from "@/services/resource-blob-cache";
+import { ensureResourceVideoPoster, resourceFileUrl, resourceIdFromStorageKey, resourceStorageKey } from "@/services/api/resources";
 import { resolveVideoMediaUrl } from "@/services/file-storage";
 import { uploadImage } from "@/services/image-storage";
+import { acquireCachedResourceObjectUrl } from "@/services/resource-blob-cache";
 import type { CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 
 type VideoPreview = NonNullable<CanvasNodeMetadata["videoPreview"]>;
-type HydratedPoster = { poster: Blob; persisted: Promise<VideoPreview | null> };
+type HydratedPoster = { poster?: Blob; persisted: Promise<VideoPreview | null> };
 type CanvasVideoHydrationEntry = {
     promise: Promise<HydratedPoster | null>;
     controller: AbortController;
@@ -18,7 +19,7 @@ type CanvasVideoHydrationEntry = {
 const canvasVideoHydrationBySource = new Map<string, CanvasVideoHydrationEntry>();
 
 export type HydratedCanvasVideoPreview = {
-    /** 页面先用这个 object URL 渲染首帧，不等待 OSS 预览图上传。 */
+    /** 仅浏览器自行截帧时使用临时图片，平台资源直接返回已保存的小图。 */
     localUrl: string;
     /** 持久化上传在首帧已经可见后后台完成；失败不影响本地首帧。 */
     persisted: Promise<VideoPreview | null>;
@@ -62,11 +63,12 @@ export function hydrateCanvasVideoPreview(node: CanvasNodeData, signal?: AbortSi
     return withAbort(shared.promise, signal)
         .then((result) => {
             if (!result) return null;
-            const localUrl = URL.createObjectURL(result.poster);
+            const localUrl = result.poster ? URL.createObjectURL(result.poster) : "";
             return { localUrl, persisted: result.persisted };
         })
         .catch((error: unknown) => {
             if (error instanceof DOMException && error.name === "AbortError") throw error;
+            console.warn("视频封面处理失败", { nodeId: node.id, error: error instanceof Error ? error.name : "UnknownError" });
             return null;
         })
         .finally(() => releaseCanvasVideoHydration(key, shared));
@@ -88,19 +90,34 @@ async function generateCanvasVideoPreview(node: CanvasNodeData, scope: string, s
     throwIfAborted(signal);
     if (getActiveUserScope() !== scope) return null;
     const storageKey = node.metadata?.storageKey;
-    const lease = storageKey ? await loadCachedResourceObjectUrl(storageKey).catch(() => null) : null;
+    const resourceId = resourceIdFromStorageKey(storageKey);
+    const lease = storageKey ? acquireCachedResourceObjectUrl(storageKey) : null;
     let captured: Awaited<ReturnType<typeof captureVideoPoster>> | undefined;
-    try {
-        throwIfAborted(signal);
+    if (lease) {
+        try {
+            captured = await captureVideoPoster(lease.url, { signal, maxWidth: 400 });
+        } finally {
+            lease.release();
+        }
+    }
+    throwIfAborted(signal);
+    if (getActiveUserScope() !== scope) return null;
+    if (!captured?.poster && resourceId) {
+        // 托管视频由存储侧读取、抽帧，只把小图交给浏览器，避免 COS/CDN 跨域拦截。
+        const preview = await ensureResourceVideoPoster(resourceId, signal);
         if (getActiveUserScope() !== scope) return null;
-        if (lease) captured = await captureVideoPoster(lease.url, { signal, maxWidth: 400 });
-    } finally {
-        lease?.release();
+        return {
+            persisted: Promise.resolve({
+                content: resourceFileUrl(preview.id),
+                storageKey: resourceStorageKey(preview.id),
+                width: preview.width,
+                height: preview.height,
+                bytes: preview.size,
+                mimeType: preview.mimeType,
+            }),
+        };
     }
     if (!captured?.poster) {
-        throwIfAborted(signal);
-        if (getActiveUserScope() !== scope) return null;
-        // 缓存可能是无法解码的原件；失败时再尝试受鉴权的兼容播放地址。
         const content = node.metadata?.content || "";
         const fallback = node.metadata?.importSource?.provider === "libtv" ? buildLibTVVideoSourceUrl(content) : content;
         const playbackSource = await resolveVideoMediaUrl(storageKey, fallback);

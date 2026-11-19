@@ -297,6 +297,23 @@ func RegisterUserDataRoutes(r *gin.RouterGroup, svc *service.Service) {
 		}
 		ok(c, gin.H{"resource": resource})
 	})
+	r.POST("/resources/:id/video-poster", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		policy, available := loadRuntimePolicy(c, svc)
+		if !available || !enforceRateLimit(c, "resource-video-poster:"+user.ID, policy.Request.ResourceUploadPerMinute, time.Minute) {
+			return
+		}
+		poster, err := svc.EnsureResourceVideoPoster(c.Request.Context(), user.ID, c.Param("id"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"resource": gin.H{"id": poster.ID, "width": poster.Width, "height": poster.Height, "size": poster.Size, "mimeType": poster.MimeType}})
+	})
 	r.GET("/resources/:id/file", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {

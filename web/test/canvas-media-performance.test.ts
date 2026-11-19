@@ -78,7 +78,7 @@ describe("large canvas media rendering", () => {
         expect(inactivePreviewSource).toContain("hydrated.persisted.then");
         expect(inactivePreviewSource).not.toContain("autoPlay");
         expect(inactivePreviewSource).not.toContain("bindCanvasVideoHoverPreview");
-        expect(inactivePreviewSource).toContain('(asset.data.storageKey || asset.data.url) !== sourceKey');
+        expect(inactivePreviewSource).toContain("(asset.data.storageKey || asset.data.url) !== sourceKey");
         expect(inactivePreviewSource).toContain("onUnavailable={markPreviewUnavailable}");
         expect(inactivePreviewSource).toContain("currentPreview?.src !== persistedPreviewSource");
         expect(canvasNodeContentSource).toContain("<InactiveVideoPreview node={node} theme={theme} />");
@@ -126,13 +126,13 @@ describe("large canvas media rendering", () => {
         expect(resourceApiSource).toContain("if (inFlightRefresh) return inFlightRefresh;");
     });
 
-    test("reuses a cached full video Blob for poster capture before requesting playback access", () => {
-        expect(canvasVideoPreviewSource).toContain("loadCachedResourceObjectUrl(storageKey)");
-        expect(canvasVideoPreviewSource).toContain("lease?.release()");
+    test("requests a stored JPEG for managed videos without pulling the video into the browser", () => {
+        expect(canvasVideoPreviewSource).toContain("ensureResourceVideoPoster(resourceId, signal)");
+        expect(canvasVideoPreviewSource).not.toContain("loadCachedResourceObjectUrl");
     });
 
     test("shows a captured first frame before its OSS poster upload finishes and allows later retries", () => {
-        expect(canvasVideoPreviewSource).toContain("const localUrl = URL.createObjectURL(result.poster)");
+        expect(canvasVideoPreviewSource).toContain("result.poster ? URL.createObjectURL(result.poster)");
         expect(canvasVideoPreviewSource).toContain("persisted: result.persisted");
         expect(canvasVideoPreviewSource).not.toContain("previewRequests");
     });
