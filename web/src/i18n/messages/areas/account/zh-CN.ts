@@ -579,7 +579,7 @@ export const zhCN = {
         lookPicker: "首页素材版本",
         look: "素材版本",
         demoCredit: "演示素材 · CC BY",
-        storyLabel: "影策创作之旅",
+        storyLabel: "{{brand}}创作之旅",
         watchClip: "观看片段",
         enterStudio: "进入创作现场",
         nextChapter: "下一幕",

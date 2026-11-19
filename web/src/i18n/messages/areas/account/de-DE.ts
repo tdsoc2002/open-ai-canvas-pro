@@ -586,7 +586,7 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         lookPicker: "Materialversion der Startseite",
         look: "Materialversion",
         demoCredit: "Demomaterial · CC BY",
-        storyLabel: "Die kreative Reise mit Yingce",
+        storyLabel: "Die kreative Reise mit {{brand}}",
         watchClip: "Ausschnitt ansehen",
         enterStudio: "Ins Studio",
         nextChapter: "Nächste Szene",

@@ -6,8 +6,9 @@ import { chapters, getWelcomeLook, showcases, welcomeLooks } from "../src/pages/
 const publicFile = (url: string) => resolve(import.meta.dir, "../public", url.replace(/^\//, ""));
 
 describe("welcome story", () => {
-    test("uses Yingce and only the three approved looks", () => {
-        expect(chapters[0].title).toBe("影策");
+    test("uses the configured site brand and only the three approved looks", () => {
+        expect(chapters[0].id).toBe("opening");
+        expect(readFileSync(resolve(import.meta.dir, "../src/pages/welcome/index.tsx"), "utf8")).toContain("<h1>{brandName}</h1>");
         expect(welcomeLooks.map((look) => look.id)).toEqual(["spring", "charge", "wing-it"]);
         expect(getWelcomeLook("").id).toBe("spring");
         expect(getWelcomeLook("?look=unknown").id).toBe("spring");
@@ -23,12 +24,13 @@ describe("welcome story", () => {
             if (look.video) expect(existsSync(publicFile(look.video))).toBe(true);
         }
         expect(welcomeLooks.filter((look) => look.video).map((look) => look.id)).toEqual(["charge"]);
-        for (const showcase of showcases) expect(existsSync(publicFile(showcase.image))).toBe(true);
+        expect(showcases.map((showcase) => showcase.href)).toEqual(["/canvas", "/create", "/projects"]);
     });
 
     test("credits cover all looks separately from the code license", () => {
         const credits = readFileSync(publicFile("/welcome/credits.html"), "utf8");
         expect(credits).toContain("https://creativecommons.org/licenses/by/4.0/");
+        expect(credits).toContain("返回乐见画布");
         for (const look of welcomeLooks) expect(credits).toContain(`id="${look.id}"`);
         expect(credits).not.toContain("竹影");
         expect(existsSync(publicFile("/welcome/sequence.mp4"))).toBe(false);

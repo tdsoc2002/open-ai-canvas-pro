@@ -586,7 +586,7 @@ export const frFR: DeepStringRecord<typeof zhCN> = {
         lookPicker: "Version des séquences de l'accueil",
         look: "Version des séquences",
         demoCredit: "Séquences de démonstration · CC BY",
-        storyLabel: "Le parcours créatif Yingce",
+        storyLabel: "Le parcours créatif {{brand}}",
         watchClip: "Voir l'extrait",
         enterStudio: "Entrer dans le studio",
         nextChapter: "Scène suivante",

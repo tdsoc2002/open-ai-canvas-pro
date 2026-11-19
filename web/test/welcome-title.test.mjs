@@ -30,8 +30,8 @@ test("welcome entry loads configured appearance", async () => {
 });
 
 test("welcome effects preserve configured SEO title", () => {
-    const page = source("../src/pages/welcome/index.tsx");
-    // Run the actual mount effects with inert motion/scroll listeners.
+    const [page] = source("../src/pages/welcome/index.tsx").split(/^function FilmDialog\(/m);
+    // Run the page's real mount effects, excluding the separate film dialog.
     const effects = [...page.matchAll(/useEffect\(\(\) => \{([\s\S]*?)\n    \}, \[([^\]]*)\]\);/g)].filter((match) => match[2] === "");
     assert.ok(effects.length > 0);
     for (const title of ["Custom SEO Title", "Custom Site Name"]) {
