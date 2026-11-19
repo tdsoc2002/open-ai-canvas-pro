@@ -34,9 +34,11 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
         startFailed: "시작하지 못했습니다. 다시 시도하세요.",
         region: "{{agentName}} 캔버스 창작",
         title: "답변을 넘어, 아이디어를 캔버스 위에",
+        compactTitle: "아이디어를 캔버스 위에",
         description: "{{agentName}}: 캔버스에서 소재, 스킬, 창작 맥락을 활용해 작업합니다. 생성과 수정은 기존과 같이 승인 및 한도 확인을 거칩니다.",
         retryEnter: "동기화 재시도 후 열기",
         newCanvas: "{{agentName}}: 새 캔버스에서 창작",
+        compactNewCanvas: "새 캔버스",
         continueExisting: "기존 캔버스에서 계속",
     },
     assets: {

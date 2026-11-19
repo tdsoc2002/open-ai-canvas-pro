@@ -35,9 +35,11 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
         startFailed: "Couldn't start. Please try again.",
         region: "Create with {{agentName}}",
         title: "More than answers: put your ideas on the canvas",
+        compactTitle: "Bring your ideas onto the canvas",
         description: "Work with {{agentName}} on the canvas using your assets, skills and creative context. Generation and edits still go through the usual approvals and quota checks.",
         retryEnter: "Retry sync and enter",
         newCanvas: "New canvas with {{agentName}}",
+        compactNewCanvas: "New canvas",
         continueExisting: "Continue in an existing canvas",
     },
     assets: {

@@ -59,29 +59,7 @@
     }
 }
 
-/* 首页只保留窄屏上下排列，桌面双栏与画布共用布局。 */
-@media (max-width: 720px) {
-    .creation-home-model-popover .canvas-model-picker-menu:is(.is-brand-list, .is-model-list) {
-        width: calc(100vw - var(--space-12));
-    }
-    .creation-home-model-popover .canvas-model-picker-two-pane {
-        grid-template-rows: auto minmax(0, 1fr);
-    }
-    .creation-home-model-popover .canvas-model-picker-option-heading > span:first-child {
-        flex-basis: 100%;
-    }
-    .creation-home-model-popover .creation-model-picker-surface .canvas-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
-        display: grid;
-        max-height: min(30dvh, calc(var(--canvas-model-picker-available-height) * 0.38));
-        border: 0;
-        border-bottom: var(--control-border-width) solid var(--border);
-        padding: 0 0 var(--space-2);
-    }
-}
-
-/* 渐变铺满滚动背景，椭圆在四边内完全淡出，避免固定图片尺寸被截成矩形色块。 */
 .creation-home-scroll {
-    --creation-ambient-tint: color-mix(in srgb, var(--product-accent-blue) 7%, transparent);
     display: block;
     width: 100%;
     min-height: 0;
@@ -89,12 +67,6 @@
     overflow: auto;
     overscroll-behavior: contain;
     padding: var(--space-6) var(--space-8) var(--space-12);
-    background-image: radial-gradient(ellipse 46% 240px at 50% 260px, var(--creation-ambient-tint), transparent);
-    background-repeat: no-repeat;
-    background-attachment: local;
-}
-.dark .creation-home-scroll {
-    --creation-ambient-tint: color-mix(in srgb, var(--product-accent-blue) 9%, transparent);
 }
 .creation-home-scroll > * {
     width: 100%;
@@ -1044,15 +1016,19 @@
 .app-product-overlays .creation-parameter-menu .image-size-ratios button[aria-pressed="true"],
 .app-product-overlays .creation-parameter-menu .image-size-auto[aria-pressed="true"] {
     background: var(--user-control-pressed) !important;
-    box-shadow: none !important;
+    box-shadow: inset 0 0 0 var(--control-border-width) var(--control-selected-border) !important;
     color: var(--user-ink) !important;
 }
 
 .app-user-overlays .creation-parameter-menu .image-size-ratio-icon,
 .app-product-overlays .creation-parameter-menu .image-size-ratio-icon {
-    border: 0 !important;
-    background: currentColor;
-    opacity: 0.55;
+    border: var(--control-border-width) solid currentColor;
+    border-radius: var(--r-xs);
+    background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.is-image-settings .image-size-ratios button[aria-pressed="true"] .image-size-ratio-icon {
+    opacity: 1;
 }
 
 /* Keep the settings popover inside the viewport and preserve every option label. */
@@ -1159,6 +1135,7 @@ html:not(.dark) :is(.app-user-overlays, .app-product-overlays) .creation-control
     display: grid;
     grid-template-rows: var(--space-6) auto;
     place-items: center;
+    font-variant-numeric: tabular-nums;
 }
 
 .is-image-settings .image-size-label {
@@ -1166,9 +1143,11 @@ html:not(.dark) :is(.app-user-overlays, .app-product-overlays) .creation-control
 }
 
 .is-image-settings .image-size-output {
-    padding-inline: 0;
-    background: transparent;
-    color: var(--muted-foreground);
+    display: none;
+}
+
+.is-image-settings .image-size-picker + .creation-parameter-section {
+    margin-block-start: var(--space-3) !important;
 }
 
 :is(.app-user-overlays, .app-product-overlays) .is-image-settings .creation-parameter-menu :is(.image-size-tiers button, .image-size-ratios button):not([aria-pressed="true"], :disabled):hover {

@@ -34,9 +34,11 @@ export const jaJP: DeepStringRecord<typeof zhCN> = {
         startFailed: "起動に失敗しました。再試行してください。",
         region: "{{agentName}}とキャンバスで制作",
         title: "答えるだけでなく、アイデアをキャンバスへ",
+        compactTitle: "アイデアをキャンバスへ",
         description: "{{agentName}}とキャンバスの素材・スキル・制作コンテキストを使って協働します。生成と変更は従来どおり承認とクォータの確認を経ます。",
         retryEnter: "同期を再試行して開く",
         newCanvas: "新しいキャンバスで{{agentName}}と制作",
+        compactNewCanvas: "新規キャンバス",
         continueExisting: "既存のキャンバスで続ける",
     },
     assets: {

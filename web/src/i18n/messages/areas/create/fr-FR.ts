@@ -35,9 +35,11 @@ export const frFR: DeepStringRecord<typeof zhCN> = {
         startFailed: "Échec du démarrage. Veuillez réessayer.",
         region: "Création sur le canevas avec {{agentName}}",
         title: "Au-delà des réponses : posez vos idées sur le canevas",
+        compactTitle: "Donnez forme à vos idées sur le canevas",
         description: "Travaillez avec {{agentName}} sur le canevas, avec vos ressources, compétences et contexte créatif. Les générations et modifications passent toujours par les validations et contrôles de quota habituels.",
         retryEnter: "Relancer la synchro et entrer",
         newCanvas: "Nouveau canevas avec {{agentName}}",
+        compactNewCanvas: "Nouveau canevas",
         continueExisting: "Continuer dans un canevas existant",
     },
     assets: {

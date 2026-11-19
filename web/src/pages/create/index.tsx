@@ -1717,18 +1717,19 @@ export default function CreatePage() {
                                         <>
                                             {agentMode ? (
                                                 <div className="creation-composer-shell creation-agent-shell">
-                                                    <CreationAgentEntry compact />
-                                                    <div className="creation-agent-mode-dock">
-                                                        <CreationModeMenu
-                                                            mode={mode}
-                                                            agentActive
-                                                            onAgentSelect={() => setAgentMode(true)}
-                                                            onModeChange={(next) => {
-                                                                setAgentMode(false);
-                                                                selectMode(next);
-                                                            }}
-                                                        />
-                                                    </div>
+                                                    <CreationAgentEntry
+                                                        modeControl={
+                                                            <CreationModeMenu
+                                                                mode={mode}
+                                                                agentActive
+                                                                onAgentSelect={() => setAgentMode(true)}
+                                                                onModeChange={(next) => {
+                                                                    setAgentMode(false);
+                                                                    selectMode(next);
+                                                                }}
+                                                            />
+                                                        }
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="creation-empty-composer">

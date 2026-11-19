@@ -35,9 +35,11 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         startFailed: "Start fehlgeschlagen. Bitte erneut versuchen.",
         region: "Leinwand-Kreation mit {{agentName}}",
         title: "Mehr als Antworten: Bring deine Ideen auf die Leinwand",
+        compactTitle: "Bring deine Ideen auf die Leinwand",
         description: "Arbeite mit {{agentName}} auf der Leinwand, mit deinen Assets, Skills und deinem kreativen Kontext. Generierungen und Änderungen durchlaufen weiterhin die üblichen Freigaben und Kontingentprüfungen.",
         retryEnter: "Erneut synchronisieren und öffnen",
         newCanvas: "Neue Leinwand mit {{agentName}}",
+        compactNewCanvas: "Neue Leinwand",
         continueExisting: "In bestehender Leinwand fortfahren",
     },
     assets: {

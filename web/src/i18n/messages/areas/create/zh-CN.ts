@@ -32,9 +32,11 @@ export const zhCN = {
         startFailed: "启动失败，请重试。",
         region: "{{agentName}}创作入口",
         title: "不止回答，把想法落到画布上",
+        compactTitle: "把想法落到画布上",
         description: "和{{agentName}}一起用画布、素材和技能创作。生成与修改仍需经过原有审批和额度检查。",
         retryEnter: "重试同步并进入",
         newCanvas: "新建画布，与{{agentName}}创作",
+        compactNewCanvas: "新建画布",
         continueExisting: "在已有画布中继续",
     },
     assets: {

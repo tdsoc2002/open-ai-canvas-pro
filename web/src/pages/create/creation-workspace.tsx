@@ -286,7 +286,6 @@ export function CreationModeMenu({ mode, onModeChange, agentActive = false, onAg
 }
 
 export function CreationComposer(props: ComposerProps) {
-    const isCreationHome = props.variant === "empty";
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const [promptOptimizerOpen, setPromptOptimizerOpen] = useState(false);
@@ -665,8 +664,6 @@ export function CreationComposer(props: ComposerProps) {
                         capability={props.mode}
                         requirements={props.modelRequirements}
                         className="creation-model-picker"
-                        popoverClassName={isCreationHome ? "creation-home-model-popover" : undefined}
-                        layout={isCreationHome ? "compact-two-pane" : undefined}
                         placeholder={`选择${modeLabels[props.mode]}模型`}
                         showSelectedPrice={false}
                         showOptionPrices
@@ -863,9 +860,8 @@ function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: 
 
 function GenerationSettingsMenu(props: ComposerProps) {
     const [open, setOpen] = useState(false);
-    const imageMode = props.mode === "image";
-    // 张数上限与发送时的实际单数保持一致。
     const imageBatchLimit = Math.min(15, useGenerationBatchLimit());
+    const imageMode = props.mode === "image";
     const activeQualityOptions = props.imageProfile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: imageQualityLabel(value), description: "模型支持的质量/分辨率" });
     const qualityLabel = activeQualityOptions.find((item) => item.value === props.quality)?.label || qualityOptions.find((item) => item.value === props.quality)?.label || props.quality || "自动";
     // 尺寸/比例/分辨率选项取同显示名分组内全部模型的并集，路由模型只决定发送参数。

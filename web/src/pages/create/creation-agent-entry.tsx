@@ -1,17 +1,18 @@
 import { useTranslation } from "react-i18next";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { App, Button } from "antd";
-import { ArrowRight, FolderOpen, Orbit } from "lucide-react";
+import { ArrowRight, FolderOpen } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAuthEntry } from "@/hooks/use-auth-entry";
 import { AgentOrb } from "@/components/ui/agent-orb";
 import { canvasDraftNavigationState, useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
-import { hasRemoteUserDataSyncSession } from "@/services/user-data-sync";
+import { createCanvasProjectWithRemoteSync, hasRemoteUserDataSyncSession, saveRemoteUserDataNow } from "@/services/user-data-sync";
+import storyboardArtwork from "./assets/creation-agent-storyboard.webp";
 
-/** 进入时只分配草稿 ID；明确提交创作时再建立同一画布的服务端记录。 */
-export function CreationAgentEntry({ compact = false }: { compact?: boolean }) {
+/** Agent 依赖真实画布 ID，先完成服务端保存，再进入同一个画布 Agent。 */
+export function CreationAgentEntry({ modeControl }: { modeControl?: ReactNode }) {
     const { t } = useTranslation();
     const agentName = useAppearanceStore(selectAgentName);
     const navigate = useNavigate();
@@ -55,29 +56,28 @@ export function CreationAgentEntry({ compact = false }: { compact?: boolean }) {
     };
     return (
         <section className="creation-agent-entry" aria-label={t("create.agentEntry.region", { agentName })}>
-            {compact ? (
-                <div className="creation-agent-mark" aria-hidden="true">
-                    <Orbit />
-                </div>
+            {modeControl ? (
+                <div className="creation-agent-mode-control">{modeControl}</div>
             ) : (
                 <div className="creation-agent-orb" aria-hidden="true">
                     <AgentOrb size={88} />
                 </div>
             )}
             <div className="creation-agent-copy">
-                <span className="creation-agent-eyebrow">{agentName}</span>
-                <h2>{t("create.agentEntry.title")}</h2>
+                {modeControl ? null : <span className="creation-agent-eyebrow">{agentName}</span>}
+                <h2>{t(modeControl ? "create.agentEntry.compactTitle" : "create.agentEntry.title")}</h2>
                 <p>{t("create.agentEntry.description", { agentName })}</p>
             </div>
             <div className="creation-agent-actions">
                 <Button type="primary" loading={busy} disabled={!hydrated} onClick={() => void start()}>
-                    {created.current ? t("create.agentEntry.retryEnter") : t("create.agentEntry.newCanvas", { agentName })}
+                    {created.current ? t("create.agentEntry.retryEnter") : t(modeControl ? "create.agentEntry.compactNewCanvas" : "create.agentEntry.newCanvas", { agentName })}
                     <ArrowRight aria-hidden="true" />
                 </Button>
-                <Button icon={<FolderOpen aria-hidden="true" />} disabled={busy} onClick={() => navigate("/canvas?agent=1")}>
+                <Button type={modeControl ? "text" : "default"} icon={<FolderOpen aria-hidden="true" />} disabled={busy} onClick={() => navigate("/canvas?agent=1")}>
                     {t("create.agentEntry.continueExisting")}
                 </Button>
             </div>
+            {modeControl ? <img className="creation-agent-storyboard" src={storyboardArtwork} alt="" width={720} height={480} decoding="async" /> : null}
             {error ? (
                 <p className="creation-agent-error" role="alert">
                     {error}
