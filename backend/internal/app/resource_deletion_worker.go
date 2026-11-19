@@ -20,6 +20,7 @@ const detachedReadyResourceRetention = 24 * time.Hour
 func (s *Service) startResourceDeletionWorker(ctx context.Context) {
 	s.runWorkerLoop(func(ctx context.Context) {
 		s.drainResourceDeletionJobs(32)
+		s.cleanupExpiredTeamAssetPublications()
 		s.cleanupStaleAnnouncementImageDrafts()
 		s.cleanupExpiredArchivedAssets()
 		s.cleanupDetachedResources()
@@ -32,6 +33,7 @@ func (s *Service) startResourceDeletionWorker(ctx context.Context) {
 				return
 			case <-ticker.C:
 				s.drainResourceDeletionJobs(32)
+				s.cleanupExpiredTeamAssetPublications()
 				if time.Since(lastPeriodicCleanup) >= time.Hour {
 					s.cleanupStaleAnnouncementImageDrafts()
 					s.cleanupExpiredArchivedAssets()
@@ -79,6 +81,13 @@ func (s *Service) cleanupDetachedUserResources(userID string, candidates []model
 		return err
 	}
 	referenced := map[string]struct{}{}
+	retained, err := s.repo.OfficialRecommendationResourceIDs()
+	if err != nil {
+		return err
+	}
+	for resourceID := range retained {
+		referenced[resourceID] = struct{}{}
+	}
 	// Site assets are global references and are not part of a user's canvas snapshot.
 	for resourceID := range s.appearanceResourceReferences(resourceIDs) {
 		referenced[resourceID] = struct{}{}

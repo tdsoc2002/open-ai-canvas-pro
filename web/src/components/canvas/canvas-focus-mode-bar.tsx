@@ -2,6 +2,7 @@ import { Tooltip } from "@/components/ui/base/tooltip";
 import type { ReactNode, Ref } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { PanelBottom, PanelLeft, X, ZoomIn, ZoomOut } from "lucide-react";
+import { CanvasZoomReadout, useCanvasZoomPercent } from "./canvas-zoom-readout";
 import { useTranslation } from "react-i18next";
 
 import { aceternityMotion } from "@/lib/aceternity-motion";
@@ -26,6 +27,7 @@ export function CanvasFocusModeBar({ syncIcon, collaborationControlRef, vertical
     const theme = canvasThemes[useActiveTheme()];
     const reducedMotion = useReducedMotion();
     const ToolsIcon = verticalTools ? PanelLeft : PanelBottom;
+    const targetPercent = useCanvasZoomPercent(zoomPercent);
 
     return (
         <motion.div
@@ -68,7 +70,8 @@ export function CanvasFocusModeBar({ syncIcon, collaborationControlRef, vertical
                     style={{ color: theme.node.text }}
                     title={t("canvasA.focusBar.fit")}
                 >
-                    {Math.round(zoomPercent * 100)}%
+                    <span className="sr-only">{Math.round(zoomPercent * 100)}%</span>
+                    <CanvasZoomReadout target={targetPercent} />
                 </button>
                 <Tooltip title={t("canvasA.focusBar.zoomIn")}>
                     <button type="button" onClick={onZoomIn} className="grid size-8 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10" style={{ color: theme.node.text }} aria-label={t("canvasA.focusBar.zoomIn")}>

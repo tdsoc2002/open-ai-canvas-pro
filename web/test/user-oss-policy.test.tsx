@@ -11,6 +11,8 @@ for (const [key, value] of Object.entries({
     HTMLElement: dom.HTMLElement,
     Element: dom.Element,
     Node: dom.Node,
+    Event: dom.Event,
+    CustomEvent: dom.CustomEvent,
     SVGElement: dom.SVGElement,
     ShadowRoot: dom.ShadowRoot,
     ResizeObserver: dom.ResizeObserver,

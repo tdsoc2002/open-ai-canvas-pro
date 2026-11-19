@@ -88,6 +88,12 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 			}
 		}
 		item := map[string]interface{}{"dataUrl": dataURL(mimeType, data), "mimeType": mimeType}
+		if len(reference.Metadata) > 0 {
+			item["metadata"] = reference.Metadata
+		}
+		if reference.Name != "" {
+			item["name"] = reference.Name
+		}
 		items = append(items, item)
 	}
 	var output map[string]interface{}
@@ -106,7 +112,7 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 // attachProtocolUsage 把视频结果的上游 usage（如输出时长、帧率）写入任务结果，
 // 供按实际输出时长结算时在资源未探测到时长时兜底。
 func attachProtocolUsage(output map[string]interface{}, mode string, result *protocol.Result) {
-	if output == nil || result == nil || mode != "video" || len(result.Usage) == 0 {
+	if output == nil || result == nil || (mode != "video" && mode != "image") || len(result.Usage) == 0 {
 		return
 	}
 	output["usage"] = result.Usage
@@ -119,6 +125,9 @@ func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInpu
 	if protocolResultHasOutput(input.Mode, result) {
 		if adapter.Metadata().ID == tencentVODImageProtocol && len(result.Images) != max(request.ImageCount, 1) {
 			return nil, errors.New("腾讯 VOD OG 返回图片张数与请求不一致，不能按原张数结算")
+		}
+		if err := recordProtocolImageUsage(ctx, input, request, result); err != nil {
+			return nil, err
 		}
 		return finishProtocolResult(ctx, input.Config, input.Mode, taskID, result, pollPolicy)
 	}
@@ -178,6 +187,9 @@ func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInpu
 				media[index].URL = base.ResolveReference(reference).String()
 			}
 		}
+		if err := recordProtocolImageUsage(ctx, input, request, state.Result); err != nil {
+			return nil, err
+		}
 		return finishProtocolResult(ctx, input.Config, input.Mode, taskID, state.Result, pollPolicy)
 	}
 	if mimeType == "" {
@@ -197,6 +209,9 @@ func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInpu
 		downloaded.Audios = []protocol.MediaReference{reference}
 	default:
 		return nil, fmt.Errorf("声明式协议结果下载不支持生成模式 %s", input.Mode)
+	}
+	if err := recordProtocolImageUsage(ctx, input, request, downloaded); err != nil {
+		return nil, err
 	}
 	return finishProtocolResult(ctx, input.Config, input.Mode, taskID, downloaded, pollPolicy)
 }

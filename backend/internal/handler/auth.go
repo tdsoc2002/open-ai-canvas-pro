@@ -44,6 +44,7 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		req.LoginContext = loginRequestContext(c)
+		req.Context = c.Request.Context()
 		result, err := svc.Register(req)
 		if err != nil {
 			failService(c, err)
@@ -136,6 +137,7 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		req.LoginContext = loginRequestContext(c)
+		req.Context = c.Request.Context()
 		c.Set("login_audit_handled", true)
 		result, err := svc.Login(req)
 		if err != nil {
@@ -327,7 +329,7 @@ func shortSystemProxyPath(rawPath string) (string, string, bool) {
 // as a channel request when a business route returns 404.
 func isReservedAPIPathPrefix(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "admin", "agent", "ai", "announcements", "banner-announcements", "assets", "auth", "canvas-projects", "channels", "diagnostics", "dramas", "features", "files", "model-catalog", "models", "oauth", "plugins", "projects", "public", "resources", "sessions", "settings", "skills", "style-profiles", "tasks", "timeline", "user-data", "voice-profiles", "wallet":
+	case "admin", "agent", "ai", "announcements", "banner-announcements", "assets", "auth", "canvas-projects", "channels", "diagnostics", "dramas", "features", "files", "model-catalog", "models", "oauth", "plugins", "projects", "public", "resources", "sessions", "settings", "skills", "style-profiles", "tasks", "team-invitations", "teams", "timeline", "user-data", "voice-profiles", "wallet":
 		return true
 	default:
 		return false
@@ -410,6 +412,7 @@ func proxySystemRequestPath(c *gin.Context, svc *service.Service, user *model.Us
 	}
 	streamUsageInjected := !bytes.Equal(clientBody, body)
 	billingOrderID := ""
+	imageUsageBilling := false
 	query := c.Request.URL.Query()
 	for _, key := range []string{"key", "api_key", "access_token", "token"} {
 		query.Del(key)
@@ -446,6 +449,7 @@ func proxySystemRequestPath(c *gin.Context, svc *service.Service, user *model.Us
 		}
 		if order != nil {
 			billingOrderID = order.ID
+			imageUsageBilling = order.BillingMode == "image_usage"
 			if err := svc.MarkBillingRunning(billingOrderID); err != nil {
 				refundSystemProxyBilling(svc, billingOrderID, "系统渠道请求尚未发出")
 				failService(c, err)
@@ -543,7 +547,7 @@ func proxySystemRequestPath(c *gin.Context, svc *service.Service, user *model.Us
 		} else if err := svc.SettleBilling(billingOrderID, ""); err != nil {
 			markSystemProxyBillingUncertain(svc, billingOrderID, "上游成功但积分结算失败："+err.Error())
 		}
-	} else if statusCode == 524 {
+	} else if statusCode == 524 || imageUsageBilling {
 		markSystemProxyBillingUncertain(svc, billingOrderID, "上游返回 524，费用状态待核对")
 	} else {
 		refundSystemProxyBilling(svc, billingOrderID, "上游明确返回失败")
@@ -629,7 +633,10 @@ func apiCallLog(user *model.User, channel *model.ModelChannel, billingOrderID st
 func logSystemProxyCall(svc *service.Service, log model.ApiCallLog, responseBody []byte) error {
 	log.ResponseBody = service.SanitizeAPICallPayload(responseBody, "")
 	svc.EnrichAPICallLog(&log, responseBody)
-	return svc.LogAPICall(log)
+	if err := svc.LogAPICall(log); err != nil {
+		return err
+	}
+	return svc.RecordProxyImageBillingUsage(log, responseBody)
 }
 
 func readPayloadModel(body []byte) string {

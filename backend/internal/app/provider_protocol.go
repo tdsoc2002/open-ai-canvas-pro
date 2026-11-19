@@ -24,6 +24,9 @@ func runDeclarativeProtocolTask(ctx context.Context, input canvasGenerationInput
 	if !ok {
 		return nil, fmt.Errorf("接口类型 %s 未安装声明式适配器", input.Config.InterfaceType)
 	}
+	if input.Mode == "audio" && (input.Config.AudioMode == "unified_edit" || input.Config.AudioMode != "tts" && len(input.ReferenceAudios) > 0) && len(input.ReferenceAudios) == 0 {
+		return nil, errors.New("全能配音需要连接参考音频；请检查音频是否已连接，或切换为文本朗读")
+	}
 	return runProtocolAdapterTask(ctx, input, adapter)
 }
 
@@ -77,12 +80,9 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 	detached := protocolDetachedPolling(adapter, input.Mode)
 	var created protocol.CreateResult
 	if taskID == "" {
-		bindings, err := validateDramaReferenceInputs(input, request)
+		plan, err := prepareDramaReferencePlan(input, request, adapter.Metadata())
 		if err != nil {
 			return nil, err
-		}
-		if _, known := dramaReferenceProtocolLayouts[strings.TrimSpace(input.Config.InterfaceType)]; len(bindings) > 0 && !known {
-			return nil, unsupportedDramaReferenceProtocol(input.Config.InterfaceType)
 		}
 		// 幂等键只存在于宿主请求元数据中，声明式插件可以把它映射到 Header，
 		// 但不能把宿主控制字段泄漏到供应商 JSON body。恢复已有 taskID 时不会进入 create 分支。
@@ -98,7 +98,7 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 		if err != nil {
 			return nil, err
 		}
-		if err := compileDramaReferenceRequest(input, request, &spec, input.Config.InterfaceType); err != nil {
+		if err := plan.compile(request, &spec, input.VideoCapability); err != nil {
 			return nil, err
 		}
 		if err := validateMediaTransportRequest(spec, input); err != nil {

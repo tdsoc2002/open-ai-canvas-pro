@@ -3,6 +3,7 @@ package app
 import (
 	"strings"
 
+	"yingce/backend/internal/imagebilling"
 	"yingce/backend/internal/kernel"
 	"yingce/backend/internal/model"
 )
@@ -10,6 +11,7 @@ import (
 // LogicalModelQuote 是创作端当前参数命中的实际供应线路报价。
 // Token 视频在上游返回真实 usage 前只能预估，创建任务仍以账务预留逻辑为准。
 type LogicalModelQuote struct {
+	ImageUsage         *ImageQuote         `json:"imageUsage,omitempty"`
 	LogicalModelID     string              `json:"logicalModelId"`
 	BillingMode        string              `json:"billingMode"`
 	Quantity           int64               `json:"quantity"`
@@ -18,6 +20,11 @@ type LogicalModelQuote struct {
 	VideoTokenEstimate *VideoTokenEstimate `json:"videoTokenEstimate,omitempty"`
 	// ReferenceVideo 仅在视频请求挂了参考视频时返回。
 	ReferenceVideo *QuoteReferenceVideo `json:"referenceVideo,omitempty"`
+}
+
+type ImageQuote struct {
+	InputImages     int64 `json:"inputImages"`
+	MaxOutputImages int64 `json:"maxOutputImages"`
 }
 
 type ChannelModelQuoteRequest struct {
@@ -122,6 +129,10 @@ func quoteReferenceVideo(order *model.BillingOrder, estimate tokenBillingEstimat
 
 func quoteFromOrder(logicalModelID string, order *model.BillingOrder, estimate tokenBillingEstimate) *LogicalModelQuote {
 	quote := &LogicalModelQuote{LogicalModelID: logicalModelID, BillingMode: order.BillingMode, Quantity: order.Quantity, AmountMicrocredits: order.AmountMicrocredits, Estimated: order.BillingMode == "token"}
+	if order.BillingMode == "image_usage" {
+		quote.Estimated = true
+		quote.ImageUsage = &ImageQuote{InputImages: order.ImageInputImages, MaxOutputImages: order.ImageMaxOutputImages}
+	}
 	if order.BillingMode == "token" && order.Capability == "video" {
 		quote.VideoTokenEstimate = estimate.Video
 		if !order.ReferenceVideoBilled {
@@ -189,6 +200,13 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 	groupBPS := pricing.MultiplierBPS
 	amount := int64(0)
 	switch routed.LogicalModel.BillingMode {
+	case imagebilling.Mode:
+		imageInputs, imageOutputs, imageErr := imageBillingReservation(resolvedIntent)
+		if imageErr != nil {
+			return nil, imageErr
+		}
+		amount, err = imagebilling.Reserve(routed.LogicalModel.ImagePricing, imageInputs, imageOutputs, groupBPS)
+		quantity = imageOutputs
 	case "fixed_request":
 		quantity = 1
 		amount, err = kernel.UnitBillingAmountRounded(routed.LogicalModel.UnitPriceMicrocredits, 1, groupBPS)
@@ -227,6 +245,14 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 		Quantity:           quantity,
 		AmountMicrocredits: amount,
 		Estimated:          routed.LogicalModel.BillingMode == "token",
+	}
+	if routed.LogicalModel.BillingMode == imagebilling.Mode {
+		imageInputs, imageOutputs, imageErr := imageBillingReservation(resolvedIntent)
+		if imageErr != nil {
+			return nil, imageErr
+		}
+		quote.Estimated = true
+		quote.ImageUsage = &ImageQuote{InputImages: imageInputs, MaxOutputImages: imageOutputs}
 	}
 	if quote.Estimated && capability == "video" {
 		quote.VideoTokenEstimate = tokenEstimate.Video

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { modelDisplayName, modelIcon, modelOptionName, resolveModelChannel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { useModelCatalogStore } from "@/stores/use-model-catalog-store";
 import { ModelLogo } from "@/components/model-logo";
 import { ModelTags } from "@/components/model-tags";
 import { referenceCapabilityTag } from "@/lib/model-tags";
@@ -38,8 +39,12 @@ type ModelPickerProps = {
     requirements?: ModelRequirements;
     showConfiguredModelName?: boolean;
     modelFilter?: (model: string) => boolean;
+    /** 独立编辑或预览配置不读取当前会话的系统目录状态。 */
+    catalogSource?: "session" | "provided";
     /** 调用方额外的不可选原因（例如短剧只能用平台模型）；返回非空串时选项置灰并显示原因。 */
     modelDisabledReason?: (model: string) => string;
+    /** 窄宽度时渐进收纳触发器文案（全量→只留分组名→只留图标），由容器查询实现；仅画布 Agent 输入框启用。 */
+    adaptiveTrigger?: boolean;
 };
 
 export function ModelPicker({
@@ -60,9 +65,13 @@ export function ModelPicker({
     requirements,
     showConfiguredModelName = false,
     modelFilter,
+    catalogSource = "session",
     modelDisabledReason,
+    adaptiveTrigger = false,
 }: ModelPickerProps) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
+    const userId = useUserStore((state) => state.user?.id);
+    const catalogStatus = useModelCatalogStore((state) => state.status);
     const pickerId = useId();
     // 双保险：即使 store merge 写出非法 theme，这里也兜底到 dark，避免 "reading 'node'" 崩溃
     const rawTheme = useActiveTheme();
@@ -80,6 +89,14 @@ export function ModelPicker({
         setInSpatialWorkspace(Boolean(triggerRef.current?.closest(".app-spatial-workspace")));
     }, []);
     const options = useMemo(() => Array.from(new Set(selectableModelsByCapability(config, capability).filter((model) => Boolean(model) && (!modelFilter || modelFilter(model))))), [capability, config, modelFilter]);
+    const usesSystemCatalog = catalogSource === "session" && (!config.channels.length || config.channels.some((channel) => channel.scope === "system"));
+    const catalogRelevant = usesSystemCatalog && (!options.length || options.some((model) => resolveModelChannel(config, model).scope === "system"));
+    const catalogPending = catalogRelevant && Boolean(userId) && catalogStatus !== "ready";
+    const catalogMessage = catalogStatus === "loading" ? "正在加载模型…" : catalogStatus === "error" ? (options.length ? "模型列表刷新失败，仍可选择已加载模型。" : "模型列表加载失败，请重试。") : "模型列表尚未加载，请重试。";
+    const retryCatalog = () => {
+        // 按需加载，避免静态模型展示也初始化整个用户会话模块。
+        void import("@/lib/user-session").then(({ refreshSystemChannels }) => refreshSystemChannels()).catch(() => {});
+    };
     const workbenchImage = groupWorkbenchImages && capability === "image";
     const optionGroups = useMemo(() => groupModelsForPicker(config, options, workbenchImage ? "workbench-image" : undefined), [config, options, workbenchImage]);
     const storedCurrent = value?.trim() || "";
@@ -107,6 +124,11 @@ export function ModelPicker({
         setAvailableHeight(compact ? Math.max(0, top - Math.max(0, bounds?.top ?? 0)) : Math.max(top, window.innerHeight - bottom));
         if (compact) setAvailableWidth(Math.max(0, Math.min(bounds?.right ?? window.innerWidth, window.innerWidth) - left - 12));
     }, [compact]);
+    // 触发器文案拆两段：primary 是模型显示名，secondary 是「· 渠道标签 /（渠道名）」。
+    // 仅 adaptiveTrigger 入口使用（其余入口仍走原来的 pickerModelDisplayName/pickerModelOptionLabel 整串）。
+    // 收纳本身由 canvas-cloud-agent.css 的容器查询完成，与同排「自动/技能/默认」控件同一套写法。
+    const currentLabelParts = adaptiveTrigger && current && !currentProductName ? triggerLabelParts(config, current, creationVariant, showConfiguredModelName) : null;
+
     useLayoutEffect(() => {
         if (!open) return;
         const trigger = triggerRef.current;
@@ -125,7 +147,7 @@ export function ModelPicker({
     }, [compact, open, updateAvailableSpace]);
 
     useEffect(() => {
-        if (!showSelectedPrice || !creditsEnabled || !quoteRequest) {
+        if (!userId || !showSelectedPrice || !creditsEnabled || !quoteRequest) {
             setRouteQuote(undefined);
             return;
         }
@@ -137,7 +159,7 @@ export function ModelPicker({
                 if (!controller.signal.aborted) setRouteQuote(undefined);
             });
         return () => controller.abort();
-    }, [creditsEnabled, quoteRequest, showSelectedPrice]);
+    }, [creditsEnabled, quoteRequest, showSelectedPrice, userId]);
 
     useEffect(() => {
         const closeOtherPicker = (event: Event) => {
@@ -162,7 +184,7 @@ export function ModelPicker({
     }, [open, pickerId]);
 
     const setPickerOpen = (nextOpen: boolean) => {
-        if (nextOpen && !options.length) onMissingConfig?.();
+        if (nextOpen && !options.length && !catalogPending) onMissingConfig?.();
         if (nextOpen) window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
         if (nextOpen) {
             if (compact) updateAvailableSpace();
@@ -263,6 +285,16 @@ export function ModelPicker({
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            {options.length > 0 && catalogPending ? (
+                <div className="canvas-model-picker-status" role="status">
+                    <span>{catalogMessage}</span>
+                    {catalogStatus !== "loading" ? (
+                        <button type="button" onClick={retryCatalog}>
+                            重新加载
+                        </button>
+                    ) : null}
+                </div>
+            ) : null}
             {optionGroups.length ? (
                 compact ? (
                     optionGroups.map((group, index) => {
@@ -363,7 +395,12 @@ export function ModelPicker({
                 )
             ) : (
                 <div className="canvas-model-picker-empty" style={{ color: theme.node.muted }}>
-                    {emptyModelLabel(config, capability)}
+                    <span role={catalogPending ? "status" : undefined}>{catalogPending ? catalogMessage : emptyModelLabel(config, capability)}</span>
+                    {catalogPending && catalogStatus !== "loading" ? (
+                        <button type="button" className="canvas-model-picker-recovery" onClick={retryCatalog}>
+                            重新加载
+                        </button>
+                    ) : null}
                 </div>
             )}
         </div>
@@ -415,9 +452,18 @@ export function ModelPicker({
                         <span className="canvas-model-picker-trigger-icon">
                             <ModelIcon config={config} model={current} />
                         </span>
-                        <span className="min-w-0 flex-1 truncate">{triggerLabel}</span>
+                        <span className="canvas-model-picker-trigger-text min-w-0 flex-1 truncate">
+                            {currentLabelParts ? (
+                                <>
+                                    <span className="canvas-model-picker-trigger-primary">{currentLabelParts.primary}</span>
+                                    {currentLabelParts.secondary ? <span className="canvas-model-picker-trigger-secondary">{` · ${currentLabelParts.secondary}`}</span> : null}
+                                </>
+                            ) : (
+                                triggerLabel
+                            )}
+                        </span>
                         {!compact && isCurrentCustomChannel ? <span className="shrink-0 rounded px-2 py-0.5 text-[var(--fs-label)] font-medium leading-none bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25">个人</span> : null}
-                        {showSelectedPrice && creditsEnabled ? <ModelPrice price={currentPrice} quote={routeQuote} /> : null}
+                        {showSelectedPrice && creditsEnabled ? <ModelPrice price={currentPrice} quote={userId ? routeQuote : undefined} /> : null}
                     </span>
                     <ChevronDown className={cn("canvas-model-picker-chevron", open && "is-open")} aria-hidden="true" />
                 </button>
@@ -633,6 +679,7 @@ function modelMenuPrice(config: AiConfig, model: string, capability?: ModelCapab
         if (!summary && !matched.length) return { kind: "tiers", label: "当前规格无报价", title: "请调整参数，或选择支持当前规格的渠道" };
         return channelTierPriceSummary(matched.length ? matched : tiers, tiers, capability);
     }
+    if (cost.billingMode === "image_usage") return { kind: "estimate", label: "按图片输入张数及实际输出像素计费" };
     if (cost.billingMode === "token") {
         const rate = cost.outputTokenPriceMicrocredits;
         return capability === "video" && typeof rate === "number" && Number.isFinite(rate) && rate >= 0
@@ -651,6 +698,21 @@ function pickerModelOptionLabel(config: AiConfig, model: string, showConfiguredM
     const displayName = showConfiguredModelName ? configuredModelDisplayName(config, model) : modelDisplayName(config, model);
     const channel = resolveModelChannel(config, model);
     return channel.scope === "system" ? pickerModelDisplayName(config, model, showConfiguredModelName) : `${displayName}（${channel.name}）`;
+}
+
+// 触发器文案两段拆分，与 pickerModelDisplayName / pickerModelOptionLabel 一一对应（default 变体
+// 直连系统模型也要带「· 渠道标签」，渠道模型带「（渠道名）」），仅把次要段拆进独立 span。
+// 展示名与模型名相同（未设置展示名）时省去第二段，避免「x · x」重复。
+function triggerLabelParts(config: AiConfig, model: string, creationVariant: boolean, showConfiguredModelName: boolean): { primary: string; secondary: string } {
+    const displayName = showConfiguredModelName ? configuredModelDisplayName(config, model) : modelDisplayName(config, model);
+    let secondary = "";
+    if (isDirectSystemModel(config, model)) {
+        secondary = modelChannelLabel(config, model);
+    } else if (!creationVariant) {
+        const channel = resolveModelChannel(config, model);
+        if (channel.scope !== "system") secondary = `（${channel.name}）`;
+    }
+    return { primary: displayName, secondary: secondary && secondary !== displayName ? secondary : "" };
 }
 
 function channelTierPriceSummary(

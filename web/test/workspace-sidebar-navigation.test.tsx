@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { Window } from "happy-dom";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import "@/i18n";
 import "@/themes/joysee-minimal";
@@ -10,29 +11,54 @@ import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { JOYSEE_MINIMAL_SKIN } from "@/themes/joysee-minimal/skin";
 
-function renderSidebar(path: string, collapsed: boolean, generationEnabled: boolean, joysee = true) {
+function renderSidebar(path: string, collapsed: boolean, generationEnabled: boolean, joysee = true, signedIn = false) {
     const initialState = useUserStore.getInitialState();
-    const { features } = initialState;
+    const { features, hydrated, user } = initialState;
     const initialAppearance = useAppearanceStore.getInitialState();
     const { appearance } = initialAppearance;
-    initialState.features = { ...features, imageWorkbenchEnabled: generationEnabled, videoWorkbenchEnabled: generationEnabled, pluginCenterEnabled: true };
+    initialState.features = { ...features, imageWorkbenchEnabled: generationEnabled, videoWorkbenchEnabled: generationEnabled, pluginCenterEnabled: true, teamsEnabled: false };
+    initialState.hydrated = true;
+    initialState.user = signedIn ? { id: "sidebar-user", username: "sidebar-user", displayName: "侧栏用户", role: "user", status: "active" } : null;
     if (joysee) initialAppearance.appearance = { ...appearance, skinId: JOYSEE_MINIMAL_SKIN.id, activeSkin: JOYSEE_MINIMAL_SKIN };
+    const dom = new Window({ url: "https://site.example.com/" });
+    const globals = new Map<string, PropertyDescriptor | undefined>();
+    for (const [name, value] of Object.entries({
+        window: dom,
+        document: dom.document,
+        Element: dom.Element,
+        HTMLElement: dom.HTMLElement,
+        Node: dom.Node,
+        getComputedStyle: dom.getComputedStyle.bind(dom),
+    })) {
+        globals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+        Object.defineProperty(globalThis, name, { configurable: true, value });
+    }
+    const queryClient = new QueryClient();
     try {
-        const { document } = new Window();
+        const { document } = dom;
         document.body.innerHTML = renderToStaticMarkup(
-            <MemoryRouter initialEntries={[path]}>
-                <WorkspaceSidebarNav collapsed={collapsed} onNavigate={() => {}} onOpenSearch={() => {}} onExpand={() => {}} onCollapse={() => {}} />
-            </MemoryRouter>,
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={[path]}>
+                    <WorkspaceSidebarNav collapsed={collapsed} onNavigate={() => {}} onOpenSearch={() => {}} onExpand={() => {}} onCollapse={() => {}} />
+                </MemoryRouter>
+            </QueryClientProvider>,
         );
         return document;
     } finally {
         initialState.features = features;
+        initialState.hydrated = hydrated;
+        initialState.user = user;
         initialAppearance.appearance = appearance;
+        queryClient.clear();
+        for (const [name, descriptor] of globals) {
+            if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+            else Reflect.deleteProperty(globalThis, name);
+        }
     }
 }
 
 test("左栏按约定的四组和入口顺序展示，路由和当前页标记不变", () => {
-    const document = renderSidebar("/toolbox/video", false, true);
+    const document = renderSidebar("/toolbox/video", false, true, true, true);
     const groups = [...document.querySelectorAll(".app-workspace-nav-group")];
     expect(groups.map((group) => group.getAttribute("data-nav-group-heading"))).toEqual(["创作", "生成工具", "任务与素材", "灵感与技能"]);
     const links = groups.map((group) => [...group.querySelectorAll("a[data-nav-id]")].map((item) => [item.textContent, item.getAttribute("href")]));
@@ -82,5 +108,6 @@ test("游客侧栏在展开和收起时都不显示底部账户入口", () => {
     for (const collapsed of [false, true]) {
         const document = renderSidebar("/", collapsed, false);
         expect(document.querySelectorAll(".app-workspace-sidebar-footer")).toHaveLength(0);
+        expect(document.querySelector('[data-nav-id="skills"]')).toBeNull();
     }
 });

@@ -17,7 +17,8 @@ test("canvas removes the standalone asset tray while retaining sidebar assets an
 
 test("workspace keeps a permanent rail and independent task/history entries", () => {
     const source = component("canvas-workspace-panel.tsx");
-    for (const label of ["主页", "节点", "素材库", "任务", "历史"]) expect(source).toContain(label);
+    for (const label of ["节点", "素材库", "任务", "历史"]) expect(source).toContain(label);
+    expect(source).not.toContain("主页");
     expect(source).not.toContain('id: "tools"');
     expect(source).not.toContain("CanvasWorkspaceToolPanel");
     expect(source).not.toContain("onInsertTool");
@@ -25,7 +26,8 @@ test("workspace keeps a permanent rail and independent task/history entries", ()
     expect(source).toContain("aria-pressed={open && tab === id}");
     expect(source).toContain("<CanvasWorkspaceHistoryPanel");
     expect(source).toContain("<CanvasWorkspaceAssetPanel");
-    expect(source).toContain("<AppDrawer");
+    expect(source).toContain('aria-label="画布工作区"');
+    expect(source).not.toContain("<AppDrawer");
 });
 
 test("asset panel uses scoped paginated data and existing insertion contract", () => {
@@ -72,7 +74,8 @@ test("workspace starts collapsed and opens or closes from its section buttons", 
     expect(panel).not.toContain("canvas-workspace-rail-toggle");
     expect(panel).toContain("if (open && tab === id) onClose();");
     expect(panel).toMatch(/setTab\(id\);\s+onOpen\(\);/);
-    expect(panel).toContain('aria-label="关闭工作区" onClick={onClose}');
+    expect(panel).toContain('aria-label="关闭工作区" onClick={closePanel}');
+    expect(panel).toContain("toggleRef.current?.focus()");
     const css = component("canvas-workspace-panel.css");
     expect(css).toContain("gap: var(--space-1)");
     expect(css).toContain("prefers-reduced-motion: reduce");
@@ -81,7 +84,7 @@ test("workspace starts collapsed and opens or closes from its section buttons", 
 test("rail inherits canvas dock colors from the workspace shell", () => {
     const panel = component("canvas-workspace-panel.tsx");
     expect(panel).toContain("canvasThemes[useActiveTheme()]");
-    expect(panel).toContain('className={`canvas-workspace-shell ${open && screens.lg ? "is-expanded" : ""}`} style={{ ...canvasDockStyle(theme)');
+    expect(panel).toContain("...canvasDockStyle(theme)");
     expect(panel).toContain("background: undefined");
     expect(panel).not.toContain('boxShadow: "none"');
     const railCss = component("canvas-workspace-panel.css").split(".canvas-workspace-rail {")[1];
@@ -95,7 +98,7 @@ test("rail inherits canvas dock colors from the workspace shell", () => {
     }
 });
 
-test("editor rail and expanded panel share one restrained glass surface without hard dividers", () => {
+test("project heading, rail and inline panel stay in one corner without intercepting the rest of the canvas", () => {
     const page = readFileSync(new URL("../src/pages/canvas/project.tsx", import.meta.url), "utf8");
     const panel = component("canvas-workspace-panel.tsx");
     const styles = component("canvas-workspace-panel.css");
@@ -103,30 +106,26 @@ test("editor rail and expanded panel share one restrained glass surface without 
     expect(page).not.toContain("canvas-workspace-backdrop");
     expect(page).toContain("canvas-main-with-workspace");
     expect(styles).toContain(".canvas-main-with-workspace .canvas-editor-shell {\n    z-index: 0;");
-    expect(styles).toContain(".canvas-workspace-shell {\n    position: absolute;");
+    expect(page).toContain("heading={projectHeading}");
+    expect(page).toContain("projectHeading={!showWorkspace ? projectHeading : undefined}");
+    expect(panel).toMatch(/\{heading\}\s*<div\s+className="canvas-workspace-shell"/);
+    expect(panel).not.toContain("screens.lg");
+    expect(styles).toMatch(/\.canvas-workspace-corner \{[^}]*pointer-events: none;/);
+    expect(styles).toMatch(/\.canvas-workspace-corner:not\(\.is-expanded\) \{[^}]*row-gap: var\(--space-2\);/);
+    expect(styles).toMatch(/\.canvas-workspace-corner > .canvas-topbar-project-cluster,\s*\.canvas-workspace-shell \{[^}]*pointer-events: auto;/);
+    expect(styles).toContain("width: min(100%, var(--canvas-workspace-open-width))");
     expect(styles).toContain("left: var(--canvas-workspace-inset)");
     expect(styles).toContain(".canvas-workspace-zoom-controls");
     expect(styles).toContain(".canvas-main-with-workspace > .canvas-project-sidebar {\n        margin-left: var(--space-16);");
-    expect(styles).toContain(".canvas-main-with-workspace:has(> .canvas-project-sidebar) .canvas-topbar");
-    // 只保留“主页”后的短分隔，不能回到整列硬分隔线。
-    expect(panel).toContain('<span className="canvas-workspace-rail-divider" aria-hidden />');
-    expect(panel).not.toContain("canvas-workspace-rail-divider is-end");
+    expect(styles).toContain(".canvas-main-with-workspace[data-project-sidebar] .canvas-workspace-zoom-controls");
+    expect(styles).toContain(".canvas-main-with-workspace[data-project-sidebar] .canvas-asset-view-layer");
+    // 标题和导航分属独立区域，轨道上的入口不再需要额外的尾部分隔线。
+    expect(panel).not.toContain("canvas-workspace-rail-divider");
+    expect(styles).not.toContain(".canvas-main-with-workspace .canvas-topbar {");
     expect(panel).not.toContain("<strong>工作区</strong>");
-    const dividerCss = styles.split(".canvas-workspace-rail-divider {")[1]?.split("}")[0] ?? "";
-    expect(dividerCss).toContain("width: var(--space-6)");
-    expect(dividerCss).toContain("background: color-mix(in srgb, currentColor 12%, transparent)");
     expect(styles).not.toContain("border-right: 1px solid var(--dock-border)");
     expect(styles).not.toContain('canvas-workspace-rail-button[aria-pressed="true"]::before');
-    expect(styles).toContain("margin: var(--space-2) 0 var(--space-2) var(--space-2)");
-    expect(styles).toContain("--canvas-workspace-material: color-mix(in srgb, var(--canvas-workspace-base, var(--background)) 72%, transparent);");
-    expect(styles).not.toContain("backdrop-filter: blur(16px)");
-    expect(styles).toContain("backdrop-filter: blur(22px) saturate(140%);");
-    expect(styles).toContain(".canvas-workspace-shell .canvas-workspace-panel {\n    background: transparent;");
+    expect(styles).toContain("background: var(--canvas-workspace-material);");
     expect(styles).toContain(".canvas-workspace-panel > :is(header, .border-b) {\n    border-bottom: 0 !important;");
-    expect(styles).toContain("border-radius: var(--r-2xl)");
-    expect(styles).not.toContain("border-radius: calc(var(--radius) * 3.5)");
     expect(page).toContain('workspaceOpen ? "canvas-workspace-expanded" : ""');
-    // 轨道与展开面板保持玻璃材质；无底板的视图控制条样式在 canvas-zoom-controls.css，不在这里关闭模糊。
-    expect(styles).not.toContain("backdrop-filter: none");
-    expect(styles).not.toContain("box-shadow: none");
 });

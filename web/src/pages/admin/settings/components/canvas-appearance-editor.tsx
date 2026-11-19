@@ -33,14 +33,14 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
     const [bundleLoading, setBundleLoading] = useState(false);
     const [bundleError, setBundleError] = useState("");
     const [selectedAvatarState, setSelectedAvatarState] = useState<AgentAvatarState>("idle");
-    const url = value.live2dResourceId ? live2DModelURL(value.live2dResourceId, value.live2dEntry, true) : "";
+    const url = value.live2dResourceId ? live2DModelURL(value.live2dResourceId, value.live2dEntry, "admin") : "";
     const defaultAvatar = usesDefaultAgentAvatar(value);
     const welcome = agentWelcomeCopy(value);
     const bundleID = value.avatarType === "bundle" ? value.avatarBundleResourceId : "";
-    const bundleManifestURL = bundleID ? agentAvatarBundleFileURL(bundleID, "avatar.json", true) : "";
+    const bundleManifestURL = bundleID ? agentAvatarBundleFileURL(bundleID, "avatar.json", "admin") : "";
     const previewClip = bundleManifest ? agentAvatarClipForState(value, selectedAvatarState, bundleManifest) : "";
     const previewFile = bundleManifest?.clips[previewClip] || "";
-    const previewBundleURL = bundleID && previewFile ? agentAvatarBundleFileURL(bundleID, previewFile, true) : "";
+    const previewBundleURL = bundleID && previewFile ? agentAvatarBundleFileURL(bundleID, previewFile, "admin") : "";
     const change = (patch: Partial<CanvasAppearance>) => onChange({ ...value, ...patch });
     useEffect(() => {
         if (!bundleManifestURL) return;

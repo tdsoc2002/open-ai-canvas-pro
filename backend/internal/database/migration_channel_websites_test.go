@@ -92,6 +92,7 @@ func TestChannelWebsiteMigrationUpgradesVersion96(t *testing.T) {
 	if err := db.AutoMigrate(&schemaMigration{}, &model.ModelChannel{}); err != nil {
 		t.Fatal(err)
 	}
+	seedHistoricalBillingOrders(t, db)
 	if err := db.Migrator().DropColumn(&model.ModelChannel{}, "WebsiteID"); err != nil {
 		t.Fatal(err)
 	}

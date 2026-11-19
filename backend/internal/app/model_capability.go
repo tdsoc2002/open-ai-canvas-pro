@@ -120,6 +120,9 @@ type ParameterSupport struct {
 }
 
 type VideoCapabilityConfig struct {
+	providerID        string
+	providerModel     string
+	referenceContract *protocolcontract.VideoReferenceContract
 	References        VideoReferenceConfig    `json:"references"`
 	Duration          VideoDurationConfig     `json:"duration"`
 	DurationSupported *bool                   `json:"durationSupported,omitempty"`
@@ -138,6 +141,14 @@ type VideoCapabilityConfig struct {
 	Processing *VideoProcessingConfig `json:"processing,omitempty"`
 }
 
+func (video *VideoCapabilityConfig) maxImagesFor(operation string) int {
+	capacity := video.References.MaxImages
+	if limit, limited := video.referenceContract.ImageLimit(video.providerModel, operation); limited {
+		return min(capacity, limit)
+	}
+	return capacity
+}
+
 const (
 	VideoProcessingFPSKeepSource = "keep_source"
 	VideoProcessingFPSUserSelect = "user_select"
@@ -145,8 +156,11 @@ const (
 	DefaultVideoProcessingMaxSourceSeconds = 180
 	// VideoProcessingOperationEnhance 是画质增强任务的 operation，前后端与价格档共用。
 	VideoProcessingOperationEnhance = "enhance"
+	VideoProcessingOperationDepth   = "depth"
+	MediaKitDepthMaxSourceSeconds   = 600
 	// VolcengineMediaKitEnhanceVideoProtocol 是官方插件 volcengine-mediakit 的画质增强 provider。
 	VolcengineMediaKitEnhanceVideoProtocol = "volcengine-mediakit-enhance-video"
+	VolcengineMediaKitVideoDepthProtocol   = "volcengine-mediakit-video-depth"
 )
 
 // VideoProcessingConfig 是视频处理工具的后台配置：帧率策略决定用户是否选择帧率，
@@ -335,7 +349,14 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 			return nil, err
 		}
 	}
-	value := &ModelCapabilityConfig{Version: 1, MediaTransport: transport, Video: video}
+	resolvedVideo := *video
+	resolvedVideo.providerID, resolvedVideo.providerModel = protocol, modelName
+	if len(registries) > 0 && registries[0] != nil {
+		if adapter, ok := registries[0].Resolve(protocol); ok {
+			resolvedVideo.referenceContract = adapter.Metadata().VideoReferences
+		}
+	}
+	value := &ModelCapabilityConfig{Version: 1, MediaTransport: transport, Video: &resolvedVideo}
 	if err := validateVideoCapabilityConfig(value.Video); err != nil {
 		return nil, err
 	}
@@ -539,8 +560,10 @@ func CapabilitySpecFromModelCapabilityConfig(config *ModelCapabilityConfig, capa
 		}
 		if video.Processing != nil {
 			// 处理类模型的 videoSeconds 是服务端测得的源时长，fpsBand 只用于价格档选择。
-			spec.Options["videoSeconds"] = numericRange(1, float64(videoProcessingMaxSourceSeconds(video.Processing)), 1)
-			spec.Options["fpsBand"] = anyValues(videoProcessingFPSBands)
+			spec.Options["videoSeconds"] = numericRange(1, float64(videoProcessingMaxSourceSeconds(video)), 1)
+			if video.DefaultOperation != VideoProcessingOperationDepth {
+				spec.Options["fpsBand"] = anyValues(videoProcessingFPSBands)
+			}
 		}
 		if video.GenerateAudio.Supported {
 			spec.Options["videoGenerateAudio"] = boolValues(true)

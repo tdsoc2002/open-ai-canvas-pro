@@ -1,3 +1,5 @@
+import { workspacePath, workspaceTeamId } from "@/lib/workspace-routes";
+import { captureSkillLibraryAccess, hasSkillLibraryAccess, isSkillLibraryAccessCurrent, useSkillLibraryAccess } from "@/lib/skill-access";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Spin } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
@@ -7,6 +9,7 @@ import { useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { AssetLibraryPickerItem } from "@/components/assets/asset-library-picker-modal";
+import { PersonalSpaceCreditOverview } from "@/components/layout/team-space-directory";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { useGenerationBatchLimit } from "@/lib/generation-batch-limit";
 import { isGenerationCostUncertainError } from "@/lib/canvas/canvas-generation-batch";
@@ -32,7 +35,7 @@ import { CreationHistorySync, CREATION_HISTORY_SYNC_KEY, type HistorySyncStatus 
 import { creationHistoryMedia, restoreHistoryMedia } from "@/services/creation-history-media";
 import { resolveModelChannel, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useCreationPreferencesStore } from "@/stores/use-creation-preferences-store";
-import { useAssetStore, type Asset } from "@/stores/use-asset-store";
+import { useAssetStore } from "@/stores/use-asset-store";
 import { loadAssetsForUse, saveRemoteUserDataNow } from "@/services/user-data-sync";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useThemePack } from "@/themes/use-theme-pack";
@@ -86,6 +89,7 @@ import {
     type PersistedCreationTask,
 } from "./creation-conversations";
 import { CreationComposer, CreationEmptySuggest, CreationHistoryDrawer, CreationMessageView, CreationModeCard, CreationModeMenu, CreationWorkspaceToolbar, creationAssetCategoryLabels } from "./creation-workspace";
+import { appendCreationReference, creationAttachmentFromResult, type CreationReferenceDrop } from "./creation-reference-drop";
 import { CreationRecentCanvases } from "./creation-recent-canvases";
 import { CreationAgentEntry } from "./creation-agent-entry";
 import { CreationHistoryConflicts } from "./creation-history-conflicts";
@@ -147,7 +151,7 @@ export default function CreatePage() {
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     const themePack = useThemePack();
     const themeHomeHeading = themePack?.copy?.homeHeading;
-    const compactHome = themePack?.creationLayout === "compact";
+    const compactHome = themePack?.creationLayout === "compact" && !workspaceTeamId;
     const config = useEffectiveConfig();
     const composerPreferencesHydrated = useCreationPreferencesStore((state) => state.hydrated);
     const rememberMode = useCreationPreferencesStore((state) => state.rememberMode);
@@ -182,12 +186,13 @@ export default function CreatePage() {
     const remoteHistorySnapshots = useRef(new WeakSet<CreationConversation[]>());
     const [historySync, setHistorySync] = useState<HistorySyncStatus>({ phase: "local" });
     const [conversationScope, setConversationScope] = useState<string | null>(() => (initialConversationSnapshot ? activeConversationScope : null));
-    const [mode, setMode] = useState<CreationMode>(() => initialComposerPreferences.mode || defaultCreationMode);
+    const [mode, setMode] = useState<CreationMode>(() => (workspaceTeamId ? "text" : initialComposerPreferences.mode || defaultCreationMode));
     const [prompt, setPrompt] = useState("");
     const [attachments, setAttachments] = useState<CreationAttachment[]>([]);
     const promptRef = useRef(prompt);
     const attachmentsRef = useRef(attachments);
     const [draftReferences, setDraftReferences] = useState<CreationReference[]>([]);
+    const canUseSkills = useSkillLibraryAccess();
     const [addedSkills, setAddedSkills] = useState<Skill[]>([]);
     const addedSkillsRequestedRef = useRef(false);
     const [ratio, setRatio] = useState("16:9");
@@ -202,6 +207,8 @@ export default function CreatePage() {
     const [busy, setBusy] = useState(false);
     const [referenceReplacementBusy, setReferenceReplacementBusy] = useState(false);
     const [referenceUploadBusy, setReferenceUploadBusy] = useState(false);
+    const [referenceDropBusy, setReferenceDropBusy] = useState(false);
+    const referenceDropLock = useRef(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const { openAuth } = useAuthEntry();
     const [libraryOpen, setLibraryOpen] = useState(false);
@@ -215,7 +222,7 @@ export default function CreatePage() {
         if (!requireCreationLogin()) return;
         setLibraryOpen(true);
     };
-    const externalAssetSources = useExternalAssetSources(libraryOpen);
+    const externalAssetSources = useExternalAssetSources(libraryOpen && !workspaceTeamId);
     const abortRef = useRef<AbortController | null>(null);
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
@@ -311,7 +318,15 @@ export default function CreatePage() {
         if (typeof width !== "number" || typeof height !== "number" || width <= 0 || height <= 0) return undefined;
         return { width, height };
     }, [attachments]);
-    const mentionReferences = useMemo(() => buildCreationMentionReferences(addedSkills, attachments, draftReferences), [addedSkills, attachments, draftReferences]);
+    const mentionReferences = useMemo(
+        () =>
+            buildCreationMentionReferences(
+                canUseSkills ? addedSkills : [],
+                attachments,
+                draftReferences.filter((reference) => canUseSkills || (reference.kind !== "skill" && !reference.skill)),
+            ),
+        [addedSkills, attachments, draftReferences, canUseSkills],
+    );
     const isEmpty = !activeConversation?.messages.length;
 
     // 空首页从顶部开始；有消息的对话由跟随消息逻辑管理滚动。
@@ -339,7 +354,7 @@ export default function CreatePage() {
     useEffect(() => {
         if (!composerPreferencesHydrated || composerPreferencesInitialized) return;
         const saved = useCreationPreferencesStore.getState().preferences;
-        const nextMode = saved.mode || defaultCreationMode;
+        const nextMode = workspaceTeamId ? "text" : saved.mode || defaultCreationMode;
         setMode(nextMode);
         if (nextMode === "image" && saved.image) {
             if (saved.image.ratio) setRatio(saved.image.ratio);
@@ -497,12 +512,19 @@ export default function CreatePage() {
         [],
     );
 
+    useEffect(() => {
+        setAddedSkills([]);
+        addedSkillsRequestedRef.current = false;
+    }, [canUseSkills, userId]);
     const loadAddedSkills = useCallback(() => {
-        if (addedSkillsRequestedRef.current) return;
+        const access = captureSkillLibraryAccess();
+        if (!access || addedSkillsRequestedRef.current) return;
         addedSkillsRequestedRef.current = true;
         void import("@/services/api/skills")
             .then(({ listAddedSkills }) => listAddedSkills())
-            .then(({ skills }) => setAddedSkills(skills))
+            .then(({ skills }) => {
+                if (isSkillLibraryAccessCurrent(access)) setAddedSkills(skills);
+            })
             .catch(() => setAddedSkills([]));
     }, []);
 
@@ -704,6 +726,7 @@ export default function CreatePage() {
     };
 
     const selectMode = (next: CreationMode) => {
+        if (workspaceTeamId && next !== "text") return;
         setMode(next);
         rememberMode(next);
         const nextModels = selectableModelsByCapability(config, next);
@@ -750,15 +773,16 @@ export default function CreatePage() {
     const libraryItems = useMemo<AssetLibraryPickerItem[]>(
         () => [
             ...assets
-                .filter((asset): asset is Extract<Asset, { kind: "image" | "video" | "audio" }> => asset.kind === "image" || asset.kind === "video" || asset.kind === "audio")
+                .filter((asset) => (workspaceTeamId ? asset.kind === "text" : asset.kind === "image" || asset.kind === "video" || asset.kind === "audio"))
                 .map((asset) => ({
                     id: asset.id,
                     title: asset.title,
                     category: asset.category || "other",
-                    kindLabel: asset.kind === "video" ? t("create.kind.video") : asset.kind === "audio" ? t("create.kind.audio") : t("create.kind.image"),
+                    kindLabel: asset.kind === "text" ? t("library.picker.kind.text") : asset.kind === "video" ? t("create.kind.video") : asset.kind === "audio" ? t("create.kind.audio") : t("create.kind.image"),
+                    archived: asset.status === "archived",
                     asset,
                     searchText: (asset.tags || []).join(" "),
-                    disabledReason: creationLibraryDisabledReason(mode, asset.kind, videoReferenceLimits),
+                    disabledReason: creationLibraryDisabledReason(mode, asset.kind, videoReferenceLimits, Boolean(workspaceTeamId)),
                 })),
             ...externalLibraryItems,
         ],
@@ -815,7 +839,7 @@ export default function CreatePage() {
     };
 
     const uploadLocalReferences = async (files: File[]) => {
-        if (busy || referenceReplacementBusy || referenceUploadBusy) return;
+        if (workspaceTeamId || busy || referenceReplacementBusy || referenceUploadBusy || referenceDropLock.current) return;
         if (!requireCreationLogin()) return;
         const accepted = files.filter((file) => creationFileAccepted(mode, file) && creationAttachmentKind(file) !== "file");
         if (accepted.length < files.length) toast.warning("已跳过当前创作模式不支持的文件");
@@ -867,6 +891,18 @@ export default function CreatePage() {
 
     const handleLibrarySelect = async (selectedIds: string[], pickedItems = libraryItems) => {
         if (!requireCreationLogin()) return;
+        if (workspaceTeamId) {
+            await loadAssetsForUse(selectedIds, { refresh: true });
+            const byId = new Map(useAssetStore.getState().assets.map((asset) => [asset.id, asset]));
+            const passages = selectedIds.map((id) => {
+                const asset = byId.get(id);
+                if (asset?.kind !== "text" || asset.status === "archived") throw new Error("请选择当前空间中未归档的文本素材");
+                return asset.data.content;
+            });
+            setPrompt((current) => [current, ...passages].filter(Boolean).join("\n\n"));
+            setLibraryOpen(false);
+            return;
+        }
         const next = creationLibrarySelectionToAttachments(selectedIds, pickedItems, mode, videoReferenceLimits);
         if (!next.length) return;
         const selected = new Set(selectedIds);
@@ -880,6 +916,67 @@ export default function CreatePage() {
             return reconciled.attachments;
         });
         setLibraryOpen(false);
+    };
+
+    const addDroppedReferences = async (drop: CreationReferenceDrop) => {
+        if (workspaceTeamId || busy || referenceReplacementBusy || referenceUploadBusy || referenceDropLock.current || !requireCreationLogin()) return;
+        const maxImages = mode === "video" ? videoReferenceLimits?.maxImages || 0 : maxReferences;
+        const maxAttachments = mode === "video" ? Infinity : maxReferences;
+        if (maxImages <= 0) {
+            toast.warning("当前模型或模式不支持参考图");
+            return;
+        }
+        const token = submitGateRef.current.tryAcquire();
+        if (!token) {
+            toast.warning(t("create.page.submitInProgress"));
+            return;
+        }
+        const scope = getActiveUserScope();
+        const conversationId = activeId;
+        const active = () => scope === getActiveUserScope() && conversationId === activeIdRef.current && referenceContextRef.current.mode === mode;
+        referenceDropLock.current = true;
+        setReferenceDropBusy(true);
+        try {
+            if (drop.kind === "result") {
+                const attachment = await creationAttachmentFromResult(
+                    drop.image,
+                    conversationsRef.current.flatMap((conversation) => conversation.messages),
+                    useAssetStore.getState().assets,
+                );
+                if (!active()) return;
+                const next = appendCreationReference(attachmentsRef.current, attachment, maxImages, maxAttachments);
+                attachmentsRef.current = next;
+                setAttachments(next);
+                return;
+            }
+            const files = drop.files.filter((file) => file.type.startsWith("image/"));
+            if (files.length !== drop.files.length) toast.warning("这里只能拖入图片文件");
+            // 逐张上传，先检查容量；多文件保留原始顺序，失败不阻止后续合法图片。
+            for (const file of files) {
+                if (!active()) break;
+                if (attachmentsRef.current.length >= maxAttachments || attachmentsRef.current.filter((item) => item.type.startsWith("image/")).length >= maxImages) {
+                    toast.warning(t("create.page.referenceLimitExceeded"));
+                    break;
+                }
+                try {
+                    const { asset, attachment, pendingRemoteUpload } = await uploadCreationAsset(file);
+                    if (!active()) break;
+                    const reference = asset ? { ...attachment, id: `asset:${addAsset(asset)}` } : attachment;
+                    const next = appendCreationReference(attachmentsRef.current, reference, maxImages, maxAttachments);
+                    attachmentsRef.current = next;
+                    setAttachments(next);
+                    if (pendingRemoteUpload) toast.warning("素材仅缓存在本机，尚未同步到云端");
+                } catch (error) {
+                    if (active()) toast.error(error instanceof Error ? error.message : "参考图上传失败");
+                }
+            }
+        } catch (error) {
+            if (active()) toast.error(error instanceof Error ? error.message : "添加参考图失败");
+        } finally {
+            submitGateRef.current.release(token);
+            referenceDropLock.current = false;
+            setReferenceDropBusy(false);
+        }
     };
 
     const removeAttachment = (id: string) => {
@@ -937,24 +1034,31 @@ export default function CreatePage() {
 
     const replaceReferenceFromFiles = useCallback(
         async (targetAttachmentId: string, files: File[]) => {
+            if (workspaceTeamId) return;
             if (!requireCreationLogin()) return;
-            if (busy || referenceReplacementBusy || referenceUploadBusy) return;
+            if (busy || referenceReplacementBusy || referenceUploadBusy || referenceDropLock.current) return;
             const file = files.find((item) => item.type.startsWith("image/"));
             if (!file) {
                 toast.warning(t("create.page.dropImageToReplace"));
                 return;
             }
+            const token = submitGateRef.current.tryAcquire();
+            if (!token) return;
             const scope = getActiveUserScope();
+            const conversationId = activeIdRef.current;
+            const originalMode = referenceContextRef.current.mode;
+            const active = () => scope === getActiveUserScope() && conversationId === activeIdRef.current && originalMode === referenceContextRef.current.mode;
             setReferenceReplacementBusy(true);
             try {
                 const { asset, attachment } = await uploadCreationAsset(file);
-                if (scope !== getActiveUserScope()) return;
+                if (!active()) return;
                 if (creationAttachmentKind(attachment) !== "image") throw new Error(t("create.page.uploadNotImage"));
                 if (asset) addAsset(asset);
                 if (replaceAttachmentReference(targetAttachmentId, attachment)) toast.success(t("create.page.referenceReplaced"));
             } catch (error) {
-                toast.error(error instanceof Error ? error.message : t("create.page.uploadReplaceFailed"));
+                if (active()) toast.error(error instanceof Error ? error.message : t("create.page.uploadReplaceFailed"));
             } finally {
+                submitGateRef.current.release(token);
                 setReferenceReplacementBusy(false);
             }
         },
@@ -974,7 +1078,7 @@ export default function CreatePage() {
         }
         const releaseSubmitGate = () => submitGateRef.current.release(submitToken);
         const text = prompt.trim();
-        if (!text || busy || !activeConversation) {
+        if (!text || busy || referenceReplacementBusy || referenceDropLock.current || !activeConversation) {
             releaseRetryLock();
             releaseSubmitGate();
             return;
@@ -1025,7 +1129,7 @@ export default function CreatePage() {
             audioCount: referenceAudios.length,
             characterCount: 0,
         });
-        const skillReferences = references.flatMap((reference) => (reference.skill ? [reference.skill] : []));
+        const skillReferences = hasSkillLibraryAccess() ? references.flatMap((reference) => (reference.skill ? [reference.skill] : [])) : [];
         let runtime: CreationRuntime;
         try {
             runtime = await loadCreationRuntime();
@@ -1349,7 +1453,7 @@ export default function CreatePage() {
                 params.set("mode", "handoff");
                 [...new Set(assetIds)].forEach((id) => params.append("asset", id));
             }
-            navigate(`/canvas/${result.id}?${params.toString()}`);
+            navigate(workspacePath(`/canvas/${result.id}?${params.toString()}`));
         } catch (cause) {
             if (scope === getActiveUserScope()) toast.error(cause instanceof Error ? cause.message : t("create.page.handoffFailed"));
         } finally {
@@ -1588,6 +1692,8 @@ export default function CreatePage() {
         generationActive,
         referenceReplacementBusy,
         referenceUploadBusy,
+        referenceDropBusy,
+        onReferenceDrop: addDroppedReferences,
         attachments,
         referenceImageSize,
         maxReferences,
@@ -1635,7 +1741,8 @@ export default function CreatePage() {
         composerFocusRef,
         onPromptFocus: loadAddedSkills,
         onSubmit: () => {
-            if (prompt.trim() && !busy && !referenceReplacementBusy) trackSiteTrafficAction(mode === "text" ? "creation_submit_text" : mode === "image" ? "creation_submit_image" : "creation_submit_video");
+            if (prompt.trim() && !busy && !referenceReplacementBusy && !referenceUploadBusy && !referenceDropLock.current)
+                trackSiteTrafficAction(mode === "text" ? "creation_submit_text" : mode === "image" ? "creation_submit_image" : "creation_submit_video");
             void submit();
         },
     };
@@ -1682,7 +1789,13 @@ export default function CreatePage() {
                                     transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 32, mass: 0.8 }}
                                 >
                                     <PenLine aria-hidden="true" />
-                                    <input aria-label={t("create.page.quickEditLabel")} placeholder={t("create.page.quickEditPlaceholder")} value={prompt} disabled={busy || referenceReplacementBusy} onChange={(event) => setPrompt(event.target.value)} />
+                                    <input
+                                        aria-label={t("create.page.quickEditLabel")}
+                                        placeholder={t("create.page.quickEditPlaceholder")}
+                                        value={prompt}
+                                        disabled={busy || referenceReplacementBusy || referenceUploadBusy || referenceDropBusy}
+                                        onChange={(event) => setPrompt(event.target.value)}
+                                    />
                                     <Tooltip title={t("create.page.expandComposer")}>
                                         <button
                                             type="button"
@@ -1744,7 +1857,7 @@ export default function CreatePage() {
                                                                     setAgentMode(false);
                                                                     selectMode(next);
                                                                 }}
-                                                                disabled={busy || referenceReplacementBusy || referenceUploadBusy}
+                                                                disabled={busy || referenceReplacementBusy || referenceUploadBusy || referenceDropBusy}
                                                             />
                                                         }
                                                     />
@@ -1778,7 +1891,7 @@ export default function CreatePage() {
                                             <span>{t("create.history.title")}</span>
                                         </button>
                                     </div>
-                                ) : (
+                                ) : !workspaceTeamId ? (
                                     <CreationEmptySuggest
                                         onStartPrompt={startPrompt}
                                         onOpenLibrary={() => {
@@ -1788,8 +1901,9 @@ export default function CreatePage() {
                                             setLibraryOpen(true);
                                         }}
                                     />
-                                )}
+                                ) : null}
                             </section>
+                            {!workspaceTeamId && <PersonalSpaceCreditOverview />}
                             <CreationRecentCanvases onRequireLogin={() => openAuth()} />
                         </main>
                     </>
@@ -1848,26 +1962,32 @@ export default function CreatePage() {
                 <Suspense fallback={null}>
                     <AssetLibraryPickerModal
                         remoteLibrary
+                        remoteKind={workspaceTeamId ? "text" : undefined}
+                        confirmLabel={workspaceTeamId ? (count) => `插入文本（${count}）` : undefined}
                         acceptRemoteItems
-                        remoteItemDisabledReason={(asset) => creationLibraryDisabledReason(mode, asset.kind, videoReferenceLimits)}
+                        remoteItemDisabledReason={(asset) => creationLibraryDisabledReason(mode, asset.kind, videoReferenceLimits, Boolean(workspaceTeamId))}
                         open={libraryOpen}
                         items={libraryItems}
                         categoryLabels={{ ...creationAssetCategoryLabels, ...externalAssetSources.categoryLabels }}
                         folders={externalAssetSources.folders}
                         initialSelectedIds={attachments.flatMap((item) => (item.id.startsWith("asset:") ? [item.id.slice(6)] : item.id.startsWith("external:") ? [item.id] : []))}
-                        upload={{
-                            accept: creationUploadAccept(mode),
-                            description: mode === "text" ? t("create.page.uploadHintText") : mode === "video" ? t("create.page.uploadHintVideo") : t("create.page.uploadHintImage"),
-                            onUpload: uploadLibraryAssets,
-                            external: {
-                                accept: "image/*",
-                                description: t("create.page.uploadHintEagle"),
-                                onUpload: (files, folderId) => {
-                                    if (!requireCreationLogin()) return Promise.resolve([]);
-                                    return externalAssetSources.uploadExternalFiles(files, folderId);
-                                },
-                            },
-                        }}
+                        upload={
+                            workspaceTeamId
+                                ? undefined
+                                : {
+                                      accept: creationUploadAccept(mode),
+                                      description: mode === "text" ? t("create.page.uploadHintText") : mode === "video" ? t("create.page.uploadHintVideo") : t("create.page.uploadHintImage"),
+                                      onUpload: uploadLibraryAssets,
+                                      external: {
+                                          accept: "image/*",
+                                          description: t("create.page.uploadHintEagle"),
+                                          onUpload: (files, folderId) => {
+                                              if (!requireCreationLogin()) return Promise.resolve([]);
+                                              return externalAssetSources.uploadExternalFiles(files, folderId);
+                                          },
+                                      },
+                                  }
+                        }
                         onClose={() => setLibraryOpen(false)}
                         onConfirm={handleLibrarySelect}
                     />

@@ -25,6 +25,9 @@ func runImageTask(ctx context.Context, input canvasGenerationInput) (map[string]
 			return nil, errors.New("腾讯 VOD OG 图片插件未安装或未启用")
 		}
 	}
+	if err := validateSeedream55Input(input); err != nil {
+		return nil, err
+	}
 	if input.Config.InterfaceType == string(model.ChannelInterfaceOpenAIImage) {
 		if err := validateOpenAIImageInput(input); err != nil {
 			return nil, err
@@ -508,7 +511,7 @@ func volcengineArkImageBody(input canvasGenerationInput) (map[string]interface{}
 		"watermark":       false,
 	}
 	if key, value := imageSizeParameter(input.ImageCapability, input.Config.Size); value != "" {
-		if key == "size" {
+		if key == "size" && input.Config.Model != seedream55Model {
 			value = normalizeVolcengineArkImageSize(value)
 		}
 		body[key] = value

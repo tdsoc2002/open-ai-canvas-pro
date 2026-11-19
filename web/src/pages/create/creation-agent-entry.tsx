@@ -1,3 +1,4 @@
+import { workspacePath } from "@/lib/workspace-routes";
 import { useTranslation } from "react-i18next";
 import { useRef, useState, type ReactNode } from "react";
 import { App, Button } from "antd";
@@ -8,10 +9,10 @@ import { AgentOrb } from "@/components/ui/agent-orb";
 import { canvasDraftNavigationState, useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
-import { createCanvasProjectWithRemoteSync, hasRemoteUserDataSyncSession, saveRemoteUserDataNow } from "@/services/user-data-sync";
+import { hasRemoteUserDataSyncSession } from "@/services/user-data-sync";
 import storyboardArtwork from "./assets/creation-agent-storyboard.webp";
 
-/** Agent 依赖真实画布 ID，先完成服务端保存，再进入同一个画布 Agent。 */
+/** 进入时只分配草稿 ID；明确提交创作时再建立同一画布的服务端记录。 */
 export function CreationAgentEntry({ modeControl }: { modeControl?: ReactNode }) {
     const { t } = useTranslation();
     const agentName = useAppearanceStore(selectAgentName);
@@ -42,7 +43,7 @@ export function CreationAgentEntry({ modeControl }: { modeControl?: ReactNode })
                 created.current = { id, userId };
             }
             if (useUserStore.getState().user?.id !== userId) return;
-            navigate(`/canvas/${encodeURIComponent(created.current.id)}?agent=1`, { state: canvasDraftNavigationState(created.current.id) });
+            navigate(workspacePath(`/canvas/${encodeURIComponent(created.current.id)}?agent=1`), { state: canvasDraftNavigationState(created.current.id) });
         } catch (cause) {
             if (useUserStore.getState().user?.id === userId) {
                 const detail = cause instanceof Error ? cause.message : t("create.agentEntry.startFailed");
@@ -73,7 +74,7 @@ export function CreationAgentEntry({ modeControl }: { modeControl?: ReactNode })
                     {created.current ? t("create.agentEntry.retryEnter") : t(modeControl ? "create.agentEntry.compactNewCanvas" : "create.agentEntry.newCanvas", { agentName })}
                     <ArrowRight aria-hidden="true" />
                 </Button>
-                <Button type={modeControl ? "text" : "default"} icon={<FolderOpen aria-hidden="true" />} disabled={busy} onClick={() => navigate("/canvas?agent=1")}>
+                <Button type={modeControl ? "text" : "default"} icon={<FolderOpen aria-hidden="true" />} disabled={busy} onClick={() => navigate(workspacePath("/canvas?agent=1"))}>
                     {t("create.agentEntry.continueExisting")}
                 </Button>
             </div>

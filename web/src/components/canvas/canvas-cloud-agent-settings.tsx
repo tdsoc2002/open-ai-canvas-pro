@@ -1,3 +1,4 @@
+import { useSkillLibraryAccess } from "@/lib/skill-access";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Button, Checkbox, Input } from "antd";
 import { ArrowLeft, BookMarked, Check, ChevronRight, Cpu, Gauge, LockKeyhole, Search, ShieldCheck, Sparkles, Wrench, Blocks, CirclePlay, X } from "lucide-react";
@@ -83,7 +84,9 @@ const contextOptions: Array<{ value: AgentContextKey; label: string; description
 
 export function CanvasCloudAgentSettings(props: AgentSettingsProps) {
     const agentName = useAppearanceStore(selectAgentName);
-    const [section, setSection] = useState<SettingsSection>(props.initialSection || "home");
+    const canUseSkills = useSkillLibraryAccess();
+    const [selectedSection, setSection] = useState<SettingsSection>(props.initialSection || "home");
+    const section = !canUseSkills && selectedSection === "skills" ? "home" : selectedSection;
     const [skillTab, setSkillTab] = useState<"installed" | "market">("installed");
     const [mcpTab, setMcpTab] = useState<AgentMCPSettingsTab>(props.initialMcpTab || "connections");
     const { theme } = props;
@@ -125,6 +128,7 @@ export function CanvasCloudAgentSettings(props: AgentSettingsProps) {
 }
 
 function SettingsHome({ props, theme, onOpen }: { props: AgentSettingsProps; theme: CanvasTheme; onOpen: (section: SettingsSection) => void }) {
+    const canUseSkills = useSkillLibraryAccess();
     const thinking = modelCapabilityConfigFor(props.config, props.selectedModel).text?.thinking || LEGACY_TEXT_THINKING_CONFIG;
     return (
         <div className="canvas-agent-settings-scroll thin-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
@@ -181,7 +185,9 @@ function SettingsHome({ props, theme, onOpen }: { props: AgentSettingsProps; the
                     <SettingRow theme={theme} icon={<Cpu className="size-4" />} title="上下文" status={props.nodeCount === null ? "未绑定画布" : `${props.nodeCount} 个节点 · ${props.contextScope.length} 个范围`} onClick={() => onOpen("context")} />
                     <SettingRow theme={theme} icon={<BookMarked className="size-4" />} title="长期偏好" onClick={() => onOpen("profile")} />
                     <SettingRow theme={theme} icon={<BookMarked className="size-4" />} title="个人记忆" onClick={() => onOpen("memories")} />
-                    <SettingRow theme={theme} icon={<Blocks className="size-4" />} title="Skills · 用户技能库" status={props.installedSkills.length ? `已安装 ${props.installedSkills.length} 个` : "未安装"} onClick={() => onOpen("skills")} />
+                    {canUseSkills && (
+                        <SettingRow theme={theme} icon={<Blocks className="size-4" />} title="Skills · 用户技能库" status={props.installedSkills.length ? `已安装 ${props.installedSkills.length} 个` : "未安装"} onClick={() => onOpen("skills")} />
+                    )}
                     <SettingRow theme={theme} icon={<Wrench className="size-4" />} title="工具与连接" onClick={() => onOpen("mcp")} />
                     <SettingRow theme={theme} icon={<Gauge className="size-4" />} title="预算" status={props.maxCredits ? `${props.maxCredits} 积分 / 轮` : "未设置"} onClick={() => onOpen("budget")} />
                 </div>

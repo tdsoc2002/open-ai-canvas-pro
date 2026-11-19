@@ -1,3 +1,4 @@
+import { useSkillLibraryAccess } from "@/lib/skill-access";
 import { ArrowUpRight, Clapperboard, Layers3, Orbit, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { agentCopy, agentWelcomeCopy, DEFAULT_AGENT_AVATAR, usesDefaultAgentAvatar, type CanvasAppearance } from "@/lib/canvas/agent-appearance";
@@ -15,6 +16,7 @@ type AgentWelcomeProps = {
 
 export function AgentWelcome({ appearance, nodeCount, compact = false, onChooseSkill, onDraftPrompt }: AgentWelcomeProps) {
     const { t } = useTranslation();
+    const canUseSkills = useSkillLibraryAccess();
     if (compact) {
         const { title, description } = agentWelcomeCopy(appearance);
         return (
@@ -45,7 +47,7 @@ export function AgentWelcome({ appearance, nodeCount, compact = false, onChooseS
                 <p>{agentCopy(appearance.welcomeDescription, appearance.agentName)}</p>
             </div>
             <div className="agent-welcome-actions">
-                {onChooseSkill ? (
+                {canUseSkills && onChooseSkill ? (
                     <button type="button" onClick={onChooseSkill}>
                         <Orbit aria-hidden="true" />
                         <span>

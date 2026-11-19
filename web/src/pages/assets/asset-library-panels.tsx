@@ -35,6 +35,7 @@ export function AssetsBatchBar({
     onExport,
     onRestore,
     onArchive,
+    onShareTeam,
     onDelete,
 }: {
     count: number;
@@ -47,6 +48,7 @@ export function AssetsBatchBar({
     onExport: () => void;
     onRestore?: () => void;
     onArchive?: () => void;
+    onShareTeam?: () => void;
     onDelete: () => void;
 }) {
     return (
@@ -72,6 +74,11 @@ export function AssetsBatchBar({
                     </>
                 ) : (
                     <>
+                        {onShareTeam ? (
+                            <Button size="small" disabled={!count || busy} onClick={onShareTeam}>
+                                共享到团队
+                            </Button>
+                        ) : null}
                         <Button size="small" disabled={!count || busy} icon={<Download className="size-3.5" />} onClick={onExport}>
                             导出
                         </Button>
@@ -269,8 +276,8 @@ export function AssetPreviewModal({
 }: {
     asset: LibraryAsset | null;
     onClose: () => void;
-    onCopy: (asset: LibraryAsset) => void;
-    onDownload: (asset: LibraryAsset) => void;
+    onCopy?: (asset: LibraryAsset) => void;
+    onDownload?: (asset: LibraryAsset) => void;
     /** 方舟素材库已开放时传入：认证进度与提交、管理入口。 */
     ark?: { progress?: ArkLibraryProgress; onCertify: (asset: Extract<LibraryAsset, { kind: "image" }>) => void; onManage: () => void };
 }) {
@@ -366,12 +373,12 @@ export function AssetPreviewModal({
                         </div>
                         <footer className="asset-archive-actions">
                             <Button onClick={onClose}>关闭</Button>
-                            {asset.kind === "text" ? (
+                            {asset.kind === "text" && onCopy ? (
                                 <Button type="primary" icon={<Copy className="size-4" />} onClick={() => onCopy(asset)}>
                                     复制文本
                                 </Button>
                             ) : null}
-                            {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? (
+                            {onDownload && (asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model") ? (
                                 <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
                                     {assetDownloadLabel(asset)}
                                 </Button>

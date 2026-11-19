@@ -399,11 +399,11 @@ func (s *Service) CloudAgentRunIfChanged(userID, id string, revision int64, opti
 // is deterministic per user/key. Competing requests may race, but task creation
 // and credit reservation share a transaction: only one can commit.
 func (s *Service) CreateCloudAgentRun(userID string, req CloudAgentRequest, parentID string) (*CloudAgentRun, error) {
-	if err := validateCloudAgentRequest(&req); err != nil {
+	if err := s.RequireSkillAccess(userID); err != nil {
 		return nil, err
 	}
-	if userID == "" {
-		return nil, kernel.Unauthorized("请先登录")
+	if err := validateCloudAgentRequest(&req); err != nil {
+		return nil, err
 	}
 	// 调用方仍可复用其请求对象；复制页面身份后，本轮后续检查只使用冻结值。
 	if req.PageContext != nil {
@@ -608,7 +608,11 @@ func (s *Service) CreateCloudAgentRun(userID string, req CloudAgentRequest, pare
 		"config":        map[string]any{"channelId": req.ChannelID, "channelModelKey": req.ChannelModelKey, "model": firstNonEmpty(req.ChannelModelKey, req.Model), "systemPrompt": system}}
 	input["piSessionJSONL"] = ""
 	if parentID != "" {
-		if session, sessionErr := s.repo.CloudAgentPiSession(userID, parentID); sessionErr == nil {
+		session, sessionErr := s.repo.CloudAgentPiSession(userID, parentID)
+		if sessionErr != nil && !errors.Is(sessionErr, gorm.ErrRecordNotFound) {
+			return nil, sessionErr
+		}
+		if sessionErr == nil && session != nil {
 			inherited := cloudAgentInheritablePiSession(parentStatus, session.SessionJSONL)
 			if inherited == "" && session.SessionJSONL != "" {
 				slog.Info("agent continuation starts a fresh runtime session", "parent", parentID, "parentStatus", parentStatus)
@@ -657,6 +661,9 @@ func (s *Service) replayCloudAgentRequest(userID string, req CloudAgentRequest, 
 			return nil, false, nil
 		}
 		return nil, false, err
+	}
+	if err := s.RequireSkillAccess(userID); err != nil {
+		return nil, true, err
 	}
 	if state.Fingerprint == "" || state.Fingerprint != cloudAgentFingerprint(req, parentID) {
 		return nil, true, kernel.NewAppError(409, "幂等键已用于不同请求，请使用新的幂等键")

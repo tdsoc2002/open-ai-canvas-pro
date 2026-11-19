@@ -4,7 +4,7 @@
 
 import { Dropdown, type MenuProps } from "antd";
 import { useState, type MouseEvent } from "react";
-import { AlertTriangle, AudioLines, Box, Clock3, Copy, Download, FileText, FolderOpen, MoreHorizontal, PencilLine, Play, RotateCcw, ShieldAlert, ShieldCheck, ShieldX, Trash2 } from "lucide-react";
+import { AlertTriangle, AudioLines, Box, Clock3, Copy, Download, FileText, FolderOpen, MoreHorizontal, PencilLine, Play, RotateCcw, Send, ShieldAlert, ShieldCheck, ShieldX, Trash2 } from "lucide-react";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
 import { type AssetKind } from "@/stores/use-asset-store";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
@@ -46,6 +46,7 @@ export function AssetCard({
     onSelect,
     onOpen,
     onEdit,
+    onRename,
     onCopy,
     onDownload,
     onRestore,
@@ -53,6 +54,7 @@ export function AssetCard({
     onDelete,
     folderOptions,
     onMoveToFolder,
+    onRecommend,
     arkProgress,
 }: {
     asset: LibraryAsset;
@@ -63,6 +65,7 @@ export function AssetCard({
     onSelect: (selected: boolean, range?: boolean) => void;
     onOpen: () => void;
     onEdit: () => void;
+    onRename?: () => void;
     onCopy: (asset: LibraryAsset) => void;
     onDownload: (asset: LibraryAsset) => void;
     onRestore?: () => void;
@@ -70,15 +73,20 @@ export function AssetCard({
     onDelete: () => void;
     folderOptions: Array<{ label: string; value: string }>;
     onMoveToFolder: (folderId: string) => void;
+    onRecommend?: (asset: LibraryAsset) => void;
     /** 这张图片最近一次方舟认证提交；已认证的展示以素材自身的 arkCertification 为准。 */
     arkProgress?: ArkLibraryProgress;
 }) {
     const menuItems: MenuProps["items"] = isTrash
         ? [{ key: "restore", icon: <RotateCcw className="size-3.5" />, label: "还原到素材库", onClick: onRestore }, { type: "divider" as const }, { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "彻底删除", onClick: onDelete }]
         : [
+              ...(onRename ? [{ key: "rename", icon: <PencilLine className="size-3.5" />, label: "修改名称", onClick: onRename }] : []),
               ...(asset.kind === "text" || asset.kind === "image" ? [{ key: "edit", icon: <PencilLine className="size-3.5" />, label: "编辑", onClick: onEdit }] : []),
               ...(asset.kind === "text" ? [{ key: "copy", icon: <Copy className="size-3.5" />, label: "复制文本", onClick: () => void onCopy(asset) }] : []),
               ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? [{ key: "download", icon: <Download className="size-3.5" />, label: "下载", onClick: () => onDownload(asset) }] : []),
+              ...(onRecommend && (asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "entity")
+                  ? [{ key: "recommend", icon: <Send className="size-3.5" />, label: "推荐为官方素材", onClick: () => onRecommend(asset) }]
+                  : []),
               { key: "move", icon: <FolderOpen className="size-3.5" />, label: "移动到分类", children: folderOptions.map((folder) => ({ key: folder.value || "uncategorized", label: folder.label, onClick: () => onMoveToFolder(folder.value) })) },
               { type: "divider" as const },
               { key: "archive", icon: <Trash2 className="size-3.5 text-amber-500" />, label: "移入回收站", onClick: onArchive },
@@ -101,8 +109,8 @@ export function AssetCard({
                             {asset.title}
                         </button>
                     </h2>
-                    {!isTrash && !selectionMode && (asset.kind === "image" || asset.kind === "text") ? (
-                        <button type="button" className="product-icon-button canvas-collection-rename" title="编辑素材" aria-label={`编辑 ${asset.title}`} onClick={onEdit}>
+                    {!isTrash && !selectionMode && (onRename || asset.kind === "image" || asset.kind === "text") ? (
+                        <button type="button" className="product-icon-button canvas-collection-rename" title={onRename ? "修改名称" : "编辑素材"} aria-label={onRename ? `修改素材名称：${asset.title}` : `编辑 ${asset.title}`} onClick={onRename ?? onEdit}>
                             <PencilLine aria-hidden />
                         </button>
                     ) : null}

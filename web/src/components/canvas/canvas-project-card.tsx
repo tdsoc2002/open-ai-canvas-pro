@@ -1,4 +1,5 @@
-import { Check, Clapperboard, CloudUpload, Download, FileText, Frame, Image as ImageIcon, MoreHorizontal, Music2, Pencil, Play, Plus, Settings2, Trash2, Video, X, Blocks } from "lucide-react";
+import { workspacePath } from "@/lib/workspace-routes";
+import { Check, Clapperboard, CloudUpload, Download, FileText, Frame, Image as ImageIcon, MoreHorizontal, Music2, Pencil, Play, Plus, Settings2, SquareDashed, Trash2, Video, X, Blocks } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { App, Dropdown, Input } from "antd";
@@ -46,7 +47,7 @@ export function CanvasProjectCard({ project, projectName, variant = "library", r
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const editing = editingId === project.id;
     const selected = selectedIds.includes(project.id);
-    const open = () => navigate(`/canvas/${project.id}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`);
+    const open = () => navigate(workspacePath(`/canvas/${project.id}${searchParams.size ? `?${searchParams}` : ""}`));
     const saveTitle = async () => {
         stopEditing();
         if (!hasRemoteUserDataSyncSession()) {

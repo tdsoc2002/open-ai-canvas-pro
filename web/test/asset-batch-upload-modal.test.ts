@@ -28,7 +28,7 @@ test("上传成功后不再回读远端地址获取尺寸", () => {
 
 test("同步收尾抛错时仍释放上传状态", () => {
     const upload = section("const uploadBatch = async", "const close = ");
-    expect(upload).toMatch(/finally \{ setUploading\(false\); \}/);
+    expect(upload).toMatch(/finally \{ uploadingRef\.current = false; setUploading\(false\); \}/);
     expect(upload).toContain("flushAssetStorePersistence().catch(");
     expect(upload).not.toMatch(/await flushAssetStorePersistence\(\);/);
 });

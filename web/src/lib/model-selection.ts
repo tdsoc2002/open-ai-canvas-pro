@@ -228,6 +228,7 @@ export function modelRequestOptions(config: AiConfig, capability: ModelCapabilit
         }
         case "audio":
             return {
+                audioMode: config.audioMode,
                 audioVoice: config.audioVoice,
                 audioFormat: config.audioFormat,
                 audioSpeed: Number(config.audioSpeed),
@@ -500,6 +501,7 @@ export function inferVideoOperation(input: ModelInputSummary) {
 }
 
 export function resolveVideoOperation(input: ModelInputSummary, storedOperation?: string) {
+    if (storedOperation === "reference_to_video" && input.imageCount + input.characterCount > 0) return storedOperation;
     if (storedOperation && !["text_to_video", "image_to_video", "audio_to_video", "extend", "reference_to_video"].includes(storedOperation)) return storedOperation;
     return inferVideoOperation(input);
 }

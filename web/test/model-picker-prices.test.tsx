@@ -108,6 +108,18 @@ test("unified video Token pricing uses the same compact label and full unit expl
     expect(markup).toContain('title="35.24 积分/百万视频 Token；');
 });
 
+test("unified image usage pricing estimates from usage instead of appearing free", () => {
+    const config = fixture();
+    const cost = config.channels[0].modelCosts![0];
+    cost.capability = "image";
+    cost.pricePolicy = "unified";
+    cost.billingMode = "image_usage";
+    cost.unitPriceMicrocredits = 0;
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="image" showPrice owner="test-picker" onSelect={() => {}} />);
+    expect(markup).toContain("按图片输入张数及实际输出像素计费");
+    expect(markup).not.toContain("积分/次");
+});
+
 test("candidate rows do not disguise missing prices as zero", () => {
     const config = fixture();
     config.channels[0].modelCosts![0].logicalPriceTiers = [];

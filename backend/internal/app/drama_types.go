@@ -608,7 +608,7 @@ type DramaSegmentView struct {
 	VideoPrompt string `json:"videoPrompt"`
 	Generated   string `json:"generated"`
 	Custom      bool   `json:"custom"`
-	// PromptStatus：none 无记录、queued 待撰写、running 撰写中、ready 完成、stale 镜头已改动、failed 失败。
+	// PromptStatus：none 无记录、queued 待撰写、running 撰写中、ready 完成、stale 过期、failed 失败、conflict 待核对、review AI 新稿待采用。
 	PromptStatus string `json:"promptStatus"`
 	PromptError  string `json:"promptError,omitempty"`
 	// VideoStatus：空串待生成、running、ready、stale（提示词或上一段已变）、failed。
@@ -651,7 +651,7 @@ type DramaSegmentRequest struct {
 	FirstFrameResourceID string                  `json:"firstFrameResourceId,omitempty"`
 	FirstFramePending    bool                    `json:"firstFramePending"`
 	References           []DramaSegmentReference `json:"references"`
-	// ReferenceCapacity 是本段最多随请求发送的参考图张数（已扣除首帧，并受每段上限约束）；ModelMaxImages 是视频模型声明的图片上限。
+	// ReferenceCapacity 扣除首帧并受每段上限约束，ModelMaxImages 是所选模型、工作流和生成方式共同允许的图片上限。
 	ReferenceCapacity int `json:"referenceCapacity"`
 	ModelMaxImages    int `json:"modelMaxImages"`
 	// ReferenceLimited 表示有参考图因“每段最多参考图”设置而未发送（而不是模型上限）。

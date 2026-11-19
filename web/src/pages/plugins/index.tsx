@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { PageHeader } from "@/components/layout/workspace-page";
 import { listRegisteredPlugins } from "@/lib/plugins/plugin-registry";
+import { pluginMatchesSearch } from "@/lib/plugins/plugin-search";
 import "@/lib/plugins/builtin";
 import { EAGLE_PLUGIN_ID } from "@/lib/plugins/builtin/eagle";
 import { PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins/builtin/prompt-optimizer";
@@ -134,9 +135,7 @@ export default function PluginsPage() {
             const installation = installations.find((item) => item.manifest.id === plugin.manifest.id);
             const enabled = state?.effectiveEnabled ?? Boolean(installation?.enabled);
             const manifest = plugin.manifest;
-            const contributionKinds = contributionKindsFor(manifest);
-            const searchableText = [manifest.name, manifest.description, manifest.author, manifest.id, ...contributionKinds.map((kind) => categoryLabels[kind] || kind)].filter(Boolean).join(" ").toLocaleLowerCase();
-            if (normalizedSearch && !searchableText.includes(normalizedSearch)) return false;
+            if (!pluginMatchesSearch(manifest, search) && !contributionKindsFor(manifest).some((kind) => (categoryLabels[kind] ?? kind).toLocaleLowerCase().includes(normalizedSearch))) return false;
             if (trustFilter === "trusted" && !manifest.trusted) return false;
             if (statusFilter === "enabled" && !enabled) return false;
             if (statusFilter === "disabled" && enabled) return false;
@@ -217,7 +216,7 @@ export default function PluginsPage() {
                                 prefix={<Search className="size-4 text-foreground/38" aria-hidden="true" />}
                                 value={search}
                                 allowClear
-                                placeholder="搜索插件名称、描述或作者"
+                                placeholder="搜索应用名称、简介或能力"
                                 onChange={(event) => setSearch(event.target.value)}
                             />
                             <Select

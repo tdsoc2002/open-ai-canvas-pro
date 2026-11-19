@@ -44,6 +44,7 @@ func TestSiteTrafficMigration99IsAdditiveAndPreservesPublishedLedger(t *testing.
 	if err := db.AutoMigrate(&schemaMigration{}); err != nil {
 		t.Fatal(err)
 	}
+	seedHistoricalBillingOrders(t, db)
 	// 仅登记上游截至 v98 的真实迁移身份，隔离验证 v99，不重跑历史业务转换。
 	records := make([]schemaMigration, 0, trafficIndex)
 	for _, item := range schemaMigrations[:trafficIndex] {

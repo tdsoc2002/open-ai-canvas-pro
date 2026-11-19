@@ -297,7 +297,9 @@ async function connectCdp(cdpPort) {
         // 目标必须"站稳"再点：AntD 弹窗/抽屉有约 200ms 入场动画，只要求相邻两次读数相同
         // 会在动画刚开始、坐标还没动的那一拍就下判定，真正派发鼠标事件时控件已经移位 ——
         // 点击落到遮罩上（mask.closable=false）就完全无效（"留在预演台" 曾这样偶发失败）。
-        const deadline = Date.now() + 8000;
+        // 弹窗预览和场景同时做软件渲染时，单次 CDP 读数可能耗费数秒。
+        // 保留真实命中、动画和稳定性检查，只给繁忙的渲染器更多采样时间。
+        const deadline = Date.now() + 25000;
         let previous = null;
         let hovered = null;
         let stableSince = 0;

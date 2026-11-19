@@ -15,6 +15,7 @@ import { catalog as createCatalog } from "@/i18n/messages/areas/create";
 import { emptyAgentContextUsage, presentAgentContextUsage } from "@/lib/canvas/agent-context-usage";
 import { AGENT_LAUNCHER_POSITION_KEY } from "@/lib/canvas/agent-launcher-position";
 import { defaultConfig } from "@/stores/use-config-store";
+import { useUserStore } from "@/stores/use-user-store";
 
 const noop = () => {};
 
@@ -97,14 +98,17 @@ test.each([
 
 const conversationProps = { theme: canvasThemes.light, references: [], approval: null, approvalSubmitting: false, onApprovalReasonChange: noop, onApprove: noop, onReject: noop };
 
-test("empty Agent conversation restores the original welcome and three actions", () => {
-    const html = renderToStaticMarkup(<AgentConversation {...conversationProps} messages={[]} busy={false} nodeCount={0} onChooseSkill={noop} onDraftPrompt={noop} />);
-    expect(html).toContain("agent-welcome-orb");
-    expect(html).toContain("让灵感，慢慢成形");
-    expect(html.match(/type="button"/g)).toHaveLength(3);
-    expect(html.match(/disabled=""/g)).toHaveLength(1);
-    expect(html).not.toContain("agent-conversation-starter");
-    expect(html).not.toContain("agent-scene-capsules");
+test("empty Agent conversation keeps ordinary actions but hides skill actions before an eligible session loads", () => {
+    for (const onChooseSkill of [undefined, noop]) {
+        const html = renderToStaticMarkup(<AgentConversation {...conversationProps} messages={[]} busy={false} nodeCount={0} onChooseSkill={onChooseSkill} onDraftPrompt={noop} />);
+        expect(html).toContain("agent-welcome-orb");
+        expect(html).toContain("让灵感，慢慢成形");
+        expect(html.match(/type="button"/g)).toHaveLength(2);
+        expect(html).not.toContain("选择技能，开始创作");
+        expect(html.match(/disabled=""/g)).toHaveLength(1);
+        expect(html).not.toContain("agent-conversation-starter");
+        expect(html).not.toContain("agent-scene-capsules");
+    }
 });
 
 test("original welcome uses configured names and escapes them as text", () => {
@@ -204,18 +208,30 @@ test("compact send button preserves empty-draft and sending guards", () => {
 test("only the model stays above the draft; reasoning, skills and context have separate lower controls", () => {
     const contextUsage = { ...presentAgentContextUsage(emptyAgentContextUsage("")), phase: "watch" as const, ratio: 0.75, compactionError: "压缩失败" };
     const shared = { config: defaultConfig, selectedModel: "", theme: canvasThemes.dark, reasoningMode: "auto" as const, onReasoningModeChange: noop, selectedSkillCount: 0 };
-    const html = renderToStaticMarkup(
-        <AgentChatComposer
-            prompt=""
-            placeholder="聊聊想法"
-            theme={canvasThemes.dark}
-            onPromptChange={noop}
-            onSubmit={noop}
-            topActions={<ComposerModelPicker config={defaultConfig} selectedModel="" onModelChange={noop} />}
-            left={<ComposerControls {...shared} permissionMode="request_approval" onPermissionChange={noop} skillsOpen={false} onSkillsOpenChange={noop} />}
-            submitAccessory={<AgentContextRing view={contextUsage} theme={canvasThemes.dark} />}
-        />,
-    );
+    const render = () =>
+        renderToStaticMarkup(
+            <AgentChatComposer
+                prompt=""
+                placeholder="聊聊想法"
+                theme={canvasThemes.dark}
+                onPromptChange={noop}
+                onSubmit={noop}
+                topActions={<ComposerModelPicker config={defaultConfig} selectedModel="" onModelChange={noop} />}
+                left={<ComposerControls {...shared} permissionMode="request_approval" onPermissionChange={noop} skillsOpen={false} onSkillsOpenChange={noop} />}
+                submitAccessory={<AgentContextRing view={contextUsage} theme={canvasThemes.dark} />}
+            />,
+        );
+    const initial = useUserStore.getInitialState();
+    const previous = { user: initial.user, hydrated: initial.hydrated };
+    expect(render()).not.toContain('aria-label="打开 Skills 技能库"');
+    let html: string;
+    try {
+        initial.user = { id: "agent-presentation-user", username: "member", displayName: "测试会员", role: "user", status: "active" };
+        initial.hydrated = true;
+        html = render();
+    } finally {
+        Object.assign(initial, previous);
+    }
     const model = html.indexOf('aria-label="选择文本模型"');
     const draft = html.indexOf("<textarea");
     expect(model).toBeGreaterThanOrEqual(0);

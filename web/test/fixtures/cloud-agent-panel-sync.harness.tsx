@@ -31,6 +31,8 @@ const { createRoot } = await import("react-dom/client");
 const agent = await import("@/services/api/agent");
 const history = await import("@/services/cloud-agent-conversations");
 const awaitImportHistory = await import("@/services/cloud-agent-history");
+// mock.module 会改写已导入模块的导出，先留住真实的目录读取。
+const realRefreshCloudAgentConversations = awaitImportHistory.refreshCloudAgentConversations;
 const skillsApi = await import("@/services/api/skills");
 const { setActiveUserScope } = await import("@/lib/user-scope");
 const { defaultModelCapabilityConfig } = await import("@/lib/model-capabilities");
@@ -50,6 +52,10 @@ const sendInputs: Array<Record<string, any>> = [];
 let sendFailure: Error | undefined;
 let capabilitiesOverride: (() => Promise<unknown>) | undefined;
 let sendOverride: (() => Promise<{ run: AgentRun }>) | undefined;
+// 新建画布首次保存前服务端没有这块画布：偏好要等 prepareCanvasForCloudAction 落库后才读得到。
+let draftCanvasUntilPrepared = false;
+let canvasPrepared = false;
+const cloudCalls: string[] = [];
 const refreshRequests: Array<{ observedConversationIds?: string[]; canvasId?: string }> = [];
 let generated = 0;
 let skillPresetReads = 0;
@@ -79,7 +85,11 @@ mock.module("antd", () => ({
 }));
 mock.module("@/services/api/agent", () => ({
     ...agent,
-    getAgentProfile: async () => ({ revision: "profile", hash: "hash", layers: [] }),
+    getAgentProfile: async () => {
+        cloudCalls.push("profile");
+        if (draftCanvasUntilPrepared && !canvasPrepared) throw new Error("画布不存在或尚未保存到服务端，请先完成画布同步");
+        return { revision: "profile", hash: "hash", layers: [] };
+    },
     getAgentCapabilities: async () => (capabilitiesOverride ? capabilitiesOverride() : { permissionModes: ["request_approval"], skills: true }),
     subscribeAgentEvents: (id: string, event: (event: AgentEvent) => void, options: any) => {
         const subscription = { id, after: options.after, event, connection: options.onConnectionChange, closed: false };
@@ -128,6 +138,13 @@ mock.module("@/services/cloud-agent-history", () => ({
     refreshCloudAgentConversations: async (options: any) => {
         refreshRequests.push(options);
         if (options.scope !== "sync-user") return [];
+        // 草稿画布落库前，服务端的画布对话目录返回 404；走真实目录读取，验证它不会把面板卡在“正在准备”。
+        if (draftCanvasUntilPrepared && !canvasPrepared) {
+            const missing = async () => {
+                throw new ApiError("画布不存在", { status: 404, code: 404, reason: "not_found" });
+            };
+            return realRefreshCloudAgentConversations({ ...options, observedConversationIds: [], client: { listConversations: missing, getConversation: missing, listRuns: missing, getRun: missing } });
+        }
         return refreshOverride ? refreshOverride() : remote;
     },
     loadCloudAgentConversation: async (id: string) => remote.find((item) => item.serverConversationId === id)!,
@@ -145,8 +162,21 @@ mock.module("@/services/api/skills", () => ({
         throw new Error("不应安装技能");
     },
 }));
-mock.module("@/services/user-data-sync", () => ({ prepareCanvasForCloudAction: async () => {}, applyAgentCanvasPatches: async () => {}, refreshCanvasAfterAgent: async () => {} }));
+mock.module("@/services/user-data-sync", () => ({
+    prepareCanvasForCloudAction: async () => {
+        cloudCalls.push("prepare");
+        canvasPrepared = true;
+    },
+    applyAgentCanvasPatches: async () => {},
+    refreshCanvasAfterAgent: async () => {},
+}));
 mock.module("@/components/skills/skill-curation-browser", () => ({ useSkillCuration: () => ({ curation: null }), curationQuery: () => ({}) }));
+mock.module("@/components/model-picker", () => ({
+    ModelPicker: (props: typeof modelPicker) => {
+        modelPicker = props;
+        return null;
+    },
+}));
 mock.module("@/components/canvas/canvas-cloud-agent-chat-ui", () => ({
     parseCloudAgentFormAnswer: () => undefined,
     AgentChatComposer: (props: any) => {
@@ -154,6 +184,7 @@ mock.module("@/components/canvas/canvas-cloud-agent-chat-ui", () => ({
         return (
             <>
                 {props.topActions}
+                {props.submitAccessory}
                 <textarea aria-label="草稿" value={props.prompt} readOnly />
                 {props.left}
             </>
@@ -252,7 +283,11 @@ async function mount(
     initialPending: CloudAgentPendingSubmission | null = null,
     target: AgentRequestTarget = { canvasId: "shared-canvas" },
     initialPrefill?: Omit<AgentPrefillRequest, "id">,
+    options: { draftCanvas?: boolean } = {},
 ) {
+    draftCanvasUntilPrepared = Boolean(options.draftCanvas);
+    canvasPrepared = false;
+    cloudCalls.length = 0;
     local = [initial];
     activeId = initial.id;
     remote = cloud;
@@ -385,6 +420,50 @@ test("旧轮次结束后仍发现手机新轮次，电脑下一条消息使用�
         expect(sent).toEqual(["second"]);
         expect(generated).toBe(0);
         expect(pending).toBeNull();
+    } finally {
+        await mounted.close();
+    }
+});
+
+test("新建草稿画布打开面板时读不到偏好，发送时先落库再读偏好，不会一直卡在排队", async () => {
+    const mounted = await mount(chat("draft-canvas", makeRun("first")), [], null, undefined, undefined, { draftCanvas: true });
+    try {
+        expect(cloudCalls).toEqual(["profile"]);
+        await act(async () => {
+            composer.onPromptChange("生成2个小海獭的图片");
+        });
+        await act(async () => {
+            composer.onSubmit();
+            await settle();
+        });
+        expect(cloudCalls).toEqual(["profile", "prepare", "profile"]);
+        expect(sent).toEqual(["first"]);
+        expect(sendInputs[0]?.profileRevision).toBe("profile");
+        expect(generated).toBe(0);
+    } finally {
+        await mounted.close();
+    }
+});
+
+test("新建草稿画布上排队的消息，在本轮结束后自动发出，不会一直显示正在准备", async () => {
+    const initial = chat("draft-queued", makeRun("working", "running"));
+    const mounted = await mount(initial, [initial], null, undefined, undefined, { draftCanvas: true });
+    try {
+        await act(async () => composer.onPromptChange("生成2个小海獭的图片"));
+        await act(async () => {
+            composer.onSubmit();
+            await settle();
+        });
+        expect(composer.tray.props.outbox.items).toHaveLength(1);
+        expect(sendInputs).toHaveLength(0);
+        await act(async () => {
+            subscriptions.at(-1)!.event({ eventId: "finished", runId: "working", seq: 5, type: "run_status", payload: { status: "completed" }, createdAt: initial.updatedAt });
+            await settle();
+        });
+        expect(cloudCalls).toEqual(["profile", "prepare", "profile"]);
+        expect(sendInputs).toHaveLength(1);
+        expect(sendInputs[0]?.profileRevision).toBe("profile");
+        expect(composer.tray?.props.outbox.items ?? []).toHaveLength(0);
     } finally {
         await mounted.close();
     }
@@ -654,6 +733,43 @@ test("等待能力校验时切换账号，旧账号的请求不得以新账号�
         expect(generated).toBe(0);
     } finally {
         release?.({ permissionModes: ["request_approval"], skills: true });
+        await mounted.close();
+    }
+});
+
+test.each(["accepted", "unknown"] as const)("提交在途不展示待重试行，新草稿和真实未确认请求分别保留：%s", async (outcome) => {
+    const initial = chat("pending-tray", makeRun("first"));
+    const mounted = await mount(initial, [initial]);
+    const response = Promise.withResolvers<{ run: AgentRun }>();
+    try {
+        sendOverride = () => response.promise;
+        await act(async () => composer.onPromptChange("第一条消息"));
+        await act(async () => {
+            composer.onSubmit();
+            await settle();
+        });
+        expect(sent).toEqual(["first"]);
+        expect(pending?.request?.prompt).toBe("第一条消息");
+        expect(composer.sending).toBe(true);
+        expect(composer.tray).toBeNull();
+        await act(async () => composer.onPromptChange("下一条草稿"));
+        expect(composer.tray).toBeNull();
+        await act(async () => {
+            if (outcome === "accepted") response.resolve({ run: { ...makeRun("accepted"), parentId: "first" } });
+            else response.reject(new TypeError("network failed after POST"));
+            await settle();
+        });
+        expect(composer.sending).toBe(false);
+        expect(composer.prompt).toBe("下一条草稿");
+        if (outcome === "accepted") {
+            expect(pending).toBeNull();
+            expect(composer.tray).toBeNull();
+        } else {
+            expect(composer.tray.props.pendingRetry.text).toBe("第一条消息");
+            expect(pending?.request?.idempotencyKey).toBe(sendInputs[0].idempotencyKey);
+        }
+    } finally {
+        response.resolve({ run: makeRun("accepted") });
         await mounted.close();
     }
 });

@@ -1,4 +1,5 @@
 import { ImageSizePicker } from "@/components/image-size-picker";
+import { workspaceTeamId } from "@/lib/workspace-routes";
 import { ImageParameterFields } from "@/components/image-parameter-fields";
 import { imageResolutionUsesQuality, imageSizePresets } from "@/lib/image-size-presets";
 import { createPortal } from "react-dom";
@@ -62,6 +63,7 @@ import { useGenerationBatchLimit, batchQuoteTotal } from "@/lib/generation-batch
 import { selectAgentName, useAppearanceStore } from "@/stores/use-appearance-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { type CreationReference } from "./creation-references";
+import { hasCreationReferenceDrop, readCreationReferenceDrop, type CreationReferenceDrop } from "./creation-reference-drop";
 import { creationAttachmentKind, creationUploadAccept, type CreationAttachment, type CreationMode } from "./creation-assets";
 import { countOptions, modeLabels, qualityOptions, resolutionOptions, type CreationShotRailEntry } from "./creation-types";
 import { creationMessageNeedsResultSync } from "./creation-conversations";
@@ -184,6 +186,8 @@ type ComposerProps = {
     generationActive: boolean;
     referenceReplacementBusy: boolean;
     referenceUploadBusy: boolean;
+    referenceDropBusy: boolean;
+    onReferenceDrop: (drop: CreationReferenceDrop) => void;
     attachments: CreationAttachment[];
     referenceImageSize?: { width: number; height: number };
     maxReferences: number;
@@ -285,10 +289,19 @@ export function CreationModeMenu({ mode, onModeChange, agentActive = false, onAg
     );
 }
 
+const CREATION_PROMPT_MIN_HEIGHT = 48;
+const CREATION_PROMPT_MAX_HEIGHT = 300;
+
+function clampCreationPromptHeight(height: number) {
+    return Math.min(CREATION_PROMPT_MAX_HEIGHT, Math.max(CREATION_PROMPT_MIN_HEIGHT, Math.ceil(height)));
+}
+
 export function CreationComposer(props: ComposerProps) {
+    const [referenceDragOver, setReferenceDragOver] = useState(false);
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const [promptOptimizerOpen, setPromptOptimizerOpen] = useState(false);
+    const [promptHeight, setPromptHeight] = useState(CREATION_PROMPT_MIN_HEIGHT);
     const [referenceFilter, setReferenceFilter] = useState<CreationReferenceFilter>("all");
     const [canDragReferences, setCanDragReferences] = useState(false);
     const [dropTargetReferenceId, setDropTargetReferenceId] = useState<string | null>(null);
@@ -298,7 +311,7 @@ export function CreationComposer(props: ComposerProps) {
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isExpanded: true, isDragging: false });
     const previousAttachmentCountRef = useRef(0);
     const localReferenceInputRef = useRef<HTMLInputElement>(null);
-    const interactionBusy = props.busy || props.referenceReplacementBusy || props.referenceUploadBusy;
+    const interactionBusy = props.busy || props.referenceReplacementBusy || props.referenceUploadBusy || props.referenceDropBusy;
     // 创作页张数等于拆单数，上限按账号同时任务数，硬上限仍为 15。
     const imageBatchLimit = Math.min(15, useGenerationBatchLimit());
     const settingsError = mediaSettingIssues(props.config, props.mode, props.model)
@@ -306,6 +319,7 @@ export function CreationComposer(props: ComposerProps) {
         .join("；");
     const canSubmit = Boolean(props.prompt.trim()) && !interactionBusy && !settingsError;
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
+    const userId = useUserStore((state) => state.user?.id);
     const priceChannel = resolveModelChannel(props.config, props.model);
     // 实际提交单数与 index.tsx 的 taskCount 同样 clamp。
     const imageTaskCount = Math.max(1, Math.min(imageBatchLimit, Math.floor(Number(props.count)) || 1));
@@ -326,7 +340,7 @@ export function CreationComposer(props: ComposerProps) {
         requirements: props.modelRequirements,
     });
     useEffect(() => {
-        if (!creditsEnabled || !quoteRequest) {
+        if (!userId || !creditsEnabled || !quoteRequest) {
             setRouteQuote(null);
             return;
         }
@@ -338,19 +352,22 @@ export function CreationComposer(props: ComposerProps) {
                 if (!controller.signal.aborted) setRouteQuote(null);
             });
         return () => controller.abort();
-    }, [creditsEnabled, quoteRequest]);
+    }, [creditsEnabled, quoteRequest, userId]);
     const generationCredits = routeQuote ? batchQuoteTotal(routeQuote.amountMicrocredits, props.mode === "image" ? imageTaskCount : 1) : credits;
     const showCost = creditsEnabled && generationCredits !== null && generationCredits !== undefined;
     const formattedCredits = generationCredits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    const estimatedCredits = !userId || routeQuote?.estimated;
     const actionLabel = props.referenceUploadBusy
         ? "正在上传参考素材"
-        : props.referenceReplacementBusy
-          ? "正在替换参考图"
-          : interactionBusy || (props.generationActive && !canSubmit)
-            ? "生成中"
-            : showCost
-              ? `${routeQuote?.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，发送`
-              : "发送";
+        : props.referenceDropBusy
+          ? "正在添加参考图"
+          : props.referenceReplacementBusy
+            ? "正在替换参考图"
+            : interactionBusy || (props.generationActive && !canSubmit)
+              ? "生成中"
+              : showCost
+                ? `${estimatedCredits ? "预估" : "消耗"} ${formattedCredits} 积分，发送`
+                : "发送";
     // Send-button working state must span the WHOLE generation (not just the
     // submit-lock window): spinner + glow stay while a message is pending and
     // the composer is empty; typing a next prompt returns the arrow so the
@@ -363,6 +380,10 @@ export function CreationComposer(props: ComposerProps) {
     const referencesSupported = props.mode === "image" ? imageReferencesSupported : props.mode !== "video" || props.maxReferences > 0;
     const canAddMoreReferences = referencesSupported && props.attachments.length < props.maxReferences;
     const addReferenceLabel = interactionBusy ? (props.referenceReplacementBusy ? "正在替换参考图" : "生成中暂不能添加参考内容") : canAddMoreReferences ? "添加更多参考内容" : `已达到当前模型的参考内容上限（${props.maxReferences} 个）`;
+    const handlePromptContentSizeChange = useCallback((naturalHeight: number) => {
+        const nextHeight = clampCreationPromptHeight(naturalHeight);
+        setPromptHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight));
+    }, []);
     const referenceCounts = useMemo(
         () =>
             props.attachments.reduce(
@@ -473,7 +494,41 @@ export function CreationComposer(props: ComposerProps) {
     // 否则高光停在页签下沿，会把选中页签和内容面切成两块。
     const embedded = props.variant === "empty";
     const surface = (
-        <SpotlightSurface className={`creation-chat-composer is-${props.variant}`} contentClassName="contents" spotlightColor={embedded ? "transparent" : "color-mix(in srgb, var(--user-ink) 12%, transparent)"} spotlightRadius={280}>
+        <SpotlightSurface
+            className={`creation-chat-composer is-${props.variant}${referenceDragOver ? " is-reference-drag-over" : ""}`}
+            contentClassName="contents"
+            spotlightColor={embedded ? "transparent" : "color-mix(in srgb, var(--user-ink) 12%, transparent)"}
+            spotlightRadius={280}
+            onDragOver={(event) => {
+                if (!hasCreationReferenceDrop(event.dataTransfer)) return;
+                if (event.defaultPrevented) {
+                    setReferenceDragOver(false);
+                    return;
+                }
+                event.preventDefault();
+                const allowed = !workspaceTeamId && !interactionBusy;
+                event.dataTransfer.dropEffect = allowed ? "copy" : "none";
+                setReferenceDragOver(allowed);
+            }}
+            onDragLeave={(event) => {
+                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setReferenceDragOver(false);
+            }}
+            onDrop={(event) => {
+                setReferenceDragOver(false);
+                // 引用标签已处理的文件替换不能再追加一遍。
+                if (event.defaultPrevented || !hasCreationReferenceDrop(event.dataTransfer)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (workspaceTeamId || interactionBusy) return;
+                const drop = readCreationReferenceDrop(event.dataTransfer);
+                if (drop) props.onReferenceDrop(drop);
+            }}
+        >
+            {referenceDragOver || props.referenceDropBusy ? (
+                <div className="creation-reference-drop-hint" role="status">
+                    {props.referenceDropBusy ? "正在添加参考图…" : "松开添加参考图"}
+                </div>
+            ) : null}
             <div className="creation-chat-writing-surface">
                 {props.modeControl && referencesSupported ? (
                     <div className="creation-reference-entry-row" role="group" aria-label="参考内容" aria-busy={props.referenceUploadBusy}>
@@ -501,28 +556,31 @@ export function CreationComposer(props: ComposerProps) {
                     </div>
                 ) : null}
                 <div className="creation-chat-editor">
-                    <CanvasResourceMentionTextarea
-                        ref={props.composerFocusRef}
-                        value={props.prompt}
-                        references={props.references}
-                        mentionMenuWidth={400}
-                        sendOnEnter
-                        onFocus={props.onPromptFocus}
-                        onChange={props.setPrompt}
-                        onSubmit={props.onSubmit}
-                        containerClassName="creation-chat-mention-container"
-                        className="creation-chat-mention-editor creation-scrollbar"
-                        style={{ color: "var(--creation-text)" }}
-                        placeholder={props.placeholderOverride || (props.variant === "empty" ? emptyPlaceholder : placeholder)}
-                        aria-label="创作提示词，可使用 @ 引用当前参考内容或技能；回车发送，Shift+回车换行"
-                        spellCheck
-                        disabled={interactionBusy}
-                        activeDropReferenceId={dropTargetReferenceId}
-                        onReferenceFilesDrop={(reference, files) => {
-                            const target = props.references.find((item) => item.id === reference.id);
-                            if (target?.attachmentId) props.onReplaceReferenceFiles(target.attachmentId, files);
-                        }}
-                    />
+                    <div className="creation-chat-editor-input" style={props.variant === "empty" ? { height: promptHeight } : undefined}>
+                        <CanvasResourceMentionTextarea
+                            ref={props.composerFocusRef}
+                            value={props.prompt}
+                            references={props.references}
+                            mentionMenuWidth={400}
+                            sendOnEnter
+                            onFocus={props.onPromptFocus}
+                            onChange={props.setPrompt}
+                            onSubmit={props.onSubmit}
+                            onContentSizeChange={props.variant === "empty" ? handlePromptContentSizeChange : undefined}
+                            containerClassName={`creation-chat-mention-container${props.variant === "empty" ? " h-full" : ""}`}
+                            className="creation-chat-mention-editor creation-scrollbar"
+                            style={{ color: "var(--creation-text)" }}
+                            placeholder={props.placeholderOverride || (props.variant === "empty" ? emptyPlaceholder : placeholder)}
+                            aria-label="创作提示词，可使用 @ 引用当前参考内容或技能；回车发送，Shift+回车换行"
+                            spellCheck
+                            disabled={interactionBusy}
+                            activeDropReferenceId={dropTargetReferenceId}
+                            onReferenceFilesDrop={(reference, files) => {
+                                const target = props.references.find((item) => item.id === reference.id);
+                                if (target?.attachmentId) props.onReplaceReferenceFiles(target.attachmentId, files);
+                            }}
+                        />
+                    </div>
                     {props.attachments.length ? (
                         <div className={`creation-reference-panel${trackState.isExpanded ? " is-expanded" : ""}`} aria-busy={interactionBusy}>
                             {trackState.isExpanded ? (
@@ -639,7 +697,7 @@ export function CreationComposer(props: ComposerProps) {
             <footer className="creation-chat-dock">
                 <div className="creation-chat-controls">
                     {props.modeControl}
-                    {props.variant === "thread" ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
+                    {props.variant === "thread" && !workspaceTeamId ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
                     {!props.modeControl && referencesSupported && !props.attachments.length ? (
                         <Tooltip title={addReferenceLabel}>
                             <button type="button" className="creation-chat-control" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}>
@@ -712,7 +770,7 @@ export function CreationComposer(props: ComposerProps) {
                         {showCost ? (
                             <span className="creation-submit-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : undefined}>
                                 <CreditSymbol />
-                                <span>{routeQuote?.estimated ? `预估:${formattedCredits}` : formattedCredits}</span>
+                                <span>{estimatedCredits ? `预估:${formattedCredits}` : formattedCredits}</span>
                             </span>
                         ) : null}
                         <span className="creation-submit-action" aria-hidden>
@@ -783,20 +841,18 @@ const creationModeItems: { mode: CreationMode; icon: ReactNode; label: string }[
 
 type CreationModeKey = CreationMode | "agent";
 
-// 首页页签的拉伸滑动：朝目标一侧的边用更硬的弹簧先到，另一侧稍后跟上，页签先拉长再收拢。
+const homeModeOptions: { mode: CreationModeKey; icon: ReactNode; label: string }[] = workspaceTeamId ? creationModeItems.filter((item) => item.mode === "text") : [...creationModeItems, { mode: "agent", icon: <Orbit />, label: "Agent" }];
+
 const folderTabLeadingSpring = { type: "spring", stiffness: 540, damping: 42, mass: 0.6 } as const;
 const folderTabTrailingSpring = { type: "spring", stiffness: 280, damping: 32, mass: 0.8 } as const;
 
-/** 首页创作卡：顶部文件夹页签切换视频 / 图片 / 文本 / Agent，选中页签与下方内容面同色相连。 */
 export function CreationModeCard({ mode, agentActive, onModeChange, onAgentSelect, children }: { mode: CreationMode; agentActive: boolean; onModeChange: (mode: CreationMode) => void; onAgentSelect: () => void; children: ReactNode }) {
     const reducedMotion = useReducedMotion();
-    const keys: CreationModeKey[] = [...creationModeItems.map((item) => item.mode), "agent"];
     const activeKey: CreationModeKey = agentActive ? "agent" : mode;
-    const activeIndex = Math.max(0, keys.indexOf(activeKey));
-    // 记住上一次的位置来判断滑动方向；在渲染期调整状态，切换当帧就拿到新方向。
+    const activeIndex = homeModeOptions.findIndex((item) => item.mode === activeKey);
     const [slide, setSlide] = useState({ index: activeIndex, direction: 0 });
     if (slide.index !== activeIndex) setSlide({ index: activeIndex, direction: Math.sign(activeIndex - slide.index) });
-    const step = 100 / keys.length;
+    const step = 100 / homeModeOptions.length;
     const tabTransition: Transition = reducedMotion
         ? { duration: 0 }
         : {
@@ -805,29 +861,36 @@ export function CreationModeCard({ mode, agentActive, onModeChange, onAgentSelec
           };
     return (
         <HoverBorderGradient as="div" duration={2.2} containerClassName="creation-mode-card" className="creation-mode-card-inner">
-            <div className="creation-mode-folder" role="group" aria-label="创作模式" data-active-mode={activeKey} style={{ "--creation-mode-count": keys.length } as CSSProperties}>
-                <motion.span className="creation-mode-folder-tab" aria-hidden initial={false} animate={{ left: `${activeIndex * step}%`, right: `${(keys.length - 1 - activeIndex) * step}%` }} transition={tabTransition}>
+            <div className="creation-mode-folder" role="group" aria-label="创作模式" data-active-mode={activeKey} style={{ "--creation-mode-count": homeModeOptions.length } as CSSProperties}>
+                <motion.span className="creation-mode-folder-tab" aria-hidden initial={false} animate={{ left: `${activeIndex * step}%`, right: `${(homeModeOptions.length - 1 - activeIndex) * step}%` }} transition={tabTransition}>
                     <CreationModeFolderWing side="start" />
                     <CreationModeFolderWing side="end" />
                 </motion.span>
-                {creationModeItems.map((item) => (
-                    <button key={item.mode} type="button" className="creation-mode-folder-button" data-mode={item.mode} aria-pressed={activeKey === item.mode} aria-label={`${item.label}生成`} onClick={() => onModeChange(item.mode)}>
-                        {item.icon}
-                        <span>{item.label}</span>
+                {homeModeOptions.map(({ mode: next, icon, label }) => (
+                    <button
+                        key={next}
+                        type="button"
+                        className="creation-mode-folder-button"
+                        data-mode={next}
+                        aria-pressed={activeKey === next}
+                        aria-label={next === "agent" ? label : `${label}生成`}
+                        onClick={() => {
+                            if (next === activeKey) return;
+                            if (next === "agent") onAgentSelect();
+                            else onModeChange(next);
+                        }}
+                    >
+                        {icon}
+                        <span>{label}</span>
+                        {next === "agent" && <i className="creation-mode-spark" aria-hidden />}
                     </button>
                 ))}
-                <button type="button" className="creation-mode-folder-button" data-mode="agent" aria-pressed={agentActive} onClick={onAgentSelect}>
-                    <Orbit />
-                    <span>Agent</span>
-                    <i className="creation-mode-spark" aria-hidden />
-                </button>
             </div>
             <div className="creation-mode-panel">{children}</div>
         </HoverBorderGradient>
     );
 }
 
-// 选中页签两侧的 S 形翼片：顶边水平切入、底边水平落到内容面；与页签主体重叠 1px，避免亚像素接缝。
 function CreationModeFolderWing({ side }: { side: "start" | "end" }) {
     return (
         <svg className={`creation-mode-folder-wing is-${side}`} viewBox="0 0 30 48" preserveAspectRatio="none" aria-hidden focusable="false">
