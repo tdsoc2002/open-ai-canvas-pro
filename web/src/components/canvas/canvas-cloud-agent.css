@@ -130,18 +130,6 @@
     border-bottom: 1px solid color-mix(in srgb, var(--agent-ink) 8%, transparent);
 }
 
-.canvas-agent-panel > .agent-panel-resize-corner {
-    position: absolute;
-    inset-block-start: var(--space-2);
-    inset-inline-start: var(--space-2);
-}
-
-@media (min-width: 640px) {
-    .canvas-agent-panel:has(> .agent-panel-resize-corner) .agent-panel-header {
-        padding-inline-start: var(--space-10);
-    }
-}
-
 .agent-panel-context {
     color: var(--agent-caption);
     font-size: var(--fs-label);
@@ -2852,8 +2840,7 @@ summary.agent-tool-step:hover {
         transform-origin: center 90%;
     }
 
-    .canvas-agent-launcher.is-dragging > .canvas-agent-default-avatar,
-    .canvas-agent-launcher.is-reduced-motion > .canvas-agent-default-avatar {
+    .canvas-agent-launcher.is-dragging > .canvas-agent-default-avatar {
         animation-play-state: paused;
     }
 }

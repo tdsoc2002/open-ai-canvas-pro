@@ -2537,7 +2537,6 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         <div data-agent-resize="west" className="absolute bottom-5 left-0 top-5 z-10 hidden w-2 cursor-w-resize touch-none sm:block" />
                                     </>
                                 ) : null}
-                                {view !== "chat" ? resizeCorner : null}
                             </>
                         )}
                         <AnimatePresence mode="wait" initial={false}>
@@ -2547,6 +2546,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         initialSection={settingsSection}
                                         initialMcpTab={settingsMcpTab}
                                         theme={theme}
+                                        resizeCorner={resizeCorner}
                                         config={config}
                                         selectedModel={selectedModel}
                                         permissionMode={permissionMode}
@@ -2593,6 +2593,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         conversations={conversations}
                                         activeConversationId={activeConversationId}
                                         theme={theme}
+                                        resizeCorner={resizeCorner}
                                         onBack={() => setView("chat")}
                                         onNew={newConversation}
                                         onOpen={(conversation) => void openConversation(conversation)}

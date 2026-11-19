@@ -319,7 +319,7 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
                     </Button>
                 </div>
             </div>
-            {modeOption ? <p className="-mt-1 shrink-0 text-caption text-muted-foreground">{t("account.settings.memory.modeHint", { description: modeOption.description })}</p> : null}
+            {modeOption ? <p className="-mt-1 shrink-0 text-caption text-muted-foreground">{compact ? modeOption.description : t("account.settings.memory.modeHint", { description: modeOption.description })}</p> : null}
             {doc ? (
                 <div className="shrink-0" aria-label={t("account.settings.memory.usageLabel", { used: doc.charCount, capacity: doc.capacity })}>
                     <div className="flex items-center justify-between text-[var(--fs-label)] text-muted-foreground">

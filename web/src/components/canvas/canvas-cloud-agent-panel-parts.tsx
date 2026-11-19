@@ -581,6 +581,7 @@ export function AgentHistory({
     conversations,
     activeConversationId,
     theme,
+    resizeCorner,
     onBack,
     onNew,
     onOpen,
@@ -594,6 +595,7 @@ export function AgentHistory({
     conversations: CloudAgentConversation[];
     activeConversationId: string;
     theme: CanvasTheme;
+    resizeCorner?: ReactNode;
     onBack: () => void;
     onNew: () => void;
     onOpen: (conversation: CloudAgentConversation) => void;
@@ -608,6 +610,7 @@ export function AgentHistory({
     return (
         <div className="canvas-agent-history-root flex min-h-0 min-w-0 flex-1 flex-col">
             <header data-agent-drag-handle className="agent-panel-header flex shrink-0 items-center gap-2">
+                {resizeCorner}
                 <Button type="text" shape="circle" icon={<ArrowLeft className="size-4" />} onClick={onBack} aria-label="返回对话" />
                 <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold">历史对话</div>
