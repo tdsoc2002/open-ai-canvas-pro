@@ -212,7 +212,7 @@ func (s *Service) PrepareDramaJianyingDraft(userID, projectID, episodeID string,
 	}
 	now := time.Now()
 	// 后缀始终保留，长作品名和连续导出不会覆盖同一个草稿文件夹。
-	name := fmt.Sprintf("%s-第%02d集-%s-%s", jianying.SafeName(plan.Project.Name, "影策短剧", 40), plan.Episode.Number, now.In(dramaExportLocation).Format("20060102-150405"), newID()[:8])
+	name := fmt.Sprintf("%s-第%02d集-%s-%s", jianying.SafeName(plan.Project.Name, "乐见画布短剧", 40), plan.Episode.Number, now.In(dramaExportLocation).Format("20060102-150405"), newID()[:8])
 	draft := jianying.Draft{Name: name, Root: preview.DraftRoot, Width: plan.Width, Height: plan.Height, FPS: 30, Now: now, Captions: plan.Captions}
 	archive := newDramaArchive(name + ".zip")
 	for _, media := range plan.Media {
@@ -302,7 +302,7 @@ func (s *Service) dramaDraftCover(userID string, resourceID string) []byte {
 
 func dramaJianyingReadme(draft jianying.Draft, skipped []string) string {
 	var builder strings.Builder
-	builder.WriteString("影策短剧 · 剪映草稿\n\n")
+	builder.WriteString("乐见画布短剧 · 剪映草稿\n\n")
 	builder.WriteString("使用方法：\n")
 	builder.WriteString("1. 关闭剪映专业版。\n")
 	fmt.Fprintf(&builder, "2. 把压缩包解压到剪映草稿目录，确保文件夹「%s」直接位于：\n   %s\n", draft.Name, draft.Root)
@@ -415,7 +415,7 @@ func (s *Service) PrepareDramaAssetPackage(userID, projectID string, req DramaAs
 	}
 	settings := parseDramaSettings(productionRow.SettingsJSON)
 	now := time.Now()
-	root := jianying.SafeName(project.Name, "影策短剧", 60) + "-资产包"
+	root := jianying.SafeName(project.Name, "乐见画布短剧", 60) + "-资产包"
 	archive := newDramaArchive(root + "-" + now.In(dramaExportLocation).Format("0102-1504") + ".zip")
 	manifest := dramaAssetManifest{
 		Format: DramaAssetPackageFormat, Version: dramaAssetPackageVersion, ExportedAt: now.In(dramaExportLocation).Format(time.RFC3339),

@@ -192,7 +192,7 @@ func (s *Service) parseTack2AICatalog(channelID string, items []tack2aiCatalogMo
 		} else if item.Invalid {
 			draft.info.UnavailableReason = "该模型的能力目录格式不受支持"
 		} else if key := strings.TrimPrefix(id, "models/"); key == "" || key != strings.TrimSpace(key) || id != strings.TrimSpace(id) || len([]rune(id)) > 120 || strings.IndexFunc(id, unicode.IsControl) >= 0 {
-			draft.info.UnavailableReason = "模型标识不符合影策配置约束"
+			draft.info.UnavailableReason = "模型标识不符合乐见画布配置约束"
 		} else if capability, protocolID, contract, err := tack2aiModelContract(item); err != nil {
 			draft.info.UnavailableReason = err.Error()
 		} else {
@@ -241,7 +241,7 @@ func tack2aiModelContract(item tack2aiCatalogModel) (string, string, *ModelCapab
 		cfg.Text = &TextCapabilityConfig{References: TextReferenceConfig{PromptMaxChars: tack2aiPromptLimit(p["prompt"]), MaxImages: c.Inputs.Images.Max}}
 		if budget := p["max_tokens"].Max; budget != nil {
 			if *budget < 256 || *budget != float64(int(*budget)) {
-				return "", "", nil, errors.New("网关文字输出上限不能用影策的文本能力表示")
+				return "", "", nil, errors.New("网关文字输出上限不能用乐见画布的文本能力表示")
 			}
 			cfg.Text.MaxOutputTokens = min(127999, int(*budget))
 		}
@@ -259,7 +259,7 @@ func tack2aiModelContract(item tack2aiCatalogModel) (string, string, *ModelCapab
 		id = "tack2ai-audio"
 		cfg.Audio, err = tack2aiAudioConfig(c)
 	default:
-		return "", "", nil, errors.New("未声明影策支持的源点动力生成协议")
+		return "", "", nil, errors.New("未声明乐见画布支持的源点动力生成协议")
 	}
 	return capability, id, cfg, err
 }
@@ -315,7 +315,7 @@ func tack2aiImageConfig(c *tack2aiContract) (*ImageCapabilityConfig, error) {
 		if len(condition.When) != 2 || json.Unmarshal(condition.When["parameter"], &when) != nil || when != "size" ||
 			json.Unmarshal(condition.When["in"], &valid) != nil || len(valid) == 0 || len(condition.Parameters) != 1 ||
 			json.Unmarshal(condition.Parameters["quality"], &limit) != nil || len(limit.Values) == 0 {
-			return nil, errors.New("图片目录含影策无法约束的规格条件")
+			return nil, errors.New("图片目录含乐见画布无法约束的规格条件")
 		}
 		// Use only qualities valid for every exposed size; do not advertise
 		// invalid size/quality combinations in the generic image picker.

@@ -52,7 +52,7 @@ func tack2aiVideoCapability(c *tack2aiContract, modes []string) (*Tack2AIVideoCa
 			return nil, errors.New("视频目录含无法识别的规格条件")
 		}
 		if param != "mode" && param != "omni_reference_task_type" {
-			return nil, errors.New("视频目录含影策无法约束的规格条件")
+			return nil, errors.New("视频目录含乐见画布无法约束的规格条件")
 		}
 		projected := Tack2AIVideoCondition{Parameter: param, Values: oneOf, Limits: map[string]Tack2AIVideoParameterLimit{}}
 		for name, raw := range condition.Parameters {
@@ -65,14 +65,14 @@ func tack2aiVideoCapability(c *tack2aiContract, modes []string) (*Tack2AIVideoCa
 			case "duration":
 				if len(fields) == 0 || len(fields) != lenKnownFields(fields, "min", "max") || json.Unmarshal(raw, &limit) != nil ||
 					limit.Min != nil && *limit.Min < 1 || limit.Max != nil && *limit.Max < 1 {
-					return nil, errors.New("视频目录含影策无法表达的时长限制")
+					return nil, errors.New("视频目录含乐见画布无法表达的时长限制")
 				}
 			case "ratio", "resolution":
 				if len(fields) != 1 || json.Unmarshal(fields["values"], &limit.Values) != nil || len(limit.Values) == 0 {
-					return nil, errors.New("视频目录含影策无法表达的画幅或分辨率限制")
+					return nil, errors.New("视频目录含乐见画布无法表达的画幅或分辨率限制")
 				}
 			default:
-				return nil, errors.New("视频目录含影策无法约束的条件参数")
+				return nil, errors.New("视频目录含乐见画布无法约束的条件参数")
 			}
 			projected.Limits[name] = limit
 		}

@@ -660,7 +660,7 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
         allLoaded: "All loaded",
         pinLimit: "Pin up to {{limit}}",
         other: "Other",
-        defaultAuthor: "Yingce creator",
+        defaultAuthor: "Creator",
         pinnedHere: "Pinned to this conversation",
         pinLimitTitle: "Each conversation can pin up to {{limit}} skills",
         pinHint: "Pinned skills are used first in this conversation. Unpinned skills are still found automatically by Agent.",

@@ -182,7 +182,7 @@ export function AssetImportModal({ open, projectId, onClose }: { open: boolean; 
                 <header className="drama-composer-head">
                     <div className="min-w-0">
                         <strong>导入资产包</strong>
-                        <span>把影策导出的资产包套用到当前作品：按类型与名称匹配设定，按集号与段号匹配提示词。</span>
+                        <span>把乐见画布导出的资产包套用到当前作品：按类型与名称匹配设定，按集号与段号匹配提示词。</span>
                     </div>
                     <Button type="text" icon={<X className="size-4" />} aria-label="关闭" disabled={importing} onClick={close} />
                 </header>

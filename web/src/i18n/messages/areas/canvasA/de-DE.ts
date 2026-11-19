@@ -660,7 +660,7 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         allLoaded: "Alles geladen",
         pinLimit: "Höchstens {{limit}} anheften",
         other: "Sonstiges",
-        defaultAuthor: "Yingce-Creator",
+        defaultAuthor: "Kreative",
         pinnedHere: "An diese Unterhaltung angeheftet",
         pinLimitTitle: "Pro Unterhaltung können höchstens {{limit}} Skills angeheftet werden",
         pinHint: "Angeheftete Skills werden in dieser Unterhaltung bevorzugt; ohne Anheften findet der Agent sie trotzdem automatisch",
