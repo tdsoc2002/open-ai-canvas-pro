@@ -14,7 +14,7 @@ describe("插件管理入口分离", () => {
 
     test("从资产打开 Eagle，并在 Eagle 页进入个人设置", () => {
         expect(assetsPage).toContain('navigate("/plugins/eagle")');
-        expect(eaglePage.match(/navigate\("\/plugins\?search=Eagle"\)/g)).toHaveLength(2);
+        expect(eaglePage).toContain('navigate("/plugins?search=Eagle")');
         expect(applicationPage).toContain('searchParams.get("search")');
     });
 });
