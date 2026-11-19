@@ -94,8 +94,10 @@ export function tokenPriceRuleDescription(rule: NonNullable<ModelPriceTier["toke
 }
 
 export function formatPriceRange(values: number[], suffix: string) {
-    const min = formatCreditPoints(Math.min(...values));
-    const max = formatCreditPoints(Math.max(...values));
+    const tokenRate = suffix === "/M Token";
+    const format = (value: number) => (tokenRate ? value.toLocaleString("zh-CN", { maximumFractionDigits: 6 }) : formatCreditPoints(value));
+    const min = format(Math.min(...values));
+    const max = format(Math.max(...values));
     return `${min === max ? min : `${min}-${max}`} ${suffix}`;
 }
 
@@ -182,6 +184,15 @@ function referenceVideoQuoteDurations(input: ModelRequirements["input"]) {
     const durations = input?.videoDurationsMs;
     if (!input?.videoCount || durations?.length !== input.videoCount) return undefined;
     return durations.every((value) => Number.isSafeInteger(value) && value > 0 && value <= 3_600_000) ? durations : undefined;
+}
+
+type ReferenceVideoBillingCost = { capability?: ModelCapability; referenceVideoBilling?: boolean; logicalPriceTiers?: ModelPriceTier[] };
+
+/** 视频模型的参考视频计费标签。 */
+export function referenceVideoBillingLabel(cost: ReferenceVideoBillingCost | undefined) {
+    if (!cost || cost.capability !== "video") return "";
+    const billed = cost.referenceVideoBilling === true && (cost.logicalPriceTiers || []).some((tier) => (tier.referenceVideoUnitPriceMicrocredits || 0) > 0 || (tier.referenceVideoOutputTokenPriceMicrocredits || 0) > 0);
+    return billed ? "参考视频另计费" : "参考视频不计费";
 }
 
 function formatSeconds(value: number) {

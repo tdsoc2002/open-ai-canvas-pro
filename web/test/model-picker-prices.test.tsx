@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ModelLabel, ModelPicker } from "../src/components/model-picker";
-import { canvasThemes } from "../src/lib/canvas-theme";
+import { ModelPickerOption, ModelPicker } from "../src/components/model-picker";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
 import { requestCreditCost } from "../src/lib/model-pricing";
 import type { ModelRequirements } from "../src/lib/model-selection";
@@ -42,17 +41,15 @@ const requirements: ModelRequirements = { capability: "video", videoSeconds: "5"
 
 test("candidate rows show their configured prices instead of applying the previous model's specifications", () => {
     const config = fixture();
-    for (const theme of [canvasThemes.light, canvasThemes.dark]) {
-        const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={theme} creationVariant showConfiguredModelName={false} requirements={requirements} showPrice showDescription />);
-        expect(markup).toContain("0.10-0.20 积分/秒");
-        expect(markup).not.toContain("当前规格无报价");
-    }
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
+    expect(markup).toContain("<strong>0.10-0.20</strong> 积分/秒");
+    expect(markup).not.toContain("当前规格无报价");
 });
 
-test("video Token badges use compact units, two decimals and full pricing descriptions", () => {
+test("video Token badges use compact units while retaining exact rates and full pricing descriptions", () => {
     for (const [rates, expected] of [
-        [[0], "0.00 /M Token"],
-        [[1], "0.00 /M Token"],
+        [[0], "0 /M Token"],
+        [[1], "0.000001 /M Token"],
         [[21_980_000], "21.98 /M Token"],
         [[24_750_000, 48_510_000], "24.75-48.51 /M Token"],
     ] as const) {
@@ -73,21 +70,18 @@ test("video Token badges use compact units, two decimals and full pricing descri
             cachedTokenPriceMicrocredits: 0,
             referenceVideoOutputTokenPriceMicrocredits: 50_000_000,
         }));
-        for (const theme of [canvasThemes.light, canvasThemes.dark]) {
-            const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={theme} creationVariant showConfiguredModelName={false} showPrice showDescription />);
-            const visibleText = markup.replace(/<[^>]*>/g, "");
-            expect(visibleText).toContain(expected);
-            expect(visibleText).not.toContain("百万视频 Token");
-            expect(visibleText).not.toContain("参考视频另计费");
-            expect(visibleText).not.toContain("参考视频不计费");
-            expect(markup).toContain('title="系统规格价格：');
-            expect(markup).toContain("积分/百万视频 Token");
-            expect(markup).toContain("优先按有效上游用量结算");
-        }
+        const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
+        const visibleText = markup.replace(/<[^>]*>/g, "");
+        expect(visibleText).toContain(expected);
+        expect(visibleText).not.toContain("百万视频 Token");
+        expect(visibleText).toContain("参考视频另计费");
+        expect(markup).toContain('title="系统规格价格：');
+        expect(markup).toContain("积分/百万视频 Token");
+        expect(markup).toContain("优先按有效上游用量结算");
     }
 });
 
-test("model rows omit reference video billing labels for paid and free references", () => {
+test("model rows distinguish paid and free reference video pricing", () => {
     for (const billed of [true, false]) {
         const config = fixture();
         const cost = config.channels[0].modelCosts![0];
@@ -95,10 +89,10 @@ test("model rows omit reference video billing labels for paid and free reference
         cost.capabilityConfig = defaultModelCapabilityConfig();
         cost.capabilityConfig.video!.references.maxVideos = 3;
         for (const tier of cost.logicalPriceTiers!) tier.referenceVideoUnitPriceMicrocredits = billed ? 2_000_000 : 0;
-        const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
-        expect(markup).not.toContain("参考视频另计费");
-        expect(markup).not.toContain("参考视频不计费");
-        expect(markup).toContain("0.10-0.20 积分/秒");
+        const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
+        expect(markup).toContain(billed ? "参考视频另计费" : "参考视频不计费");
+        expect(markup).not.toContain(billed ? "参考视频不计费" : "参考视频另计费");
+        expect(markup.replace(/<[^>]*>/g, "")).toContain("0.10-0.20 积分/秒");
         expect(markup).toContain("视×3");
     }
 });
@@ -109,7 +103,7 @@ test("unified video Token pricing uses the same compact label and full unit expl
     cost.pricePolicy = "unified";
     cost.billingMode = "token";
     cost.outputTokenPriceMicrocredits = 35_240_000;
-    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.dark} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
     expect(markup.replace(/<[^>]*>/g, "")).toContain("35.24 /M Token");
     expect(markup).toContain('title="35.24 积分/百万视频 Token；');
 });
@@ -117,7 +111,7 @@ test("unified video Token pricing uses the same compact label and full unit expl
 test("candidate rows do not disguise missing prices as zero", () => {
     const config = fixture();
     config.channels[0].modelCosts![0].logicalPriceTiers = [];
-    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.dark} creationVariant showConfiguredModelName={false} requirements={requirements} showPrice showDescription />);
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
     expect(markup).toContain("未配置");
     expect(markup).not.toContain("0 积分");
 });
@@ -128,16 +122,14 @@ test("model rows preserve multiple promotional labels and colors without alterin
         { text: "限时特价", color: "purple" },
         { text: "官方1折", color: "gold" },
     ];
-    for (const theme of [canvasThemes.light, canvasThemes.dark]) {
-        const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={theme} creationVariant showConfiguredModelName={false} showPrice showDescription />);
-        expect(markup).toContain('data-color="purple">限时特价');
-        expect(markup).toContain('data-color="gold">官方1折');
-        expect(markup).toContain("0.10-0.20 积分/秒");
-    }
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
+    expect(markup).toContain('data-color="purple">限时特价');
+    expect(markup).toContain('data-color="gold">官方1折');
+    expect(markup).toContain("<strong>0.10-0.20</strong> 积分/秒");
     config.channels[0].modelCosts![0].tags = [];
-    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} showDescription />);
-    expect(markup).not.toContain("限时特价");
-    expect(markup).not.toContain("官方1折");
+    const withoutTags = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" owner="test-picker" onSelect={() => {}} />);
+    expect(withoutTags).not.toContain("限时特价");
+    expect(withoutTags).not.toContain("官方1折");
 });
 
 test("video capability tag is derived from limits and precedes editable model tags", () => {
@@ -150,7 +142,7 @@ test("video capability tag is derived from limits and precedes editable model ta
         { text: "按次收费", color: "blue" },
     ];
 
-    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
 
     expect(markup).toContain('data-color="green">图×30 · 视×10 · 音×10');
     expect(markup.indexOf("图×30 · 视×10 · 音×10")).toBeLessThan(markup.indexOf("限时特价"));
@@ -164,7 +156,7 @@ test("video capability tag omits zero limits while preserving editable model tag
     Object.assign(cost.capabilityConfig.video!.references, { maxImages: 0, maxVideos: 0, maxAudios: 0 });
     cost.tags = [{ text: "按次收费", color: "blue" }];
 
-    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
 
     expect(markup).not.toContain("图×");
     expect(markup).not.toContain("视×");
@@ -179,7 +171,7 @@ test("the selected model and request estimate still require an exact specificati
     const cost = (value: ModelRequirements) => requestCreditCost({ channelMode: "remote", modelCosts: config.channels[0].modelCosts, model: "h3-multi", capability: "video", config, requirements: value, seconds: "6" });
     expect(cost(requirements)).toBeNull();
     const matching = { ...requirements, videoSeconds: "6", options: { vquality: "720p" } };
-    expect(render(matching)).toContain("0.20 积分/秒");
+    expect(render(matching)).toContain("<strong>0.20</strong> 积分/秒");
     expect(render(matching)).not.toContain("当前规格无报价");
     expect(cost(matching)).toBeCloseTo(1.2);
 });
@@ -201,7 +193,7 @@ test("text models show how many images and videos they can read, like video refe
     cost.capabilityConfig = defaultModelCapabilityConfig();
     Object.assign(cost.capabilityConfig.text!.references, { maxImages: 9, maxVideos: 3 });
     cost.tags = [{ text: "按次收费", color: "blue" }];
-    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="text" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="text" showPrice owner="test-picker" onSelect={() => {}} />);
     expect(markup).toContain('data-color="green">图×9 · 视×3');
     expect(markup).not.toContain("音×");
     expect(markup.indexOf("图×9 · 视×3")).toBeLessThan(markup.indexOf("按次收费"));
@@ -212,7 +204,7 @@ test("text models without video understanding only show the image limit, and non
     const cost = config.channels[0].modelCosts![0];
     cost.capabilityConfig = defaultModelCapabilityConfig();
     Object.assign(cost.capabilityConfig.text!.references, { maxImages: 9, maxVideos: 0 });
-    const render = () => renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="text" theme={canvasThemes.dark} creationVariant showConfiguredModelName={false} showPrice={false} showDescription />);
+    const render = () => renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="text" showPrice={false} owner="test-picker" onSelect={() => {}} />);
     expect(render()).toContain('data-color="green">图×9<');
     expect(render()).not.toContain("视×");
     Object.assign(cost.capabilityConfig.text!.references, { maxImages: 0, maxVideos: 0 });

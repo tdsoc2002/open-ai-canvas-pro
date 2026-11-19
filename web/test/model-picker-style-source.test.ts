@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-test("默认模型行只保留选中高亮，价格使用独立的彩色标签", async () => {
+test("共享渠道卡只保留选中高亮，金额使用品牌色，计费单位不加底色", async () => {
     const [component, styles, workspace] = await Promise.all([
         Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/styles/shared/model-picker.css", import.meta.url)).text(),
@@ -11,19 +11,14 @@ test("默认模型行只保留选中高亮，价格使用独立的彩色标签",
     expect(styles).not.toMatch(/^\s*\.canvas-model-picker-(?:brand|option)(?:\[[^\]]*\])?:hover/m);
     expect(workspace).not.toContain(".canvas-model-picker-brand.is-active");
     expect(styles).toContain('.canvas-model-picker-brand[aria-pressed="true"]');
-    expect(styles).toContain('.canvas-model-picker-option[aria-selected="true"]');
+    expect(styles).toContain(".canvas-model-picker-option-row[data-selected]");
     expect(styles).toContain(".canvas-model-picker-option:focus-visible");
-    const price = styles.match(/\.model-picker-price \{([^}]+)\}/)?.[1] || "";
-    expect(price).toContain("color: var(--model-price-ink)");
+    const price = styles.match(/\.model-picker-tariff strong \{([^}]+)\}/)?.[1] || "";
+    expect(price).toContain("color: var(--brand, var(--product-accent-violet, var(--primary)))");
     expect(price).toContain("font-weight: 600");
-    expect(price).not.toContain("background:");
-    expect(styles).toContain(".dark .model-picker-price");
-    const badge = styles.match(/\.canvas-model-picker-option \.model-picker-price \{([^}]+)\}/)?.[1] || "";
-    expect(badge).toContain("border-radius: var(--r-sm)");
-    expect(badge).toContain("background: color-mix");
-    expect(badge).toContain("padding: 2px 4px");
-    expect(price).toContain("--model-price-ink: #946900");
-    expect(component).toContain('<Coins className="model-picker-price-icon" aria-hidden="true" />');
+    const tariff = styles.match(/\.model-picker-tariff \{([^}]+)\}/)?.[1] || "";
+    expect(tariff).not.toContain("background:");
+    expect(component).not.toContain("model-picker-price-icon");
     expect(styles).toContain("width: min(800px, calc(100vw - 24px))");
 });
 
@@ -35,11 +30,11 @@ test("双栏打开已选模型所属目录，小源单列默认收起多渠道",
     expect(opening).not.toContain("setActiveGroupKey(null)");
 });
 
-test("选择模型后保留乐见价目交互，其他入口关闭菜单并还原焦点", async () => {
+test("双栏选择后保留菜单，小源单列选择后还原焦点", async () => {
     const component = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
-    const selection = component.match(/onClick=\{\(\) => \{\s*if \(!model\) return;([\s\S]*?)\}\}/)?.[1] || "";
+    const selection = component.match(/onSelect=\{\(\) => \{\s*if \(!model\) return;([\s\S]*?)\}\}/)?.[1] || "";
     expect(selection).toContain("onChange(model)");
-    expect(selection).toContain("if (!workbench) closePickerAndRestoreFocus()");
+    expect(selection).toContain("if (compact) closePickerAndRestoreFocus()");
     expect(component).toMatch(/const closePickerAndRestoreFocus = \(\) => \{\s*setOpen\(false\);\s*window.requestAnimationFrame\(\(\) => triggerRef.current\?\.focus/);
     expect(component).toContain('event.key === "Escape"');
     expect(component).toContain('window.addEventListener("pointerdown", closeOnOutsidePointer, true)');
@@ -95,25 +90,24 @@ test("模型和渠道分别滚动，外层双栏不被长列表撑高", async ()
     }
 });
 
-test("紧凑双栏中长模型名换行且空描述不占位", async () => {
+test("共享布局允许模型名换行，窄屏保留分组切换和渠道滚动", async () => {
     const [component, styles] = await Promise.all([Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text(), Bun.file(new URL("../src/styles/shared/model-picker.css", import.meta.url)).text()]);
-    expect(component).toContain('const compactTwoPane = layout === "compact-two-pane"');
-    expect(component).toContain('compactTwoPane && "is-compact-two-pane"');
-    expect(styles).toMatch(/\.is-compact-two-pane[^{\n]* \.canvas-model-picker-option-name\s*\{[^}]*overflow-wrap:\s*anywhere/);
-    expect(styles).toMatch(/\.is-compact-two-pane \.canvas-model-picker-description:empty\s*\{[^}]*display:\s*none/);
-    expect(styles).toMatch(/\.is-compact-two-pane \.canvas-model-picker-option:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--control-selected-bg\)/);
+    expect(component).not.toContain("is-compact-two-pane");
+    expect(styles).toMatch(/\.canvas-model-picker-option-name\s*\{[^}]*overflow-wrap:\s*anywhere/);
+    expect(styles).toMatch(/grid-template-rows:\s*auto minmax\(0, 1fr\)/);
+    expect(styles).not.toMatch(/\.canvas-model-picker-brand-rail\s*\{[^}]*display:\s*none/);
 });
 
-test("创作首页和画布复用紧凑双栏，不影响对话或小源", async () => {
+test("创作首页和画布直接复用默认样式，小源对话仅保留定位差异", async () => {
     const [creation, nodePanel, agent, styles] = await Promise.all([
         Bun.file(new URL("../src/pages/create/creation-workspace.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/components/canvas/canvas-node-prompt-panel.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/components/canvas/canvas-cloud-agent-panel-parts.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/create/creation-product.css", import.meta.url)).text(),
     ]);
-    expect(creation).toContain('const isCreationHome = props.variant === "empty"');
-    expect(creation).toContain('layout={isCreationHome ? "compact-two-pane" : undefined}');
-    expect(nodePanel).toContain('layout="compact-two-pane"');
+    expect(creation).toContain("<ModelPicker");
+    expect(creation).not.toContain("compact-two-pane");
+    expect(nodePanel).not.toContain("compact-two-pane");
     expect(agent).toContain('layout="agent-compact"');
     expect(styles).not.toContain("minmax(0, 34%)");
 });

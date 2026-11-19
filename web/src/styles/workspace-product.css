@@ -1718,28 +1718,6 @@
     flex: 1 1 auto;
 }
 
-.creation-model-picker-surface .creation-model-picker-menu.is-model-list .canvas-model-picker-two-pane {
-    display: grid;
-    grid-template-columns: 272px minmax(0, 1fr);
-    gap: 12px;
-    min-height: 0;
-}
-.creation-model-picker-surface .creation-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
-    display: grid;
-    align-content: start;
-    gap: 4px;
-    border-right: 1px solid color-mix(in srgb, currentColor 10%, transparent);
-    padding-right: 12px;
-}
-.creation-model-picker-surface .creation-model-picker-menu.is-model-list .canvas-model-picker-brand {
-    width: 100%;
-}
-.creation-model-picker-surface .creation-model-picker-menu.is-model-list .canvas-model-picker-model-pane {
-    border: 0;
-    margin: 0;
-    padding: 0;
-}
-
 @media (max-width: 720px) {
     .creation-floating-prompt {
         top: 8px;
@@ -1756,13 +1734,6 @@
         width: 40px;
         height: 40px;
         flex-basis: 40px;
-    }
-    .creation-model-picker-surface .creation-model-picker-menu.is-model-list .canvas-model-picker-two-pane {
-        grid-template-columns: minmax(0, 1fr);
-        min-height: 0;
-    }
-    .creation-model-picker-surface .creation-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
-        display: none;
     }
     .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-tabs {
         height: 30px;

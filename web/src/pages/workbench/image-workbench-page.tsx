@@ -1547,7 +1547,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                     capability={capability}
                     requirements={pickerRequirements}
                     variant="creation"
-                    layout={studioLayout ? "joysee-workbench" : undefined}
+                    groupWorkbenchImages={studioLayout}
                     fullWidth
                     className="creation-model-picker wb-model-picker"
                     showSelectedPrice={false}

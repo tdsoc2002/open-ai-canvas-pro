@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { Window } from "happy-dom";
 import type { ModelPriceTier } from "@/lib/model-pricing";
 
-test("乐见工作台去掉调用统计，价格明细不选中渠道，其他入口保留原展示", async () => {
+test("默认、小源与工作台复用无成功率的渠道卡和独立价目入口", async () => {
     const dom = new Window({ url: "http://fixture.invalid/" });
     const globals = {
         window: dom,
@@ -81,30 +81,56 @@ test("乐见工作台去掉调用统计，价格明细不选中渠道，其他�
     };
     const value = encodeChannelModel("image-test", "gpt-image-2");
     const changes: string[] = [];
-    const render = async (joysee: boolean) => {
+    const render = async (mode: "default" | "agent" | "workbench") => {
         await act(() =>
-            root.render(<ModelPicker key={String(joysee)} config={config} value={value} capability="image" layout={joysee ? "joysee-workbench" : undefined} showSelectedPrice={false} showOptionPrices onChange={(next) => changes.push(next)} />),
+            root.render(
+                <ModelPicker
+                    key={mode}
+                    config={config}
+                    value={value}
+                    capability="image"
+                    layout={mode === "agent" ? "agent-compact" : undefined}
+                    groupWorkbenchImages={mode === "workbench"}
+                    showSelectedPrice={false}
+                    showOptionPrices
+                    onChange={(next) => changes.push(next)}
+                />,
+            ),
         );
         await act(() => host.querySelector("button")!.click());
+    };
+    const assertSharedMenu = () => {
+        const menu = dom.document.querySelector(".canvas-model-picker-menu")!;
+        expect(menu.querySelectorAll(".model-picker-availability, .model-picker-availability-track, .canvas-model-picker-option-logo")).toHaveLength(0);
+        expect(menu.textContent).not.toContain("1/1");
+        const option = menu.querySelector<HTMLButtonElement>(".canvas-model-picker-option")!;
+        expect(option.getAttribute("aria-pressed")).toBe("true");
+        expect(option.textContent).toContain("已选");
+        expect(option.querySelector(".model-picker-tariff strong")?.textContent).toBe("0.05-5.34");
+        expect(option.querySelector(".model-picker-tariff")?.textContent).toBe("0.05-5.34 积分");
+        const help = menu.querySelector<HTMLButtonElement>(".model-picker-tariff-help")!;
+        expect(option.contains(help)).toBe(false);
+        return { option, help };
     };
 
     try {
         useUserStore.setState({ features: { ...initialFeatures, creditsEnabled: true } });
-        await render(false);
+        await render("default");
         expect(host.querySelector("button")?.textContent).toContain("腾讯 Image 2 · 渠道 A");
-        expect(dom.document.querySelector(".model-picker-availability-label")?.textContent).toBe("1/1");
-        await render(true);
+        await act(() => assertSharedMenu().help.click());
+        expect(dom.document.querySelector('table[aria-label="画质与分辨率积分单价"]')).not.toBeNull();
+        expect(changes).toEqual([]);
+        await render("agent");
+        await act(() => assertSharedMenu().help.click());
+        expect(dom.document.querySelector('table[aria-label="画质与分辨率积分单价"]')).not.toBeNull();
+        expect(changes).toEqual([]);
+        await render("workbench");
         expect(host.querySelector("button")?.textContent).toBe("GPT Image 2");
         expect(host.querySelector("button")?.getAttribute("title")).toBe("GPT Image 2");
         expect(dom.document.querySelector(".canvas-model-picker-brand-rail .canvas-model-picker-brand strong")?.textContent).toBe("GPT Image 2");
-        expect(dom.document.querySelectorAll(".model-picker-availability-track").length).toBe(0);
-        expect(dom.document.querySelectorAll(".canvas-model-picker-option-logo").length).toBe(0);
-        const option = dom.document.querySelector<HTMLButtonElement>(".canvas-model-picker-option")!;
+        const { option, help } = assertSharedMenu();
         expect(option.textContent).toContain("渠道 A");
-        expect(option.textContent).toContain("已选");
-        expect(option.textContent).toContain("0.05-5.34");
-        const help = dom.document.querySelector<HTMLButtonElement>('button[aria-label="查看渠道 A的积分价目"]')!;
-        expect(option.contains(help)).toBe(false);
+        expect(help.getAttribute("aria-label")).toBe("查看渠道 A的积分价目");
         await act(() => help.click());
         const matrix = dom.document.querySelector('table[aria-label="画质与分辨率积分单价"]');
         expect([...(matrix?.querySelectorAll("thead th") ?? [])].map((cell) => cell.textContent)).toEqual(["画质", "1K", "2K", "4K"]);
@@ -116,14 +142,14 @@ test("乐见工作台去掉调用统计，价格明细不选中渠道，其他�
         ]);
         expect(dom.document.querySelector('table[aria-label="积分价目"] tbody')?.textContent).toBe("画质 中 / 分辨率 4K / 1:11.20 积分");
         expect(changes).toEqual([]);
-        const details = dom.document.querySelector(".wb-model-tariff-details")!;
+        const details = dom.document.querySelector(".model-picker-tariff-details")!;
         await act(() => details.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
         expect(help.getAttribute("aria-expanded")).toBe("false");
         expect(dom.document.activeElement === help).toBe(true);
         await act(() => option.click());
         expect(changes).toEqual([value]);
         await act(() => useUserStore.setState({ features: { ...initialFeatures, creditsEnabled: false } }));
-        expect(dom.document.querySelectorAll(".wb-model-tariff-help, .wb-model-tariff").length).toBe(0);
+        expect(dom.document.querySelectorAll(".model-picker-tariff-help, .model-picker-tariff")).toHaveLength(0);
     } finally {
         await act(() => root.unmount());
         useUserStore.setState({ features: initialFeatures });

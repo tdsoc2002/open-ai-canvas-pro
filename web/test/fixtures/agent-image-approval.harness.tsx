@@ -141,22 +141,23 @@ for (const toolName of ["generate_media", "generate_media_batch"])
             expect(button("1").getAttribute("aria-pressed")).toBe("true");
             await press("42");
             await submit(imagePresetForRatio("4k", "9:16").size, "4k", "high");
-            await act(async () => host.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')!.click());
+            await act(async () => host.querySelector<HTMLButtonElement>("button.canvas-composer-model-picker")!.click());
             await act(async () => {
                 await new Promise((resolve) => setTimeout(resolve, 30));
             });
-            const alternative = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((item) => item.textContent?.includes("gpt-image-2.5"));
+            const alternative = [...document.querySelectorAll<HTMLButtonElement>("button[data-model-picker-item]")].find((item) => item.textContent?.includes("gpt-image-2.5"));
             expect(alternative).toBeDefined();
             await act(async () => alternative!.click());
             await press("同意执行");
             expect(submitted).toMatchObject({ channelId: channel.id, channelModelKey: "gpt-image-2.5", size: imagePresetForRatio("4k", "9:16").size, imageResolution: "4k", quality: "high" });
             expect(JSON.parse(submitted!.imageParameters!)).toEqual({ seed: 42, count: 1, transparentBackground });
             expect(imageParameterRequest(profile, submitted!, true)).toMatchObject({ seed: 42, count: 1, transparentBackground });
-            await act(async () => host.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"]')!.click());
+            const picker = host.querySelector<HTMLButtonElement>("button.canvas-composer-model-picker")!;
+            if (picker.getAttribute("aria-expanded") !== "true") await act(async () => picker.click());
             await act(async () => {
                 await new Promise((resolve) => setTimeout(resolve, 30));
             });
-            const limited = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((item) => item.textContent?.includes("limited-image"));
+            const limited = [...document.querySelectorAll<HTMLButtonElement>("button[data-model-picker-item]")].find((item) => item.textContent?.includes("limited-image"));
             expect(limited).toBeDefined();
             await act(async () => limited!.click());
             await press("同意执行");

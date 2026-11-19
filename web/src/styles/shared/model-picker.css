@@ -96,17 +96,6 @@
         color: #f2f4f6;
     }
 
-    .creation-model-picker-menu .canvas-model-picker-option {
-        min-height: 52px;
-        border-radius: 8px;
-        padding: 8px 8px;
-        transition: none;
-    }
-
-    .creation-model-picker-menu .canvas-model-picker-option > span:first-child > span:nth-child(2) > span:first-child {
-        font-size: 13px;
-    }
-
     .creation-model-picker.canvas-composer-model-picker {
         display: inline-flex;
         height: 48px;
@@ -345,42 +334,6 @@
         padding: 4px 8px 4px;
     }
 
-    .canvas-model-picker-option {
-        align-items: center;
-        border: 0;
-        border-radius: 8px;
-        cursor: pointer;
-        display: flex;
-        gap: 8px;
-        max-width: 100%;
-        min-height: 40px;
-        min-width: 0;
-        outline: none;
-        overflow: hidden;
-        padding: 8px 8px;
-        text-align: left;
-        transition: none;
-        width: 100%;
-    }
-
-    .canvas-model-picker-option[aria-selected="true"] {
-        background: color-mix(in srgb, var(--workspace-accent) 6%, transparent) !important;
-    }
-
-    .canvas-model-picker-option:focus-visible {
-        outline: 2px solid var(--control-selected-border);
-        outline-offset: -2px;
-    }
-
-    .canvas-model-picker-option > span:first-child {
-        flex: 1 1 auto;
-        min-width: 0;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        width: 100%;
-    }
-
     .canvas-model-picker-option-check {
         flex: 0 0 14px;
         height: 14px;
@@ -551,14 +504,6 @@ html:not(.dark) .creation-chat-composer .creation-model-picker.canvas-composer-m
     padding: 8px 8px 4px;
     font-size: 11px;
 }
-.creation-model-picker-menu .canvas-model-picker-option {
-    min-height: 43px;
-    border-radius: 8px;
-    padding: 4px 8px;
-}
-.creation-model-picker-menu .canvas-model-picker-option > span:first-child > span:nth-child(2) > span:first-child {
-    font-size: 11px;
-}
 @media (max-width: 680px) {
     .creation-chat-composer .creation-model-picker.canvas-composer-model-picker {
         height: 29px;
@@ -629,7 +574,7 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     flex: 0 0 var(--picker-icon-column);
     place-items: center start;
 }
-/* 文字列必须可收缩：名称与“渠道数 · 来源”截断，健康度圆点固定宽度，永远不越过右侧箭头。 */
+/* 名称截断，保留右侧箭头的位置。 */
 .canvas-model-picker-brand-copy {
     display: flex;
     min-width: 0;
@@ -647,34 +592,6 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     line-height: 1.3;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-.canvas-model-picker-brand-copy small,
-.canvas-model-picker-brand-meta {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 8px;
-    color: color-mix(in srgb, currentColor 55%, transparent);
-    font-size: 11px;
-    line-height: 1.4;
-}
-.canvas-model-picker-brand-subtext {
-    min-width: 0;
-    flex: 1 1 auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.canvas-model-picker-brand-copy .model-picker-availability-track {
-    flex: none;
-    gap: 3px;
-    padding: 0;
-}
-.canvas-model-picker-brand-copy .model-picker-availability-pill {
-    width: 4px;
-    height: 4px;
-    flex-basis: 4px;
-    box-shadow: none;
 }
 .canvas-model-picker-brand-arrow {
     width: 14px;
@@ -727,29 +644,26 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     }
     .canvas-model-picker-two-pane {
         grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: var(--space-2);
     }
     .canvas-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
-        display: none;
+        max-height: min(8rem, calc(var(--canvas-model-picker-available-height) * 0.35));
+        padding: 0 0 var(--space-1);
+        border: 0;
+        border-bottom: var(--control-border-width) solid var(--border);
     }
 }
 .canvas-model-picker-menu.is-agent-compact {
     gap: var(--space-1);
     overscroll-behavior: contain;
 }
-.canvas-model-picker-compact-option {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    min-width: 0;
-    border-radius: var(--control-radius);
-}
-.canvas-model-picker-compact-option[data-selected],
-.canvas-model-picker-compact-group[data-selected] {
-    background: var(--control-selected-bg);
-}
 .canvas-model-picker-compact-group {
     width: 100%;
     min-height: var(--space-10);
+}
+.canvas-model-picker-compact-group[data-selected] {
+    background: color-mix(in srgb, currentColor 6%, transparent);
 }
 .canvas-model-picker-compact-group[aria-expanded="true"] .canvas-model-picker-chevron {
     transform: rotate(180deg);
@@ -764,262 +678,194 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     padding-inline-start: var(--space-2);
     border-inline-start: var(--control-border-width) solid var(--border);
 }
-.is-agent-compact .canvas-model-picker-option-heading > span:first-child {
-    flex-basis: 100%;
+
+/* 选项和价目入口是并列按钮，查看价格不会切换渠道。 */
+.canvas-model-picker-option-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    min-width: 0;
+    border-radius: var(--control-radius);
 }
-.is-agent-compact .canvas-model-picker-option-heading {
-    gap: var(--space-1) var(--space-2);
+.canvas-model-picker-option-row[data-selected] {
+    background: color-mix(in srgb, currentColor 6%, transparent);
 }
-.is-agent-compact .canvas-model-picker-option-name {
-    font-size: var(--fs-ui);
-    line-height: var(--lh-body);
+.creation-model-picker-surface .canvas-model-picker-option {
+    display: grid;
+    gap: var(--space-2);
+    width: 100%;
+    min-width: 0;
+    min-height: var(--space-12);
+    padding: var(--space-2) var(--picker-row-inset);
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
 }
-.canvas-model-picker-compact-channel {
-    max-width: 100%;
-    overflow: hidden;
-    color: var(--muted-foreground);
-    font-size: var(--fs-caption);
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.creation-model-picker-surface .canvas-model-picker-option:disabled {
+    cursor: not-allowed;
 }
-.canvas-model-picker-compact-option > .model-picker-availability {
-    margin: 0 var(--space-2) var(--space-2) 0;
+.canvas-model-picker-option:focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
 }
 .canvas-model-picker-option-heading {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 8px;
+    gap: var(--space-2);
 }
-
-.canvas-model-picker-option-title {
-    flex: 1 1 14rem;
-    min-width: min(100%, 14rem);
-}
-
-.canvas-model-picker-option-heading > .model-picker-availability {
-    flex: 0 0 auto;
-    margin-left: auto;
-}
-
-.canvas-model-picker-option-name {
-    flex: 1 1 10rem;
+.canvas-model-picker-option-identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 1 1 var(--space-20);
     min-width: 0;
+    gap: var(--space-1) var(--space-2);
+}
+.canvas-model-picker-option-name {
+    min-width: 0;
+    font-size: var(--fs-ui);
+    font-weight: 500;
+    line-height: var(--lh-body);
+    overflow-wrap: anywhere;
+}
+.canvas-model-picker-compact-channel,
+.canvas-model-picker-description {
+    color: color-mix(in srgb, currentColor 58%, transparent);
+    font-size: var(--fs-caption);
+    overflow-wrap: anywhere;
+}
+.canvas-model-picker-personal {
+    color: var(--brand, var(--primary));
+    font-size: var(--fs-caption);
+}
+.canvas-model-picker-option-price {
+    display: grid;
+    min-width: 0;
+    max-width: 100%;
+    margin-inline-start: auto;
+    gap: var(--space-1);
+    overflow-wrap: anywhere;
+}
+.canvas-model-picker-reference-billing {
+    color: color-mix(in srgb, currentColor 66%, transparent);
+    font-size: var(--fs-caption);
+    font-weight: 500;
+}
+.canvas-model-picker-option-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+}
+.canvas-model-picker-option-meta .model-tags {
+    margin-top: 0;
+}
+.canvas-model-picker-selected-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.canvas-model-picker-selected-badge svg {
+    width: var(--space-3);
+    height: var(--space-3);
+}
+.model-picker-tariff {
+    display: grid;
+    gap: var(--space-1);
+    color: color-mix(in srgb, currentColor 66%, transparent);
+    text-align: end;
+    font-size: var(--fs-caption);
+    font-variant-numeric: tabular-nums;
+}
+.model-picker-tariff strong {
+    color: var(--brand, var(--product-accent-violet, var(--primary)));
+    font-size: var(--fs-ui);
+    font-weight: 600;
+}
+.canvas-model-picker-label .model-picker-tariff {
+    min-width: 0;
+    flex-shrink: 0;
+    max-width: 72%;
+}
+.canvas-model-picker-label .model-picker-tariff,
+.canvas-model-picker-label .model-picker-tariff strong {
+    display: inline;
+    font-size: var(--fs-tiny);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
-.canvas-model-picker-option-price {
-    flex: 0 0 auto;
-    min-width: 0;
-    max-width: 100%;
+.canvas-model-picker-label .model-picker-tariff > span + span {
+    margin-inline-start: var(--space-1);
 }
 
-.canvas-model-picker-description {
-    font-size: var(--fs-caption);
-    min-height: 1.5em;
-    line-height: 1.5;
-    margin-top: 4px !important;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    visibility: hidden;
-    opacity: 0;
+.model-picker-tariff-help {
+    display: grid;
+    place-items: center;
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: var(--control-radius);
+    color: color-mix(in srgb, currentColor 66%, transparent);
 }
 
-.canvas-model-picker-description.is-visible {
-    visibility: visible;
-    opacity: 1;
+.model-picker-tariff-help svg {
+    width: var(--space-4);
+    height: var(--space-4);
 }
 
-/* 积分独立于选中态，金黄色图标与紧凑标签保持常驻可读。 */
-.model-picker-price {
-    --model-price-ink: #946900;
-    color: var(--model-price-ink);
-    font-weight: 600;
-    line-height: 1.3;
-    gap: 4px;
-    white-space: nowrap;
+.model-picker-tariff-help:is(:focus-visible, :hover, [aria-expanded="true"]) {
+    background: var(--control-selected-bg);
+    color: var(--foreground);
 }
 
-.dark .model-picker-price {
-    --model-price-ink: #e8c45a;
+.model-picker-tariff-details {
+    max-width: min(28rem, calc(100vw - var(--space-16)));
+    max-height: min(22rem, 50dvh);
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-1);
 }
 
-.model-picker-price-icon {
-    width: 11px;
-    height: 11px;
-    flex: 0 0 11px;
-}
-
-.canvas-model-picker-option .model-picker-price {
-    border: 1px solid color-mix(in srgb, var(--model-price-ink) 20%, transparent);
-    border-radius: var(--r-sm);
-    background: color-mix(in srgb, var(--model-price-ink) 9%, transparent);
-    padding: 2px 4px;
-    max-width: 100%;
-    flex-wrap: wrap;
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-
-.model-picker-availability {
-    display: inline-flex;
-    min-width: 0;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
-    border-radius: 999px;
-    padding: 2px 8px;
-    color: color-mix(in srgb, currentColor 68%, transparent);
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.3;
-    white-space: nowrap;
-    cursor: help;
-}
-
-.model-picker-availability:focus-visible {
-    outline: 2px solid color-mix(in srgb, currentColor 45%, transparent);
-    outline-offset: 2px;
-}
-
-.model-picker-availability-track {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 1px;
-}
-
-.model-picker-availability-pill {
-    width: 5px;
-    height: 5px;
-    flex: 0 0 5px;
-    border-radius: 50%;
-    transition:
-        transform 150ms ease,
-        background-color 150ms ease;
-}
-
-.model-picker-availability-pill.is-success {
-    background: #34c759;
-    box-shadow: 0 0 0 1px color-mix(in srgb, #34c759 25%, transparent);
-}
-
-.model-picker-availability-pill.is-failed {
-    background: #ff3b30;
-    box-shadow: 0 0 0 1px color-mix(in srgb, #ff3b30 25%, transparent);
-}
-
-.model-picker-availability-pill.is-empty {
-    background: color-mix(in srgb, currentColor 20%, transparent);
-}
-
-.model-picker-availability-track.in-popover {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    background: color-mix(in srgb, currentColor 6%, transparent);
-}
-
-.model-picker-availability-pill.in-popover {
-    width: 7px;
-    height: 7px;
-    flex: 0 0 7px;
-}
-
-.model-picker-availability-popover-head span.has-failures {
-    color: #e5484d;
-}
-
-.model-picker-availability-dot {
-    width: 6px;
-    height: 6px;
-    flex: 0 0 6px;
-    border-radius: 50%;
-    background: #48a86a;
-    box-shadow: 0 0 0 2px color-mix(in srgb, #48a86a 15%, transparent);
-}
-
-.model-picker-availability.is-insufficient .model-picker-availability-dot {
-    background: #d59b35;
-    box-shadow: 0 0 0 2px color-mix(in srgb, #d59b35 15%, transparent);
-}
-
-.model-picker-availability.is-no_data,
-.model-picker-availability.is-unavailable {
-    color: color-mix(in srgb, currentColor 50%, transparent);
-}
-
-.model-picker-availability.is-no_data .model-picker-availability-dot,
-.model-picker-availability.is-unavailable .model-picker-availability-dot {
-    background: #9aa0a8;
-    box-shadow: 0 0 0 2px color-mix(in srgb, #9aa0a8 15%, transparent);
-}
-
-.model-picker-availability-popover {
-    width: 210px;
-    color: var(--user-ink, #20242a);
-}
-
-.model-picker-availability-popover-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 12px;
-}
-
-.model-picker-availability-popover-head span {
-    color: #2e8d58;
-    font-weight: 600;
+.model-picker-tariff-details table {
+    width: 100%;
+    border-collapse: collapse;
     font-variant-numeric: tabular-nums;
 }
 
-.model-picker-availability-popover-meta,
-.model-picker-availability-popover-foot {
-    color: color-mix(in srgb, currentColor 54%, transparent);
-    font-size: 11px;
-    line-height: 1.5;
+.model-picker-tariff-details :is(th, td) {
+    border-bottom: var(--control-border-width) solid var(--border);
+    padding: var(--space-2) var(--space-3);
+    text-align: start;
 }
 
-.model-picker-availability-popover-meta {
-    margin-top: 4px;
-}
-.model-picker-availability-popover-foot {
-    margin-top: 8px;
+.model-picker-tariff-details td {
+    white-space: nowrap;
+    text-align: end;
 }
 
-.model-picker-availability-trend {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 4px;
-    margin-top: 8px;
+.model-picker-tariff-details .model-picker-image-price-matrix :is(th, td) {
+    padding-inline: var(--space-2);
+    white-space: nowrap;
 }
 
-.model-picker-availability-segment {
-    height: 20px;
-    border-radius: 4px;
-    background: #4aa96c;
+.model-picker-tariff-details .model-picker-image-price-matrix thead th:not(:first-child) {
+    text-align: end;
 }
 
-.model-picker-availability-segment.is-insufficient {
-    background: #d59b35;
-}
-.model-picker-availability-segment.is-no_data {
-    background: color-mix(in srgb, currentColor 14%, transparent);
+.model-picker-tariff-details .model-picker-image-price-matrix + table {
+    margin-top: var(--space-2);
 }
 
-.dark .model-picker-availability-popover {
-    color: #f0f1f2;
-}
-.dark .model-picker-availability-popover-head span {
-    color: #7bd598;
-}
-.dark .model-picker-availability-segment.is-no_data {
-    background: rgba(255, 255, 255, 0.14);
+.model-picker-tariff-details:focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1069,32 +915,6 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     font-size: 11px;
     font-weight: 500;
 }
-.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option {
-    min-height: 55px;
-    border-radius: 12px;
-    padding-block: var(--space-2);
-}
-.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .text-amber-600,
-.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .dark\:text-amber-300 {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border-radius: 999px;
-    background: color-mix(in srgb, #e28a17 12%, var(--user-surface));
-    color: #c66d00 !important;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 600;
-}
-.app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .text-amber-600 svg {
-    width: 13px;
-    height: 13px;
-}
-.dark .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .text-amber-600,
-.dark .app-user-workspace .creation-model-picker-menu .canvas-model-picker-option .dark\:text-amber-300 {
-    color: #f0a943 !important;
-    background: color-mix(in srgb, #e28a17 18%, var(--user-surface)) !important;
-}
 .app-user-workspace .creation-chat-composer.is-thread .creation-model-picker.canvas-composer-model-picker {
     min-height: 32px !important;
     height: 32px !important;
@@ -1112,140 +932,4 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     color: color-mix(in srgb, var(--foreground) 52%, transparent);
     font-size: 11px;
     font-weight: 500;
-}
-.creation-model-picker-surface .canvas-model-picker-option {
-    min-height: 52px;
-    border-radius: var(--control-radius);
-    padding: var(--space-2) var(--picker-row-inset);
-    text-align: start;
-}
-.creation-model-picker-surface .canvas-model-picker-option > span:first-child {
-    gap: var(--picker-row-gap);
-}
-.creation-model-picker-surface .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo {
-    border-radius: 0;
-    background: transparent !important;
-    color: currentColor;
-}
-.creation-model-picker-surface .canvas-model-picker-option > span:first-child > .canvas-model-picker-option-logo svg {
-    color: currentColor !important;
-    opacity: 1 !important;
-}
-.creation-model-picker-surface .canvas-model-picker-option .model-picker-price {
-    font-size: var(--fs-tiny);
-}
-
-/* 创作首页与画布节点共用 LJCanvas 的紧凑双栏。 */
-@media (min-width: 721px) {
-    .canvas-model-picker-menu.is-compact-two-pane.is-model-list {
-        width: min(720px, calc(100vw - var(--space-6)));
-    }
-
-    .creation-model-picker-surface .canvas-model-picker-menu.is-compact-two-pane.is-model-list .canvas-model-picker-two-pane {
-        grid-template-columns: 224px minmax(0, 1fr);
-        gap: var(--space-2);
-    }
-
-    .creation-model-picker-surface .canvas-model-picker-menu.is-compact-two-pane.is-model-list .canvas-model-picker-brand-rail {
-        padding-right: var(--space-2);
-    }
-}
-
-.is-compact-two-pane .canvas-model-picker-brand {
-    min-height: calc(var(--space-10) + var(--space-1));
-    padding-block: var(--space-1);
-    border-radius: var(--control-radius);
-}
-
-.is-compact-two-pane .canvas-model-picker-brand-meta {
-    gap: var(--space-1);
-}
-
-.is-compact-two-pane .canvas-model-picker-brand-copy .model-picker-availability-track {
-    gap: 1px;
-}
-
-.is-compact-two-pane .canvas-model-picker-brand-copy .model-picker-availability-pill {
-    width: 3px;
-    height: 3px;
-    flex-basis: 3px;
-}
-
-.creation-model-picker-surface .is-compact-two-pane .canvas-model-picker-option {
-    align-items: flex-start;
-    padding-block: var(--space-1);
-}
-.creation-model-picker-surface .is-compact-two-pane .canvas-model-picker-option > span:first-child {
-    align-items: flex-start;
-}
-
-.is-compact-two-pane .canvas-model-picker-option[aria-selected="true"],
-.is-compact-two-pane .canvas-model-picker-option:hover:not(:disabled) {
-    background: var(--control-selected-bg) !important;
-}
-
-.is-compact-two-pane .canvas-model-picker-option-heading {
-    align-items: baseline;
-    gap: var(--space-1) var(--space-3);
-}
-
-.is-compact-two-pane .canvas-model-picker-option-identity {
-    flex: 1 1 40%;
-}
-
-.is-compact-two-pane .canvas-model-picker-option-name {
-    font-size: var(--fs-ui);
-    line-height: 1.5;
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-
-.is-compact-two-pane .canvas-model-picker-option-price,
-.is-compact-two-pane .canvas-model-picker-option-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-1) var(--space-2);
-}
-
-.is-compact-two-pane .canvas-model-picker-option-meta {
-    margin-top: var(--space-1);
-}
-
-.is-compact-two-pane .canvas-model-picker-option-meta:empty,
-.is-compact-two-pane .canvas-model-picker-description:empty {
-    display: none;
-}
-
-.is-compact-two-pane .canvas-model-picker-option-meta .model-tags {
-    margin-top: 0;
-}
-
-.is-compact-two-pane .canvas-model-picker-option .model-picker-price {
-    border: 0;
-    background: transparent;
-    padding: 0;
-    font-variant-numeric: tabular-nums;
-}
-
-.is-compact-two-pane .canvas-model-picker-reference-billing {
-    margin-left: 0;
-    white-space: normal;
-}
-
-.canvas-model-picker-selected-badge {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    gap: var(--space-1);
-    color: inherit;
-    font-size: var(--fs-caption);
-    font-weight: 600;
-    line-height: 1.5;
-    white-space: nowrap;
-}
-
-.canvas-model-picker-selected-badge svg {
-    width: var(--space-3);
-    height: var(--space-3);
 }

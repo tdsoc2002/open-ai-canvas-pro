@@ -534,7 +534,6 @@ export function CanvasNodePromptPanel({
                         showSelectedPrice={false}
                         showOptionPrices={creditsEnabled}
                         variant="creation"
-                        layout="compact-two-pane"
                         showConfiguredModelName
                     />
                 </div>
