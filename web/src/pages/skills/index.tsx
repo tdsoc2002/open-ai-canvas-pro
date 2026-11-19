@@ -412,6 +412,7 @@ export default function SkillsPage() {
             <SkillCard
                 key={skill.skillId}
                 skill={skill}
+                marketplace={scope === "public"}
                 accentKey={rootId && rootId !== "__unassigned__" ? rootId : skill.tag}
                 categoryLabel={!isLibraryScope && !categoryFiltered ? rootLabel || skillCategoryLabel(skill.tag, categories) : undefined}
                 libraryCategories={libraryCategories}
@@ -753,7 +754,6 @@ function SkillCover({ skill, media }: { skill: Skill; media?: Skill["showcaseMed
                     ) : (
                         <img src={fallback.src} alt="" decoding="async" />
                     )}
-                    <span>主题示意</span>
                 </div>
             ) : null}
             {media?.type === "image" ? (
@@ -767,6 +767,7 @@ function SkillCover({ skill, media }: { skill: Skill; media?: Skill["showcaseMed
 
 function SkillCard({
     skill,
+    marketplace,
     accentKey,
     categoryLabel,
     libraryCategories,
@@ -781,6 +782,7 @@ function SkillCard({
     onSetLibraryCategory,
 }: {
     skill: Skill;
+    marketplace: boolean;
     accentKey: string;
     categoryLabel?: string;
     libraryCategories: SkillLibraryCategory[];
@@ -815,44 +817,46 @@ function SkillCard({
                     我的
                 </span>
             ) : null}
-            <div className="skill-tile-body">
+            <div className={cn("skill-tile-body", marketplace && "is-marketplace")}>
                 <h3 className="skill-tile-name">
                     <button type="button" className="skill-tile-open" data-no-press title={skill.skillName} onClick={onOpen}>
                         <span className="skill-tile-name-text">{skill.skillName}</span>
                     </button>
                 </h3>
                 <div className="skill-tile-head">
-                    <div className="skill-tile-byline">
-                        <span className="skill-tile-author" title={`作者：${author}`}>
-                            {author}
-                        </span>
-                        {canCategorize ? (
-                            <Dropdown
-                                trigger={["click"]}
-                                menu={{
-                                    selectable: true,
-                                    selectedKeys: [skill.libraryCategoryId || "__uncategorized__"],
-                                    items: [{ key: "__uncategorized__", label: "未分类" }, ...libraryCategories.map((category) => ({ key: category.id, label: category.name }))],
-                                    onClick: ({ key }) => onSetLibraryCategory(key === "__uncategorized__" ? "" : key),
-                                }}
-                            >
-                                <button type="button" className="skill-tile-chip is-picker" aria-label={`设置技能分类，当前为${libraryCategoryLabel}`} title="设置技能库分类" disabled={loading}>
-                                    <FolderInput aria-hidden="true" />
-                                    <span>{libraryCategoryLabel}</span>
-                                    <ChevronDown aria-hidden="true" />
-                                </button>
-                            </Dropdown>
-                        ) : categoryLabel ? (
-                            <span className="skill-tile-chip">{categoryLabel}</span>
-                        ) : null}
-                        {skill.isPrivate ? (
-                            <Tooltip title="仅自己可见">
-                                <span className="skill-tile-private" role="img" aria-label="仅自己可见">
-                                    <Lock aria-hidden="true" />
-                                </span>
-                            </Tooltip>
-                        ) : null}
-                    </div>
+                    {!marketplace && (
+                        <div className="skill-tile-byline">
+                            <span className="skill-tile-author" title={`作者：${author}`}>
+                                {author}
+                            </span>
+                            {canCategorize ? (
+                                <Dropdown
+                                    trigger={["click"]}
+                                    menu={{
+                                        selectable: true,
+                                        selectedKeys: [skill.libraryCategoryId || "__uncategorized__"],
+                                        items: [{ key: "__uncategorized__", label: "未分类" }, ...libraryCategories.map((category) => ({ key: category.id, label: category.name }))],
+                                        onClick: ({ key }) => onSetLibraryCategory(key === "__uncategorized__" ? "" : key),
+                                    }}
+                                >
+                                    <button type="button" className="skill-tile-chip is-picker" aria-label={`设置技能分类，当前为${libraryCategoryLabel}`} title="设置技能库分类" disabled={loading}>
+                                        <FolderInput aria-hidden="true" />
+                                        <span>{libraryCategoryLabel}</span>
+                                        <ChevronDown aria-hidden="true" />
+                                    </button>
+                                </Dropdown>
+                            ) : categoryLabel ? (
+                                <span className="skill-tile-chip">{categoryLabel}</span>
+                            ) : null}
+                            {skill.isPrivate ? (
+                                <Tooltip title="仅自己可见">
+                                    <span className="skill-tile-private" role="img" aria-label="仅自己可见">
+                                        <Lock aria-hidden="true" />
+                                    </span>
+                                </Tooltip>
+                            ) : null}
+                        </div>
+                    )}
                     <div className="skill-tile-actions">
                         {skill.isOwner ? (
                             <Tooltip title={workbenchLabel}>
@@ -861,18 +865,20 @@ function SkillCard({
                                 </button>
                             </Tooltip>
                         ) : null}
-                        <Dropdown
-                            trigger={["click"]}
-                            placement="bottomRight"
-                            menu={{
-                                items: menuItems,
-                                onClick: ({ key }) => (key === "detail" ? onOpen() : key === "workbench" ? onOpenWorkbench() : key === "edit" ? onEdit() : key === "delete" ? onDelete() : onAdd()),
-                            }}
-                        >
-                            <button type="button" className="product-icon-button skill-tile-more" aria-label={`${skill.skillName} 更多操作`} title="更多操作">
-                                <MoreHorizontal />
-                            </button>
-                        </Dropdown>
+                        {!marketplace && (
+                            <Dropdown
+                                trigger={["click"]}
+                                placement="bottomRight"
+                                menu={{
+                                    items: menuItems,
+                                    onClick: ({ key }) => (key === "detail" ? onOpen() : key === "workbench" ? onOpenWorkbench() : key === "edit" ? onEdit() : key === "delete" ? onDelete() : onAdd()),
+                                }}
+                            >
+                                <button type="button" className="product-icon-button skill-tile-more" aria-label={`${skill.skillName} 更多操作`} title="更多操作">
+                                    <MoreHorizontal />
+                                </button>
+                            </Dropdown>
+                        )}
                         {skill.isOwner ? null : (
                             <Tooltip title={`${skill.isAdded ? "已加入我的技能，点击移除" : "加入我的技能"} · ${addedLabel}`}>
                                 <button type="button" className="skill-tile-add" aria-pressed={skill.isAdded} aria-label={skill.isAdded ? `从我的技能移除 ${skill.skillName}` : `加入我的技能 ${skill.skillName}`} disabled={loading} onClick={onAdd}>

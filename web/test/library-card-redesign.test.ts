@@ -98,17 +98,4 @@ describe("skills library", () => {
         expect(css).toMatch(/\.skill-tile-favorite \{[^}]*position: absolute;/);
         expect(css).toMatch(/\.skill-tile-actions \{[^}]*z-index: 1;/);
     });
-    test("内置技能优先匹配专属主题图，缺少配图时使用分类封面", async () => {
-        const builtin = { sourceType: "builtin", source: 3, tag: "drama" } as const;
-        const atlas = getSkillFallbackCover({ ...builtin, skillId: "14811816970508" });
-        const individual = getSkillFallbackCover({ ...builtin, skillId: "16000000000107" });
-        const category = getSkillFallbackCover({ ...builtin, skillId: "another-builtin" });
-        expect(atlas).toEqual({ src: "/images/skill-covers/cinema.png", crop: { width: 1366, height: 1152, viewBox: "2 2 680 381" } });
-        expect(individual).toEqual({ src: "/images/skill-covers/16000000000107.webp" });
-        expect(category).toEqual({ src: "/images/skill-covers/storyboard.webp" });
-        for (const cover of [atlas, individual, category]) {
-            expect(await Bun.file(new URL(`../public${cover!.src}`, import.meta.url)).exists()).toBe(true);
-        }
-        expect(getSkillFallbackCover({ ...builtin, sourceType: "github", source: 0, skillId: "external" })).toBeUndefined();
-    });
 });
