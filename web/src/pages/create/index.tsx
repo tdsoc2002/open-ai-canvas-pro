@@ -1750,16 +1750,18 @@ export default function CreatePage() {
     return (
         <>
             <div className="creation-home relative flex h-full min-h-0 flex-col overflow-hidden">
-                <p role="status" aria-live="polite" className="mx-auto px-4 py-1 text-xs text-foreground/55">
-                    <span title={historySync.message}>{t(`create.historySync.${historySync.phase}`)}</span>
-                    {historySync.message ? <span> · {historySync.message}</span> : null}
-                    {historySync.phase === "error" ? (
-                        <button type="button" className="ml-2 underline" onClick={() => void historySessionRef.current?.sync()}>
-                            {t("create.historySync.retry")}
-                        </button>
-                    ) : null}
-                    <CreationHistoryConflicts key={activeConversationScope} session={historySessionRef.current} status={historySync} busy={busy} />
-                </p>
+                {historySync.phase !== "synced" || historySync.backupCount ? (
+                    <p role="status" aria-live="polite" className="mx-auto px-4 py-1 text-xs text-foreground/55">
+                        {historySync.phase !== "synced" ? <span title={historySync.message}>{t(`create.historySync.${historySync.phase}`)}</span> : null}
+                        {historySync.message ? <span> · {historySync.message}</span> : null}
+                        {historySync.phase === "error" ? (
+                            <button type="button" className="ml-2 underline" onClick={() => void historySessionRef.current?.sync()}>
+                                {t("create.historySync.retry")}
+                            </button>
+                        ) : null}
+                        <CreationHistoryConflicts key={activeConversationScope} session={historySessionRef.current} status={historySync} busy={busy} />
+                    </p>
+                ) : null}
                 {conversationStorageError ? (
                     <p role="status" className="mx-auto mb-3 max-w-3xl px-4 text-xs text-foreground/55">
                         本地历史读取失败，当前会话仍保留。 {conversationStorageError}{" "}
