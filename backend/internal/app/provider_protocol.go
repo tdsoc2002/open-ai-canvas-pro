@@ -67,7 +67,7 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 	if isTencentVODProtocol(adapter.Metadata().ID) {
 		var err error
 		if taskID == "" && adapter.Metadata().ID == tencentVODImageProtocol {
-			err = prepareTencentVODImageRequest(&input.Config, &request)
+			err = prepareTencentVODImageRequest(&input.Config, &request, input.ImageCapability)
 		} else if taskID == "" {
 			err = prepareTencentVODRequest(&input.Config, &request)
 		} else {
@@ -78,6 +78,10 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 		}
 	}
 	detached := protocolDetachedPolling(adapter, input.Mode)
+	// 后台腾讯图片连通性测试没有持久任务，须在同一次调用里轮询原上游任务。
+	if metadata, _ := ctx.Value(providerAnalyticsKey{}).(providerAnalyticsContext); adapter.Metadata().ID == tencentVODImageProtocol && metadata.Operation == "admin_model_test" && metadata.TaskID == "" {
+		detached = false
+	}
 	var created protocol.CreateResult
 	if taskID == "" {
 		plan, err := prepareDramaReferencePlan(input, request, adapter.Metadata())

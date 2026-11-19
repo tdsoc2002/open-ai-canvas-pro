@@ -63,7 +63,7 @@ func tencentVODImageSize(raw string) (int, int, string, error) {
 	}
 }
 
-func prepareTencentVODImageRequest(config *providerConfig, request *protocol.GenerationRequest) error {
+func prepareTencentVODImageRequest(config *providerConfig, request *protocol.GenerationRequest, profile *ImageCapabilityConfig) error {
 	if err := setTencentVODRequestScope(config, request); err != nil {
 		return err
 	}
@@ -78,6 +78,12 @@ func prepareTencentVODImageRequest(config *providerConfig, request *protocol.Gen
 	output := map[string]any{"StorageMode": "Temporary", "OutputImageCount": 1}
 	additional := map[string]string{}
 	size := strings.TrimSpace(request.AspectRatio)
+	if profile != nil && strings.Contains(size, ":") {
+		tier := imagePresetSelectionTier(profile, request.Resolution)
+		if preset, ok := declaredImageSizePreset(activeImageSizePresets(profile), size, tier, imagePresetDefaultTier(profile)); ok {
+			size = preset.Size
+		}
+	}
 	if size == "" || strings.EqualFold(size, "auto") {
 		switch strings.ToUpper(strings.TrimSpace(request.Resolution)) {
 		case "", "AUTO", "1K":
@@ -137,6 +143,15 @@ func prepareTencentVODImageRequest(config *providerConfig, request *protocol.Gen
 	if len(files) > 0 {
 		body["FileInfos"] = files
 	}
+	// 这些字段已由腾讯宿主按模型合同校验并编码进原生请求，不交给通用模板重复映射。
+	for name := range request.ImageParameters {
+		switch name {
+		case "size", "imageResolution", "quality", "count", "transparentBackground":
+		default:
+			return InvalidModelSelection(fmt.Sprintf("腾讯 VOD OG 不支持图片参数 %s", name))
+		}
+	}
+	request.ImageParameters = nil
 	request.Extra["tencentVod"] = body
 	return nil
 }

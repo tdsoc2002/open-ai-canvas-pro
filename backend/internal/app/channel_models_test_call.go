@@ -41,6 +41,13 @@ func (s *Service) TestAdminChannelModel(ctx context.Context, actor *model.User, 
 	if err != nil {
 		return nil, err
 	}
+	var tencentVODAppID int64
+	if string(protocol) == tencentVODImageProtocol {
+		headers, tencentVODAppID, err = splitTencentVODChannelHeaders(headers)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	prompt := map[string]string{
 		"text":  "Reply with OK.",
@@ -83,6 +90,7 @@ func (s *Service) TestAdminChannelModel(ctx context.Context, actor *model.User, 
 			APIKey:             channel.APIKey,
 			SecretKey:          channel.SecretKey,
 			Headers:            headers,
+			tencentVODAppID:    tencentVODAppID,
 			Model:              providerModelKey,
 			ChannelModelKey:    modelKey,
 			Size:               map[string]string{"image": imageSize, "video": videoRatio}[capability],
