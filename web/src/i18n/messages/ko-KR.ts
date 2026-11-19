@@ -48,6 +48,7 @@ export const koKR: Messages = {
             canvasesFailed: "캔버스를 불러올 수 없습니다",
             switchUnavailable: "현재 창작이 완료된 후 대화를 전환하세요",
             inspirations: "영감 갤러리",
+            inspirationLibrary: "영감 갤러리",
             home: "창작",
             projects: "숏드라마 제작",
             ecommerce: "이커머스 에이전트",

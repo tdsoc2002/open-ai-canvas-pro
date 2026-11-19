@@ -47,6 +47,7 @@ export const enUS: Messages = {
             canvasesFailed: "Could not load canvases",
             switchUnavailable: "Wait for the current creation to finish",
             inspirations: "Inspiration hall",
+            inspirationLibrary: "Inspiration hall",
             home: "Create",
             projects: "Short dramas",
             ecommerce: "E-commerce Agent",

@@ -48,6 +48,7 @@ export const jaJP: Messages = {
             canvasesFailed: "キャンバスを読み込めませんでした",
             switchUnavailable: "作成が完了してから会話を切り替えてください",
             inspirations: "アイデアホール",
+            inspirationLibrary: "アイデアホール",
             home: "作成",
             projects: "ショートドラマ制作",
             ecommerce: "EC エージェント",

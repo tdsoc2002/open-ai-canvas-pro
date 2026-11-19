@@ -1687,46 +1687,6 @@
         backdrop-filter: blur(2px);
     }
 
-    /* 分组标题：小号大写标签，弱化但可读；有标题的分组支持折叠，padding/间距由折叠按钮接管 */
-    .app-workspace-nav-group-label {
-        display: block;
-        font-size: var(--fs-label);
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: color-mix(in srgb, var(--foreground) 36%, transparent);
-        transition: color var(--motion-instant) ease-out;
-    }
-
-    .app-workspace-nav-group-toggle {
-        display: flex;
-        width: 100%;
-        min-height: 28px;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 0 8px;
-        border-radius: var(--r-sm);
-        text-align: left;
-        color: inherit;
-        transition: background-color var(--motion-instant) ease-out;
-    }
-
-    .app-workspace-nav-group-toggle:hover,
-    .app-workspace-nav-group-toggle:focus-visible {
-        background: var(--surface-hover);
-    }
-
-    .app-workspace-nav-group-toggle:hover .app-workspace-nav-group-label,
-    .app-workspace-nav-group-toggle:focus-visible .app-workspace-nav-group-label {
-        color: color-mix(in srgb, var(--foreground) 55%, transparent);
-    }
-
-    .app-workspace-nav-group-toggle:hover svg,
-    .app-workspace-nav-group-toggle:focus-visible svg {
-        color: color-mix(in srgb, var(--foreground) 70%, transparent);
-    }
-
     /* 工作区切换器下拉浮层 */
     .app-workspace-nav-popover {
         box-shadow: none;
@@ -23467,22 +23427,6 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     background: rgba(72, 72, 73, 0.04);
 }
 
-.app-user-workspace .app-workspace-nav-group-toggle {
-    min-height: 28px;
-    padding: 0 12px 4px;
-    color: rgba(0, 0, 0, 0.48);
-    font-size: 12px;
-    letter-spacing: 0.02em;
-}
-
-.app-user-workspace .app-workspace-nav-group-toggle > svg {
-    display: block;
-}
-
-.app-user-workspace .app-workspace-nav-group-label {
-    font-weight: 500;
-}
-
 .app-user-workspace .app-workspace-nav-group[data-nav-group-heading=""] + .app-workspace-nav-group[data-nav-group-heading=""] {
     padding-top: 12px;
     border-top: 1px solid rgba(0, 0, 0, 0.055);
@@ -25527,15 +25471,6 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     opacity: 0.78;
 }
 
-.app-user-workspace .app-workspace-nav-group-toggle {
-    min-height: 26px;
-    padding: 0 12px 4px;
-    color: #929299;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-}
-
 .app-user-workspace .app-workspace-sidebar.is-collapsed .app-workspace-sidebar-scroll-area {
     padding-inline: 8px;
     align-items: center;
@@ -26292,21 +26227,19 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     background: var(--user-surface-hover) !important;
     color: var(--user-ink) !important;
 }
-.app-user-workspace .app-workspace-nav-group-toggle {
-    padding: 0 var(--space-2);
-    color: var(--user-ink-muted) !important;
-}
-.app-user-workspace .app-workspace-nav-group-toggle .app-workspace-nav-group-label {
+.app-user-workspace .app-workspace-nav-group-label {
     min-width: 0;
+    margin: 0 0 var(--space-1);
+    padding-inline: var(--space-2);
     overflow: hidden;
-    color: inherit;
+    color: var(--user-ink-muted);
     font-size: var(--fs-caption);
-    letter-spacing: normal;
+    font-weight: 500;
+    line-height: var(--lh-heading);
     text-overflow: ellipsis;
-    text-transform: none;
     white-space: nowrap;
 }
-.app-user-workspace :is(.app-workspace-nav-link, .app-workspace-nav-group-toggle, .app-workspace-sidebar-collapse-toggle):focus-visible {
+.app-user-workspace :is(.app-workspace-nav-link, .app-workspace-sidebar-collapse-toggle):focus-visible {
     outline: 2px solid var(--control-focus-ring);
     outline-offset: -2px;
 }

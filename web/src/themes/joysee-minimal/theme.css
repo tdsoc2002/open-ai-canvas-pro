@@ -41,17 +41,17 @@
     --user-radius-button-sm: var(--button-radius);
     --workspace-content: var(--background);
     --workspace-navigation: var(--joysee-navigation);
-    --workspace-nav-active-bg: var(--control-selected-bg);
-    --workspace-nav-active-hover-bg: var(--control-selected-hover-bg);
 }
 :root[data-skin="joysee-minimal"] .app-workspace-sidebar {
     --user-page-bg: var(--joysee-navigation);
 }
 :root[data-skin="joysee-minimal"] .app-workspace-sidebar-nav {
+    --workspace-nav-active-bg: color-mix(in srgb, var(--joysee-brand) 13%, var(--joysee-navigation));
+    --workspace-nav-active-hover-bg: var(--workspace-nav-active-bg);
     background: var(--joysee-navigation);
 }
-:root[data-skin="joysee-minimal"]:not(.dark) .app-workspace-sidebar-nav {
-    --workspace-nav-active-bg: var(--control-selected-hover-bg);
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-nav .app-workspace-nav-link.is-active .app-workspace-nav-icon {
+    color: var(--joysee-brand);
 }
 :root[data-skin="joysee-minimal"] .app-workspace-brand-mark.is-builtin {
     background: var(--primary);
@@ -252,32 +252,32 @@
 :root[data-skin="joysee-minimal"] .creation-mode-trigger[aria-expanded="true"] > svg:last-child {
     transform: rotate(180deg);
 }
+:root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-agent-shell {
+    max-width: 980px;
+    margin-inline: auto;
+}
 :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-entry {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: var(--space-3) var(--space-5);
-    padding: var(--space-6);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 34%);
+    grid-template-areas: "mode storyboard" "copy storyboard" "actions storyboard";
+    gap: var(--space-3) var(--space-6);
+    padding: var(--space-6) var(--space-8);
 }
-:root[data-skin="joysee-minimal"] .creation-agent-mark {
-    display: grid;
-    width: var(--space-12);
-    aspect-ratio: 1;
-    place-items: center;
-    align-self: start;
-    border-radius: var(--r-xl);
-    background: color-mix(in srgb, var(--joysee-brand) 12%, var(--user-surface));
+:root[data-skin="joysee-minimal"] .creation-agent-mode-control {
+    grid-area: mode;
+    min-width: 0;
+}
+:root[data-skin="joysee-minimal"] .creation-agent-mode-control .creation-mode-trigger {
+    max-width: 100%;
+}
+:root[data-skin="joysee-minimal"] .creation-agent-mode-control .creation-mode-trigger > svg:first-child {
     color: var(--joysee-brand);
 }
-:root[data-skin="joysee-minimal"] .creation-agent-mark > svg {
-    width: var(--space-6);
-    height: var(--space-6);
-}
-:root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-eyebrow {
-    color: var(--joysee-brand);
-    font-size: var(--fs-caption);
-    letter-spacing: normal;
+:root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-copy {
+    grid-area: copy;
+    min-width: 0;
 }
 :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-copy h2 {
-    margin: var(--space-1) 0 var(--space-2);
+    margin: 0 0 var(--space-2);
     font-size: var(--fs-title);
     line-height: 1.3;
     text-wrap: balance;
@@ -287,44 +287,38 @@
     line-height: 1.65;
 }
 :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-actions {
-    flex-direction: column;
+    grid-area: actions;
+    gap: var(--space-3);
 }
-:root[data-skin="joysee-minimal"] .creation-agent-actions > button {
+:root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-actions > button {
+    width: auto;
+    max-width: 100%;
     height: auto;
     min-height: var(--button-height-lg);
     white-space: normal;
 }
-:root[data-skin="joysee-minimal"] .creation-agent-mode-dock {
-    display: flex;
-    padding: var(--space-2) var(--space-6);
-    border-top: var(--control-border-width) solid var(--border);
-    background: var(--user-surface-muted);
+:root[data-skin="joysee-minimal"] .creation-agent-storyboard {
+    grid-area: storyboard;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
 }
-:root[data-skin="joysee-minimal"] .creation-agent-mode-dock .creation-mode-trigger:not(:hover, [aria-expanded="true"]) {
-    background: var(--user-surface) !important;
-}
-@container (max-width: 780px) {
+@container (max-width: 620px) {
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-entry {
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "mode" "copy" "actions";
+        padding: var(--space-5);
     }
-    :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-actions {
-        grid-column: 2;
-        flex-direction: row;
+    :root[data-skin="joysee-minimal"] .creation-agent-storyboard {
+        display: none;
     }
 }
 @container (max-width: 480px) {
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-entry {
-        gap: var(--space-3);
         padding: var(--space-4);
     }
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-copy h2 {
         font-size: var(--fs-heading);
-    }
-    :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-actions {
-        grid-column: 1 / -1;
-    }
-    :root[data-skin="joysee-minimal"] .creation-agent-mode-dock {
-        padding-inline: var(--space-4);
     }
 }
 :root[data-skin="joysee-minimal"] .creation-chat-submit-tools.is-empty {

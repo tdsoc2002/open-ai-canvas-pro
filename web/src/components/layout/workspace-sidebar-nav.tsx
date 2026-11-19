@@ -55,14 +55,14 @@ function buildNav(features: FeatureAvailability, t: TFunction, historyUnread: bo
     const canvas = { ...toolItem("canvas", "/canvas", t), title: t("nav.sidebar.canvas") };
     const projects = features.shortDramaEnabled ? [{ ...toolItem("projects", "/projects", t), title: t("nav.sidebar.projects") }] : [];
     const skills = { ...toolItem("skills", "/skills", t), title: t("nav.sidebar.skills") };
-    const inspirations = { id: "inspirations", title: t("nav.sidebar.inspirations"), icon: Lightbulb, to: "/inspirations" };
+    const inspirations = { id: "inspirations", title: t(joysee ? "nav.sidebar.inspirationLibrary" : "nav.sidebar.inspirations"), icon: Lightbulb, to: "/inspirations" };
     const tasks = features.taskCenterEnabled ? [{ id: "tasks", title: t("nav.sidebar.history"), icon: HistoryIcon, to: "/tasks", unread: historyUnread }] : [];
     const groups: WorkspaceNavGroup[] = [
         {
             heading: t("nav.sections.create"),
             items: [
                 { ...toolItem("create", "/", t), id: "home", title: t("nav.sidebar.home") },
-                ...(joysee ? [...projects, canvas] : [assets, canvas, ...projects]),
+                ...(joysee ? [canvas, ...projects] : [assets, canvas, ...projects]),
                 ...(features.ecommerceEnabled ? [{ id: "ecommerce", title: t("nav.sidebar.ecommerce"), icon: ShoppingBag, to: "/ecommerce" }] : []),
             ],
         },
@@ -76,8 +76,8 @@ function buildNav(features: FeatureAvailability, t: TFunction, historyUnread: bo
         },
         ...(joysee
             ? [
-                  { heading: t("nav.sidebar.headingAssets"), items: [assets, ...tasks] },
-                  { heading: t("nav.sidebar.headingTools"), items: [skills, inspirations] },
+                  { heading: t("nav.sidebar.headingAssets"), items: [...tasks, assets] },
+                  { heading: t("nav.sidebar.headingTools"), items: [inspirations, skills] },
               ]
             : []),
     ];
@@ -294,32 +294,13 @@ function NavItem({
 }
 
 function NavGroup({ group, activeId, onNavigate, onOpenSearch, onLogout, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; onLogout: () => void; collapsed: boolean }) {
-    const hasActive = group.items.some((item) => item.id === activeId || (item.id === "settings" && activeId.startsWith("settings:")));
-    const [isOpen, setIsOpen] = useState(true);
-
-    // 激活项所在分组自动展开，保证当前位置可见。
-    useEffect(() => {
-        if (hasActive) setIsOpen(true);
-    }, [hasActive, activeId]);
-
-    const content = (
-        <div className="flex flex-col gap-1">
-            {group.items.map((item) => (
-                <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onLogout={onLogout} collapsed={collapsed} />
-            ))}
-        </div>
-    );
-
     return (
-        <div className="app-workspace-nav-group flex shrink-0 flex-col" data-nav-group-heading={group.heading}>
-            {!collapsed ? (
-                <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen} className="app-workspace-nav-group-toggle select-none">
-                    <span className="app-workspace-nav-group-label">{group.heading}</span>
-                    <ChevronRight className={cn("size-3.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none", isOpen && "rotate-90")} strokeWidth={2} aria-hidden />
-                </button>
-            ) : null}
-            <div className={cn("grid transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none", collapsed || isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")} inert={!collapsed && !isOpen}>
-                <div className="min-h-0 overflow-hidden">{content}</div>
+        <div className="app-workspace-nav-group flex shrink-0 flex-col" role="group" aria-label={group.heading} data-nav-group-heading={group.heading}>
+            {!collapsed ? <h2 className="app-workspace-nav-group-label">{group.heading}</h2> : null}
+            <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => (
+                    <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onLogout={onLogout} collapsed={collapsed} />
+                ))}
             </div>
         </div>
     );

@@ -31,26 +31,41 @@ function renderSidebar(path: string, collapsed: boolean, generationEnabled: bool
     }
 }
 
-test("创作、生成、内容和资源各自成组，当前链接标记为当前页", () => {
+test("左栏按约定的四组和入口顺序展示，路由和当前页标记不变", () => {
     const document = renderSidebar("/toolbox/video", false, true);
     const groups = [...document.querySelectorAll(".app-workspace-nav-group")];
-    expect(groups.map((group) => group.getAttribute("data-nav-group-heading"))).toEqual(["创作空间", "生成工具", "我的内容", "创作资源"]);
-    const ids = groups.map((group) => [...group.querySelectorAll("[data-nav-id]")].map((item) => item.getAttribute("data-nav-id")));
-    expect(ids).toEqual([
-        ["home", "projects", "canvas"],
-        ["toolbox-image", "toolbox-video"],
-        ["assets", "tasks"],
-        ["skills", "inspirations"],
+    expect(groups.map((group) => group.getAttribute("data-nav-group-heading"))).toEqual(["创作", "生成工具", "任务与素材", "灵感与技能"]);
+    const links = groups.map((group) => [...group.querySelectorAll("a[data-nav-id]")].map((item) => [item.textContent, item.getAttribute("href")]));
+    expect(links).toEqual([
+        [
+            ["首页", "/"],
+            ["画布", "/canvas"],
+            ["短剧项目", "/projects"],
+        ],
+        [
+            ["图片生成", "/toolbox/image"],
+            ["视频生成", "/toolbox/video"],
+        ],
+        [
+            ["生成任务", "/tasks"],
+            ["素材库", "/assets"],
+        ],
+        [
+            ["灵感库", "/inspirations"],
+            ["技能库", "/skills"],
+        ],
     ]);
     expect(document.querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/toolbox/video");
 });
 
-test("经典皮肤保留创作区素材入口，灵感页仍可从导航进入", () => {
-    const document = renderSidebar("/", false, true, false);
+test("展开侧栏时分组标题不是按钮，仅保留整栏收起按钮", () => {
+    const document = renderSidebar("/", false, true);
     const groups = [...document.querySelectorAll(".app-workspace-nav-group")];
-    expect(groups[0]?.querySelector('[data-nav-id="assets"]')?.getAttribute("href")).toBe("/assets");
-    expect(document.querySelector('[data-nav-id="inspirations"]')?.getAttribute("href")).toBe("/inspirations");
-    expect(document.querySelector('[data-nav-id="plugins"]')).toBeNull();
+    expect(groups.map((group) => group.querySelector("h2")?.textContent)).toEqual(["创作", "生成工具", "任务与素材", "灵感与技能"]);
+    const toggles = [...document.querySelectorAll("button[aria-expanded]")];
+    expect(toggles).toHaveLength(1);
+    expect(toggles[0]?.classList.contains("app-workspace-sidebar-collapse-toggle")).toBe(true);
+    expect(toggles[0]?.getAttribute("aria-expanded")).toBe("true");
 });
 
 test("禁用生成工具时没有空分组，客态收起后仍可展开及访问完整名称", () => {
@@ -58,7 +73,8 @@ test("禁用生成工具时没有空分组，客态收起后仍可展开及访�
     expect(document.querySelectorAll(".app-workspace-nav-group")).toHaveLength(3);
     expect(document.querySelector('[data-nav-id="plugins"]')).toBeNull();
     expect(document.querySelector('[data-nav-id="toolbox-image"]')).toBeNull();
-    expect(document.querySelector('[data-nav-id="canvas"]')?.getAttribute("aria-label")).toBe("自由画布");
+    expect(document.querySelector('[data-nav-id="canvas"]')?.getAttribute("aria-label")).toBe("画布");
+    expect(document.querySelector(".app-workspace-nav-group h2")).toBeNull();
     expect(document.querySelector(".app-workspace-sidebar-brand-row .app-workspace-sidebar-collapse-toggle")?.getAttribute("aria-expanded")).toBe("false");
 });
 

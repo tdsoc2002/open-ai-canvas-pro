@@ -48,6 +48,7 @@ export const frFR: Messages = {
             canvasesFailed: "Impossible de charger les canevas",
             switchUnavailable: "Attendez la fin de la création en cours",
             inspirations: "Inspirations",
+            inspirationLibrary: "Inspirations",
             home: "Créer",
             projects: "Courts métrages",
             ecommerce: "Agent e-commerce",

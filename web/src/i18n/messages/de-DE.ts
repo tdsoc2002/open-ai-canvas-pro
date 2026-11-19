@@ -48,6 +48,7 @@ export const deDE: Messages = {
             canvasesFailed: "Canvases konnten nicht geladen werden",
             switchUnavailable: "Warte, bis die aktuelle Erstellung abgeschlossen ist",
             inspirations: "Inspirationen",
+            inspirationLibrary: "Inspirationen",
             home: "Erstellen",
             projects: "Kurzserien",
             ecommerce: "E-Commerce-Agent",
