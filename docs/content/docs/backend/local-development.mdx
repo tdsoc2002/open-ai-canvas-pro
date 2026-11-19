@@ -5,6 +5,24 @@ description: 在宿主机启动影策前后端开发服务
 
 # 本地开发
 
+## macOS 一键启动开发库环境
+
+当前开发机统一使用仓库根目录的 `start-local.command`（Finder 双击），或在仓库根目录运行：
+
+```bash
+./scripts/start-local.sh
+```
+
+此入口固定连接已配置的 PostgreSQL 开发库 `LJCanvas-dev`：先建立或复用 SSH 隧道，再启动独立本机 Redis、后端 `127.0.0.1:8080` 和前端 `127.0.0.1:3000`。前端 `/api` 代理到该开发后端。访问 [http://127.0.0.1:3000](http://127.0.0.1:3000)。首次建立 SSH 会话时按终端提示输入 SSH 密码，不在脚本中保存密码。
+
+前置条件是本机已有被 Git 忽略的 `.local/config/ljcanvas-dev.env`、权限为 `0600` 的 pgpass 文件，以及 `.local/` 中的开发库、前端和后端入口。这些本机配置和凭据不随仓库分发；缺失或不符合约束时直接报错，**不会回退到 SQLite**。仅检查本机配置而不连接服务时运行 `./scripts/start-local.sh --check`。
+
+脚本按已安装 Vite 的 `engines.node` 检查当前 Node 版本，保留现有运行时选择；不兼容时在启动服务前报错。随后验证数据库目标、进程归属和前后端就绪状态。已经正确运行的开发进程会复用；未知端口占用会报错，不自动结束其他进程。需要运行新修改的 Go 后端代码时，先确认并停止本项目的开发后端，再运行入口。日志和 PID 文件位于 `.local/cache/ljcanvas-dev/`；启动失败只回收本次新建的前后端进程。
+
+本地 Redis 仅使用私有 Unix socket，文件数据目录为 `.local/project-workbench-debug/ljcanvas-dev`，`CANVAS_AUTO_MIGRATE=false`，不自动执行迁移、不连接远程 Agent，也不复用服务器 Redis。脚本不会部署、修改或重启服务器服务；已有 `8081` SQLite 后端不会被接管或访问。
+
+下方 Windows 和手工启动说明是其他启动方式，不属于上述开发库默认入口。后端本身仍不自动读取 `.env`，不要用不带开发库环境变量的裸 `go run` 代替这一入口。
+
 ## SMTP 邮件故障日志
 
 注册、登录、绑定邮箱和密码找回的邮件投递失败统一输出 `ERROR` 级别的 `smtp email delivery failed` 后端日志。日志包含 `host`、`port`、`encryption`、脱敏 `recipient` 和 `error`，默认 `CANVAS_LOG_LEVEL=info` 即可看到，无需开启 debug。

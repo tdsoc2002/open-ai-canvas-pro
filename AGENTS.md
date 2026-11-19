@@ -20,9 +20,11 @@
 
 ### Agent 本地开发
 
+**已配置 `LJCanvas-dev` 的本机默认入口**：使用根目录 `start-local.command` 或 `scripts/start-local.sh`，统一启动 SSH 隧道、独立本机 Redis、后端 `8080` 和前端 `3000`。不得改用未注入数据库环境的裸 `go run` 回退到 SQLite，也不接管原 `8081` SQLite 服务。缺少 `.local/config/ljcanvas-dev.env` 或私有凭据时先报错，不自行改连其他库；不自动迁移、不复用服务器 Redis、不修改或重启服务器服务。操作说明见 [本地开发](docs/content/docs/backend/local-development.mdx)。
+
 详细说明请参考 [docs/AGENT_LOCAL_DEVELOPMENT.md](docs/AGENT_LOCAL_DEVELOPMENT.md)。
 
-**快速启动**：
+**未启用上述开发库入口时的通用手工启动**：
 
 ```bash
 # 1. 安装 Agent runtime 依赖
