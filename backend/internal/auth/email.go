@@ -343,7 +343,7 @@ func normalizeEmailSetting(value EmailSettingValue) EmailSettingValue {
 }
 
 func (s *Service) publicEmailSetting(setting *model.SystemSetting, value EmailSettingValue) *PublicEmailSetting {
-	inherited := value.FromName == "" || value.FromName == DefaultBrandName
+	inherited := inheritsEmailSenderName(value.FromName)
 	value = resolveEmailSender(value, s.host.BrandName())
 	result := &PublicEmailSetting{
 		Enabled: value.Enabled, Host: value.Host, Port: value.Port, Username: value.Username, Encryption: value.Encryption,
@@ -427,8 +427,13 @@ func validateRegistrationEmailDomain(email string, allowedDomains []string) erro
 	return kernel.BadAuthRequest("该邮箱域名不在管理员设置的白名单内")
 }
 
+func inheritsEmailSenderName(name string) bool {
+	// 旧版已把「影策」作为继承站点名称保存，不能把它当成显式自定义。
+	return name == "" || name == "影策" || name == DefaultBrandName
+}
+
 func resolveEmailSender(value EmailSettingValue, brandName string) EmailSettingValue {
-	if value.FromName == "" || value.FromName == DefaultBrandName {
+	if inheritsEmailSenderName(value.FromName) {
 		value.FromName = brandName
 	}
 	return value

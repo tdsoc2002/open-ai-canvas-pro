@@ -20,7 +20,7 @@ func registerOIDCRoutes(r *gin.RouterGroup, svc *service.Service) {
 		c.Header("Cache-Control", "no-store")
 		c.Header("Referrer-Policy", "no-referrer")
 		if c.GetHeader("Sec-Fetch-Site") == "cross-site" {
-			failService(c, kernel.Forbidden("请从影策登录页发起 OIDC 登录"))
+			failService(c, kernel.Forbidden("请从乐见画布登录页发起 OIDC 登录"))
 			return
 		}
 		if !enforceRateLimit(c, "oidc-start:"+c.ClientIP(), 20, 10*time.Minute) {

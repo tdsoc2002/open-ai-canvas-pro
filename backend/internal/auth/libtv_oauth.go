@@ -197,7 +197,7 @@ func (s *Service) CompleteLibTVOAuthCallback(code, state, errorCode, errorDescri
 		}
 		return libTVOAuthHTML(false, err.Error()), status, nil
 	}
-	return libTVOAuthHTML(true, "已连接 LibTV 账号，可以关闭此页面，返回影策继续。"), http.StatusOK, nil
+	return libTVOAuthHTML(true, "已连接 LibTV 账号，可以关闭此页面，返回乐见画布继续。"), http.StatusOK, nil
 }
 
 func (s *Service) DisconnectLibTV(actor *model.User) (*PublicLibTVSetting, error) {
@@ -341,7 +341,7 @@ func (rt libTVRuntime) registerClient(meta libTVOAuthMetadata, redirectURI strin
 		return libTVRegisteredClient{}, errors.New("LibTV 授权服务器未提供动态注册端点")
 	}
 	payload, err := json.Marshal(map[string]any{
-		"client_name":                "影策 LibTV 画布导入",
+		"client_name":                "乐见画布 LibTV 导入",
 		"redirect_uris":              []string{redirectURI},
 		"grant_types":                []string{"authorization_code", "refresh_token"},
 		"response_types":             []string{"code"},
@@ -670,7 +670,7 @@ func parseLibTVCallbackURL(raw string) (string, string, error) {
 
 func libTVCallbackHint(mode, redirectURI string) string {
 	if mode == libTVCallbackModeRedirect {
-		return "将打开 LibTV 授权页，请用微信扫码。完成后会自动回到影策。"
+		return "将打开 LibTV 授权页，请用微信扫码。完成后会自动回到乐见画布。"
 	}
 	return "LibTV 目前只接受本机回环地址（http://127.0.0.1 或 localhost）作为 OAuth 回调，不接受公网 IP 或域名。请在微信扫码后，把浏览器地址栏中以 " + redirectURI + " 开头的完整地址粘贴回来。"
 }

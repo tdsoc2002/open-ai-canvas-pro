@@ -37,7 +37,7 @@ func TestPasswordResetChangesPasswordConsumesCodeAndRevokesSessions(t *testing.T
 
 	var deliveredCode string
 	svc.SetMailSender(func(_ EmailSettingValue, recipient string, subject string, body string) error {
-		if recipient != user.Email || !strings.HasSuffix(subject, " 是你的影策密码重置验证码") || !strings.HasPrefix(subject, codeFromEmailBody(body)+" ") {
+		if recipient != user.Email || !strings.HasSuffix(subject, " 是你的乐见画布密码重置验证码") || !strings.HasPrefix(subject, codeFromEmailBody(body)+" ") {
 			t.Fatalf("unexpected reset email: recipient=%q subject=%q", recipient, subject)
 		}
 		deliveredCode = codeFromEmailBody(body)
@@ -196,6 +196,7 @@ func TestSenderNameBrandsRegistrationAndPasswordResetEmails(t *testing.T) {
 		wantName string
 	}{
 		{name: "default inherits appearance", fromName: DefaultBrandName, wantName: "HIMA Studio"},
+		{name: "legacy Yingce default inherits appearance", fromName: "影策", wantName: "HIMA Studio"},
 		{name: "empty inherits appearance", fromName: "", wantName: "HIMA Studio"},
 		{name: "custom sender overrides appearance", fromName: "Custom Canvas", wantName: "Custom Canvas"},
 		{name: "custom sender is trimmed", fromName: "  自定义工作台  ", wantName: "自定义工作台"},

@@ -50,7 +50,7 @@ func TestRegisterRequiresAcceptedTermsBeforeWriting(t *testing.T) {
 		}
 		_, err := svc.Register(req)
 		var authErr *AuthError
-		if !errors.As(err, &authErr) || authErr.Status != 400 || authErr.Message != "请先同意影策服务协议" {
+		if !errors.As(err, &authErr) || authErr.Status != 400 || authErr.Message != "请先同意乐见画布服务协议" {
 			t.Fatalf("Register() error = %v", err)
 		}
 		for _, entity := range []any{&model.User{}, &model.AuthSession{}} {
@@ -150,7 +150,7 @@ func TestLinuxDORegistrationAgreement(t *testing.T) {
 		wantError    string
 		wantBonus    int
 	}{
-		{name: "new user without agreement", registration: true, wantError: "请先同意影策服务协议"},
+		{name: "new user without agreement", registration: true, wantError: "请先同意乐见画布服务协议"},
 		{name: "new user with agreement", accepted: true, registration: true, wantBonus: 1},
 		{name: "existing user without agreement", existing: true, registration: true},
 		{name: "existing user with registration closed", existing: true},
