@@ -103,16 +103,18 @@ function AuthPageScene() {
                             <BrandLogo theme={theme} className="size-7" alt="" fallback={<span className="size-7 bg-current" style={{ mask: "url(/logo.svg) center / contain no-repeat", WebkitMask: "url(/logo.svg) center / contain no-repeat" }} />} />
                             {appearance.brandName}
                         </Link>
-                        <button
-                            type="button"
-                            className="auth-scene-hero-control inline-flex items-center gap-2 rounded-full px-3 py-2 text-[var(--fs-label)] backdrop-blur-xl transition disabled:cursor-default"
-                            onClick={playVideo}
-                            disabled={videoPlaying || !appearance.authVideoUrl}
-                            aria-pressed={videoPlaying}
-                        >
-                            <Play className="size-3 fill-current" />
-                            {videoPlaying ? t("auth.videoPlaying") : t("auth.playVideo")}
-                        </button>
+                        {appearance.authVideoUrl ? (
+                            <button
+                                type="button"
+                                className="auth-scene-hero-control inline-flex items-center gap-2 rounded-full px-3 py-2 text-[var(--fs-label)] backdrop-blur-xl transition disabled:cursor-default"
+                                onClick={playVideo}
+                                disabled={videoPlaying}
+                                aria-pressed={videoPlaying}
+                            >
+                                <Play className="size-3 fill-current" />
+                                {videoPlaying ? t("auth.videoPlaying") : t("auth.playVideo")}
+                            </button>
+                        ) : null}
                     </div>
                     <motion.div
                         initial={reducedMotion ? false : { opacity: 0, y: 18 }}

@@ -38,6 +38,15 @@ test("login video autoplay defaults on and can be disabled explicitly", () => {
     expect(normalizePublicAppearance({ authVideoAutoplay: false }).authVideoAutoplay).toBe(false);
 });
 
+test("fallback appearance is Joysee and does not request upstream login media", () => {
+    const appearance = normalizePublicAppearance({});
+    expect(appearance.brandName).toBe("乐见画布");
+    expect(appearance.brandSlug).toBe("joysee-canvas");
+    expect(appearance.canvas.agentName).toBe("小源");
+    expect(appearance.authVideoUrl).toBe("");
+    expect(appearance.authVideoPosterUrl).toBe("");
+});
+
 test("appearance URLs reject executable and insecure remote schemes", () => {
     const appearance = normalizePublicAppearance({
         logoConfigured: true,
@@ -122,10 +131,11 @@ test("object storage can adopt the configured English brand identifier without r
     expect(source).toContain("setting.pathPrefix || DEFAULT_OSS_PATH_PREFIX");
 });
 
-test("appearance management exposes a server-side reset to the built-in Yingce brand", async () => {
+test("appearance management exposes a server-side reset to Joysee", async () => {
     const [pageSource, apiSource] = await Promise.all([Promise.resolve(moduleGroupSource("pages/admin/settings/appearance-settings-page.tsx")), Bun.file(new URL("../src/services/api/appearance.ts", import.meta.url)).text()]);
 
-    expect(pageSource).toContain("恢复影策默认");
+    expect(pageSource).toContain("恢复乐见画布默认");
+    expect(pageSource).not.toContain("恢复影策默认");
     expect(pageSource).toContain("resetAdminAppearance()");
     expect(pageSource).toContain("已上传文件仍保留在存储资源中");
     expect(apiSource).toContain('http.delete<{ setting: AdminAppearance }>("/admin/settings/appearance")');

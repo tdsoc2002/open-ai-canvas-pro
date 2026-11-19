@@ -92,6 +92,18 @@ func (s *Service) cleanupDetachedUserResources(userID string, candidates []model
 	for resourceID := range s.appearanceResourceReferences(resourceIDs) {
 		referenced[resourceID] = struct{}{}
 	}
+	// 在活动配置之后读取保留记录：重置事务提交前后至少有一处引用。
+	keys := make([]string, 0, len(resourceIDs))
+	for _, resourceID := range resourceIDs {
+		keys = append(keys, retainedAppearanceResourcePrefix+resourceID)
+	}
+	kept, err := s.repo.SystemSettingKeys(keys)
+	if err != nil {
+		return err
+	}
+	for _, key := range kept {
+		referenced[strings.TrimPrefix(key, retainedAppearanceResourcePrefix)] = struct{}{}
+	}
 	for _, reference := range snapshot.Direct {
 		if _, exists := candidateSet[reference.ResourceID]; exists {
 			referenced[reference.ResourceID] = struct{}{}

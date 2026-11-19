@@ -18,11 +18,13 @@ import (
 
 	"yingce/backend/internal/assets"
 	"yingce/backend/internal/model"
+	"yingce/backend/internal/repository"
 
 	"gorm.io/gorm"
 )
 
 const appearanceSettingKey = "appearance"
+const retainedAppearanceResourcePrefix = "appearance_retained:"
 
 const (
 	AppearanceAssetLogo        = "logo"
@@ -42,12 +44,10 @@ const (
 )
 
 const (
-	defaultAppearanceBrandName = "影策"
-	defaultAppearanceBrandSlug = "open-ai-canvas"
+	defaultAppearanceBrandName = "乐见画布"
+	defaultAppearanceBrandSlug = "joysee-canvas"
 	defaultAppearanceSkinID    = "classic"
 	defaultAppearanceLogoURL   = "/logo.svg"
-	defaultAppearanceVideoURL  = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4"
-	defaultAppearancePosterURL = "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg"
 	defaultAppearanceHeroTitle = "让一个故事，\n从文字走向银幕。"
 	defaultRedeemPurchaseURL   = "" // 默认不配置购买链接，前端为空时不展示入口
 )
@@ -294,11 +294,28 @@ func (s *Service) ResetAppearance(actor *model.User) (*AdminAppearanceSetting, e
 	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.DeleteSystemSetting(appearanceSettingKey); err != nil {
+	after := defaultAppearanceSetting()
+	event, err := newAdminAuditEvent(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复乐见画布默认外观", map[string]any{"before": before, "after": after})
+	if err != nil {
 		return nil, err
 	}
-	after := defaultAppearanceSetting()
-	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复影策默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
+	if err := s.repo.Transaction(func(tx *repository.Repository) error {
+		for _, binding := range appearanceResourceBindings(before) {
+			if binding.resourceID == "" {
+				continue
+			}
+			// 重置不再公开这些素材，但原先使用的文件仍由管理员决定是否删除。
+			if err := tx.SaveSystemSetting(&model.SystemSetting{
+				Key: retainedAppearanceResourcePrefix + binding.resourceID, ValueJSON: "true", UpdatedBy: actor.ID,
+			}); err != nil {
+				return err
+			}
+		}
+		if err := tx.DeleteSystemSetting(appearanceSettingKey); err != nil {
+			return err
+		}
+		return tx.AppendAdminAudit(event)
+	}); err != nil {
 		return nil, err
 	}
 	return s.AdminAppearance(actor)
@@ -393,10 +410,28 @@ func (s *Service) appearanceResourceReferences(resourceIDs []string) map[string]
 		}
 		return result
 	}
-	candidates := []struct {
-		resourceID string
-		title      string
-	}{
+	wanted := make(map[string]struct{}, len(resourceIDs))
+	for _, resourceID := range resourceIDs {
+		wanted[resourceID] = struct{}{}
+	}
+	for _, candidate := range appearanceResourceBindings(value) {
+		if candidate.resourceID == "" {
+			continue
+		}
+		if _, exists := wanted[candidate.resourceID]; exists {
+			result[candidate.resourceID] = appendUniqueAdminResourceReference(result[candidate.resourceID], AdminResourceReferenceView{Kind: "外观", ID: appearanceSettingKey, Title: candidate.title})
+		}
+	}
+	return result
+}
+
+type appearanceResourceBinding struct {
+	resourceID string
+	title      string
+}
+
+func appearanceResourceBindings(value AppearanceSetting) []appearanceResourceBinding {
+	bindings := []appearanceResourceBinding{
 		{resourceID: value.LogoResourceID, title: "浅色模式品牌 Logo"},
 		{resourceID: value.DarkLogoResourceID, title: "深色模式品牌 Logo"},
 		{resourceID: value.AuthVideoResourceID, title: "登录页品牌视频"},
@@ -407,26 +442,11 @@ func (s *Service) appearanceResourceReferences(resourceIDs []string) map[string]
 	for _, release := range value.Updates.Releases {
 		for _, block := range release.Blocks {
 			if block.ResourceID != "" {
-				candidates = append(candidates, struct {
-					resourceID string
-					title      string
-				}{block.ResourceID, "更新公告 " + release.Version})
+				bindings = append(bindings, appearanceResourceBinding{block.ResourceID, "更新公告 " + release.Version})
 			}
 		}
 	}
-	wanted := make(map[string]struct{}, len(resourceIDs))
-	for _, resourceID := range resourceIDs {
-		wanted[resourceID] = struct{}{}
-	}
-	for _, candidate := range candidates {
-		if candidate.resourceID == "" {
-			continue
-		}
-		if _, exists := wanted[candidate.resourceID]; exists {
-			result[candidate.resourceID] = appendUniqueAdminResourceReference(result[candidate.resourceID], AdminResourceReferenceView{Kind: "外观", ID: appearanceSettingKey, Title: candidate.title})
-		}
-	}
-	return result
+	return bindings
 }
 
 func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, error) {
@@ -453,7 +473,7 @@ func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, err
 		value.BrandName = defaultAppearanceBrandName
 	}
 	value.BrandSlug = strings.ToLower(strings.TrimSpace(value.BrandSlug))
-	if value.BrandSlug == "" {
+	if value.BrandSlug == "" || (value.BrandName == defaultAppearanceBrandName && value.BrandSlug == "open-ai-canvas") {
 		value.BrandSlug = defaultAppearanceBrandSlug
 	}
 	value.AuthHeroTitle = normalizeAppearanceCopy(value.AuthHeroTitle)
@@ -740,8 +760,6 @@ func publicAppearanceSetting(setting *model.SystemSetting, value AppearanceSetti
 		LogoURL:             defaultAppearanceLogoURL,
 		DarkLogoURL:         defaultAppearanceLogoURL,
 		LogoFrameEnabled:    value.LogoFrameEnabled,
-		AuthVideoURL:        defaultAppearanceVideoURL,
-		AuthVideoPosterURL:  defaultAppearancePosterURL,
 		AuthVideoAutoplay:   value.AuthVideoAutoplay,
 		SkinID:              value.SkinID,
 		ActiveSkin:          activeAppearanceSkin(value.SkinThemes, value.SkinID),
@@ -778,11 +796,6 @@ func publicAppearanceSetting(setting *model.SystemSetting, value AppearanceSetti
 	if value.AuthVideoResourceID != "" {
 		result.AuthVideoConfigured = true
 		result.AuthVideoURL = appearanceAssetURL(AppearanceAssetVideo, revision)
-		if value.AuthVideoPosterResourceID == "" {
-			// A custom video must not briefly reveal the built-in poster while its
-			// first frame loads. An optional custom poster may be configured below.
-			result.AuthVideoPosterURL = ""
-		}
 	}
 	if value.AuthVideoPosterResourceID != "" {
 		result.AuthVideoPosterConfigured = true

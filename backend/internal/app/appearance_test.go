@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"yingce/backend/internal/database"
 	"yingce/backend/internal/model"
@@ -30,7 +31,7 @@ func TestAppearanceDefaultsPreserveBuiltInBrand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if appearance.Configured || appearance.SchemaVersion != appearanceSchemaVersion || appearance.BrandName != defaultAppearanceBrandName || appearance.BrandSlug != defaultAppearanceBrandSlug || appearance.AuthHeroTitle != defaultAppearanceHeroTitle || appearance.AuthHeroDescription != "" || appearance.LogoURL != defaultAppearanceLogoURL || appearance.DarkLogoURL != defaultAppearanceLogoURL || !appearance.LogoFrameEnabled || appearance.AuthVideoURL != defaultAppearanceVideoURL || appearance.AuthVideoPosterURL != defaultAppearancePosterURL || !appearance.AuthVideoAutoplay || appearance.SkinID != defaultAppearanceSkinID || appearance.SEOTitle != defaultAppearanceBrandName || !strings.Contains(appearance.SEODescription, defaultAppearanceBrandName) || !strings.Contains(appearance.FooterCopyright, defaultAppearanceBrandName) || appearance.ICPFilingEnabled {
+	if appearance.Configured || appearance.SchemaVersion != appearanceSchemaVersion || appearance.BrandName != defaultAppearanceBrandName || appearance.BrandSlug != defaultAppearanceBrandSlug || appearance.AuthHeroTitle != defaultAppearanceHeroTitle || appearance.AuthHeroDescription != "" || appearance.LogoURL != defaultAppearanceLogoURL || appearance.DarkLogoURL != defaultAppearanceLogoURL || !appearance.LogoFrameEnabled || appearance.AuthVideoURL != "" || appearance.AuthVideoPosterURL != "" || !appearance.AuthVideoAutoplay || appearance.SkinID != defaultAppearanceSkinID || appearance.SEOTitle != defaultAppearanceBrandName || !strings.Contains(appearance.SEODescription, defaultAppearanceBrandName) || !strings.Contains(appearance.FooterCopyright, defaultAppearanceBrandName) || appearance.ICPFilingEnabled {
 		t.Fatalf("Appearance() = %#v", appearance)
 	}
 	if appearance.LogoConfigured || appearance.DarkLogoConfigured || appearance.AuthVideoConfigured || appearance.AuthVideoPosterConfigured || appearance.Revision != "builtin" {
@@ -285,7 +286,7 @@ func TestAppearanceReusesSingleLogoAcrossThemes(t *testing.T) {
 
 func TestResetAppearanceRestoresBuiltInBrandWithoutDeletingResources(t *testing.T) {
 	svc, db, _, admin := newAppearanceTestService(t)
-	resource := model.Resource{ID: "brand-logo", UserID: admin.ID, Kind: "image", Status: model.ResourceStatusReady, Provider: "local", ObjectKey: "brand/logo.png", MimeType: "image/png"}
+	resource := model.Resource{ID: "brand-logo", UserID: admin.ID, Kind: "image", Status: model.ResourceStatusReady, Provider: "local", ObjectKey: "brand/logo.png", MimeType: "image/png", CreatedAt: time.Now().Add(-48 * time.Hour)}
 	if err := db.Create(&resource).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -303,8 +304,20 @@ func TestResetAppearanceRestoresBuiltInBrandWithoutDeletingResources(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	if reset.Public.BrandName != "乐见画布" || reset.Public.BrandSlug != "joysee-canvas" || reset.Public.Canvas.AgentName != "小源" {
+		t.Fatalf("恢复外观后仍未使用乐见品牌：%s / %s / %s", reset.Public.BrandName, reset.Public.BrandSlug, reset.Public.Canvas.AgentName)
+	}
+	if reset.Public.AuthVideoURL != "" || reset.Public.AuthVideoPosterURL != "" {
+		t.Fatal("恢复默认后不应请求上游登录素材")
+	}
 	if reset.Configured || reset.BrandName != defaultAppearanceBrandName || reset.BrandSlug != defaultAppearanceBrandSlug || reset.AuthHeroTitle != defaultAppearanceHeroTitle || reset.LogoResourceID != "" || reset.DarkLogoResourceID != "" || !reset.LogoFrameEnabled || reset.Public.Revision != "builtin" || reset.Public.LogoConfigured || reset.Public.DarkLogoConfigured {
 		t.Fatalf("ResetAppearance() = %#v", reset)
+	}
+	if err := svc.cleanupDetachedUserResources(admin.ID, []model.Resource{resource}); err != nil {
+		t.Fatal(err)
+	}
+	if len(svc.appearanceResourceReferences([]string{resource.ID})) != 0 {
+		t.Fatal("已恢复默认，旧素材不应伪装为仍在使用，妨碍管理员手动清理")
 	}
 	var resourceCount int64
 	if err := db.Model(&model.Resource{}).Where("id = ?", resource.ID).Count(&resourceCount).Error; err != nil {
@@ -319,6 +332,20 @@ func TestResetAppearanceRestoresBuiltInBrandWithoutDeletingResources(t *testing.
 	}
 	if auditCount != 1 {
 		t.Fatalf("reset audit count = %d, want 1", auditCount)
+	}
+}
+
+func TestJoyseeAppearanceNormalizesLegacyDefaultBrandSlug(t *testing.T) {
+	svc, db, _, _ := newAppearanceTestService(t)
+	if err := db.Create(&model.SystemSetting{Key: appearanceSettingKey, ValueJSON: `{"schemaVersion":1,"brandName":"乐见画布","brandSlug":"open-ai-canvas"}`}).Error; err != nil {
+		t.Fatal(err)
+	}
+	a, err := svc.Appearance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.BrandSlug != "joysee-canvas" || a.AuthVideoURL != "" || a.AuthVideoPosterURL != "" {
+		t.Fatalf("旧乐见配置未使用新默认标识和登录媒体：%s", a.BrandSlug)
 	}
 }
 

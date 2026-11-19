@@ -149,6 +149,12 @@ func (r *Repository) SaveSystemSetting(setting *model.SystemSetting) error {
 	return r.db.Save(setting).Error
 }
 
+func (r *Repository) SystemSettingKeys(keys []string) ([]string, error) {
+	var found []string
+	err := r.db.Model(&model.SystemSetting{}).Where("key IN ?", keys).Pluck("key", &found).Error
+	return found, err
+}
+
 func (r *Repository) SystemSettingsWithPrefix(prefix string, limit int) ([]model.SystemSetting, error) {
 	var settings []model.SystemSetting
 	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(prefix)
