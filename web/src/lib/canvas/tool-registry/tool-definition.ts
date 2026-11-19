@@ -109,11 +109,11 @@ export type ToolbarHandlers = {
 
 /** 工具运行时可见的上下文。工具定义通过纯函数读取状态 */
 export type ToolContext = {
-    combinedMainToolbar?: boolean;
     selectedCount: number;
     selectedNodeTypes: Set<CanvasNodeTypeId>;
     selectedVideoCount: number;
     canvasTool: CanvasToolMode;
+    singleCanvasModeButton?: boolean;
     workspaceMode: CanvasWorkspaceMode;
     isProjectLinked: boolean;
     canUndo: boolean;

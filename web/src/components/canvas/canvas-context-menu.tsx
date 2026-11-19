@@ -1,6 +1,34 @@
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { ArrowLeft, AtSign, Check, ChevronRight, CircleCheckBig, Clapperboard, Clipboard, CloudUpload, Copy, Download, FolderOpen, FolderPlus, History, Image as ImageIcon, Layers3, LayoutTemplate, Link2, Maximize2, PanelTop, Pencil, Plus, Redo2, Tags, Trash2, Undo2, Upload, UserRound } from "lucide-react";
+import {
+    ArrowLeft,
+    AtSign,
+    Check,
+    ChevronRight,
+    CircleCheckBig,
+    Clapperboard,
+    Clipboard,
+    CloudUpload,
+    Copy,
+    Download,
+    FolderOpen,
+    FolderPlus,
+    History,
+    Image as ImageIcon,
+    Layers3,
+    LayoutTemplate,
+    Link2,
+    Maximize2,
+    PanelTop,
+    Pencil,
+    Plus,
+    Redo2,
+    Tags,
+    Trash2,
+    Undo2,
+    Upload,
+    UserRound,
+} from "lucide-react";
 
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
 import { ASSET_ASSIGNABLE_CATEGORY_OPTIONS } from "@/lib/asset-category";
@@ -19,6 +47,10 @@ import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type Canvas
 type CanvasAssetCategory = NonNullable<NonNullable<CanvasNodeData["metadata"]>["assetCategory"]>;
 
 const assetCategoryOptions: Array<{ value: CanvasAssetCategory; label: string }> = ASSET_ASSIGNABLE_CATEGORY_OPTIONS;
+const CONTEXT_MENU_WIDTH = 224;
+const CREATE_MENU_WIDTH = 360;
+const MENU_GAP = 8;
+const VIEWPORT_GUTTER = 12;
 
 type CanvasNodeContextMenuProps = {
     menu: ContextMenuState;
@@ -166,13 +198,12 @@ export function CanvasNodeContextMenu({
     const versionCount = listMediaVersions(node).length;
     const versionCurrent = currentMediaVersion(node);
     const canOpenVersions = Boolean(onOpenVersions && hasMediaVersionHistory(node));
-    const versionDetail = canOpenVersions
-        ? versionCurrent ? `当前 V${versionCurrent.number} · ${formatRelativeTime(versionCurrent.createdAt)}` : "当前内容未在历史中，可切回旧版本"
-        : "重新生成或替换后保留旧版本";
+    const versionDetail = canOpenVersions ? (versionCurrent ? `当前 V${versionCurrent.number} · ${formatRelativeTime(versionCurrent.createdAt)}` : "当前内容未在历史中，可切回旧版本") : "重新生成或替换后保留旧版本";
     const versionMenuButton = onOpenVersions ? (
         <MenuButton icon={<History />} label="版本历史" badge={versionCount > 1 ? String(versionCount) : undefined} detail={versionDetail} disabled={!canOpenVersions} onClick={() => runAction(onOpenVersions)} />
     ) : null;
-    const position = getContextMenuPosition(menu, hasMultiSelection);
+    const estimatedHeight = menu.type === "node" ? (hasMultiSelection ? 290 : 360) : menu.type === "canvas" ? (hasMultiSelection ? 350 : 250) : 84;
+    const position = getContextMenuPosition(menu, estimatedHeight);
     const skippedDownloadCount = Math.max(0, selectedCount - downloadableSelectionCount);
     const downloadSelectionButton = hasMultiSelection ? (
         <MenuButton
@@ -192,8 +223,10 @@ export function CanvasNodeContextMenu({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-                className="aceternity-floating-panel fixed z-[var(--z-popover)] flex w-[224px] max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-[var(--r-lg)] border p-1.5 backdrop-blur-2xl backdrop-saturate-150"
-                style={{ left: position.left, top: position.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, "--menu-hover": theme.toolbar.itemHover, "--tw-ring-color": theme.node.muted } as CSSProperties}
+                className="aceternity-floating-panel fixed z-[var(--z-popover)] flex max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-[var(--r-lg)] border p-1.5 backdrop-blur-2xl backdrop-saturate-150"
+                style={
+                    { ...position, width: CONTEXT_MENU_WIDTH, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, "--menu-hover": theme.toolbar.itemHover, "--tw-ring-color": theme.node.muted } as CSSProperties
+                }
                 onContextMenu={(event) => event.preventDefault()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
@@ -203,13 +236,7 @@ export function CanvasNodeContextMenu({
                             <MenuHeader title="设置资产分类" description={node?.title || nodeTypeLabel(node)} onBack={() => setCategoryOpen(false)} />
                             <MenuSection label="项目用途" />
                             {assetCategoryOptions.map((option) => (
-                                <MenuButton
-                                    key={option.value}
-                                    icon={assetCategory === option.value ? <Check /> : <Tags />}
-                                    label={option.label}
-                                    active={assetCategory === option.value}
-                                    onClick={() => runAction(() => onSetAssetCategory(option.value))}
-                                />
+                                <MenuButton key={option.value} icon={assetCategory === option.value ? <Check /> : <Tags />} label={option.label} active={assetCategory === option.value} onClick={() => runAction(() => onSetAssetCategory(option.value))} />
                             ))}
                         </>
                     ) : menu.type === "canvas" ? (
@@ -221,13 +248,17 @@ export function CanvasNodeContextMenu({
                                     <MenuDivider />
                                 </>
                             ) : null}
-                            <MenuButton icon={<Plus className="size-4" />} label="添加节点" chevron active={addOpen} onClick={() => setAddOpen((value) => !value)} />
+                            <MenuButton icon={<Plus />} label="添加节点" chevron expanded={addOpen} onClick={() => setAddOpen((value) => !value)} />
                             <MenuButton icon={<Upload className="size-4" />} label="上传到这里" onClick={() => runAction(onUpload)} />
                             {!isProjectLinked ? <MenuButton icon={<FolderOpen className="size-4" />} label="从素材库插入" onClick={() => runAction(onOpenAssets)} /> : null}
-                            <MenuDivider />
-                            <MenuButton icon={<Undo2 className="size-4" />} label="撤销" shortcut="⌘Z" disabled={!canUndo} onClick={() => runAction(onUndo)} />
-                            <MenuButton icon={<Redo2 className="size-4" />} label="重做" shortcut="⇧⌘Z" disabled={!canRedo} onClick={() => runAction(onRedo)} />
-                            <MenuButton icon={<Clipboard className="size-4" />} label="粘贴" shortcut="⌘V" disabled={!canPaste} onClick={() => runAction(onPaste)} />
+                            <div
+                                className="mt-1 border-t border-[var(--menu-key-line)] pt-1 [&_kbd]:rounded-[var(--r-xs)] [&_kbd]:bg-[var(--menu-hover)] [&_kbd]:px-1.5"
+                                style={{ "--menu-key-line": theme.toolbar.border, "--menu-key-text": theme.node.muted } as CSSProperties}
+                            >
+                                <MenuButton icon={<Undo2 className="size-4" />} label="撤销" shortcut="⌘Z" disabled={!canUndo} onClick={() => runAction(onUndo)} />
+                                <MenuButton icon={<Redo2 className="size-4" />} label="重做" shortcut="⇧⌘Z" disabled={!canRedo} onClick={() => runAction(onRedo)} />
+                                <MenuButton icon={<Clipboard className="size-4" />} label="粘贴" shortcut="⌘V" disabled={!canPaste} onClick={() => runAction(onPaste)} />
+                            </div>
                         </>
                     ) : menu.type === "node" && hasMultiSelection ? (
                         <>
@@ -277,7 +308,15 @@ export function CanvasNodeContextMenu({
                                 <>
                                     <MenuHeader title={node?.title || nodeTypeLabel(node)} />
                                     <MenuSection label="节点操作" />
-                                    {isFrame ? <MenuButton icon={isFolder ? <FolderOpen /> : <PanelTop />} label={node?.metadata?.frame?.collapsed ? `展开${isFolder ? "文件夹" : "背板"}` : `折叠${isFolder ? "文件夹" : "背板"}`} onClick={() => runAction(onToggleFrame)} /> : <MenuButton icon={<FolderPlus />} label="保存到我的素材" disabled={!canSaveAsset} onClick={() => runAction(onSaveAsset)} />}
+                                    {isFrame ? (
+                                        <MenuButton
+                                            icon={isFolder ? <FolderOpen /> : <PanelTop />}
+                                            label={node?.metadata?.frame?.collapsed ? `展开${isFolder ? "文件夹" : "背板"}` : `折叠${isFolder ? "文件夹" : "背板"}`}
+                                            onClick={() => runAction(onToggleFrame)}
+                                        />
+                                    ) : (
+                                        <MenuButton icon={<FolderPlus />} label="保存到我的素材" disabled={!canSaveAsset} onClick={() => runAction(onSaveAsset)} />
+                                    )}
                                     {isText ? <MenuButton icon={<Maximize2 />} label="放大编辑" onClick={() => runAction(onEditText)} /> : null}
                                     {isDrawing ? <MenuButton icon={<Pencil />} label="打开绘图" onClick={() => runAction(onOpenDrawing)} /> : null}
                                     {isAudio ? versionMenuButton : null}
@@ -306,7 +345,7 @@ export function CanvasNodeContextMenu({
             <AnimatePresence>
                 {menu.type === "canvas" && addOpen ? (
                     <AddNodeContextMenu
-                        parentPosition={position}
+                        position={getAddNodeMenuPosition(position, estimatedHeight)}
                         workspaceMode={workspaceMode}
                         isProjectLinked={isProjectLinked}
                         onAddNode={(type) => runAction(() => onAddNode(type))}
@@ -324,11 +363,34 @@ export function CanvasNodeContextMenu({
     );
 }
 
-function AddNodeContextMenu({ parentPosition, workspaceMode, isProjectLinked, onAddNode, onAddFolder, onChooseStyle, onOpenPrevis, onUpload, onOpenAssets, onOpenProjectCharacters, onOpenPoseLibrary }: { parentPosition: { left: number; top: number }; workspaceMode: CanvasWorkspaceMode; isProjectLinked: boolean; onAddNode: (type: CanvasNodeTypeId) => void; onAddFolder: () => void; onChooseStyle: () => void; onOpenPrevis: () => void; onUpload: () => void; onOpenAssets: () => void; onOpenProjectCharacters: () => void; onOpenPoseLibrary?: () => void }) {
+function AddNodeContextMenu({
+    position,
+    workspaceMode,
+    isProjectLinked,
+    onAddNode,
+    onAddFolder,
+    onChooseStyle,
+    onOpenPrevis,
+    onUpload,
+    onOpenAssets,
+    onOpenProjectCharacters,
+    onOpenPoseLibrary,
+}: {
+    position: CSSProperties;
+    workspaceMode: CanvasWorkspaceMode;
+    isProjectLinked: boolean;
+    onAddNode: (type: CanvasNodeTypeId) => void;
+    onAddFolder: () => void;
+    onChooseStyle: () => void;
+    onOpenPrevis: () => void;
+    onUpload: () => void;
+    onOpenAssets: () => void;
+    onOpenProjectCharacters: () => void;
+    onOpenPoseLibrary?: () => void;
+}) {
     const theme = canvasThemes[useActiveTheme()];
     const installations = usePluginStore((state) => state.installations);
     const pluginStates = usePluginStore((state) => state.pluginStates);
-    const left = getSubmenuLeft(parentPosition.left);
     const createContext: AddNodeMenuContext = {
         workspaceMode,
         isProjectLinked,
@@ -368,10 +430,13 @@ function AddNodeContextMenu({ parentPosition, workspaceMode, isProjectLinked, on
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-            className="aceternity-floating-panel fixed z-[var(--z-popover)] w-[360px] origin-top overflow-hidden rounded-[var(--r-lg)] border p-1.5 backdrop-blur-2xl backdrop-saturate-150"
-            style={{ left, top: parentPosition.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
+            className="aceternity-floating-panel fixed z-[var(--z-popover)] flex origin-top flex-col overflow-hidden rounded-[var(--r-lg)] border p-1.5 backdrop-blur-2xl backdrop-saturate-150"
+            contentClassName="relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-contain thin-scrollbar"
+            data-canvas-wheel-scroll
+            style={{ ...position, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
             onContextMenu={(event) => event.preventDefault()}
             onPointerDown={(event) => event.stopPropagation()}
+            onWheel={(event) => event.stopPropagation()}
         >
             <CanvasCreateMenu commands={commands} />
         </SpotlightSurface>
@@ -382,10 +447,20 @@ function MenuHeader({ title, description, onBack }: { title: string; description
     const theme = canvasThemes[useActiveTheme()];
     return (
         <div className="mb-1 flex items-center gap-1.5 px-2 pb-1.5 pt-1.5">
-            {onBack ? <button type="button" onClick={onBack} className="grid size-6 shrink-0 place-items-center rounded-[var(--r-md)] outline-none transition-colors hover:bg-[var(--menu-hover)] focus-visible:ring-2" aria-label="返回媒体操作"><ArrowLeft className="size-3.5" /></button> : null}
+            {onBack ? (
+                <button type="button" onClick={onBack} className="grid size-6 shrink-0 place-items-center rounded-[var(--r-md)] outline-none transition-colors hover:bg-[var(--menu-hover)] focus-visible:ring-2" aria-label="返回媒体操作">
+                    <ArrowLeft className="size-3.5" />
+                </button>
+            ) : null}
             <span className="min-w-0">
-                <span className="block truncate font-semibold leading-5" style={{ fontSize: "var(--fs-ui)" }}>{title}</span>
-                {description && description !== title ? <span className="block truncate leading-4" style={{ color: theme.node.muted, fontSize: "var(--fs-label)" }}>{description}</span> : null}
+                <span className="block truncate font-semibold leading-5" style={{ fontSize: "var(--fs-ui)" }}>
+                    {title}
+                </span>
+                {description && description !== title ? (
+                    <span className="block truncate leading-4" style={{ color: theme.node.muted, fontSize: "var(--fs-label)" }}>
+                        {description}
+                    </span>
+                ) : null}
             </span>
         </div>
     );
@@ -393,31 +468,87 @@ function MenuHeader({ title, description, onBack }: { title: string; description
 
 function MenuSection({ label }: { label: string }) {
     const theme = canvasThemes[useActiveTheme()];
-    return <div className="px-2 pb-1 pt-1.5 font-medium leading-4" style={{ color: theme.node.faint, fontSize: "var(--fs-label)" }}>{label}</div>;
+    return (
+        <div className="px-2 pb-1 pt-1.5 font-medium leading-4" style={{ color: theme.node.faint, fontSize: "var(--fs-label)" }}>
+            {label}
+        </div>
+    );
 }
 
-function MenuButton({ icon, label, detail, shortcut, badge, chevron = false, active = false, disabled = false, danger = false, onClick }: { icon: ReactNode; label: string; detail?: string; shortcut?: string; badge?: string; chevron?: boolean; active?: boolean; disabled?: boolean; danger?: boolean; onClick?: () => void }) {
+function MenuButton({
+    icon,
+    label,
+    detail,
+    shortcut,
+    badge,
+    chevron = false,
+    active = false,
+    expanded,
+    disabled = false,
+    danger = false,
+    onClick,
+}: {
+    icon: ReactNode;
+    label: string;
+    detail?: string;
+    shortcut?: string;
+    badge?: string;
+    chevron?: boolean;
+    active?: boolean;
+    expanded?: boolean;
+    disabled?: boolean;
+    danger?: boolean;
+    onClick?: () => void;
+}) {
     const theme = canvasThemes[useActiveTheme()];
     const color = danger ? theme.accent.danger : theme.node.text;
-    // 菜单项默认无边无底：图标裸放、hover 只提亮表面，危险项改用淡红底。
+    const accent = `var(--brand, ${theme.accent.primary})`;
+    const tint = "color-mix(in srgb, var(--menu-item-accent) 12%, transparent)";
+    const background = expanded ? tint : active ? theme.toolbar.activeBg : undefined;
     return (
         <button
             type="button"
-            className={`canvas-menu-item group flex w-full items-center gap-2.5 rounded-[var(--r-md)] px-2 text-left outline-none enabled:hover:bg-[var(--menu-item-hover)] focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-40 ${detail ? "min-h-11 py-1.5" : "h-8"}`}
-            style={{ color, background: active ? theme.toolbar.activeBg : undefined, "--menu-item-hover": danger ? `${theme.accent.danger}1a` : "var(--menu-hover)" } as CSSProperties}
+            className={`canvas-menu-item group flex w-full items-center gap-2.5 rounded-[var(--r-md)] bg-[var(--menu-item-bg,transparent)] px-2 text-left enabled:hover:bg-[var(--menu-item-hover)] focus-visible:outline-2! focus-visible:outline-offset-[-2px] focus-visible:outline-solid! focus-visible:outline-[color:var(--menu-item-focus)]! disabled:cursor-not-allowed disabled:opacity-40 ${detail ? "min-h-11 py-1.5" : expanded === undefined ? "h-8" : "mb-1 h-9"}`}
+            style={
+                {
+                    color,
+                    "--menu-item-focus": expanded === undefined ? theme.node.muted : accent,
+                    "--menu-item-accent": expanded === undefined ? undefined : accent,
+                    "--menu-item-icon-bg": expanded === undefined ? undefined : tint,
+                    "--menu-item-bg": background,
+                    "--menu-item-hover": expanded ? "color-mix(in srgb, var(--menu-item-accent) 16%, transparent)" : (background ?? (danger ? `${theme.accent.danger}1a` : "var(--menu-hover)")),
+                } as CSSProperties
+            }
+            aria-expanded={expanded}
             disabled={disabled}
             onClick={onClick}
         >
-            <span className={`canvas-menu-item-icon grid size-4 shrink-0 place-items-center [&_svg]:size-4 [&_svg]:stroke-[1.75] ${detail ? "self-start mt-0.5" : ""} ${danger || active ? "" : "opacity-60 group-hover:opacity-100"}`}>{icon}</span>
-            <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 font-medium leading-5" style={{ fontSize: "var(--fs-ui)" }}>
-                    <span className="truncate">{label}</span>
-                    {badge ? <span className="rounded-[var(--r-xs)] px-1 font-medium leading-4 tabular-nums" style={{ background: "var(--menu-hover)", color: theme.node.muted, fontSize: "var(--fs-label)" }}>{badge}</span> : null}
-                </span>
-                {detail ? <span className="block truncate leading-4" style={{ color: theme.node.muted, fontSize: "var(--fs-label)" }}>{detail}</span> : null}
+            <span
+                className={`canvas-menu-item-icon grid shrink-0 place-items-center [&_svg]:size-4 [&_svg]:stroke-[1.75] ${detail ? "self-start mt-0.5" : ""} ${expanded !== undefined ? "size-6 rounded-[var(--r-xs)] bg-[var(--menu-item-icon-bg)] text-[var(--menu-item-accent)]" : `size-4 ${danger || active ? "" : "opacity-60 group-hover:opacity-100"}`}`}
+            >
+                {icon}
             </span>
-            {shortcut ? <kbd className="shrink-0 font-sans tracking-[.04em] tabular-nums" style={{ color: theme.node.faint, fontSize: "var(--fs-label)" }}>{shortcut}</kbd> : null}
-            {chevron ? <ChevronRight className="size-3.5 shrink-0" style={{ color: theme.node.faint }} /> : null}
+            <span className="min-w-0 flex-1">
+                <span className={`flex items-center gap-1.5 leading-5 ${expanded === undefined ? "font-medium" : "font-semibold"}`} style={{ fontSize: "var(--fs-ui)" }}>
+                    <span className="truncate">{label}</span>
+                    {badge ? (
+                        <span className="rounded-[var(--r-xs)] px-1 font-medium leading-4 tabular-nums" style={{ background: "var(--menu-hover)", color: theme.node.muted, fontSize: "var(--fs-label)" }}>
+                            {badge}
+                        </span>
+                    ) : null}
+                </span>
+                {detail ? (
+                    <span className="block truncate leading-4" style={{ color: theme.node.muted, fontSize: "var(--fs-label)" }}>
+                        {detail}
+                    </span>
+                ) : null}
+            </span>
+            {shortcut ? (
+                <kbd className="shrink-0 font-sans tracking-[.04em] tabular-nums" style={{ fontSize: "var(--fs-label)", color: `var(--menu-key-text, ${theme.node.faint})` }}>
+                    {shortcut}
+                </kbd>
+            ) : null}
+            {chevron ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" style={{ color: expanded ? accent : theme.node.faint }} /> : null}
         </button>
     );
 }
@@ -427,19 +558,31 @@ function MenuDivider() {
     return <div role="separator" className="mx-2 my-1.5 h-px" style={{ background: theme.toolbar.border, opacity: 0.7 }} />;
 }
 
-function getContextMenuPosition(menu: ContextMenuState, hasMultiSelection = false) {
+function getContextMenuPosition(menu: ContextMenuState, estimatedHeight: number) {
     if (typeof window === "undefined") return { left: menu.x, top: menu.y };
-    const width = 224;
-    const estimatedHeight = menu.type === "node" ? Math.min(hasMultiSelection ? 290 : 360, window.innerHeight - 72) : menu.type === "canvas" ? (hasMultiSelection ? 350 : 250) : 84;
     return {
-        left: clamp(menu.x, 12, Math.max(12, window.innerWidth - width - 12)),
-        top: clamp(menu.y, 68, Math.max(68, window.innerHeight - estimatedHeight - 12)),
+        left: clamp(menu.x, VIEWPORT_GUTTER, Math.max(VIEWPORT_GUTTER, window.innerWidth - CONTEXT_MENU_WIDTH - VIEWPORT_GUTTER)),
+        top: clamp(menu.y, 68, Math.max(68, window.innerHeight - estimatedHeight - VIEWPORT_GUTTER)),
     };
 }
 
-function getSubmenuLeft(parentLeft: number) {
-    if (typeof window === "undefined") return parentLeft + 192;
-    return parentLeft + 224 + 8 + 360 <= window.innerWidth - 12 ? parentLeft + 232 : Math.max(12, parentLeft - 368);
+function getAddNodeMenuPosition(parent: { left: number; top: number }, parentHeight: number): CSSProperties {
+    const right = parent.left + CONTEXT_MENU_WIDTH + MENU_GAP;
+    if (typeof window === "undefined") return { left: right, top: parent.top, width: CREATE_MENU_WIDTH };
+    const viewportRight = window.innerWidth - VIEWPORT_GUTTER;
+    const viewportBottom = window.innerHeight - VIEWPORT_GUTTER;
+    const width = Math.min(CREATE_MENU_WIDTH, viewportRight - VIEWPORT_GUTTER);
+    const left = parent.left - width - MENU_GAP;
+    if (right + width <= viewportRight || left >= VIEWPORT_GUTTER) {
+        const top = Math.min(parent.top, Math.max(VIEWPORT_GUTTER, viewportBottom - 420));
+        return { left: right + width <= viewportRight ? right : left, top, width, maxHeight: viewportBottom - top };
+    }
+
+    // 左右都放不下时给子菜单独立的垂直空间，避免盖住创建入口。
+    const alignedLeft = Math.min(parent.left, viewportRight - width);
+    const below = parent.top + parentHeight + MENU_GAP;
+    const above = parent.top - MENU_GAP;
+    return viewportBottom - below >= above - VIEWPORT_GUTTER ? { left: alignedLeft, top: below, width, maxHeight: viewportBottom - below } : { left: alignedLeft, bottom: window.innerHeight - above, width, maxHeight: above - VIEWPORT_GUTTER };
 }
 
 function clamp(value: number, min: number, max: number) {

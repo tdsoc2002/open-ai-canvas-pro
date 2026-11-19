@@ -72,10 +72,10 @@ import { Minimap } from "@/components/canvas/canvas-mini-map";
 import { CanvasNodePromptPanel, type CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { handleListGenerate } from "./list-mode-generator";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
-import { useCanvasCreateCommands } from "@/components/canvas/use-canvas-create-commands";
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
 import { getProject, listCharacters, type ProjectAsset } from "@/services/api/projects";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
+import { CanvasAgentHud } from "@/components/canvas/canvas-agent-hud";
 import { persistCanvasAgentCameraFollow, readCanvasAgentCameraFollow } from "@/lib/canvas/canvas-agent-camera-follow";
 import { CanvasShareModal } from "@/components/canvas/canvas-share-modal";
 import { CanvasScriptEditor, CanvasScriptNodeContent } from "@/components/canvas/canvas-script-node";
@@ -111,15 +111,7 @@ import type { CloudAgentMessagePresentation } from "@/services/cloud-agent-conve
 import { CanvasConnectionCreateMenu, CanvasNodePanelOverlay } from "@/components/canvas/canvas-workspace-overlays";
 import { CanvasOverlayLayerContainer, CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
-import {
-    CanvasDramaEmptyState,
-    CanvasFreeformEmptyState,
-    CanvasLinkedProjectEmptyState,
-    CanvasShortDramaEmptyState,
-    CanvasShortDramaGuide,
-    CanvasStoryInputNodeContent,
-    CanvasStylePlaceholderNodeContent,
-} from "@/components/canvas/canvas-short-drama-entry";
+import { CanvasDramaEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaGuide, CanvasStoryInputNodeContent, CanvasStylePlaceholderNodeContent } from "@/components/canvas/canvas-short-drama-entry";
 import { resolveCanvasEmptyStateKind } from "@/lib/canvas/canvas-starter";
 import { failedImageBatchChildren, markImageBatchRetrying, reconcileImageBatchRoot, restoreUnsubmittedImageBatchChild } from "@/lib/canvas/canvas-image-batch-retry";
 import { cinematicStoryboardColumns, createCanvasNode, getInputSummary, isHiddenBatchChild } from "@/lib/canvas/canvas-project-domain";
@@ -291,7 +283,7 @@ function CanvasViewportPage() {
     const [showImageInfo, setShowImageInfo] = useState(false);
     const [canvasTool, setCanvasTool] = useState<CanvasToolMode>("box-select");
     const [hideNodeConnections, setHideNodeConnections] = useState(readCanvasHideNodeConnections);
-    const [agentFollowCamera] = useState(readCanvasAgentCameraFollow);
+    const [agentFollowCamera, setAgentFollowCamera] = useState(readCanvasAgentCameraFollow);
     const [projectLoaded, setProjectLoaded] = useState(false);
     useLayoutEffect(() => {
         if (!projectLoaded) return;
@@ -336,7 +328,6 @@ function CanvasViewportPage() {
     const [titleEditing, setTitleEditing] = useState(false);
     const [titleDraft, setTitleDraft] = useState("");
     const [shortcutRequestNonce, setShortcutRequestNonce] = useState(0);
-    const [cinematicAgentEntry, setCinematicAgentEntry] = useState(false);
     const { assistantOpen, closeAgent, openAgent: openAssistant } = useCanvasAssistantVisibility();
     const agentMentionReferences = useMemo(() => buildCanvasAgentMentionReferences(nodes), [nodes]);
 
@@ -348,6 +339,7 @@ function CanvasViewportPage() {
     const [collaborationControlHost, setCollaborationControlHost] = useState<HTMLDivElement | null>(null);
     // 画布 / 资产视图写在 URL 上，刷新和分享链接都能回到同一视图；专注模式只服务画布编辑。
     const canvasView: CanvasProjectView = searchParams.get("view") === "assets" && !focusMode ? "assets" : "canvas";
+    const isAssetView = canvasView === "assets";
 
     useEffect(() => {
         persistCanvasHideNodeConnections(hideNodeConnections);
@@ -1735,7 +1727,6 @@ function CanvasViewportPage() {
 
     const {
         activateStep: activateShortDramaStep,
-        createPipeline: createShortDramaPipeline,
         guideCollapsed: shortDramaGuideCollapsed,
         openStoryInput,
         progress: shortDramaProgress,
@@ -1745,15 +1736,7 @@ function CanvasViewportPage() {
         nodes,
         connections,
         nodesRef,
-        connectionsRef,
-        selectedNodeIdsRef,
-        getCanvasCenter,
-        setNodes,
-        setConnections,
-        setSelectedNodeIds,
-        setSelectedConnectionId,
         setStylePickerOpen,
-        fitCanvasSelection,
         focusCanvasNode,
         openTextEditor: openTextNodeEditor,
     });
@@ -2594,41 +2577,20 @@ function CanvasViewportPage() {
                       }),
               ])
             : [];
-    const freeformCreateCommands = useCanvasCreateCommands({
-        workspaceMode,
-        isProjectLinked: Boolean(shortDramaEnabled && currentProject?.projectId),
-        handlers: {
-            onAddText: () => createNode(CanvasNodeType.Text),
-            onAddImage: () => createNode(CanvasNodeType.Image),
-            onAddVideo: () => createNode(CanvasNodeType.Video),
-            onAddAudio: () => createNode(CanvasNodeType.Audio),
-            onAddScript: () => createNode(CanvasNodeType.Script),
-            onAddFrame: () => createNode(CanvasNodeType.Frame),
-            onAddFolder: createFolder,
-            onAddDrawing: () => createNode(CanvasNodeType.Drawing),
-            onAddWorkflow: () => createNode(CanvasNodeType.Config),
-            onAddExtensionNode: (type) => createNode(type),
-            onChooseStyle: () => setStylePickerOpen(true),
-            onOpenPrevis: () => setPrevisTemplateRequest({}),
-            onUpload: () => handleUploadRequest(),
-            onOpenMyAssets: () => openAssetsAtPosition(),
-            onOpenProjectCharacters: () => openCharacterLibrary(),
-            onOpenPoseLibrary: () => openPoseLibrary(),
-        },
-    });
     const emptyStateKind = resolveCanvasEmptyStateKind({
         nodeCount: nodes.length,
         shortDramaEnabled,
         isProjectLinked: Boolean(currentProject?.projectId),
-        starterMode: currentProject?.starterMode,
     });
     // 短剧精修画布：左侧换成短剧侧栏，不再显示通用工作区轨道（主页/节点/素材库/任务/历史），底部工具条收紧。
     // 关联的不是短剧（404）时 loadFailed 为真，回到普通画布。
     const dramaCanvas = Boolean(drama.dramaId) && !drama.loadFailed;
+    const showWorkspace = !isAssetView && !focusMode && !dramaCanvas;
     const dramaFirstEpisode = drama.summary?.episodes.find((episode) => episode.stats.segments > 0);
+    const combineCanvasTools = joyseeEditor && !focusMode;
     const canvasViewControls = (
         <CanvasZoomControls
-            embedded={joyseeEditor}
+            embedded={combineCanvasTools}
             scale={viewport.k}
             containerRef={containerRef}
             onScaleChange={setZoomScale}
@@ -2642,9 +2604,7 @@ function CanvasViewportPage() {
         />
     );
     const emptyCanvasState =
-        emptyStateKind === "freeform" ? (
-            <CanvasFreeformEmptyState commands={freeformCreateCommands} />
-        ) : emptyStateKind === "linked" && drama.summary ? (
+        emptyStateKind !== "linked" ? null : drama.summary ? (
             <CanvasDramaEmptyState
                 dramaName={drama.summary.project.name}
                 studioPath={`/projects/${encodeURIComponent(drama.summary.project.id)}`}
@@ -2652,7 +2612,7 @@ function CanvasViewportPage() {
                 onProjectEpisode={dramaFirstEpisode ? () => void drama.projectEpisode(dramaFirstEpisode.id) : undefined}
                 onAddText={() => createNode(CanvasNodeType.Text)}
             />
-        ) : emptyStateKind === "linked" && drama.dramaId && !drama.loadFailed ? null : emptyStateKind === "linked" ? (
+        ) : drama.dramaId && !drama.loadFailed ? null : (
             <CanvasLinkedProjectEmptyState
                 projectName={linkedProjectQuery.data?.project.name || currentProject?.title || "项目画布"}
                 hasChapter={Boolean(linkedProjectQuery.data?.units.length)}
@@ -2663,21 +2623,7 @@ function CanvasViewportPage() {
                 onOpenAssets={() => openProjectAssets()}
                 onAddText={() => createNode(CanvasNodeType.Text)}
             />
-        ) : emptyStateKind === "guided" ? (
-            <CanvasShortDramaEmptyState
-                onCreatePipeline={createShortDramaPipeline}
-                onSubmitPrompt={(text) => {
-                    setCinematicAgentEntry(true);
-                    // 有输入时直接作为首条消息提交；空输入只打开面板。
-                    if (text) setAgentPrefillRequest((current) => ({ id: (current?.id ?? 0) + 1, text, autoSubmit: true }));
-                    openAgent();
-                }}
-                onStartFreeform={() => updateProject(projectId, { starterMode: "freeform" })}
-                onUpload={() => handleUploadRequest()}
-                onAddText={() => createNode(CanvasNodeType.Text)}
-                onAddScript={() => createNode(CanvasNodeType.Script)}
-            />
-        ) : null;
+        );
     // Agent 面板体量很大且已 memo：传入稳定引用，避免画布每次提交视口/拖拽都带着它整棵重渲染。
     const agentSelectedNodeIds = useMemo(() => Array.from(selectedNodeIds), [selectedNodeIds]);
     const agentFocusNodeRef = useRef<(nodeId: string) => void>(() => {});
@@ -2899,10 +2845,10 @@ function CanvasViewportPage() {
             <main
                 id="canvas-main"
                 tabIndex={-1}
-                className={`${joyseeEditor ? "joysee-canvas-editor" : ""} relative flex h-full min-h-0 overflow-clip outline-none ${!focusMode && !dramaCanvas ? `canvas-main-with-workspace ${workspaceOpen ? "canvas-workspace-expanded" : ""}` : ""}`}
-                style={{ background: resolvedCanvasAppearance.background, color: theme.node.text }}
+                className={`${joyseeEditor ? "joysee-canvas-editor" : ""} relative flex h-full min-h-0 overflow-clip outline-none ${isAssetView ? "bg-background" : ""} ${showWorkspace ? `canvas-main-with-workspace ${workspaceOpen ? "canvas-workspace-expanded" : ""}` : ""}`}
+                style={{ background: isAssetView ? undefined : resolvedCanvasAppearance.background, color: theme.node.text }}
             >
-                {!focusMode && !dramaCanvas ? (
+                {showWorkspace ? (
                     <CanvasWorkspacePanel
                         key={projectId}
                         open={workspaceOpen}
@@ -2916,7 +2862,6 @@ function CanvasViewportPage() {
                         onProjectAssets={currentProject?.projectId ? () => openProjectAssets() : undefined}
                         onCancelTask={cancelCanvasTask}
                         onFocus={(nodeId) => {
-                            if (canvasView === "assets") changeCanvasView("canvas");
                             const target = nodeById.get(nodeId);
                             const parent = target?.parentId ? nodeById.get(target.parentId) : null;
                             if (parent?.metadata?.frame?.collapsed) toggleFrameCollapsed(parent.id);
@@ -2930,7 +2875,7 @@ function CanvasViewportPage() {
                         }}
                     />
                 ) : null}
-                {!focusMode && drama.summary ? (
+                {!isAssetView && !focusMode && drama.summary ? (
                     <CanvasDramaSidebar
                         summary={drama.summary}
                         cast={drama.cast}
@@ -2971,7 +2916,7 @@ function CanvasViewportPage() {
                                     syncIcon={<CanvasSyncStatus projectId={projectId} />}
                                     collaborationControlRef={joyseeEditor ? setCollaborationControlHost : undefined}
                                     assetViewSettingsControl={
-                                        joyseeEditor && canvasView === "assets" ? (
+                                        joyseeEditor && isAssetView ? (
                                             <CanvasViewSettingsMenu
                                                 appearance={canvasAppearance}
                                                 backgroundMode={backgroundMode}
@@ -3005,6 +2950,7 @@ function CanvasViewportPage() {
                                 nodes={nodes}
                                 onClose={() => setNodeSearchOpen(false)}
                                 onFocus={(nodeId) => {
+                                    if (isAssetView) changeCanvasView("canvas");
                                     const target = nodeById.get(nodeId);
                                     const parent = target?.parentId ? nodeById.get(target.parentId) : null;
                                     if (parent?.metadata?.frame?.collapsed) toggleFrameCollapsed(parent.id);
@@ -3018,7 +2964,7 @@ function CanvasViewportPage() {
                                 }}
                             />
 
-                            {!focusMode && shortDramaGuide ? (
+                            {!isAssetView && !focusMode && shortDramaGuide ? (
                                 <CanvasShortDramaGuide progress={shortDramaGuide.progress} collapsed={shortDramaGuide.collapsed} onToggle={shortDramaGuide.onToggle} onSkip={skipShortDramaGuide} onStepClick={activateShortDramaStep} />
                             ) : null}
 
@@ -3039,10 +2985,11 @@ function CanvasViewportPage() {
 
                             <CanvasPrevisTemplateModal open={Boolean(previsTemplateRequest)} onClose={() => setPrevisTemplateRequest(null)} onSelect={(templateId) => createPrevisShot(templateId, previsTemplateRequest?.position)} />
 
-                            <div className="relative flex min-h-0 min-w-0 flex-1">
+                            {/* 切到资产时保留画布视口尺寸与位置，但不再显示或接收交互。 */}
+                            <div className={`relative flex min-h-0 min-w-0 flex-1 ${isAssetView ? "invisible" : ""}`} inert={isAssetView}>
                                 <div className="relative min-w-0 flex-1 overflow-clip">
                                     <CanvasViewport
-                                        interactive
+                                        interactive={!isAssetView}
                                         containerRef={containerRef}
                                         viewport={viewport}
                                         appearance={canvasAppearance}
@@ -3178,7 +3125,7 @@ function CanvasViewportPage() {
 
                                     {emptyCanvasState}
 
-                                    {!focusMode || focusDockRevealed ? (
+                                    {!isAssetView && (!focusMode || focusDockRevealed) ? (
                                         <CanvasToolbar
                                             selectedCount={selectedNodeIds.size}
                                             workspaceMode={workspaceMode}
@@ -3190,7 +3137,6 @@ function CanvasViewportPage() {
                                             appearance={canvasAppearance}
                                             backgroundMode={backgroundMode}
                                             showImageInfo={showImageInfo}
-                                            hideNodeConnections={hideNodeConnections}
                                             onAddImage={() => createNode(CanvasNodeType.Image)}
                                             onAddVideo={() => createNode(CanvasNodeType.Video)}
                                             onAddAudio={() => createNode(CanvasNodeType.Audio)}
@@ -3213,14 +3159,13 @@ function CanvasViewportPage() {
                                             onSaveAppearanceDefault={saveCanvasAppearanceDefault}
                                             onBackgroundModeChange={setBackgroundMode}
                                             onShowImageInfoChange={setShowImageInfo}
-                                            onHideNodeConnectionsChange={setHideNodeConnections}
                                             onOpenWorkspace={() => setWorkspaceOpen((value) => !value)}
                                             onOpenMyAssets={() => {
                                                 openAssetsAtPosition();
                                             }}
                                             onOpenProjectCharacters={() => openCharacterLibrary()}
                                             onOpenPoseLibrary={() => openPoseLibrary()}
-                                            viewControls={joyseeEditor && !focusMode ? canvasViewControls : undefined}
+                                            viewControls={combineCanvasTools ? canvasViewControls : undefined}
                                             vertical={joyseeEditor && focusMode}
                                             compact={dramaCanvas}
                                         />
@@ -3228,7 +3173,7 @@ function CanvasViewportPage() {
                                 </div>
                             </div>
 
-                            {angleNode?.metadata?.content ? (
+                            {!isAssetView && angleNode?.metadata?.content ? (
                                 <CanvasNodePanelOverlay
                                     node={angleNode}
                                     viewport={viewport}
@@ -3261,7 +3206,7 @@ function CanvasViewportPage() {
                                 </AppModal>
                             ) : null}
 
-                            {emotionNode?.metadata?.content && !isCanvasNodeMoving ? (
+                            {!isAssetView && emotionNode?.metadata?.content && !isCanvasNodeMoving ? (
                                 <CanvasEmotionWorkspace
                                     node={emotionNode}
                                     viewport={viewport}
@@ -3275,7 +3220,8 @@ function CanvasViewportPage() {
                                 />
                             ) : null}
 
-                            {dialogNode &&
+                            {!isAssetView &&
+                            dialogNode &&
                             !isCanvasImageSourceNode(dialogNode) &&
                             !dialogNode.metadata?.fileUpload &&
                             dialogNode.type !== CanvasNodeType.Script &&
@@ -3299,7 +3245,7 @@ function CanvasViewportPage() {
                                 </CanvasNodePanelOverlay>
                             ) : null}
 
-                            {pendingConnectionCreate ? (
+                            {!isAssetView && pendingConnectionCreate ? (
                                 <CanvasConnectionCreateMenu
                                     pending={pendingConnectionCreate}
                                     viewport={viewport}
@@ -3312,7 +3258,7 @@ function CanvasViewportPage() {
                                 />
                             ) : null}
 
-                            {connectionReplaceHover ? (
+                            {!isAssetView && connectionReplaceHover ? (
                                 <div
                                     className="pointer-events-none fixed z-[var(--z-dialog-popover)] flex select-none items-center gap-2 rounded-full border border-white/15 bg-black/60 px-2 py-1 text-[var(--fs-label)] font-medium text-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-md transition-opacity duration-150"
                                     style={{
@@ -3327,7 +3273,7 @@ function CanvasViewportPage() {
                                 </div>
                             ) : null}
 
-                            {selectedNodeBounds && !selectionBox && !isCanvasNodeMoving ? (
+                            {!isAssetView && selectedNodeBounds && !selectionBox && !isCanvasNodeMoving ? (
                                 <CanvasProjectSelectionToolbar
                                     anchorRef={selectionBoundsElementRef}
                                     containerRef={containerRef}
@@ -3361,7 +3307,7 @@ function CanvasViewportPage() {
                                 onRotateImage={(node, direction) => void rotateImageNode(node.id, direction)}
                                 onCreateEditCopy={(node) => duplicateNode(node.id, "linked-copy")}
                                 rotatingImage={rotatingNodeId !== null}
-                                node={isCanvasNodeMoving || nodeImageSettingsOpen || emotionNodeId || angleNodeId ? null : toolbarNode}
+                                node={isAssetView || isCanvasNodeMoving || nodeImageSettingsOpen || emotionNodeId || angleNodeId ? null : toolbarNode}
                                 workspaceMode={workspaceMode}
                                 viewport={viewport}
                                 containerRef={containerRef}
@@ -3424,18 +3370,21 @@ function CanvasViewportPage() {
                                 onDelete={(node) => deleteNodes(new Set([node.id]))}
                             />
 
-                            {isMiniMapOpen && !focusMode ? <Minimap nodes={nodes} viewport={viewport} viewportSize={size} canvasContainerRef={containerRef} onViewportPreviewChange={previewViewport} onViewportChange={handleViewportChange} /> : null}
+                            {!isAssetView && isMiniMapOpen && !focusMode ? (
+                                <Minimap nodes={nodes} viewport={viewport} viewportSize={size} canvasContainerRef={containerRef} onViewportPreviewChange={previewViewport} onViewportChange={handleViewportChange} />
+                            ) : null}
 
-                            {!focusMode && !joyseeEditor ? (
+                            {!isAssetView && !focusMode && (!combineCanvasTools || !dramaCanvas) ? (
                                 <CanvasOverlayLayerContainer
                                     overlayId="asset-tray"
                                     fallbackZIndex="var(--z-panel)"
-                                    className="canvas-workspace-zoom-controls absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-end gap-2 lg:bottom-[var(--canvas-inset-y)]"
+                                    className={`canvas-workspace-zoom-controls absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-end gap-2 ${combineCanvasTools ? "" : "lg:bottom-[var(--canvas-inset-y)]"}`}
                                     onMouseDown={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => event.stopPropagation()}
                                     onWheel={(event) => event.stopPropagation()}
                                 >
-                                    {canvasViewControls}
+                                    {!combineCanvasTools ? canvasViewControls : null}
+                                    {!dramaCanvas ? <CanvasAgentHud nodeCount={nodes.length} connectionCount={connections.length} followAgent={agentFollowCamera} onFollowAgentChange={setAgentFollowCamera} /> : null}
                                 </CanvasOverlayLayerContainer>
                             ) : null}
 
@@ -3827,7 +3776,7 @@ function CanvasViewportPage() {
                                 onInsertFolder={handleProjectFolderInsert}
                             />
 
-                            {canvasView === "assets" ? (
+                            {isAssetView ? (
                                 <div className="canvas-asset-view-layer absolute bottom-0 left-0 right-0 top-[var(--canvas-topbar-h)] z-[var(--z-panel-floating)] flex min-h-0">
                                     <CanvasAssetView nodes={nodes} onLocate={locateAssetNode} onRename={renameAssetNodes} onPromoteVersion={promoteAssetVersion} onDownloadMedia={downloadNodeImage} onUpload={() => handleUploadRequest()} />
                                 </div>

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Switch } from "@/components/ui/base/switch";
-import { EyeOff, Info, Palette } from "lucide-react";
+import { Info, Palette } from "lucide-react";
 
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
@@ -31,7 +31,6 @@ export function CanvasToolbar({
     appearance,
     backgroundMode,
     showImageInfo,
-    hideNodeConnections = false,
     onAddImage,
     onAddVideo,
     onAddAudio,
@@ -54,7 +53,6 @@ export function CanvasToolbar({
     onSaveAppearanceDefault,
     onBackgroundModeChange,
     onShowImageInfoChange,
-    onHideNodeConnectionsChange,
     onOpenWorkspace,
     onOpenMyAssets,
     onOpenProjectCharacters,
@@ -73,7 +71,6 @@ export function CanvasToolbar({
     appearance: CanvasAppearance;
     backgroundMode: CanvasBackgroundMode;
     showImageInfo: boolean;
-    hideNodeConnections?: boolean;
     onAddImage: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
@@ -96,12 +93,10 @@ export function CanvasToolbar({
     onSaveAppearanceDefault: (appearance: CanvasAppearance) => void;
     onBackgroundModeChange: (mode: CanvasBackgroundMode) => void;
     onShowImageInfoChange: (show: boolean) => void;
-    onHideNodeConnectionsChange?: (hide: boolean) => void;
     onOpenWorkspace?: () => void;
     onOpenMyAssets: () => void;
     onOpenProjectCharacters: () => void;
     onOpenPoseLibrary?: () => void;
-    /** 乐见编辑器将编辑与视图操作收在同一浮动工具组。 */
     viewControls?: ReactNode;
     vertical?: boolean;
     /** 紧凑尺寸：短剧精修画布把视野留给节点。 */
@@ -110,7 +105,6 @@ export function CanvasToolbar({
     const { t } = useTranslation();
     const rootRef = useRef<HTMLDivElement>(null);
     const { bringToFront, zIndex } = useCanvasOverlayLayer("main-toolbar", "var(--z-toolbar)");
-    const dockRef = useRef<HTMLDivElement>(null);
     const colorTheme = useActiveTheme();
     const theme = canvasThemes[colorTheme];
     const [addOpen, setAddOpen] = useState(false);
@@ -140,9 +134,8 @@ export function CanvasToolbar({
     useEffect(() => {
         if (!addOpen && !appearanceOpen) return;
         const closeFloatingPanels = (event: PointerEvent) => {
-            const target = event.target instanceof Node ? event.target : null;
-            if (target && rootRef.current?.contains(target)) return;
             const element = event.target instanceof Element ? event.target : null;
+            if (event.target instanceof Node && rootRef.current?.contains(event.target) && !element?.closest(".joysee-canvas-dock-views")) return;
             if (element?.closest(".ant-color-picker,.ant-popover")) return;
             setAddOpen(false);
             setAppearanceOpen(false);
@@ -246,7 +239,7 @@ export function CanvasToolbar({
     } as ToolbarHandlers;
 
     const ctx: ToolContext = {
-        combinedMainToolbar: Boolean(viewControls),
+        singleCanvasModeButton: Boolean(viewControls),
         selectedCount,
         selectedNodeTypes: new Set(),
         selectedVideoCount: 0,
@@ -274,29 +267,27 @@ export function CanvasToolbar({
         <div
             ref={rootRef}
             data-canvas-no-zoom
-            className={`canvas-main-toolbar pointer-events-none absolute flex ${vertical ? "canvas-focus-tool-rail" : `inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] justify-center ${viewControls ? "has-view-controls" : ""}`}`}
+            className={`canvas-main-toolbar pointer-events-none absolute flex ${vertical ? "canvas-focus-tool-rail" : "inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] justify-center"} ${viewControls ? "has-view-controls" : ""}`}
             style={{ zIndex }}
             onPointerDownCapture={bringToFront}
             onFocusCapture={bringToFront}
-            onWheel={vertical ? (event) => event.stopPropagation() : undefined}
+            onWheel={vertical || viewControls ? (event) => event.stopPropagation() : undefined}
         >
             <AnimatePresence>{addOpen ? <AddNodeMenu x={panelX} vertical={vertical} theme={theme} commands={createCommands} /> : null}</AnimatePresence>
 
-            {/* canvas-zoom-controls 按底部同排规则（canvasBottomRowLayout）写入 --canvas-main-toolbar-shift。 */}
             {viewControls ? (
-                <div className="joysee-canvas-dock pointer-events-auto" style={canvasDockStyle(theme)}>
-                    <FloatingDock ref={dockRef} embedded items={items} variant="toolbar" size="compact" className="canvas-floating-dock canvas-bottom-dock" style={canvasDockStyle(theme)} />
+                <div className="canvas-floating-dock joysee-canvas-dock pointer-events-auto relative" style={canvasDockStyle(theme)}>
+                    <FloatingDock items={items} variant="toolbar" size="compact" className="joysee-canvas-dock-group" />
                     <span className="joysee-canvas-dock-divider" aria-hidden />
                     {viewControls}
                 </div>
             ) : (
                 <FloatingDock
-                    ref={dockRef}
                     items={items}
                     variant="toolbar"
                     vertical={vertical}
                     size={compact || vertical ? "compact" : "default"}
-                    className={`canvas-floating-dock canvas-bottom-dock pointer-events-auto relative ${vertical ? "canvas-focus-rail-dock" : "left-[var(--canvas-main-toolbar-shift,0px)]"}`}
+                    className={`canvas-floating-dock pointer-events-auto relative ${vertical ? "canvas-focus-rail-dock" : "left-[var(--canvas-main-toolbar-shift,0px)] max-w-full"}`}
                     style={canvasDockStyle(theme)}
                 />
             )}
@@ -347,15 +338,6 @@ export function CanvasToolbar({
                                 </span>
                                 <Switch size="sm" checked={showImageInfo} onChange={onShowImageInfoChange} />
                             </div>
-                            {viewControls && onHideNodeConnectionsChange ? (
-                                <div className="mt-2 flex items-center justify-between gap-2 rounded-[var(--dock-item-radius-labeled)] border px-2 py-2" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
-                                    <span className="inline-flex min-w-0 items-center gap-2 text-[var(--fs-caption)] font-semibold">
-                                        <EyeOff aria-hidden="true" className="size-3 shrink-0" />
-                                        {t("canvasC.toolbar.hideNodeConnections")}
-                                    </span>
-                                    <Switch size="sm" aria-label={t("canvasC.toolbar.hideNodeConnections")} checked={hideNodeConnections} onChange={onHideNodeConnectionsChange} />
-                                </div>
-                            ) : null}
                         </SpotlightSurface>
                     </motion.div>
                 ) : null}

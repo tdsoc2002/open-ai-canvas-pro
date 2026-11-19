@@ -48,7 +48,6 @@ type FloatingDockProps = {
     /** Canvas toolbars scroll within the available workspace and use portaled tooltips. */
     variant?: "floating" | "toolbar";
     vertical?: boolean;
-    embedded?: boolean;
     className?: string;
     style?: CSSProperties;
     ariaLabel?: string;
@@ -67,7 +66,7 @@ function coarsePointerQuery(): MediaQueryList | undefined {
  * 固定格子 + 纯色 hover，只保留按压反馈与提示气泡。
  */
 export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock(
-    { items, size = "default", variant = "floating", vertical = false, embedded = false, className, style, ariaLabel = translate("account.ui.canvasTools"), showLabels = false },
+    { items, size = "default", variant = "floating", vertical = false, className, style, ariaLabel = translate("account.ui.canvasTools"), showLabels = false },
     forwardedRef,
 ) {
     const reducedMotion = useReducedMotion();
@@ -105,10 +104,9 @@ export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(functi
             data-dock-variant={variant}
             data-canvas-wheel-scroll={toolbar || undefined}
             className={cn(
-                "aceternity-floating-dock flex items-center",
+                "aceternity-floating-dock flex items-center gap-0.5 border backdrop-blur-2xl",
                 vertical ? "flex-col overflow-y-auto overflow-x-hidden" : scrollable ? "overflow-x-auto" : "overflow-visible",
-                embedded ? "gap-0.5 px-0.5 shadow-none" : "gap-0.5 border backdrop-blur-2xl",
-                !embedded && (compact ? "rounded-[var(--r-lg)] p-1" : "rounded-[var(--r-xl)] p-2"),
+                compact ? "rounded-[var(--r-lg)] p-1" : "rounded-[var(--r-xl)] p-2",
                 className,
             )}
             style={{ ...style, "--dock-item-size": toolbar ? `var(--button-height${coarsePointer ? "-lg" : compact ? "-sm" : ""})` : `${itemSize}px` } as CSSProperties}
@@ -210,7 +208,7 @@ function useDockTooltip() {
 function DockCommandButton({ command, compact, vertical, showLabel, nativeTitle, motionEnabled, portalTooltip }: { command: FloatingDockCommand } & DockItemRenderProps) {
     const tooltip = useDockTooltip();
     const pressed = command.expands ? undefined : command.active;
-    const expanded = command.expands ? Boolean(command.active) : undefined;
+    const expanded = command.expands ? command.active || undefined : undefined;
     const tap = motionEnabled && !command.disabled ? { scale: 0.92 } : undefined;
 
     if (showLabel) {

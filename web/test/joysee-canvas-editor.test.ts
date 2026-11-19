@@ -4,15 +4,17 @@ import { readFileSync } from "node:fs";
 const source = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 
 describe("乐见真实画布编辑器组件合同", () => {
-    test("只在乐见分支合并真实编辑与视图工具，保留默认工具布局", () => {
+    test("乐见皮肤合并底部视图和编辑工具，其他皮肤及专注模式保留原布局", () => {
         const page = source("pages/canvas/project.tsx");
         expect(page).toContain('useThemePack()?.workspaceStyle === "joysee"');
-        expect(page).toContain("viewControls={joyseeEditor && !focusMode ? canvasViewControls : undefined}");
-        expect(page).toMatch(/!focusMode && !joyseeEditor[\s\S]+?\{canvasViewControls\}\s*<\/CanvasOverlayLayerContainer>/);
-        expect(page).not.toContain("CanvasAgentHud");
+        expect(page).toContain("const combineCanvasTools = joyseeEditor && !focusMode");
+        expect(page).toContain("viewControls={combineCanvasTools ? canvasViewControls : undefined}");
+        expect(page).toMatch(/canvas-workspace-zoom-controls[\s\S]+?\{!combineCanvasTools \? canvasViewControls : null\}[\s\S]+?onFollowAgentChange=\{setAgentFollowCamera\}/);
+        expect(page).toContain("vertical={joyseeEditor && focusMode}");
         for (const callback of ["onScaleChange={setZoomScale}", "onFitContent={fitCanvasContent}", "onHideNodeConnectionsChange={setHideNodeConnections}"]) expect(page).toContain(callback);
-        expect(source("components/canvas/canvas-zoom-controls.tsx")).toContain("if (embedded) return;");
-        expect(source("components/canvas/canvas-toolbar.tsx")).toContain("getPanelX(rootRef.current, event.currentTarget, width)");
+        const toolbar = source("components/canvas/canvas-toolbar.tsx");
+        expect(toolbar).toMatch(/joysee-canvas-dock pointer-events-auto[\s\S]+?<FloatingDock items=\{items\}[\s\S]+?joysee-canvas-dock-divider[\s\S]+?\{viewControls\}/);
+        expect(toolbar).toContain("getPanelX(rootRef.current, event.currentTarget, width)");
     });
 
     test("精简顶栏不删除导入、搜索、专注及重命名入口", () => {

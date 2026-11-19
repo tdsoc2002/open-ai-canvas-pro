@@ -14,7 +14,7 @@ describe("canvas node drag overlays", () => {
         // 面板浮层的守卫必须同时成立：类型排除、框选、拖拽预览。断言整段条件而不是某一行的
         // 字面量，避免上游拆行或新增类型排除（Panorama 等）后把排版变化报成契约失效。
         const flatSource = flat(projectSource);
-        const overlayStart = flatSource.indexOf("{dialogNode &&");
+        const overlayStart = flatSource.indexOf("dialogNode && !isCanvasImageSourceNode(dialogNode)");
         const overlayCondition = flatSource.slice(overlayStart, flatSource.indexOf("<CanvasNodePanelOverlay", overlayStart));
         expect(overlayCondition).toContain("dialogNode.type !== CanvasNodeType.Drawing");
         expect(overlayCondition).toContain("!selectionBox");
@@ -22,7 +22,7 @@ describe("canvas node drag overlays", () => {
         expect(projectSource).not.toContain("angleNode?.metadata?.content && !isCanvasNodeMoving");
         expect(projectSource).toContain("emotionNode?.metadata?.content && !isCanvasNodeMoving");
         expect(projectSource).toContain("selectedNodeBounds && !selectionBox && !isCanvasNodeMoving");
-        expect(projectSource).toContain("node={isCanvasNodeMoving || nodeImageSettingsOpen || emotionNodeId || angleNodeId ? null : toolbarNode}");
+        expect(projectSource).toContain("node={isAssetView || isCanvasNodeMoving || nodeImageSettingsOpen || emotionNodeId || angleNodeId ? null : toolbarNode}");
         expect(projectSource).toContain("onNodeDragEnd: handleNodeDragEnd");
         expect(projectSource).toContain("setDialogNodeId(node.id);");
         expect(selectionControllerSource).toContain("if (clickedNodeId) onNodeDragEnd?.(clickedNodeId);");

@@ -5,19 +5,13 @@ import { useTranslation } from "react-i18next";
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import type { CanvasAssetKind } from "@/lib/canvas/canvas-asset-catalog";
+import { markdownPlainText } from "@/lib/markdown-plain-text";
 import { isResourceUrl } from "@/services/api/resources";
 import { resolveMediaUrl } from "@/services/file-storage";
 import type { CanvasNodeData } from "@/types/canvas";
 
 import { useVideoPlaybackUrl } from "./canvas-node-media-content";
 import { CanvasVideoPreviewImage } from "./canvas-video-preview-image";
-
-export function canvasAssetKindIcon(kind: CanvasAssetKind, className = "size-4") {
-    if (kind === "image") return <ImageIcon className={className} aria-hidden="true" />;
-    if (kind === "video") return <Video className={className} aria-hidden="true" />;
-    if (kind === "audio") return <AudioLines className={className} aria-hidden="true" />;
-    return <FileText className={className} aria-hidden="true" />;
-}
 
 /** 文本节点正文；兼容旧同步把正文写成资源地址、原文保存在 prompt 的情况。 */
 export function canvasAssetText(node: CanvasNodeData) {
@@ -27,8 +21,13 @@ export function canvasAssetText(node: CanvasNodeData) {
 }
 
 /** 网格卡片缩略图：图片和视频用封面，其余类型显示正文摘要或类型图标。 */
-export function CanvasAssetThumbnail({ node, kind, iconClassName = "size-6" }: { node: CanvasNodeData; kind: CanvasAssetKind; iconClassName?: string }) {
-    const fallback = <span className="grid size-full place-items-center text-muted-foreground">{canvasAssetKindIcon(kind, iconClassName)}</span>;
+export function CanvasAssetThumbnail({ node, kind }: { node: CanvasNodeData; kind: CanvasAssetKind }) {
+    const Icon = kind === "image" ? ImageIcon : kind === "video" ? Video : kind === "audio" ? AudioLines : FileText;
+    const fallback = (
+        <span className="grid size-full place-items-center text-muted-foreground">
+            <Icon className="size-6" aria-hidden="true" />
+        </span>
+    );
     if (kind === "image") {
         return (
             <CachedResourceImage
@@ -47,7 +46,14 @@ export function CanvasAssetThumbnail({ node, kind, iconClassName = "size-6" }: {
     if (kind === "video") return <CanvasVideoPreviewImage node={node} alt="" loading="lazy" decoding="async" draggable={false} className="size-full object-cover" fallback={fallback} />;
     if (kind === "txt" || kind === "markdown") {
         const text = canvasAssetText(node).trim();
-        if (text) return <span className="line-clamp-6 size-full overflow-hidden whitespace-pre-wrap break-words p-3 text-left text-[var(--fs-label)] leading-4 text-muted-foreground">{text}</span>;
+        const summary = kind === "markdown" ? markdownPlainText(text, "") : text;
+        if (summary)
+            return (
+                <span className="flex size-full flex-col items-start justify-center gap-2 p-3.5 sm:p-4">
+                    <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="line-clamp-3 whitespace-pre-line break-words text-xs leading-5 text-foreground/80 sm:text-sm">{summary}</span>
+                </span>
+            );
     }
     return fallback;
 }

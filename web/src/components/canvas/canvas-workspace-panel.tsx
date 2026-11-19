@@ -4,7 +4,7 @@ import { CanvasWorkspaceHistoryPanel } from "./canvas-workspace-history-panel";
 import type { InsertAssetPayload } from "./asset-picker-modal";
 import { useDeferredValue, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { Button, Grid } from "antd";
-import { Home, PanelLeftClose, PanelLeftOpen, Layers3, Images, ListChecks, History, X } from "lucide-react";
+import { Home, Layers3, Images, ListChecks, History, X } from "lucide-react";
 import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { searchCanvasNodes } from "@/lib/canvas/canvas-node-search";
 import { useEffectiveConfig } from "@/stores/use-config-store";
@@ -58,12 +58,28 @@ export function CanvasWorkspacePanel({
     };
     const tasks = useCanvasWorkspaceTasks(projectId, open && (tab === "tasks" || history));
     const content = (
-        <div className="canvas-workspace-panel relative flex h-full min-h-0 flex-col text-foreground" style={{ "--canvas-workspace-base": theme.node.panel } as CSSProperties} data-canvas-no-zoom data-canvas-wheel-scroll onWheel={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        <div
+            className="canvas-workspace-panel relative flex h-full min-h-0 flex-col text-foreground"
+            style={{ "--canvas-workspace-base": theme.node.panel } as CSSProperties}
+            data-canvas-no-zoom
+            data-canvas-wheel-scroll
+            onWheel={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+        >
             <button className="canvas-workspace-close" type="button" aria-label="关闭工作区" onClick={onClose}>
                 <X className="size-4" />
             </button>
             {tab === "nodes" && (
-                <CanvasWorkspaceNodeListPanel nodes={nodes} config={config} results={searchCanvasNodes(nodes, deferredQuery, nodes.length, config)} query={query} deferredQuery={deferredQuery} selectedNodeIds={selectedNodeIds} onQueryChange={setQuery} onFocus={onFocus} />
+                <CanvasWorkspaceNodeListPanel
+                    nodes={nodes}
+                    config={config}
+                    results={searchCanvasNodes(nodes, deferredQuery, nodes.length, config)}
+                    query={query}
+                    deferredQuery={deferredQuery}
+                    selectedNodeIds={selectedNodeIds}
+                    onQueryChange={setQuery}
+                    onFocus={onFocus}
+                />
             )}
             {tab === "assets" && <CanvasWorkspaceAssetPanel onInsert={onInsertAssets} onManage={onAssets} onProjectAssets={onProjectAssets} />}
             {(tab === "tasks" || history) && (
@@ -126,20 +142,6 @@ export function CanvasWorkspacePanel({
                             </button>
                         ))}
                     </div>
-                    <span className="canvas-workspace-rail-divider is-end" aria-hidden />
-                    <button
-                        className="canvas-workspace-rail-button canvas-workspace-rail-toggle"
-                        type="button"
-                        onClick={open ? onClose : onOpen}
-                        onPointerDown={markPointer}
-                        onKeyDown={markKeyboard}
-                        aria-expanded={open}
-                        aria-label={open ? "折叠面板" : "展开面板"}
-                        title={open ? "收起面板，扩大画布" : "展开工作区面板"}
-                    >
-                        {open ? <PanelLeftClose /> : <PanelLeftOpen />}
-                        <span>{open ? "收起" : "展开"}</span>
-                    </button>
                 </nav>
                 {open && screens.lg ? (
                     <aside className="w-80 shrink-0 min-h-0" aria-label="画布工作区">

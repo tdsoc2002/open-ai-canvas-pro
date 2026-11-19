@@ -64,15 +64,17 @@ test("cleared tool references do not fall back to the original generation prompt
     expect(toolReferences).not.toContain("||");
 });
 
-test("workspace starts collapsed and keeps separated navigation and bottom toggle", () => {
+test("workspace starts collapsed and opens or closes from its section buttons", () => {
     const page = readFileSync(new URL("../src/pages/canvas/project.tsx", import.meta.url), "utf8");
     expect(page).toContain("const [workspaceOpen, setWorkspaceOpen] = useState(false)");
     const panel = component("canvas-workspace-panel.tsx");
     expect(panel).toContain('className="canvas-workspace-rail-items"');
-    expect(panel.indexOf("canvas-workspace-rail-toggle")).toBeGreaterThan(panel.indexOf("entries.map"));
+    expect(panel).not.toContain("canvas-workspace-rail-toggle");
+    expect(panel).toContain("if (open && tab === id) onClose();");
+    expect(panel).toMatch(/setTab\(id\);\s+onOpen\(\);/);
+    expect(panel).toContain('aria-label="关闭工作区" onClick={onClose}');
     const css = component("canvas-workspace-panel.css");
     expect(css).toContain("gap: var(--space-1)");
-    expect(css).toContain("margin-top: auto");
     expect(css).toContain("prefers-reduced-motion: reduce");
 });
 
@@ -106,9 +108,9 @@ test("editor rail and expanded panel share one restrained glass surface without 
     expect(styles).toContain(".canvas-workspace-zoom-controls");
     expect(styles).toContain(".canvas-main-with-workspace > .canvas-project-sidebar {\n        margin-left: var(--space-16);");
     expect(styles).toContain(".canvas-main-with-workspace:has(> .canvas-project-sidebar) .canvas-topbar");
-    // 只允许“主页”与“展开”前的短分隔，不能回到整列硬分隔线。
+    // 只保留“主页”后的短分隔，不能回到整列硬分隔线。
     expect(panel).toContain('<span className="canvas-workspace-rail-divider" aria-hidden />');
-    expect(panel).toContain('<span className="canvas-workspace-rail-divider is-end" aria-hidden />');
+    expect(panel).not.toContain("canvas-workspace-rail-divider is-end");
     expect(panel).not.toContain("<strong>工作区</strong>");
     const dividerCss = styles.split(".canvas-workspace-rail-divider {")[1]?.split("}")[0] ?? "";
     expect(dividerCss).toContain("width: var(--space-6)");

@@ -5,7 +5,7 @@ const source = readFileSync(new URL("../src/pages/canvas/project.tsx", import.me
 
 describe("image angle editor", () => {
     test("anchors the 3D angle editor to the selected node and follows drag", () => {
-        const dialog = source.slice(source.indexOf("{angleNode?.metadata?.content"), source.indexOf("{lightingNode?.metadata?.content"));
+        const dialog = source.slice(source.indexOf("angleNode?.metadata?.content ? ("), source.indexOf("{lightingNode?.metadata?.content"));
         expect(dialog).toContain("CanvasNodePanelOverlay");
         expect(dialog).toContain("CanvasNodeAnglePanel");
         expect(dialog).toContain("dragOffset={dragPreview");

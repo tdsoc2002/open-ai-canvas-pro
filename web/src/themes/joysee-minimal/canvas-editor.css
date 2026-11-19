@@ -1,4 +1,4 @@
-/* LJCanvas 当前编辑器：居中工具组、收缩侧轨和低干扰创作面板。 */
+/* LJCanvas 当前编辑器：合并底部工具、收缩侧轨和低干扰创作面板。 */
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor {
     --button-height: 40px;
     --button-height-sm: 32px;
@@ -69,64 +69,48 @@
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-main-toolbar.has-view-controls {
-    --canvas-dock-popover-offset: calc(var(--button-height-sm) + var(--space-6));
     left: calc(var(--canvas-workspace-inset, 0px) + var(--canvas-inset-x));
-    gap: var(--space-2);
+    --canvas-dock-popover-offset: var(--space-16);
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-dock {
-    --dock-surface: var(--canvas-bottom-surface);
-    --dock-border: var(--canvas-bottom-border);
-    --dock-shadow: var(--elevation-card-hover);
     display: flex;
     align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
     max-width: 100%;
-    min-width: 0;
-    gap: var(--space-half);
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--dock-border);
-    border-radius: var(--r-xl);
-    background: var(--dock-surface);
+    padding: var(--space-half) var(--space-1);
 }
 
-/* 两组保留各自可访问工具栏与内部滚动，浮层留在不裁剪的外壳。 */
-:root[data-skin="joysee-minimal"] .joysee-canvas-dock .canvas-bottom-dock {
-    flex: 0 1 auto;
+/* 窄屏在各组内横向滚动，两个组共用一条底板，浮层不被滚动容器裁切。 */
+:root[data-skin="joysee-minimal"] .joysee-canvas-dock :is(.joysee-canvas-dock-group, .joysee-canvas-dock-views) {
     min-width: 0;
-    gap: var(--space-half);
-    padding: var(--space-half);
-    border: 0 !important;
-    border-radius: var(--r-md) !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    -webkit-backdrop-filter: none;
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-dock .joysee-canvas-dock-group {
+    border: 0;
+    box-shadow: none;
     backdrop-filter: none;
+    scrollbar-width: thin;
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-dock .canvas-bottom-dock .aceternity-dock-separator {
-    margin-inline: var(--space-half);
-}
-
-/* 原生工具按钮不带输入方式标记；可见焦点内缩，避免被滚动容器裁切。 */
-:root[data-skin="joysee-minimal"] .joysee-canvas-dock .canvas-bottom-dock :is(.aceternity-dock-command, .aceternity-dock-switch-option):focus-visible {
-    outline: var(--focus-ring-width) solid var(--ring) !important;
-    outline-offset: calc(-1 * var(--stroke-1)) !important;
-}
-
-:root[data-skin="joysee-minimal"] .joysee-canvas-dock .canvas-zoom-controls {
-    flex: 0 1 auto;
-    min-width: 0;
-}
-
-:root[data-skin="joysee-minimal"] .joysee-canvas-dock .canvas-zoom-controls .aceternity-dock-command:not(.is-active, .is-danger, .is-quiet):not(:hover) {
-    color: color-mix(in srgb, currentColor 65%, var(--dock-surface));
+:root[data-skin="joysee-minimal"] .joysee-canvas-dock .joysee-canvas-dock-group :is(.aceternity-dock-command, .aceternity-dock-switch-option):focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: calc(-1 * var(--stroke-1));
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-dock-divider {
     inline-size: var(--stroke-1);
     block-size: var(--space-4);
     flex-shrink: 0;
-    background: var(--dock-border);
+    background: color-mix(in srgb, currentColor 13%, transparent);
+}
+
+@media (max-width: 1023px) {
+    /* 保留右下角助手入口的空间，工具仍可在同一行横向滚动。 */
+    :root[data-skin="joysee-minimal"]:has(.canvas-agent-launcher[data-near-bottom-right]:not([aria-hidden="true"])) .joysee-canvas-editor .canvas-main-toolbar.has-view-controls {
+        right: calc(var(--space-24) + var(--space-12));
+    }
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-node-composer {
@@ -189,39 +173,6 @@
 
     :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar {
         grid-template-columns: minmax(0, 1fr) 0 auto;
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-dock {
-        flex-wrap: wrap;
-        width: 100%;
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-dock > .canvas-bottom-dock,
-    :root[data-skin="joysee-minimal"] .joysee-canvas-dock > .canvas-zoom-controls {
-        flex: 1 1 100%;
-        width: 100%;
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-dock-divider {
-        inline-size: 100%;
-        block-size: var(--stroke-1);
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-dock .canvas-bottom-dock {
-        scrollbar-width: thin;
-        scrollbar-color: var(--dock-border) transparent;
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-main-toolbar.has-view-controls {
-        --canvas-dock-popover-offset: calc(var(--button-height-sm) * 2 + var(--space-8));
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-main-toolbar {
-        right: calc(var(--canvas-inset-x) + var(--space-16));
-    }
-
-    :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-main-toolbar.canvas-focus-tool-rail {
-        right: auto;
     }
 
     :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar-wallet {
