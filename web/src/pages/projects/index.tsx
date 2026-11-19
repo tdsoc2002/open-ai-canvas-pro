@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useRef, useState, type DragEvent } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Dropdown, Input } from "antd";
-import { BookOpenText, ClipboardPaste, Clapperboard, ExternalLink, FileUp, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { ClipboardPaste, Clapperboard, ExternalLink, FileUp, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
@@ -203,29 +203,35 @@ export default function DramaListPage() {
 /** 还没有作品时的上传引导；有作品后整页都可拖入，不再常驻占位。 */
 function UploadHero({ onPick, onPaste }: { onPick: () => void; onPaste: () => void }) {
     return (
-        <div className="drama-drop drama-library-hero">
-            <span className="drama-drop-icon">
-                <BookOpenText className="size-7" />
-            </span>
-            <h2>拖入一本小说，开始做短剧</h2>
-            <p>支持 TXT / Markdown，最多 600 万字。确认风格、参考图方案和审阅方式后，系统自动改编、拆集、建角色、出分镜并合成成片。</p>
-            <div className="flex flex-wrap justify-center gap-2">
-                <Button type="primary" size="large" icon={<FileUp className="size-4" />} onClick={onPick}>
-                    选择小说文件
-                </Button>
-                <Button size="large" icon={<ClipboardPaste className="size-4" />} onClick={onPaste}>
-                    粘贴正文
-                </Button>
+        <section className="drama-library-hero" aria-labelledby="drama-library-import-title">
+            <div className="drama-library-hero-intro">
+                <span className="drama-library-hero-badge">
+                    <Clapperboard className="size-4 shrink-0" aria-hidden="true" />
+                    小说改编
+                </span>
+                <h2 id="drama-library-import-title">拖入一本小说，开始做短剧</h2>
+                <div className="drama-library-hero-actions">
+                    <Button type="primary" size="large" icon={<FileUp className="size-4" />} onClick={onPick}>
+                        选择小说文件
+                    </Button>
+                    <Button size="large" icon={<ClipboardPaste className="size-4" />} onClick={onPaste}>
+                        粘贴正文
+                    </Button>
+                </div>
+                <p className="drama-library-hero-format">支持 TXT / Markdown，最多 600 万字</p>
             </div>
-            <div className="drama-drop-steps">
-                {PIPELINE.map((step, index) => (
-                    <span key={step}>
-                        <b>{index + 1}</b>
-                        {step}
-                    </span>
-                ))}
+            <div className="drama-library-hero-process">
+                <h3>制作流程</h3>
+                <ol className="drama-library-hero-steps" role="list">
+                    {PIPELINE.map((step, index) => (
+                        <li key={step}>
+                            <span aria-hidden="true">{index + 1}</span>
+                            {step}
+                        </li>
+                    ))}
+                </ol>
             </div>
-        </div>
+        </section>
     );
 }
 

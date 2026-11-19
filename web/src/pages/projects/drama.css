@@ -3141,9 +3141,96 @@
     }
 }
 .drama-library-hero {
-    min-height: 440px;
-    flex: auto;
-    margin-top: 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+    flex: 1 0 auto;
+    width: 100%;
+    margin-top: var(--space-4);
+    overflow: hidden;
+    border: 1px solid var(--user-border);
+    border-radius: var(--user-radius-card);
+    background: var(--user-surface);
+}
+.drama-library-hero-intro,
+.drama-library-hero-process {
+    display: grid;
+    align-content: center;
+    min-width: 0;
+    padding: clamp(var(--space-5), 3vw, var(--space-10));
+}
+.drama-library-hero-intro {
+    justify-items: start;
+    gap: var(--space-4);
+}
+.drama-library-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--r-full);
+    background: var(--user-surface-muted);
+    color: var(--brand, var(--user-accent));
+    font-size: var(--fs-caption);
+    font-weight: 600;
+}
+.drama-library-hero h2 {
+    color: var(--user-ink);
+    font-size: clamp(var(--fs-heading), 2.2vw, var(--fs-title));
+    font-weight: 600;
+    line-height: var(--lh-heading);
+    text-wrap: balance;
+}
+.drama-library-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+.drama-library-hero-format {
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
+}
+.drama-library-hero-process {
+    border-inline-start: 1px solid var(--user-border);
+    background: var(--user-surface-muted);
+}
+.drama-library-hero-process h3 {
+    margin-bottom: var(--space-4);
+    color: var(--user-ink);
+    font-size: var(--fs-body);
+    font-weight: 600;
+}
+.drama-library-hero-steps {
+    display: grid;
+    gap: var(--space-3);
+}
+.drama-library-hero-steps li {
+    display: grid;
+    grid-template-columns: var(--space-6) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-body);
+}
+.drama-library-hero-steps li > span {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border-radius: var(--r-full);
+    background: var(--user-surface);
+    color: var(--user-ink);
+    font-size: var(--fs-caption);
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 860px) {
+    .drama-library-hero {
+        grid-template-columns: minmax(0, 1fr);
+        flex: none;
+        margin-top: var(--space-3);
+    }
+    .drama-library-hero-process {
+        border-inline-start: 0;
+        border-block-start: 1px solid var(--user-border);
+    }
 }
 .drama-library-drop {
     position: absolute;
