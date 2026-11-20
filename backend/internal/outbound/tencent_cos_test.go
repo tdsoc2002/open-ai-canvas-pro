@@ -27,9 +27,15 @@ func TestTencentCOSResolvesPubliclyWhenSystemDNSReturnsRestrictedAddresses(t *te
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			outboundtest.DNS(t, tt.public, tt.host)
-			publicDNS := net.DefaultResolver
+			previousPublicDNS := tencentCOSPublicDNS
+			tencentCOSPublicDNS = net.DefaultResolver
+			t.Cleanup(func() { tencentCOSPublicDNS = previousPublicDNS })
 			outboundtest.DNS(t, tt.system, tt.host)
-			ips, err := resolveTencentCOSHost(t.Context(), tt.host, publicDNS)
+			target := &url.URL{Scheme: "https", Host: tt.host, Path: "/ref.png", RawQuery: "q-signature=fixture"}
+			if err := ValidateTencentCOSBucketURL(target); (err == nil) != (tt.want != "") {
+				t.Fatalf("validating COS URL returned %v, want address %q", err, tt.want)
+			}
+			ips, err := resolveTencentCOSHost(t.Context(), tt.host, tencentCOSPublicDNS)
 			if tt.want == "" {
 				if err == nil || len(ips) != 0 {
 					t.Fatalf("restricted endpoint resolved to %v, err=%v", ips, err)

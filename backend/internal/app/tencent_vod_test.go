@@ -15,9 +15,11 @@ import (
 )
 
 func TestTencentVODPrepareDirectRequest(t *testing.T) {
-	outboundtest.PublicDNS(t, "media.example.com")
+	const bucket = "test-bucket-1250000000.cos.ap-nanjing.myqcloud.com"
+	const signedURL = "https://" + bucket + "/ref.png?q-signature=fixture"
+	outboundtest.PublicDNS(t, bucket)
 	cfg := providerConfig{ChannelID: "configured-channel", BaseURL: tencentVODBaseURL, tencentVODAppID: 123456789, Headers: []OutboundHeader{{Name: "X-TC-Action", Value: "invalid"}}}
-	req := protocol.GenerationRequest{Model: "tencent-seedance-2-5-260628", Prompt: "测试", Operation: "image_to_video", Images: []protocol.MediaReference{{URL: "https://media.example.com/ref.png", Role: "first_frame"}}, Resolution: "720p", Duration: 5}
+	req := protocol.GenerationRequest{Model: "tencent-seedance-2-5-260628", Prompt: "测试", Operation: "image_to_video", Images: []protocol.MediaReference{{URL: signedURL, Role: "first_frame"}}, Resolution: "720p", Duration: 5}
 	if err := prepareTencentVODRequest(&cfg, &req); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +47,7 @@ func TestTencentVODPrepareDirectRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(wire), `"SubAppId":123456789`) || !strings.Contains(string(wire), `"FileInfos":[{"Category":"Image","Usage":"FirstFrame","Type":"Url","Url":"https://media.example.com/ref.png"}]`) {
+	if !strings.Contains(string(wire), `"SubAppId":123456789`) || !strings.Contains(string(wire), `"FileInfos":[{"Category":"Image","Usage":"FirstFrame","Type":"Url","Url":"`+signedURL+`"}]`) {
 		t.Fatalf("wrong wire request: %s", wire)
 	}
 	if strings.Contains(string(wire), "AudioGeneration") || strings.Contains(string(wire), "LogoAdd") {

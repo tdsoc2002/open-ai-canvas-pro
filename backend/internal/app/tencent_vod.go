@@ -2,11 +2,13 @@ package app
 
 import (
 	"fmt"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
 
 	"yingce/backend/internal/model"
+	"yingce/backend/internal/outbound"
 	"yingce/backend/internal/protocol"
 )
 
@@ -215,8 +217,8 @@ func tencentVODFiles(request *protocol.GenerationRequest, maxSeconds int) ([]ten
 			if usage == "Reference" {
 				references++
 			}
-			address, err := ValidateOutboundURL(item.URL)
-			if err != nil || address.Fragment != "" {
+			address, err := url.Parse(strings.TrimSpace(item.URL))
+			if err != nil || address.Fragment != "" || outbound.ValidateTencentCOSBucketURL(address) != nil {
 				return nil, false, InvalidModelSelection("腾讯 VOD 参考素材须提供可公网访问的 HTTP(S) 链接")
 			}
 			files = append(files, tencentVODFile{Category: group.category, Usage: usage, Type: "Url", URL: item.URL})
