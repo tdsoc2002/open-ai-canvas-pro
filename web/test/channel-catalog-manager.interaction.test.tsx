@@ -22,6 +22,7 @@ for (const [key, value] of Object.entries({
     ResizeObserver: dom.ResizeObserver,
     getComputedStyle: dom.getComputedStyle.bind(dom),
     IS_REACT_ACT_ENVIRONMENT: true,
+    __APP_VERSION__: "test",
 })) {
     originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
@@ -29,7 +30,10 @@ for (const [key, value] of Object.entries({
 const { act, StrictMode } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { App } = await import("antd");
+const { MemoryRouter } = await import("react-router");
 const { apiClient } = await import("../src/services/api/request");
+const { AdminProvider } = await import("../src/pages/admin/admin-context");
+const { default: ChannelsPage } = await import("../src/pages/admin/channels/channels-page");
 const { ChannelModelManager } = await import("../src/pages/admin/components/channel-model-manager");
 const { useChannelKeySort } = await import("../src/pages/admin/channels/use-channel-key-sort");
 afterAll(() => {
@@ -37,6 +41,52 @@ afterAll(() => {
     for (const [key, descriptor] of originals) {
         if (descriptor) Object.defineProperty(globalThis, key, descriptor);
         else Reflect.deleteProperty(globalThis, key);
+    }
+});
+
+test("新增系统渠道直接打开自定义表单，无需加载服务商目录", async () => {
+    const original = apiClient.request;
+    const requests: string[] = [];
+    const responses: Record<string, unknown> = {
+        "/admin/references": { users: [], channels: [] },
+        "/admin/channels": { channels: [], total: 0, page: 1, pageSize: 100 },
+        "/admin/channel-websites": { websites: [] },
+        "/admin/channel-models/health": { items: [], computedAt: "", truncated: false },
+        "/admin/provider-catalog": { source: "live", providers: [], tags: [] },
+    };
+    apiClient.request = (async ({ url }: { url: string }) => {
+        requests.push(url);
+        if (!(url in responses)) throw new Error(`Unexpected request ${url}`);
+        return { data: { code: 0, data: responses[url], msg: "ok" }, status: 200 };
+    }) as typeof apiClient.request;
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+        await act(async () =>
+            root.render(
+                <MemoryRouter initialEntries={["/admin/channels"]}>
+                    <App>
+                        <AdminProvider>
+                            <ChannelsPage />
+                        </AdminProvider>
+                    </App>
+                </MemoryRouter>,
+            ),
+        );
+        const create = Array.from(host.querySelectorAll("button")).find((button) => /^(自定义配置|从服务商目录接入)$/.test(button.textContent?.trim() || ""));
+        expect(create).toBeDefined();
+        await act(async () => create!.click());
+
+        const dialog = document.querySelector('[role="dialog"]');
+        expect(dialog?.textContent).toContain("新增独立 Key 分组");
+        expect(dialog?.textContent).toContain("Base URL");
+        expect(dialog?.textContent).toContain("API Key / Access Key");
+        expect(requests).not.toContain("/admin/provider-catalog");
+    } finally {
+        await act(async () => root.unmount());
+        host.remove();
+        apiClient.request = original;
     }
 });
 

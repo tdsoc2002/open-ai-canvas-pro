@@ -18,7 +18,6 @@ import { formatRate, healthTone, useChannelModelHealth } from "../components/cha
 import { AllChannelModelsPanel } from "./all-channel-models-panel";
 import { ChannelOrderDialog } from "../components/channel-order-dialog";
 import { channelCategories, normalizeChannelCategory, openChannelWorkspace, selectChannelWorkspace } from "./channel-workspace-state";
-import { ProviderCatalogWizard } from "./provider-catalog-wizard";
 import "./channels-page.css";
 import { Select } from "@/components/ui/base/select";
 import { listAdminChannelWebsites, deleteAdminChannelWebsite, type ChannelWebsite } from "@/services/api/channel-websites";
@@ -91,7 +90,6 @@ export default function ChannelsPage() {
     const [editingChannel, setEditingChannel] = useState<ModelChannel | null>(null);
     const [saving, setSaving] = useState(false);
     const [duplicatingChannelId, setDuplicatingChannelId] = useState<string | null>(null);
-    const [wizardOpen, setWizardOpen] = useState(false);
     const [importVersion, setImportVersion] = useState(0);
     const [transferring, setTransferring] = useState(false);
     const importInputRef = useRef<HTMLInputElement>(null);
@@ -441,8 +439,8 @@ export default function ChannelsPage() {
                             <Button block type="primary" icon={<Plus className="size-4" />} onClick={() => setWebsiteDialog("new")}>
                                 新增网站
                             </Button>
-                            <Button block onClick={() => setWizardOpen(true)}>
-                                从服务商目录接入
+                            <Button block onClick={() => openDrawer()}>
+                                自定义配置
                             </Button>
                             <div className="flex gap-2">
                                 <input
@@ -787,20 +785,6 @@ export default function ChannelsPage() {
                     }}
                 />
             )}
-            <ProviderCatalogWizard
-                open={wizardOpen}
-                onClose={() => setWizardOpen(false)}
-                onCustom={() => {
-                    setWizardOpen(false);
-                    openDrawer();
-                }}
-                onInstalled={async (channel) => {
-                    setWizardOpen(false);
-                    updateUrl({ channel: channel.id, website: channel.websiteId || "", filter: "", status: "all", category: "all" }, true);
-                    await syncChannels();
-                    await reload();
-                }}
-            />
         </AdminPageFrame>
     );
 }
