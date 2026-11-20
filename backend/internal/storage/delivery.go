@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"yingce/backend/internal/outbound"
 )
 
 // DeliverySettings is independent from origin credentials. Public CDN access must be an explicit choice.
@@ -38,6 +40,14 @@ func PublicOrigin(setting Settings) bool {
 	if setting.Provider == qiniuKodoProvider {
 		return true
 	} // The SDK signs the public Kodo S3 origin, not its upload endpoint.
+	if setting.Provider == tencentCOSProvider {
+		bucketURL, err := CosBucketBaseURL(setting)
+		if err != nil {
+			return false
+		}
+		// The signed URL is consumed outside this server's split-horizon DNS.
+		return outbound.IsStandardTencentCOSBucketURL(bucketURL) || PublicHTTPSStorageEndpoint(bucketURL.String())
+	}
 	if setting.Provider == volcengineTOSProvider && volcengineTOSInternalEndpoint(setting.Endpoint) {
 		return false // ivolces.com 只在火山引擎内网可达，浏览器拿到的预签名地址打不开。
 	}

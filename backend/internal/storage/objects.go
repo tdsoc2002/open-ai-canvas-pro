@@ -582,12 +582,20 @@ func QiniuRegion(region string) *qiniuStorage.Region {
 	}
 }
 
+func ValidateCOSEndpoint(setting Settings) error {
+	bucketURL, err := CosBucketBaseURL(setting)
+	if err != nil {
+		return kernel.BadAuthRequest(err.Error())
+	}
+	return outbound.ValidateTencentCOSBucketURL(bucketURL)
+}
+
 func NewCOSClient(setting Settings, timeout time.Duration) (*cos.Client, error) {
 	bucketURL, err := CosBucketBaseURL(setting)
 	if err != nil {
 		return nil, err
 	}
-	httpClient := outbound.OutboundHTTPClient(timeout)
+	httpClient := outbound.TencentCOSHTTPClient(bucketURL, timeout)
 	httpClient.Transport = &cos.AuthorizationTransport{SecretID: setting.AccessKeyID, SecretKey: setting.AccessKeySecret, Transport: httpClient.Transport}
 	return cos.NewClient(&cos.BaseURL{BucketURL: bucketURL}, httpClient), nil
 }

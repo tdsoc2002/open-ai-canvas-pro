@@ -8,7 +8,22 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"yingce/backend/internal/outbound/outboundtest"
 )
+
+func TestPublicOriginRecognizesStandardCOSDespiteSplitHorizonDNS(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "")
+	outboundtest.DNS(t, [4]byte{169, 254, 0, 47}, "cos.ap-nanjing.myqcloud.com", "storage.example")
+	setting := Settings{Provider: tencentCOSProvider, Bucket: "test-bucket-1250000000", Region: "ap-nanjing"}
+	if !PublicOrigin(setting) {
+		t.Fatal("standard COS bucket was classified as private for browser delivery")
+	}
+	setting.Endpoint = "https://storage.example"
+	if PublicOrigin(setting) {
+		t.Fatal("private custom COS endpoint was classified as public")
+	}
+}
 
 // 展示地址的签名时间由调用方对齐；同一时间窗内重复签发必须得到逐字节相同的 URL，
 // 否则浏览器 HTTP 缓存（以完整 URL 为键）在每次刷新画布时都会失效并重新下载对象。

@@ -668,9 +668,12 @@ func ossSettingFromRequest(req OSSSettingRequest, current ossSettingValue) (ossS
 			}
 		}
 		var endpointErr error
-		if next.Provider == s3Provider || next.Provider == volcengineTOSProvider {
+		switch next.Provider {
+		case s3Provider, volcengineTOSProvider:
 			_, endpointErr = validateStorageEndpoint(next.Endpoint)
-		} else {
+		case tencentCOSProvider:
+			endpointErr = mapOutboundError(storage.ValidateCOSEndpoint(next))
+		default:
 			_, endpointErr = ValidateOutboundURL(next.Endpoint)
 		}
 		if endpointErr != nil {

@@ -322,6 +322,23 @@ func TestTencentCOSSettingDerivesEndpointAndDoesNotReuseAliyunSecret(t *testing.
 	}
 }
 
+func TestTencentCOSSettingValidatesActualBucketOrigin(t *testing.T) {
+	const bucketHost = "test-bucket-1250000000.cos.ap-nanjing.myqcloud.com"
+	const otherHost = "other-bucket-1250000000.cos.ap-nanjing.myqcloud.com"
+	outboundtest.PublicDNS(t, bucketHost, otherHost)
+	request := OSSSettingRequest{
+		Enabled: true, Provider: tencentCOSProvider, Region: "ap-nanjing", Bucket: "test-bucket-1250000000",
+		AccessKeyID: "test-id", AccessKeySecret: "test-secret",
+	}
+	if _, err := ossSettingFromRequest(request, ossSettingValue{}); err != nil {
+		t.Fatalf("valid COS bucket origin was rejected: %v", err)
+	}
+	request.Endpoint = "https://" + otherHost
+	if _, err := ossSettingFromRequest(request, ossSettingValue{}); err == nil {
+		t.Fatal("configured bucket and COS endpoint bucket do not match")
+	}
+}
+
 func TestAliyunOSSSettingKeepsCDNBaseURL(t *testing.T) {
 	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))

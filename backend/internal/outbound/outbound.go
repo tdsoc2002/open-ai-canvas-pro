@@ -306,16 +306,19 @@ func blockedOutboundHeader(name string) bool {
 }
 
 func newOutboundTransport(resolveHost func(context.Context, string) ([]net.IP, error)) *http.Transport {
+	return newOutboundTransportWithEnvironmentProxy(resolveHost, true)
+}
+
+func newOutboundTransportWithEnvironmentProxy(resolveHost func(context.Context, string) ([]net.IP, error), useProxy bool) *http.Transport {
 	dialer := &net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}
-	return &http.Transport{
-		Proxy: outboundProxyFromEnvironment,
+	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
 			host, port, err := net.SplitHostPort(address)
 			if err != nil {
 				return nil, err
 			}
 			// 代理地址由部署者通过环境变量配置；目标 URL 仍在请求前经过 SSRF 校验。
-			if configuredProxyHost(host) {
+			if useProxy && configuredProxyHost(host) {
 				return dialer.DialContext(ctx, network, address)
 			}
 			addresses, err := resolveHost(ctx, host)
@@ -331,6 +334,10 @@ func newOutboundTransport(resolveHost func(context.Context, string) ([]net.IP, e
 		TLSHandshakeTimeout:   15 * time.Second,
 		ExpectContinueTimeout: time.Second,
 	}
+	if useProxy {
+		transport.Proxy = outboundProxyFromEnvironment
+	}
+	return transport
 }
 
 func outboundProxyFromEnvironment(req *http.Request) (*url.URL, error) {
@@ -441,7 +448,22 @@ func resolveOutboundHostWithPolicy(ctx context.Context, host string, allowPrivat
 	if !allowPrivateHost && (host == "localhost" || strings.HasSuffix(host, ".localhost")) {
 		return nil, BadAuthRequest("不允许访问本机或内网地址")
 	}
-	addresses, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+	addresses, err := lookupOutboundHost(ctx, host, net.DefaultResolver)
+	if err != nil {
+		return nil, err
+	}
+	if !allowPrivateHost {
+		for _, ip := range addresses {
+			if blockedOutboundIP(ip) {
+				return nil, BadAuthRequest("不允许访问本机、内网或链路本地地址")
+			}
+		}
+	}
+	return addresses, nil
+}
+
+func lookupOutboundHost(ctx context.Context, host string, resolver *net.Resolver) ([]net.IP, error) {
+	addresses, err := resolver.LookupIP(ctx, "ip", host)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -454,13 +476,6 @@ func resolveOutboundHostWithPolicy(ctx context.Context, host string, allowPrivat
 		failure := kernel.NewAppError(http.StatusBadGateway, "外部服务域名没有可用地址，请检查渠道域名和后端 DNS 配置")
 		failure.Reason = kernel.ReasonUpstreamDNSFailed
 		return nil, failure
-	}
-	if !allowPrivateHost {
-		for _, ip := range addresses {
-			if blockedOutboundIP(ip) {
-				return nil, BadAuthRequest("不允许访问本机、内网或链路本地地址")
-			}
-		}
 	}
 	return addresses, nil
 }
