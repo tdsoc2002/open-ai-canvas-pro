@@ -190,24 +190,6 @@
     color: #f7f3ea;
 }
 
-/* 积分中心弹窗：上游是紫青粉流光，换成墨、朱砂、黛青三团淡墨晕 */
-:root[data-skin="longying-ink"] .workspace-wallet-modal .ant-modal-container::before {
-    background: radial-gradient(22% 26% at 25% 25%, rgba(46, 36, 22, 0.22), transparent 70%), radial-gradient(20% 24% at 72% 30%, rgba(176, 64, 45, 0.2), transparent 70%), radial-gradient(22% 24% at 60% 72%, rgba(47, 93, 88, 0.16), transparent 70%);
-}
-:root[data-skin="longying-ink"] .workspace-wallet-shell::before {
-    background: radial-gradient(20% 24% at 75% 20%, rgba(46, 36, 22, 0.16), transparent 70%), radial-gradient(18% 22% at 30% 70%, rgba(47, 93, 88, 0.14), transparent 70%), radial-gradient(18% 20% at 82% 78%, rgba(181, 131, 47, 0.14), transparent 70%);
-    mix-blend-mode: multiply;
-}
-:root[data-skin="longying-ink"].dark .workspace-wallet-modal .ant-modal-container::before {
-    background:
-        radial-gradient(22% 26% at 25% 25%, rgba(236, 229, 214, 0.16), transparent 70%), radial-gradient(20% 24% at 72% 30%, rgba(226, 118, 91, 0.24), transparent 70%), radial-gradient(22% 24% at 60% 72%, rgba(111, 165, 156, 0.18), transparent 70%);
-}
-:root[data-skin="longying-ink"].dark .workspace-wallet-shell::before {
-    background:
-        radial-gradient(20% 24% at 75% 20%, rgba(236, 229, 214, 0.1), transparent 70%), radial-gradient(18% 22% at 30% 70%, rgba(111, 165, 156, 0.14), transparent 70%), radial-gradient(18% 20% at 82% 78%, rgba(217, 166, 80, 0.12), transparent 70%);
-    mix-blend-mode: screen;
-}
-
 /* ---------- 画布浮动工具条：半透明纸面 ---------- */
 :root[data-skin="longying-ink"] .app-spatial-surface {
     border-color: rgba(62, 46, 24, 0.12);

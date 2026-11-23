@@ -53,7 +53,7 @@ export function PaymentOrdersPanel({ onOpen }: { onOpen: (id: string) => void })
                     <div className="workspace-wallet-empty">{t("account.payment.ordersEmpty")}</div>
                 )}
             </div>
-            <Pagination current={page} total={query.data?.total || 0} pageSize={20} showSizeChanger={false} onChange={setPage} />
+            <Pagination current={page} total={query.data?.total || 0} pageSize={20} hideOnSinglePage showSizeChanger={false} onChange={setPage} />
         </div>
     );
 }

@@ -55,7 +55,7 @@ const income: WalletHistoryEntry = {
     createdAt,
 };
 
-async function renderWallet(initialTab: "income" | "history" = "history") {
+async function renderWallet(initialTab: "income" | "history" | "topup" = "history") {
     const requests: WalletRequest[] = [];
     apiClient.defaults.adapter = async (request) => {
         const response = (data: unknown) => ({ status: 200, statusText: "OK", headers: {}, config: request, data: { code: 0, data } });
@@ -126,6 +126,24 @@ async function clickButton(label: string) {
     await act(async () => button!.click());
 }
 
+test("the empty top-up view keeps storage visible and offers direct redemption", async () => {
+    const modal = await renderWallet("topup");
+    try {
+        expect(document.querySelector(".wallet-topup-group.is-storage")?.textContent).toContain("已用 0 B / 1.0 GB");
+        const notice = document.querySelector(".wallet-topup-unavailable");
+        expect(notice?.textContent).toContain("在线充值暂不可用");
+        expect(document.body.textContent).not.toContain("暂未上架存储空间套餐");
+        const redeem = notice?.querySelector("button");
+        expect(redeem).toBeTruthy();
+        await act(async () => redeem?.click());
+        expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe("兑换");
+        expect(document.querySelector(".workspace-wallet-redeem-row input")).toBeTruthy();
+        expect(document.querySelector(".wallet-topup-storage-usage")).toBeNull();
+    } finally {
+        await modal.close();
+    }
+});
+
 test("income sits before expenses, paginates separately and ignores late responses from the other tab", async () => {
     const modal = await renderWallet();
     try {
@@ -159,6 +177,7 @@ test("income sits before expenses, paginates separately and ignores late respons
         await act(async () => modal.requests[4]!.reply([]));
         expect(document.body.textContent).toContain("提交生成任务后，消费与结算记录会显示在这里。");
         expect(document.body.textContent).not.toContain("还没有充值记录");
+        expect(document.querySelector(".workspace-wallet-pagination")).toBeNull();
     } finally {
         await modal.close();
     }

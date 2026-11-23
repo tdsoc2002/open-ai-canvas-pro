@@ -1,9 +1,10 @@
 import { Button, Skeleton } from "antd";
-import { Check, CircleAlert, Coins, FolderOpen, HardDrive } from "lucide-react";
+import { ArrowRight, Check, CircleAlert, Coins, FolderOpen, HardDrive } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { PaymentBrandIcon } from "@/components/payment-brand-icons";
+import { Callout } from "@/components/ui/product/callout";
 import { formatCreditDisplay } from "@/constant/credits";
 import { currentLocale, translate } from "@/i18n";
 import { accountStorageMeter, accountStorageStateMessage, formatStorageCapacity, formatStorageDate, formatStorageDuration } from "@/lib/account-storage-usage";
@@ -74,7 +75,21 @@ function ProductCard({ product, selected, onSelect }: { product: TopupProduct; s
     );
 }
 
-function TopupGroup({ kind, products, selectedProductId, onSelectProduct, aside, children }: { kind: TopupProductKind; products: TopupProduct[]; selectedProductId: string; onSelectProduct: (id: string) => void; aside?: ReactNode; children?: ReactNode }) {
+function TopupGroup({
+    kind,
+    products,
+    selectedProductId,
+    onSelectProduct,
+    showEmpty,
+    children,
+}: {
+    kind: TopupProductKind;
+    products: TopupProduct[];
+    selectedProductId: string;
+    onSelectProduct: (id: string) => void;
+    showEmpty: boolean;
+    children?: ReactNode;
+}) {
     const { t } = useTranslation();
     const meta = KIND_META[kind];
     const Icon = meta.icon;
@@ -87,9 +102,8 @@ function TopupGroup({ kind, products, selectedProductId, onSelectProduct, aside,
                 </span>
                 <div>
                     <h3 id={`wallet-topup-group-${kind}`}>{t(`${meta.key}.group`)}</h3>
-                    <p title={description}>{description}</p>
+                    <p>{description}</p>
                 </div>
-                {aside}
             </header>
             {children}
             {products.length ? (
@@ -98,9 +112,9 @@ function TopupGroup({ kind, products, selectedProductId, onSelectProduct, aside,
                         <ProductCard key={product.id} product={product} selected={selectedProductId === product.id} onSelect={() => onSelectProduct(product.id)} />
                     ))}
                 </div>
-            ) : (
+            ) : showEmpty ? (
                 <div className="wallet-topup-group-empty">{t(`${meta.key}.empty`)}</div>
-            )}
+            ) : null}
         </section>
     );
 }
@@ -110,24 +124,21 @@ function StorageSummary({ usage, grants, onCleanAssets }: { usage?: AccountFileS
     const meter = accountStorageMeter(usage);
     const stateMessage = accountStorageStateMessage(meter);
     const activeGrants = grants.filter((grant) => storageGrantActive(grant));
+    if (!usage && !activeGrants.length) return null;
     return (
         <div className="wallet-topup-storage">
-            <div className="wallet-topup-storage-usage">
-                <span>
-                    <Trans i18nKey="account.wallet.topup.used" values={{ used: usage ? meter.usedLabel : "--", total: usage ? meter.totalLabel : "--" }} components={{ b: <b /> }} />
-                </span>
-                <span
-                    className={cn("wallet-topup-storage-track", meter.tone !== "ok" && `is-${meter.tone}`)}
-                    role="progressbar"
-                    aria-label={t("account.layout.storage.progress")}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(meter.percent)}
-                >
-                    <span style={{ width: `${meter.percent}%` }} />
-                </span>
-                <span className="wallet-topup-storage-split">{meter.purchasedLabel ? t("account.wallet.topup.basePurchased", { base: meter.baseLabel, purchased: meter.purchasedLabel }) : t("account.wallet.topup.base", { size: meter.baseLabel })}</span>
-            </div>
+            {usage ? (
+                <div className="wallet-topup-storage-usage">
+                    <span>
+                        <Trans i18nKey="account.wallet.topup.used" values={{ used: meter.usedLabel, total: meter.totalLabel }} components={{ b: <b /> }} />
+                    </span>
+                    <span className={cn("wallet-topup-storage-track", `is-${meter.tone}`)} aria-hidden="true">
+                        <span style={{ width: `${meter.percent}%` }} />
+                    </span>
+                    <span>{t("account.layout.storage.remaining", { size: meter.remainingLabel })}</span>
+                </div>
+            ) : null}
+            {meter.purchasedLabel ? <span className="wallet-topup-storage-split">{t("account.wallet.topup.basePurchased", { base: meter.baseLabel, purchased: meter.purchasedLabel })}</span> : null}
             {stateMessage ? (
                 <div className={cn("wallet-topup-storage-alert", meter.state === "read_only" && "is-read-only")} role="status">
                     <CircleAlert aria-hidden="true" />
@@ -157,13 +168,13 @@ export function WalletTopupPanel({
     paymentOptions,
     usdCnyRate,
     focusKind,
-    focusToken,
     selectedProduct,
     onSelectProduct,
     selectedOptionKey,
     onSelectOption,
     creating,
     onPay,
+    onRedeem,
     storageUsage,
     storageGrants,
     onCleanAssets,
@@ -174,15 +185,15 @@ export function WalletTopupPanel({
     paymentOptions: PaymentOption[];
     /** 1 USD 兑换的 CNY，用于预估跨币种渠道的实付金额。 */
     usdCnyRate?: string;
-    /** 从容量入口进入时滚动到对应分组；focusToken 变化时重新定位。 */
+    /** 从充值或容量入口进入时定位对应套餐。 */
     focusKind?: TopupProductKind;
-    focusToken?: number;
     selectedProduct?: TopupProduct;
     onSelectProduct: (id: string) => void;
     selectedOptionKey: string;
     onSelectOption: (key: string) => void;
     creating: boolean;
     onPay: () => void;
+    onRedeem?: () => void;
     storageUsage?: AccountFileStorageUsage;
     storageGrants: UserStorageGrant[];
     onCleanAssets: () => void;
@@ -199,12 +210,12 @@ export function WalletTopupPanel({
         // 把页头和页签推出可视区且无法滚回。
         const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
         container.scrollTo({ top, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-    }, [loading, focusKind, focusToken]);
+    }, [loading, focusKind]);
 
     if (loading) {
         return (
             <div className="workspace-wallet-content wallet-topup">
-                <Skeleton active paragraph={{ rows: 6 }} />
+                <Skeleton active paragraph={{ rows: 3 }} />
             </div>
         );
     }
@@ -227,10 +238,26 @@ export function WalletTopupPanel({
         <div className="workspace-wallet-content wallet-topup">
             <div ref={groupsRef} className="wallet-topup-groups">
                 {kinds.map((kind) => (
-                    <TopupGroup key={kind} kind={kind} products={byKind[kind]} selectedProductId={selectedProduct?.id || ""} onSelectProduct={onSelectProduct}>
+                    <TopupGroup key={kind} kind={kind} products={byKind[kind]} selectedProductId={selectedProduct?.id || ""} onSelectProduct={onSelectProduct} showEmpty={products.length > 0}>
                         {kind === "storage" ? <StorageSummary usage={storageUsage} grants={storageGrants} onCleanAssets={onCleanAssets} /> : null}
                     </TopupGroup>
                 ))}
+                {products.length === 0 ? (
+                    <Callout
+                        className="wallet-topup-unavailable"
+                        title={t(onRedeem ? "account.wallet.topup.unavailableTitle" : "account.wallet.topup.kinds.storage.empty")}
+                        action={
+                            onRedeem ? (
+                                <Button size="small" onClick={onRedeem}>
+                                    {t("account.wallet.tabRedeem")}
+                                    <ArrowRight size={14} aria-hidden="true" />
+                                </Button>
+                            ) : null
+                        }
+                    >
+                        {onRedeem ? t("account.wallet.topup.unavailableDescription") : null}
+                    </Callout>
+                ) : null}
             </div>
 
             {products.length ? (
@@ -288,15 +315,7 @@ export function WalletTopupPanel({
                         {t("account.wallet.topup.payNow")}
                     </Button>
                 </footer>
-            ) : (
-                <div className="workspace-wallet-inline-state">
-                    <CircleAlert />
-                    <div>
-                        <strong>{t("account.wallet.topup.unavailableTitle")}</strong>
-                        <span>{t("account.wallet.topup.unavailableDescription")}</span>
-                    </div>
-                </div>
-            )}
+            ) : null}
         </div>
     );
 }

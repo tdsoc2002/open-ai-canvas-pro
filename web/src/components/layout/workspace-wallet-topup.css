@@ -11,7 +11,7 @@
 .workspace-wallet-content.wallet-topup {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-3);
     overflow: hidden;
 }
 
@@ -51,64 +51,68 @@
     height: 13px;
 }
 
-/* 分组不再套边框盒子：一行标题 + 网格，把高度留给商品列表。 */
 .wallet-topup-groups {
     display: grid;
     flex: 1;
     min-height: 0;
     align-content: start;
-    gap: 20px;
+    gap: var(--space-3);
     overflow: auto;
     overscroll-behavior: contain;
-    padding-right: 2px;
+}
+
+.wallet-topup-group {
+    min-width: 0;
+    border: 1px solid var(--user-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-3) var(--space-4);
 }
 
 .wallet-topup-group-head {
     display: flex;
     min-width: 0;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    align-items: flex-start;
+    gap: var(--space-2);
 }
 
-.wallet-topup-group-head > div {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    align-items: baseline;
-    gap: 8px;
+.wallet-topup-group-head:not(:last-child) {
+    margin-bottom: var(--space-3);
 }
 
 .wallet-topup-group-head h3 {
-    flex-shrink: 0;
     margin: 0;
     color: var(--user-ink);
-    font-size: 13px;
+    font-size: var(--fs-body);
     font-weight: 600;
 }
 
 .wallet-topup-group-head p {
-    min-width: 0;
-    margin: 0;
-    overflow: hidden;
+    margin: var(--space-half) 0 0;
     color: var(--user-ink-muted);
-    font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: var(--fs-caption);
+    line-height: 1.5;
 }
 
 .wallet-topup-group-empty {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--wallet-topup-card-surface);
-    padding: 16px;
+    padding: var(--space-2) var(--space-3);
     color: var(--user-ink-muted);
     font-size: 12px;
-    text-align: center;
+}
+
+.wallet-topup-unavailable[data-slot="callout"] {
+    align-items: center;
+    gap: var(--space-3);
+    border-color: var(--user-border);
+    border-radius: var(--radius-xl);
+    background: var(--user-surface-muted);
+    padding: var(--space-3) var(--space-4);
 }
 
 .wallet-topup-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr));
     gap: 8px;
 }
 
@@ -234,49 +238,47 @@
     font-weight: 500;
 }
 
-/* 存储分类头部：当前容量、超额提示与生效中的扩容。 */
+/* 存储套餐区展示当前用量、超额提示与生效中的扩容。 */
 .wallet-topup-storage {
     display: grid;
     gap: 8px;
     margin-bottom: 8px;
 }
 
+.wallet-topup-storage-split {
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
+    font-variant-numeric: tabular-nums;
+}
+
 .wallet-topup-storage-usage {
     display: flex;
-    min-width: 0;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px 12px;
+    gap: var(--space-1) var(--space-3);
     color: var(--user-ink-muted);
-    font-size: 12px;
+    font-size: var(--fs-caption);
+    font-variant-numeric: tabular-nums;
 }
 
 .wallet-topup-storage-usage b {
     color: var(--user-ink);
     font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-
-.wallet-topup-storage-split {
-    color: var(--user-ink-muted);
-    font-variant-numeric: tabular-nums;
 }
 
 .wallet-topup-storage-track {
-    display: block;
-    min-width: 80px;
-    flex: 1 1 120px;
-    height: 6px;
+    flex: 1 1 80px;
+    height: var(--space-1);
     overflow: hidden;
     border-radius: 999px;
-    background: var(--user-surface);
+    background: var(--user-border);
 }
 
 .wallet-topup-storage-track > span {
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: var(--wallet-topup-storage-ink);
+    background: var(--user-accent);
 }
 
 .wallet-topup-storage-track.is-warn > span {
@@ -408,41 +410,6 @@
     opacity: 0.5;
 }
 
-/* 头部：积分余额与存储容量两张摘要卡。 */
-.workspace-wallet-stats {
-    display: flex;
-    flex-shrink: 0;
-    gap: 8px;
-}
-
-.workspace-wallet-stats .workspace-wallet-balance {
-    min-width: 168px;
-    text-align: left;
-}
-
-.workspace-wallet-balance.is-storage {
-    cursor: pointer;
-    transition: background-color 180ms ease;
-}
-
-.workspace-wallet-balance.is-storage:hover {
-    background: var(--user-surface-hover);
-}
-
-.workspace-wallet-balance.is-storage:focus-visible {
-    outline: 2px solid var(--control-focus-ring);
-    outline-offset: 2px;
-}
-
-.workspace-wallet-balance .wallet-topup-storage-track {
-    margin: 8px 0 2px;
-    background: var(--user-surface-muted);
-}
-
-.workspace-wallet-balance .wallet-topup-storage-track > span {
-    background: var(--status-loading);
-}
-
 /* 素材页容量条上的入口按钮。 */
 .assets-storage-usage-action {
     flex-shrink: 0;
@@ -462,15 +429,6 @@
 }
 
 @media (max-width: 720px) {
-    .workspace-wallet-stats {
-        width: 100%;
-    }
-
-    .workspace-wallet-stats > * {
-        flex: 1;
-        min-width: 0;
-    }
-
     .wallet-topup-checkout .ant-btn {
         width: 100%;
     }

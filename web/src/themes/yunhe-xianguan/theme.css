@@ -244,22 +244,6 @@
     color: #f4f8f7;
 }
 
-/* ---------- 积分中心：上游紫青粉流光换成天青、鎏金、一点鹤顶红 ---------- */
-:root[data-skin="yunhe-xianguan"] .workspace-wallet-modal .ant-modal-container::before {
-    background: radial-gradient(22% 26% at 25% 25%, rgba(59, 116, 132, 0.2), transparent 70%), radial-gradient(18% 22% at 74% 30%, rgba(195, 53, 42, 0.12), transparent 70%), radial-gradient(22% 24% at 60% 72%, rgba(162, 134, 79, 0.16), transparent 70%);
-}
-:root[data-skin="yunhe-xianguan"] .workspace-wallet-shell::before {
-    background: radial-gradient(20% 24% at 75% 20%, rgba(59, 116, 132, 0.16), transparent 70%), radial-gradient(18% 20% at 82% 78%, rgba(162, 134, 79, 0.14), transparent 70%);
-    mix-blend-mode: multiply;
-}
-:root[data-skin="yunhe-xianguan"].dark .workspace-wallet-modal .ant-modal-container::before {
-    background: radial-gradient(22% 26% at 25% 25%, rgba(125, 178, 191, 0.2), transparent 70%), radial-gradient(18% 22% at 74% 30%, rgba(226, 89, 75, 0.16), transparent 70%), radial-gradient(22% 24% at 60% 72%, rgba(200, 173, 120, 0.14), transparent 70%);
-}
-:root[data-skin="yunhe-xianguan"].dark .workspace-wallet-shell::before {
-    background: radial-gradient(20% 24% at 75% 20%, rgba(125, 178, 191, 0.12), transparent 70%), radial-gradient(18% 20% at 82% 78%, rgba(200, 173, 120, 0.12), transparent 70%);
-    mix-blend-mode: screen;
-}
-
 /* ---------- 画布浮动工具条：半透明云笺 ---------- */
 :root[data-skin="yunhe-xianguan"] .app-spatial-surface {
     border-color: rgba(26, 36, 44, 0.1);
