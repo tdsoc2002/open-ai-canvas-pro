@@ -386,6 +386,7 @@ export const jaJP: DeepStringRecord<typeof zhCN> = {
         primaryVersion: "メインバージョン",
         downloadFailed: "ダウンロードに失敗しました",
         title: "アセット",
+        backToCanvas: "キャンバスに戻る",
         uploadLabel: "キャンバスにファイルをアップロード",
         upload: "アップロード",
         searchPlaceholder: "アセットを検索",

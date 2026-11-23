@@ -385,6 +385,7 @@ export const zhCN = {
         primaryVersion: "主版本",
         downloadFailed: "下载失败",
         title: "资产",
+        backToCanvas: "返回画布",
         uploadLabel: "上传文件到画布",
         upload: "上传",
         searchPlaceholder: "搜索资产",

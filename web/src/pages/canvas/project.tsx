@@ -130,7 +130,6 @@ import { canvasReferenceImageDimensions } from "@/lib/canvas/canvas-reference-im
 import { cancelGenerationTask } from "@/services/api/task-center";
 import { CanvasProjectHeading, CanvasTopBar, type CanvasProjectView } from "./canvas-project-top-bar";
 import { CanvasAssetView } from "@/components/canvas/canvas-asset-view";
-import { CanvasViewSettingsMenu } from "@/components/canvas/canvas-view-settings-menu";
 import type { CanvasAssetVersion } from "@/lib/canvas/canvas-asset-catalog";
 import { canDownloadCanvasNodeMedia } from "@/lib/canvas/canvas-media-download";
 import { CanvasSyncStatus } from "./canvas-sync-status";
@@ -341,7 +340,7 @@ function CanvasViewportPage() {
     const focusDockRevealed = focusDockPreference ?? joyseeEditor;
     const [collaborationControlHost, setCollaborationControlHost] = useState<HTMLDivElement | null>(null);
     // 画布 / 资产视图写在 URL 上，刷新和分享链接都能回到同一视图；专注模式只服务画布编辑。
-    const canvasView: CanvasProjectView = searchParams.get("view") === "assets" && !focusMode ? "assets" : "canvas";
+    const canvasView: CanvasProjectView = searchParams.get("view") === "assets" ? "assets" : "canvas";
     const isAssetView = canvasView === "assets";
 
     useEffect(() => {
@@ -2875,20 +2874,6 @@ function CanvasViewportPage() {
             onUndo={undoCanvas}
             onRedo={redoCanvas}
             syncIcon={<CanvasSyncStatus projectId={projectId} />}
-            assetViewSettingsControl={
-                joyseeEditor && isAssetView ? (
-                    <CanvasViewSettingsMenu
-                        appearance={canvasAppearance}
-                        backgroundMode={backgroundMode}
-                        colorTheme={colorTheme}
-                        theme={theme}
-                        onAppearanceChange={applyCanvasAppearance}
-                        onSaveAppearanceDefault={saveCanvasAppearanceDefault}
-                        onBackgroundModeChange={setBackgroundMode}
-                        onEnterFocusMode={enterFocusMode}
-                    />
-                ) : undefined
-            }
             onOpenSearch={() => setNodeSearchOpen(true)}
             projectContext={
                 shortDramaEnabled && currentProject?.projectId
@@ -2961,7 +2946,7 @@ function CanvasViewportPage() {
                 <CanvasOverlayLayerProvider>
                     <div className="canvas-editor-shell relative flex min-w-0 flex-1" data-previs-open={previsNodeId && activePrevisScene ? "" : undefined}>
                         <section data-canvas-editor className="relative min-w-0 flex-1 flex flex-col min-h-0 overflow-clip">
-                            {!focusMode ? (
+                            {!isAssetView && !focusMode ? (
                                 <CanvasTopBar
                                     {...canvasAuxiliaryCommands}
                                     projectHeading={!showWorkspace ? projectHeading : undefined}
@@ -3325,7 +3310,6 @@ function CanvasViewportPage() {
                                 />
                             ) : null}
 
-                            {uploadStatus ? <CanvasUploadStatusToast status={uploadStatus} theme={theme} /> : null}
                             {lastAgentChange ? (
                                 <CanvasOperationChangeToast
                                     change={lastAgentChange}
@@ -3853,10 +3837,19 @@ function CanvasViewportPage() {
                             />
 
                             {isAssetView ? (
-                                <div className="canvas-asset-view-layer absolute bottom-0 left-0 right-0 top-[var(--canvas-topbar-h)] z-[var(--z-panel-floating)] flex min-h-0">
-                                    <CanvasAssetView nodes={nodes} onLocate={locateAssetNode} onRename={renameAssetNodes} onPromoteVersion={promoteAssetVersion} onDownloadMedia={downloadNodeImage} onUpload={() => handleUploadRequest()} />
+                                <div className="canvas-asset-view-layer absolute inset-0 z-[var(--z-panel-floating)] flex min-h-0">
+                                    <CanvasAssetView
+                                        nodes={nodes}
+                                        onExit={() => changeCanvasView("canvas")}
+                                        onLocate={locateAssetNode}
+                                        onRename={renameAssetNodes}
+                                        onPromoteVersion={promoteAssetVersion}
+                                        onDownloadMedia={downloadNodeImage}
+                                        onUpload={() => handleUploadRequest()}
+                                    />
                                 </div>
                             ) : null}
+                            {uploadStatus ? <CanvasUploadStatusToast status={uploadStatus} theme={theme} /> : null}
                         </section>
                     </div>
                 </CanvasOverlayLayerProvider>

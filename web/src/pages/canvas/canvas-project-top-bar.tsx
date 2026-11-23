@@ -46,7 +46,6 @@ type CanvasProjectHeadingProps = CanvasAuxiliaryCommands & {
     onUndo: () => void;
     onRedo: () => void;
     syncIcon?: ReactNode;
-    assetViewSettingsControl?: ReactNode;
     onOpenSearch: () => void;
     /** kind=drama 表示关联的是自动制作短剧，链接回短剧制作台。 */
     projectContext?: CanvasContextSummary & { projectId: string; projectName: string; kind?: "drama" };
@@ -79,7 +78,6 @@ export function CanvasProjectHeading({
     onUndo,
     onRedo,
     syncIcon,
-    assetViewSettingsControl,
     onOpenSearch,
     projectContext,
     onImportLibTV,
@@ -204,7 +202,6 @@ export function CanvasProjectHeading({
                 ) : null}
             </div>
             {syncIcon}
-            {assetViewSettingsControl}
         </header>
     );
 }

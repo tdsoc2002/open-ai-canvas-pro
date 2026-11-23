@@ -386,6 +386,7 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
         primaryVersion: "Primary version",
         downloadFailed: "Download failed",
         title: "Assets",
+        backToCanvas: "Back to canvas",
         uploadLabel: "Upload files to the canvas",
         upload: "Upload",
         searchPlaceholder: "Search assets",

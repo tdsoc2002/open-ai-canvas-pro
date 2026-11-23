@@ -386,6 +386,7 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
         primaryVersion: "기본 버전",
         downloadFailed: "다운로드에 실패했습니다",
         title: "에셋",
+        backToCanvas: "캔버스로 돌아가기",
         uploadLabel: "캔버스에 파일 업로드",
         upload: "업로드",
         searchPlaceholder: "에셋 검색",

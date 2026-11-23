@@ -386,6 +386,7 @@ export const frFR: DeepStringRecord<typeof zhCN> = {
         primaryVersion: "Version principale",
         downloadFailed: "Échec du téléchargement",
         title: "Éléments",
+        backToCanvas: "Retour au canevas",
         uploadLabel: "Importer des fichiers dans le canevas",
         upload: "Importer",
         searchPlaceholder: "Rechercher des éléments",

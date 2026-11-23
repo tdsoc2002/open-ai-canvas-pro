@@ -71,9 +71,6 @@
     .canvas-main-with-workspace[data-project-sidebar] .canvas-workspace-zoom-controls {
         left: var(--canvas-inset-x);
     }
-    .canvas-main-with-workspace[data-project-sidebar] .canvas-asset-view-layer {
-        left: 0;
-    }
 }
 .canvas-main-with-workspace .canvas-editor-shell {
     z-index: 0;
@@ -83,9 +80,6 @@
 }
 .canvas-main-with-workspace .canvas-workspace-zoom-controls {
     left: calc(var(--canvas-workspace-inset) + var(--canvas-inset-x));
-}
-.canvas-main-with-workspace .canvas-asset-view-layer {
-    left: var(--canvas-workspace-inset);
 }
 .canvas-workspace-corner {
     --canvas-workspace-material: color-mix(in srgb, var(--canvas-workspace-base) 86%, transparent);

@@ -49,9 +49,9 @@ export function CanvasAssetThumbnail({ node, kind }: { node: CanvasNodeData; kin
         const summary = kind === "markdown" ? markdownPlainText(text, "") : text;
         if (summary)
             return (
-                <span className="flex size-full flex-col items-start justify-center gap-2 p-3.5 sm:p-4">
+                <span className="flex size-full flex-col items-start justify-center gap-1.5 p-2.5">
                     <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    <span className="line-clamp-3 whitespace-pre-line break-words text-xs leading-5 text-foreground/80 sm:text-sm">{summary}</span>
+                    <span className="line-clamp-2 whitespace-pre-line break-words text-xs leading-4 text-foreground/80">{summary}</span>
                 </span>
             );
     }

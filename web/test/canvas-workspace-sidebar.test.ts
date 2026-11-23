@@ -114,11 +114,10 @@ test("project heading, rail and inline panel stay in one corner without intercep
     expect(styles).toMatch(/\.canvas-workspace-corner:not\(\.is-expanded\) \{[^}]*row-gap: var\(--space-2\);/);
     expect(styles).toMatch(/\.canvas-workspace-corner > .canvas-topbar-project-cluster,\s*\.canvas-workspace-shell \{[^}]*pointer-events: auto;/);
     expect(styles).toContain("width: min(100%, var(--canvas-workspace-open-width))");
-    expect(styles).toContain("left: var(--canvas-workspace-inset)");
+    expect(styles).toContain("left: calc(var(--canvas-workspace-inset) + var(--canvas-inset-x))");
     expect(styles).toContain(".canvas-workspace-zoom-controls");
     expect(styles).toContain(".canvas-main-with-workspace > .canvas-project-sidebar {\n        margin-left: var(--space-16);");
     expect(styles).toContain(".canvas-main-with-workspace[data-project-sidebar] .canvas-workspace-zoom-controls");
-    expect(styles).toContain(".canvas-main-with-workspace[data-project-sidebar] .canvas-asset-view-layer");
     // 标题和导航分属独立区域，轨道上的入口不再需要额外的尾部分隔线。
     expect(panel).not.toContain("canvas-workspace-rail-divider");
     expect(styles).not.toContain(".canvas-main-with-workspace .canvas-topbar {");
@@ -128,4 +127,12 @@ test("project heading, rail and inline panel stay in one corner without intercep
     expect(styles).toContain("background: var(--canvas-workspace-material);");
     expect(styles).toContain(".canvas-workspace-panel > :is(header, .border-b) {\n    border-bottom: 0 !important;");
     expect(page).toContain('workspaceOpen ? "canvas-workspace-expanded" : ""');
+});
+
+test("资产视图覆盖整个编辑区，隐藏画布顶栏并提供返回入口", () => {
+    const page = readFileSync(new URL("../src/pages/canvas/project.tsx", import.meta.url), "utf8");
+    expect(page).toMatch(/\{!isAssetView && !focusMode \? \(\s*<CanvasTopBar/);
+    expect(page).toContain('className="canvas-asset-view-layer absolute inset-0');
+    expect(page).toContain('onExit={() => changeCanvasView("canvas")}');
+    expect(component("canvas-workspace-panel.css")).not.toContain(".canvas-asset-view-layer");
 });

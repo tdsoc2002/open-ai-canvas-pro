@@ -26,11 +26,12 @@ const nodes: CanvasNodeData[] = [
     },
 ];
 
-test("画布资产默认显示混合分类，不显示目录树，Markdown 卡片只读可读摘要", () => {
+test("全屏资产列表提供返回画布入口，默认显示混合分类和可读的 Markdown 摘要", () => {
     const { document } = new Window();
     const noop = () => {};
-    document.body.innerHTML = renderToStaticMarkup(<CanvasAssetView nodes={nodes} onLocate={noop} onRename={noop} onPromoteVersion={noop} onDownloadMedia={noop} onUpload={noop} />);
+    document.body.innerHTML = renderToStaticMarkup(<CanvasAssetView nodes={nodes} onExit={noop} onLocate={noop} onRename={noop} onPromoteVersion={noop} onDownloadMedia={noop} onUpload={noop} />);
 
+    expect(document.querySelector('header button[aria-label="返回画布"]')).not.toBeNull();
     expect(document.querySelector("[role='tree']")).toBeNull();
     expect(document.querySelector("[role='group'] button[aria-pressed='true']")?.textContent).toBe("全部");
     const cards = Array.from(document.querySelectorAll("ul > li > button"));

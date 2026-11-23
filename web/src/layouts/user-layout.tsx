@@ -22,11 +22,12 @@ const GlobalAgentPanel = lazy(() => import("@/components/canvas/canvas-cloud-age
 export default function UserLayout({ children }: { children: ReactNode }) {
     const workspaceStyle = useThemePack()?.workspaceStyle;
     const workspaceTheme = useMemo(() => getWorkspaceAntThemeConfig(workspaceStyle), [workspaceStyle]);
-    const { pathname } = useLocation();
+    const { pathname, search } = useLocation();
     const adminWorkspace = pathname === "/admin" || pathname.startsWith("/admin/");
     const teamWorkspace = pathname.startsWith("/teams/");
     const spatialWorkbench = isSpatialWorkbenchPath(pathname);
     const canvasEditor = /^\/canvas\/[^/]+(?:\/|$)/.test(workspacePagePath(pathname));
+    const canvasAssetView = canvasEditor && new URLSearchParams(search).get("view") === "assets";
     const productWorkspace = !adminWorkspace && !canvasEditor;
     const userId = useUserStore((state) => state.user?.id);
     const teamsEnabled = useUserStore((state) => state.features.teamsEnabled);
@@ -50,7 +51,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     }, [userId, adminWorkspace]);
     // Agent 停靠在画布右侧时，工作区让出同样的宽度，画布、顶栏和角落控件都不被遮挡。
     const agentDock = useAgentPanelDock();
-    const agentDocked = Boolean(userId) && canvasEditor && agentDock.active;
+    const agentDocked = Boolean(userId) && canvasEditor && !canvasAssetView && agentDock.active;
     const creationWorkspace = pathname === "/" || pathname === "/create";
     const wasCanvasEditorRef = useRef(canvasEditor);
     useLayoutEffect(() => {
@@ -80,7 +81,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     const globalAgent =
         userId && !teamWorkspace ? (
             <Suspense fallback={null}>
-                <GlobalAgentPanel key={userId} />
+                <GlobalAgentPanel key={userId} hidden={canvasAssetView} />
             </Suspense>
         ) : null;
 

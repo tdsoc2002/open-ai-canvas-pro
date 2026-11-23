@@ -386,6 +386,7 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         primaryVersion: "Hauptversion",
         downloadFailed: "Download fehlgeschlagen",
         title: "Assets",
+        backToCanvas: "Zurück zur Leinwand",
         uploadLabel: "Dateien auf die Leinwand hochladen",
         upload: "Hochladen",
         searchPlaceholder: "Assets suchen",

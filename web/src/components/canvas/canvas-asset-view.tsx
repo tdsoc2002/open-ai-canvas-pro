@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { App, Button, Input } from "antd";
-import { ArrowLeft, Crosshair, Download, Pencil, Search, Star, Upload } from "lucide-react";
+import { ArrowLeft, Crosshair, Download, Pencil, Play, Search, Star, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { buildCanvasAssetCatalog, CANVAS_ASSET_KIND_LABELS, type CanvasAssetEntry, type CanvasAssetKind, type CanvasAssetVersion } from "@/lib/canvas/canvas-asset-catalog";
@@ -10,9 +10,11 @@ import { formatBytes } from "@/lib/image-utils";
 import type { CanvasNodeData } from "@/types/canvas";
 
 import { canvasAssetText, CanvasAssetPreview, CanvasAssetThumbnail } from "./canvas-asset-preview";
+import "./canvas-asset-view.css";
 
 type CanvasAssetViewProps = {
     nodes: CanvasNodeData[];
+    onExit: () => void;
     onLocate: (nodeId: string) => void;
     onRename: (updates: Array<{ nodeId: string; title: string }>) => void;
     onPromoteVersion: (version: CanvasAssetVersion) => void;
@@ -31,7 +33,7 @@ function matchesQuery(entry: CanvasAssetEntry, query: string) {
  * 画布资产默认全部展示；文档筛选同时涵盖文本与 Markdown，版本在详情里切换。
  * 数据完全由当前画布节点派生；所有写操作（重命名、设为主版本）都回到画布的现有写路径。
  */
-export function CanvasAssetView({ nodes, onLocate, onRename, onPromoteVersion, onDownloadMedia, onUpload }: CanvasAssetViewProps) {
+export function CanvasAssetView({ nodes, onExit, onLocate, onRename, onPromoteVersion, onDownloadMedia, onUpload }: CanvasAssetViewProps) {
     const { t } = useTranslation();
     const { message } = App.useApp();
     const entries = useMemo(() => buildCanvasAssetCatalog(nodes).flatMap((group) => group.entries), [nodes]);
@@ -77,53 +79,50 @@ export function CanvasAssetView({ nodes, onLocate, onRename, onPromoteVersion, o
                 />
             ) : (
                 <>
-                    <header className="shrink-0 border-b border-border">
-                        <div className="mx-auto w-full max-w-7xl px-4 pb-3 pt-5 sm:px-8 sm:pt-7">
-                            <div className="flex items-center gap-3 max-sm:flex-wrap">
-                                <h1 className="m-0 flex shrink-0 items-center gap-2.5 text-xl font-semibold tracking-tight">
-                                    {t("canvasA.assetView.title")}
-                                    <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">{entries.length}</span>
-                                </h1>
-                                <div className="ml-auto flex min-w-0 items-center gap-2 max-sm:flex-1">
-                                    <Input
-                                        allowClear
-                                        className="min-w-0 sm:!w-56"
-                                        prefix={<Search className="size-3.5 text-muted-foreground" aria-hidden="true" />}
-                                        placeholder={t("canvasA.assetView.searchPlaceholder")}
-                                        aria-label={t("canvasA.assetView.searchLabel")}
-                                        value={queryInput}
-                                        onChange={(event) => setQueryInput(event.target.value)}
-                                    />
-                                    <Button type="primary" className="shrink-0" icon={<Upload className="size-4" />} onClick={onUpload} aria-label={t("canvasA.assetView.uploadLabel")}>
-                                        {t("canvasA.assetView.upload")}
-                                    </Button>
-                                </div>
-                            </div>
-                            <div role="group" aria-label={t("canvasA.assetView.filterLabel")} className="mt-4 flex flex-wrap items-center gap-1">
-                                {FILTERS.map((kind) => (
-                                    <button
-                                        key={kind}
-                                        type="button"
-                                        aria-pressed={filter === kind}
-                                        className="min-h-9 rounded-[var(--r-md)] px-3 text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 aria-pressed:bg-surface-active aria-pressed:font-semibold aria-pressed:text-foreground"
-                                        onClick={() => setFilter(kind)}
-                                    >
-                                        {filterLabel(kind)}
-                                    </button>
-                                ))}
-                            </div>
+                    <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-3 py-2.5 sm:px-6">
+                        <div className="flex shrink-0 items-center gap-2">
+                            <Button type="text" className="!size-8" icon={<ArrowLeft className="size-4" aria-hidden="true" />} onClick={onExit} aria-label={t("canvasA.assetView.backToCanvas")} title={t("canvasA.assetView.backToCanvas")} />
+                            <h1 className="!m-0 flex h-8 items-center gap-2 text-lg leading-none font-semibold tracking-tight">
+                                {t("canvasA.assetView.title")}
+                                <span className="inline-flex h-5 items-center rounded-full bg-surface-hover px-2 text-xs leading-none font-medium text-muted-foreground tabular-nums">{entries.length}</span>
+                            </h1>
+                        </div>
+                        <div role="group" aria-label={t("canvasA.assetView.filterLabel")} className="flex min-w-0 flex-wrap items-center gap-1 max-sm:basis-full">
+                            {FILTERS.map((kind) => (
+                                <button
+                                    key={kind}
+                                    type="button"
+                                    aria-pressed={filter === kind}
+                                    className="inline-flex min-h-8 items-center rounded-[var(--r-md)] px-2.5 text-sm leading-none text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 aria-pressed:bg-surface-active aria-pressed:font-semibold aria-pressed:text-foreground"
+                                    onClick={() => setFilter(kind)}
+                                >
+                                    {filterLabel(kind)}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 max-md:basis-full md:flex-none">
+                            <Input
+                                allowClear
+                                className="min-w-0 sm:!w-44"
+                                prefix={<Search className="size-3.5 text-muted-foreground" aria-hidden="true" />}
+                                placeholder={t("canvasA.assetView.searchPlaceholder")}
+                                aria-label={t("canvasA.assetView.searchLabel")}
+                                value={queryInput}
+                                onChange={(event) => setQueryInput(event.target.value)}
+                            />
+                            <Button type="primary" className="shrink-0" icon={<Upload className="size-4" aria-hidden="true" />} onClick={onUpload} aria-label={t("canvasA.assetView.uploadLabel")}>
+                                {t("canvasA.assetView.upload")}
+                            </Button>
                         </div>
                     </header>
-                    <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
-                        <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-8 sm:py-6">
-                            {matchingEntries.length ? (
-                                <AssetGrid entries={matchingEntries} nodeById={nodeById} onOpen={(entry) => setSelection({ entryKey: entry.key })} />
-                            ) : (
-                                <p role="status" className="m-0 rounded-[var(--r-lg)] border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
-                                    {query ? t("canvasA.assetView.noMatches") : filter === "all" ? t("canvasA.assetView.empty") : t("canvasA.assetView.emptyKind", { kind: filterLabel(filter) })}
-                                </p>
-                            )}
-                        </div>
+                    <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-4">
+                        {matchingEntries.length ? (
+                            <AssetGrid entries={matchingEntries} nodeById={nodeById} onOpen={(entry) => setSelection({ entryKey: entry.key })} />
+                        ) : (
+                            <p role="status" className="m-0 rounded-[var(--r-lg)] border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
+                                {query ? t("canvasA.assetView.noMatches") : filter === "all" ? t("canvasA.assetView.empty") : t("canvasA.assetView.emptyKind", { kind: filterLabel(filter) })}
+                            </p>
+                        )}
                     </div>
                 </>
             )}
@@ -133,17 +132,22 @@ export function CanvasAssetView({ nodes, onLocate, onRename, onPromoteVersion, o
 
 function AssetGrid({ entries, nodeById, onOpen }: { entries: CanvasAssetEntry[]; nodeById: Map<string, CanvasNodeData>; onOpen: (entry: CanvasAssetEntry) => void }) {
     return (
-        <ul className="m-0 grid list-none grid-cols-2 gap-x-3 gap-y-5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] sm:gap-x-4">
+        <ul className="canvas-asset-grid m-0 list-none p-0">
             {entries.map((entry) => {
                 const node = nodeById.get(entry.nodeId);
                 if (!node) return null;
                 return (
                     <li key={entry.key} className="group min-w-0">
                         <button type="button" className="block w-full rounded-[var(--r-lg)] text-left focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => onOpen(entry)}>
-                            <span className="block aspect-[4/3] overflow-hidden rounded-[var(--r-lg)] border border-border bg-[var(--workspace-surface)] group-hover:border-foreground/30">
+                            <span aria-hidden="true" className="canvas-asset-thumbnail relative block overflow-hidden rounded-[var(--r-lg)] border border-border bg-surface-hover group-hover:border-foreground/30">
                                 <CanvasAssetThumbnail node={node} kind={entry.kind} />
+                                {entry.kind === "video" ? (
+                                    <span className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-black/65 text-white">
+                                        <Play className="size-3 fill-current" />
+                                    </span>
+                                ) : null}
                             </span>
-                            <span className="mt-2 block truncate text-sm font-medium" title={entry.title}>
+                            <span className="mt-1.5 block truncate text-sm font-medium" title={entry.title}>
                                 {entry.title}
                             </span>
                             <span className="mt-0.5 block truncate text-xs text-muted-foreground">{assetSubtitle(entry, node)}</span>

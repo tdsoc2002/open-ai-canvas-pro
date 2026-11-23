@@ -184,7 +184,7 @@ const EMPTY_REFERENCES: CanvasResourceReference[] = [];
  * 平台唯一的 Agent 面板，挂在用户布局上，所有页面共用同一份对话。
  * 页面通过 useGlobalAgentStore 发布画布或短剧上下文，发送时冻结当前目标。
  */
-export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
+export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidden = false }: { hidden?: boolean }) {
     const appearance = useAppearanceStore(selectCanvasAppearance);
     const joysee = useThemePack()?.workspaceStyle === "joysee";
     // 只订阅渲染要用的字段。画布每次选中、拖动或编辑都会重发上下文；订阅整份会让面板和全部消息跟着重渲染。
@@ -205,7 +205,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     useEffect(() => {
         const panel = panelElementRef.current;
         if (open && panel) return observeCanvasGestureActive(panel.ownerDocument, (active) => panel.toggleAttribute("data-canvas-busy", active));
-    }, [open]);
+    }, [open, hidden]);
     const onOpen = useGlobalAgentStore((state) => state.openAgent);
     const onCollapse = useGlobalAgentStore((state) => state.closeAgent);
     const setDocked = useGlobalAgentStore((state) => state.setDocked);
@@ -385,6 +385,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     }, []);
     // ⌘/Ctrl+J：任何页面打开 Agent 并把光标放进输入框；焦点已在 Agent 里时收起。
     useEffect(() => {
+        if (hidden) return;
         const focusComposer = (attempt = 0) => {
             const input = document.querySelector<HTMLElement>('.canvas-agent-panel [aria-label="Agent 输入"]');
             if (input) input.focus();
@@ -405,7 +406,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-    }, []);
+    }, [hidden]);
     const panelLayout = useAgentPanelLayout(dock);
     const { placeAtLauncher } = panelLayout;
     const openAtLauncher = useCallback(
@@ -2505,6 +2506,8 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     );
 
     const panelHidden = !reducedMotion && dock.active ? { opacity: 0, x: 24 } : { opacity: 0 };
+    if (hidden) return null;
+
     return (
         <>
             <AgentLauncher theme={theme} statusColor={statusColor} approvalPending={Boolean(approval)} reducedMotion={Boolean(reducedMotion)} status={status} hidden={open} onOpen={openAtLauncher} />
