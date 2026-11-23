@@ -44,7 +44,8 @@ describe("canvas screen-space background", () => {
                     expect(markup).toContain(`background-size:${spacing}px ${spacing}px`);
                     expect(markup).toContain(`transform:translate3d(${offsetX}px, ${offsetY}px, 0)`);
                     expect(markup).not.toContain("var(--canvas-");
-                    if (mode === "dots") expect(markup).toContain("1px, transparent 1.4px");
+                    expect(markup).toContain(mode === "dots" ? "opacity:0.24" : "opacity:0.4");
+                    if (mode === "dots") expect(markup).toContain("0.5px, transparent 0.85px");
                 }
             }
         });

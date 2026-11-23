@@ -1,14 +1,12 @@
 import { canvasThemes } from "@/lib/canvas-theme";
-import { CANVAS_APPEARANCE_PRESETS } from "@/lib/canvas/canvas-appearance";
+import { CANVAS_APPEARANCE_PRESETS, type CanvasAppearancePreset } from "@/lib/canvas/canvas-appearance";
 
 import { themePackFor } from "./registry";
 import type { ThemeCanvasPatch } from "./types";
 
 // 外观提交（commitPublicAppearance）时调用：按当前皮肤套用主题包的画布配色，并写入品牌名变量。
 
-type MutablePreset = { id: string; label: string; values: (typeof CANVAS_APPEARANCE_PRESETS)[number]["values"] };
-
-let upstream: { themes: ThemeCanvasPatch; presets: Map<string, Omit<MutablePreset, "id">> } | undefined;
+let upstream: { themes: ThemeCanvasPatch; presets: Map<string, Omit<CanvasAppearancePreset, "id">> } | undefined;
 
 function assignDeep(target: ThemeCanvasPatch, patch: ThemeCanvasPatch) {
     for (const [key, value] of Object.entries(patch)) {
@@ -17,22 +15,19 @@ function assignDeep(target: ThemeCanvasPatch, patch: ThemeCanvasPatch) {
     }
 }
 
-function presets() {
-    return CANVAS_APPEARANCE_PRESETS as unknown as MutablePreset[];
-}
-
 function restoreUpstream() {
     if (!upstream) return;
     assignDeep(canvasThemes as unknown as ThemeCanvasPatch, upstream.themes);
-    for (const preset of presets()) {
+    for (const preset of CANVAS_APPEARANCE_PRESETS) {
         const original = upstream.presets.get(preset.id);
         if (original) Object.assign(preset, { label: original.label, values: original.values });
+        delete preset.previousBackgroundColor;
     }
 }
 
 /**
  * 画布配色和画布外观预设写死在上游代码里，皮肤数据改不到：启用带画布配色的主题包时就地替换，
- * 切到其他皮肤时还原上游原值。新建画布会把预设快照进画布数据，所以只影响之后新建的画布。
+ * 切到其他皮肤时还原上游原值。主题包可指定旧预设的原始底色，供读取快照时映射。
  */
 export function applyThemePackCanvas(skinId: string) {
     const canvas = themePackFor(skinId)?.canvas;
@@ -44,12 +39,13 @@ export function applyThemePackCanvas(skinId: string) {
     const themes = canvasThemes as unknown as ThemeCanvasPatch;
     upstream ??= {
         themes: structuredClone(themes),
-        presets: new Map(presets().map((preset) => [preset.id, { label: preset.label, values: preset.values }])),
+        presets: new Map(CANVAS_APPEARANCE_PRESETS.map((preset) => [preset.id, { label: preset.label, values: preset.values }])),
     };
     assignDeep(themes, canvas.themes);
-    for (const preset of presets()) {
-        const override = canvas.presets?.[preset.id as "light" | "dark"];
-        if (override) Object.assign(preset, { label: override.label, values: { ...override.values } });
+    for (const preset of CANVAS_APPEARANCE_PRESETS) {
+        if (preset.id !== "light" && preset.id !== "dark") continue;
+        const override = canvas.presets?.[preset.id];
+        if (override) Object.assign(preset, override, { values: { ...override.values } });
     }
 }
 

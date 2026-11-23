@@ -19,6 +19,20 @@
     padding-inline: var(--space-2);
 }
 
+:root[data-skin="joysee-minimal"].dark .joysee-canvas-editor:not(.canvas-edge-layout) .canvas-topbar > .canvas-topbar-cluster {
+    --dock-surface: var(--background);
+}
+
+:root[data-skin="joysee-minimal"].dark .joysee-canvas-editor:not(.canvas-edge-layout) .canvas-workspace-corner:not(.is-expanded) {
+    --canvas-workspace-material: var(--background);
+}
+
+:root[data-skin="joysee-minimal"].dark .canvas-shortcuts-modal {
+    --popover: var(--card);
+    --control-selected-bg: color-mix(in srgb, var(--joysee-brand) 12%, var(--card));
+    --control-selected-fg: var(--joysee-brand);
+}
+
 /* 原生设备列表留在顶栏 DOM，展开时跨过下方资产视图的层叠上下文。 */
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar:has(.canvas-collaboration-members--toolbar[open]) {
     z-index: var(--z-popover);

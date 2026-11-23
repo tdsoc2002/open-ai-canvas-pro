@@ -29,14 +29,11 @@ describe("canvas visual contrast", () => {
         expect(canvasThemes.dark.spatial.elevated).toBe("rgba(15,15,15,.97)");
     });
 
-    test("pins intentional grid tokens while retaining canvas grid opacity", async () => {
+    test("uses theme-specific grid colors", () => {
         expect(canvasThemes.light.canvas.dot).toBe("rgba(0,0,0,.80)");
         expect(canvasThemes.light.canvas.line).toBe("rgba(0,0,0,.80)");
         expect(canvasThemes.dark.canvas.dot).toBe("rgba(255,255,255,.32)");
         expect(canvasThemes.dark.canvas.line).toBe("rgba(255,255,255,.32)");
-
-        const source = await Bun.file(new URL("../src/components/canvas/canvas-viewport.tsx", import.meta.url)).text();
-        expect(source).toContain('opacity: mode === "dots" ? 0.62 : 0.4');
     });
 
     test("keeps the original transparent edge for standard canvas nodes", async () => {

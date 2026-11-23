@@ -24,7 +24,14 @@ export type CanvasAppearance = Omit<CanvasAppearanceSelection, "mode"> & {
     themeMemory?: Partial<Record<CanvasColorTheme, CanvasAppearanceSelection>>;
 };
 
-export const CANVAS_APPEARANCE_PRESETS: ReadonlyArray<{ id: CanvasAppearancePresetId; label: string; values: CanvasCustomAppearance }> = [
+export type CanvasAppearancePreset = {
+    id: CanvasAppearancePresetId;
+    label: string;
+    values: CanvasCustomAppearance;
+    previousBackgroundColor?: string;
+};
+
+export const CANVAS_APPEARANCE_PRESETS: readonly CanvasAppearancePreset[] = [
     { id: "light", label: "经典浅色", values: { baseTheme: "light", backgroundColor: canvasThemes.light.canvas.background, backgroundBrightness: 0, gridColor: "#000000", gridOpacity: 23 } },
     { id: "pink", label: "粉色", values: { baseTheme: "light", backgroundColor: "#F3DCE5", backgroundBrightness: 0, gridColor: "#000000", gridOpacity: 23 } },
     { id: "sand", label: "米色", values: { baseTheme: "light", backgroundColor: "#EEE5D8", backgroundBrightness: 0, gridColor: "#000000", gridOpacity: 23 } },
@@ -72,7 +79,7 @@ export function canvasAppearanceForPreset(id: CanvasAppearancePresetId, previous
 
 export function canvasAppearanceValues(appearance: CanvasAppearance, fallback: CanvasColorTheme): CanvasCustomAppearance {
     const normalized = normalizeCanvasAppearance(appearance, fallback);
-    if (normalized.mode === "preset" && normalized.preset) return normalized.preset.values;
+    if (normalized.mode === "preset" && normalized.preset) return resolveCanvasPresetValues(normalized.preset);
     if (normalized.mode === "custom" && normalized.custom) return normalized.custom;
     return customCanvasAppearanceFromTheme(canvasAppearanceBaseTheme(normalized, fallback)).custom!;
 }
@@ -189,6 +196,14 @@ function normalizePreset(value: CanvasAppearance["preset"]) {
     return values && CANVAS_APPEARANCE_PRESETS.some((item) => item.id === value?.id) ? { id: value!.id, values } : undefined;
 }
 
+function resolveCanvasPresetValues({ id, values }: NonNullable<CanvasAppearance["preset"]>): CanvasCustomAppearance {
+    const preset = CANVAS_APPEARANCE_PRESETS.find((item) => item.id === id);
+    if (preset?.previousBackgroundColor === values.backgroundColor && preset.values.baseTheme === values.baseTheme && values.backgroundBrightness === 0) {
+        return { ...values, backgroundColor: preset.values.backgroundColor };
+    }
+    return values;
+}
+
 export function resolveCanvasAppearance(appearance: CanvasAppearance | undefined, fallback: CanvasColorTheme): ResolvedCanvasAppearance {
     const normalized = normalizeCanvasAppearance(appearance, fallback);
     const baseTheme = canvasAppearanceBaseTheme(normalized, fallback);
@@ -201,7 +216,7 @@ export function resolveCanvasAppearance(appearance: CanvasAppearance | undefined
         };
     }
 
-    const custom = normalized.mode === "preset" ? normalized.preset!.values : normalized.custom!;
+    const custom = normalized.mode === "preset" ? resolveCanvasPresetValues(normalized.preset!) : normalized.custom!;
     return {
         baseTheme,
         background: adjustHexLightnessOklch(custom.backgroundColor, custom.backgroundBrightness),

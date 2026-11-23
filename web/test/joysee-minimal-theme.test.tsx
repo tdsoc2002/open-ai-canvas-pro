@@ -4,7 +4,7 @@ import { Window } from "happy-dom";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { canvasThemes } from "@/lib/canvas-theme";
-import { CANVAS_APPEARANCE_PRESETS } from "@/lib/canvas/canvas-appearance";
+import { CANVAS_APPEARANCE_PRESETS, canvasAppearanceValues, resolveCanvasAppearance, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { applySkinTheme, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition } from "@/lib/skin-themes";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
 import { applyThemePackCanvas } from "@/themes/apply";
@@ -105,7 +105,8 @@ describe("乐见极简主题合同", () => {
         applyThemePackCanvas(JOYSEE_MINIMAL_SKIN_ID);
         applyThemePackCanvas(JOYSEE_MINIMAL_SKIN_ID);
         expect(canvasThemes.light.canvas.background).toBe("#f5f5f5");
-        expect(canvasThemes.dark.toolbar.panel).toBe("#2a2a2a");
+        expect(canvasThemes.dark.canvas.background).toBe("#191919");
+        expect(canvasThemes.dark.toolbar.panel).toBe("#242424");
         expect(canvasThemes.light.timeline).toEqual(before.light.timeline);
         expect(canvasThemes.dark.timeline).toEqual(before.dark.timeline);
         // 文本编辑器用 accent.primary，右键菜单用 node.text，并非都读 toolbar.activeText。
@@ -118,9 +119,28 @@ describe("乐见极简主题合同", () => {
             for (const bg of [toolbar.panel, toolbar.itemHover, toolbar.activeBg, canvasThemes[mode].spatial.elevated]) expect(contrast(bg, node.faint, toolbar.panel)).toBeGreaterThanOrEqual(4.5);
         }
         expect(CANVAS_APPEARANCE_PRESETS.find((item) => item.id === "light")?.values.backgroundColor).toBe("#F5F5F5");
+        expect(CANVAS_APPEARANCE_PRESETS.find((item) => item.id === "dark")?.values.backgroundColor).toBe(canvasThemes.dark.canvas.background);
         applyThemePackCanvas("classic");
         expect(canvasThemes).toEqual(before);
         expect(CANVAS_APPEARANCE_PRESETS).toEqual(presets);
+    });
+
+    test("旧乐见深色预设显示新版底色，保留快照和手动配色", () => {
+        const values = { baseTheme: "dark", backgroundColor: "#121212", backgroundBrightness: 0, gridColor: "#FFFFFF", gridOpacity: 32 } as const;
+        const saved: CanvasAppearance = { mode: "preset", preset: { id: "dark", values } };
+        const custom: CanvasAppearance = { mode: "custom", preset: saved.preset, custom: values };
+        const adjusted: CanvasAppearance = { mode: "preset", preset: { id: "dark", values: { ...values, backgroundBrightness: 4 } } };
+        const adjustedBefore = resolveCanvasAppearance(adjusted, "dark");
+
+        applyThemePackCanvas(JOYSEE_MINIMAL_SKIN_ID);
+        expect(resolveCanvasAppearance(saved, "dark")).toMatchObject({ background: "#191919", grid: "rgba(255,255,255,0.32)" });
+        expect(canvasAppearanceValues(saved, "dark").backgroundColor).toBe("#191919");
+        expect(saved.preset?.values.backgroundColor).toBe("#121212");
+        expect(resolveCanvasAppearance(custom, "dark").background).toBe("#121212");
+        expect(resolveCanvasAppearance(adjusted, "dark")).toEqual(adjustedBefore);
+
+        applyThemePackCanvas("classic");
+        expect(resolveCanvasAppearance(saved, "dark").background).toBe("#121212");
     });
 
     for (const mode of ["light", "dark"] as const) {

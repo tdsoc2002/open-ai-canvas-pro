@@ -569,7 +569,7 @@ export function CanvasGrid({ appearance, mode, viewport }: { appearance?: Canvas
     const gridColor = resolveCanvasGridColor(appearance, colorTheme, mode);
     if (mode === "blank") return null;
     const base = CANVAS_GRID_BASE[mode];
-    const backgroundImage = mode === "dots" ? `radial-gradient(circle, ${gridColor} 1px, transparent 1.4px)` : `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`;
+    const backgroundImage = mode === "dots" ? `radial-gradient(circle, ${gridColor} 0.5px, transparent 0.85px)` : `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`;
     // 首帧和提交后的位置由 render 给出；交互期由 applyCanvasLiveViewport 直接写 transform，不触发 React。
     const { spacing, offsetX, offsetY } = canvasGridMetrics(viewport, base);
 
@@ -587,7 +587,7 @@ export function CanvasGrid({ appearance, mode, viewport }: { appearance?: Canvas
                 backgroundImage,
                 backgroundSize: `${spacing}px ${spacing}px`,
                 transform: `translate3d(${offsetX}px, ${offsetY}px, 0)`,
-                opacity: mode === "dots" ? 0.62 : 0.4,
+                opacity: mode === "dots" ? 0.24 : 0.4,
             }}
         />
     );

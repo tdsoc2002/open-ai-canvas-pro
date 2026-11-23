@@ -60,7 +60,7 @@ export const JOYSEE_CANVAS_THEMES: Record<"light" | "dark", ThemeCanvasPatch> = 
     },
     dark: {
         canvas: {
-            background: "#121212",
+            background: "#191919",
             dot: "rgba(255,255,255,.32)",
             line: "rgba(255,255,255,.32)",
             selectionFill: "rgba(255,255,255,.12)",
@@ -73,7 +73,7 @@ export const JOYSEE_CANVAS_THEMES: Record<"light" | "dark", ThemeCanvasPatch> = 
             label: "#a3a3a3",
             agentUserMessage: "#2a2a2a",
             fill: "#202020",
-            panel: "#2a2a2a",
+            panel: "#242424",
             stroke: "#303030",
             edge: "rgba(255,255,255,.18)",
             shadow: "none",
@@ -92,7 +92,7 @@ export const JOYSEE_CANVAS_THEMES: Record<"light" | "dark", ThemeCanvasPatch> = 
             preview: "#2a2a2a",
         },
         toolbar: {
-            panel: "#2a2a2a",
+            panel: "#242424",
             border: "rgba(255,255,255,.1)",
             item: "#d4d4d4",
             itemHover: "rgba(255,255,255,.07)",
@@ -101,7 +101,7 @@ export const JOYSEE_CANVAS_THEMES: Record<"light" | "dark", ThemeCanvasPatch> = 
         },
         spatial: {
             surface: "#202020",
-            elevated: "#2a2a2a",
+            elevated: "#242424",
             dropzone: "rgba(8,8,8,.9)",
             glow: "transparent",
             glowStrong: "transparent",
@@ -116,8 +116,7 @@ export const JOYSEE_CANVAS_THEMES: Record<"light" | "dark", ThemeCanvasPatch> = 
     },
 };
 
-// 只改变之后新建画布的预设，不写入已有作品外观快照。
 export const JOYSEE_CANVAS_PRESETS = {
     light: { label: "乐见浅色", values: { baseTheme: "light", backgroundColor: "#F5F5F5", backgroundBrightness: 0, gridColor: "#000000", gridOpacity: 24 } },
-    dark: { label: "乐见深色", values: { baseTheme: "dark", backgroundColor: "#121212", backgroundBrightness: 0, gridColor: "#FFFFFF", gridOpacity: 32 } },
+    dark: { label: "乐见深色", previousBackgroundColor: "#121212", values: { baseTheme: "dark", backgroundColor: "#191919", backgroundBrightness: 0, gridColor: "#FFFFFF", gridOpacity: 32 } },
 } satisfies NonNullable<NonNullable<ThemePack["canvas"]>["presets"]>;

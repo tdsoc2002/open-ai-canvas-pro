@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { CANVAS_APPEARANCE_PRESETS } from "@/lib/canvas/canvas-appearance";
+import type { CanvasAppearancePreset } from "@/lib/canvas/canvas-appearance";
 import type { SkinDefinition } from "@/lib/skin-themes";
 
 /**
@@ -18,8 +18,6 @@ export type ThemeAgentOrbProps = { size: number; state: ThemeAgentOrbState; clas
 export type ThemeSignalArtProps = { path: string; dot: [number, number]; error: boolean; reducedMotion: boolean };
 
 export type ThemeCanvasPatch = { [key: string]: string | ThemeCanvasPatch };
-
-type CanvasPresetValues = (typeof CANVAS_APPEARANCE_PRESETS)[number]["values"];
 
 export type ThemePack = {
     /** 与后台皮肤 id 一致，例如 longying-ink。 */
@@ -48,7 +46,7 @@ export type ThemePack = {
     /** 画布配色：上游写死在代码里，启用皮肤时就地替换，切走时还原。 */
     canvas?: {
         themes: Record<"light" | "dark", ThemeCanvasPatch>;
-        presets?: Partial<Record<"light" | "dark", { label: string; values: CanvasPresetValues }>>;
+        presets?: Partial<Record<"light" | "dark", Omit<CanvasAppearancePreset, "id">>>;
     };
     copy?: {
         /** 创作首页大标题，替换「和{品牌}聊聊创作想法」。 */
