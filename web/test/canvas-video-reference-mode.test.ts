@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import { buildNodeGenerationContext } from "@/components/canvas/canvas-node-generation";
 import { buildVideoGenerationMetadata } from "@/lib/canvas/canvas-project-generation";
 import { canvasVideoReferenceMode } from "@/lib/canvas/canvas-video-reference-mode";
 import { prepareBackendGenerationTask } from "@/services/api/generation-task";
+import type { Asset } from "@/stores/use-asset-store";
 import { createModelChannel, defaultConfig, encodeChannelModel } from "@/stores/use-config-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
@@ -14,16 +16,21 @@ function videoNode(metadata: CanvasNodeMetadata = {}): CanvasNodeData {
     return { id: "shot", type: CanvasNodeType.Video, title: "场景", position: { x: 0, y: 0 }, width: 240, height: 135, metadata };
 }
 
-async function prepare(metadata: CanvasNodeMetadata, imageIds: string[], prompt = "镜头拉远") {
+async function prepare(metadata: CanvasNodeMetadata, imageIds: string[], prompt = "镜头拉远", assets: Asset[] = []) {
     const source = videoNode(metadata);
     const images = imageIds.map((id) => ({ ...source, id, type: CanvasNodeType.Image, metadata: { storageKey: `resource:${id}`, content: `https://media.example/${id}.png` } }));
     const connections = images.map(({ id }) => ({ id: `to-${id}`, fromNodeId: id, toNodeId: source.id }));
-    const context = buildNodeGenerationContext(source.id, [...images, source], connections, prompt, [], true);
+    const context = buildNodeGenerationContext(source.id, [...images, source], connections, prompt, assets, true);
     const task = await prepareBackendGenerationTask({ mode: "video", config, prompt: context.prompt, referenceImages: context.referenceImages, metadata: buildVideoGenerationMetadata(source, context, config) });
     return { task, ids: context.referenceImages.map((image) => image.id) };
 }
 
 describe("画布视频提示词模式与实际任务", () => {
+    test("视频提示词面板根据参考素材切换模式，并支持选择和拖动首尾帧", () => {
+        const result = Bun.spawnSync([process.execPath, "test", "./test/fixtures/canvas-video-frame-slots.harness.tsx"], { cwd: resolve(import.meta.dir, ".."), timeout: 30000 });
+        expect(result.exitCode, new TextDecoder().decode(result.stdout) + new TextDecoder().decode(result.stderr)).toBe(0);
+    }, 30000);
+
     test("无连线是文生视频；即使上次提交的是文生，连一张图片也使用全能参考", async () => {
         expect(canvasVideoReferenceMode(videoNode(), false)).toBe("text");
         expect((await prepare({}, [])).task).toMatchObject({ operation: "text_to_video", input: { referenceImages: [], metadata: { videoEditOperation: "text_to_video" } } });
@@ -47,16 +54,37 @@ describe("画布视频提示词模式与实际任务", () => {
         expect((await prepare({ videoEndFrameNodeId: "end" }, ["end"])).task).toMatchObject({ operation: "image_to_video", input: { metadata: { videoEndFrameNodeId: "end" } } });
     });
 
-    test("手动选文生不拆连线、不夹带旧帧；全能参考也不提交旧帧角色", async () => {
-        expect((await prepare({ videoReferenceMode: "text", videoStartFrameNodeId: "old" }, ["forest"])).task).toMatchObject({ operation: "text_to_video", input: { referenceImages: [], metadata: { videoStartFrameNodeId: undefined } } });
+    test("旧文生配置连上图片后用全能参考发送素材，移除图片后恢复文生", async () => {
+        const previous = { videoReferenceMode: "text", videoEditOperation: "text_to_video", videoStartFrameNodeId: "old" } as const;
+        expect((await prepare(previous, ["forest"])).task).toMatchObject({
+            operation: "reference_to_video",
+            input: { referenceImages: [{ id: "forest" }], metadata: { videoStartFrameNodeId: undefined } },
+        });
+        expect((await prepare(previous, [])).task).toMatchObject({ operation: "text_to_video", input: { referenceImages: [], metadata: { videoStartFrameNodeId: undefined } } });
+    });
+
+    test("全能参考不提交旧帧角色", async () => {
         expect((await prepare({ videoReferenceMode: "all", videoEndFrameNodeId: "old" }, ["forest"])).task).toMatchObject({ operation: "reference_to_video", input: { metadata: { videoEndFrameNodeId: undefined } } });
+    });
+
+    test("旧文生节点只在提示词引用素材库图片也使用全能参考", async () => {
+        const asset: Asset = {
+            id: "library-image",
+            kind: "image",
+            title: "参考图",
+            tags: [],
+            createdAt: "",
+            updatedAt: "",
+            data: { dataUrl: "", storageKey: "resource:library-image", mimeType: "image/png", bytes: 10, width: 640, height: 480 },
+        };
+        const { task } = await prepare({ videoReferenceMode: "text" }, [], "参照 @[asset:library-image]", [asset]);
+        expect(task).toMatchObject({ operation: "reference_to_video", input: { referenceImages: [{ id: asset.id }] } });
     });
 
     test("断线、同图双帧或提示词引用了不会发送的素材时，生成前给出原因", async () => {
         await expect(prepare({ videoReferenceMode: "frames", videoStartFrameNodeId: "missing" }, ["other"])).rejects.toThrow("首帧图片已断开");
         await expect(prepare({ videoReferenceMode: "frames", videoStartFrameNodeId: "same", videoEndFrameNodeId: "same" }, ["same"])).rejects.toThrow("同一张");
         await expect(prepare({ videoReferenceMode: "frames", videoStartFrameNodeId: "start" }, ["start", "other"], "参照 @图片2")).rejects.toThrow("首尾帧以外");
-        await expect(prepare({ videoReferenceMode: "text" }, ["forest"], "参照 @图片1")).rejects.toThrow("文生视频不使用媒体引用");
     });
 
     test("工作流字段映射与专用的视频编辑操作不接入三段模式", () => {

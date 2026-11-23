@@ -11595,7 +11595,11 @@
         border-radius: calc(var(--r-2xl) + var(--space-2));
         background: color-mix(in srgb, var(--bg-secondary) 94%, var(--cn-text));
         box-shadow: var(--canvas-video-composer-shadow);
-        padding: var(--space-4) clamp(var(--space-3), 3vw, var(--space-5));
+        padding: var(--space-4) var(--space-2) var(--space-2);
+
+        :is(.canvas-node-composer-editor, .canvas-video-reference-issue) {
+            padding-inline: 0;
+        }
     }
 
     /* 提示词优化保持在输入框附近，使用紧凑的 Popover 作为第二层输入工具。 */
@@ -12737,8 +12741,7 @@
             color var(--motion-instant) ease-out;
     }
 
-    .canvas-node-composer-header-action.is-labeled,
-    .canvas-node-composer-header-action.is-icon {
+    .canvas-node-composer-header-action:is(.is-labeled, .is-icon, .canvas-node-fixed-chip) {
         display: inline-flex;
         height: calc(var(--space-6) + var(--space-1));
         flex-shrink: 0;
@@ -12751,8 +12754,13 @@
         line-height: 1;
     }
 
-    .canvas-node-composer-header-action.is-labeled {
+    .canvas-node-composer-header-action:is(.is-labeled, .canvas-node-fixed-chip) {
         padding-inline: var(--space-2);
+        font-size: var(--fs-ui);
+    }
+
+    .canvas-node-composer-header-action.canvas-node-fixed-chip {
+        max-width: 7rem;
     }
 
     .canvas-node-composer-header-action.is-icon {
@@ -12760,8 +12768,7 @@
         padding: 0;
     }
 
-    .canvas-node-composer-header-action.is-labeled > svg,
-    .canvas-node-composer-header-action.is-icon > svg {
+    .canvas-node-composer-header-action:is(.is-labeled, .is-icon, .canvas-node-fixed-chip) > svg {
         width: var(--space-4);
         height: var(--space-4);
         flex-shrink: 0;
@@ -12830,19 +12837,9 @@
         background: color-mix(in srgb, currentColor 10%, transparent) !important;
     }
 
-    .canvas-reference-autolink-switch:hover,
-    .canvas-reference-autolink-switch:focus-visible {
-        box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 10%, transparent);
-    }
-
     .canvas-node-composer-camera-tools-trigger:focus-visible {
         outline: var(--stroke-2) solid var(--control-focus-ring);
         outline-offset: -2px;
-    }
-
-    .canvas-reference-tools-mention-button:hover,
-    .canvas-reference-tools-mention-button:focus-visible {
-        background: color-mix(in srgb, currentColor 9%, transparent) !important;
     }
 
     @media (max-width: 640px) {
@@ -13048,11 +13045,6 @@
         }
     }
 
-    .canvas-node-composer-parameters {
-        margin-top: 0;
-        padding-top: var(--space-1);
-    }
-
     .canvas-video-frame-pair {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -13095,6 +13087,53 @@
         color: var(--cn-muted);
         font-size: var(--fs-caption);
         padding-inline: var(--space-2);
+    }
+    .canvas-node-composer-references-track:has(> [data-thumbnail-slots]) {
+        align-items: flex-end;
+    }
+    .canvas-video-frame-pair[data-thumbnail-slots] {
+        display: flex;
+        flex: none;
+        align-items: flex-end;
+    }
+    .canvas-video-frame-slot {
+        display: grid;
+        justify-items: center;
+        gap: var(--space-1);
+        font-size: var(--fs-caption);
+        font-weight: 600;
+        line-height: 1;
+    }
+    .canvas-video-frame-slot .canvas-video-frame-trigger {
+        justify-content: center;
+        width: var(--canvas-reference-chip-size);
+        height: var(--canvas-reference-chip-size);
+        overflow: hidden;
+        padding: 0;
+        border: var(--stroke-1) solid var(--canvas-composer-edge);
+        background: var(--canvas-composer-control-surface);
+    }
+    .canvas-video-frame-slot .canvas-video-frame-trigger:not(:disabled):is(:hover, [aria-expanded="true"]) {
+        background: var(--canvas-composer-control-hover);
+    }
+    .canvas-video-frame-slot .canvas-video-frame-trigger:focus-visible {
+        outline-offset: calc(-1 * var(--stroke-2));
+    }
+    .canvas-video-frame-slot .canvas-video-frame-trigger > img {
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+    }
+    .canvas-video-frame-slot[draggable="true"] .canvas-video-frame-trigger {
+        cursor: grab;
+    }
+    .canvas-video-frame-pair[data-dragging-frame="start"] [data-frame-slot="end"] .canvas-video-frame-trigger,
+    .canvas-video-frame-pair[data-dragging-frame="end"] [data-frame-slot="start"] .canvas-video-frame-trigger {
+        outline: var(--stroke-2) solid var(--control-focus-ring);
+        outline-offset: calc(-1 * var(--stroke-2));
+    }
+    .canvas-video-frame-pair[data-thumbnail-slots] .canvas-video-frame-swap {
+        height: var(--canvas-reference-chip-size);
     }
 
     .canvas-node-composer-footer {
@@ -13156,6 +13195,14 @@
         color: var(--cn-text) !important;
     }
 
+    .canvas-node-composer-footer .canvas-node-composer-settings-trigger.ant-btn[data-has-trigger-status] {
+        min-width: 0;
+    }
+
+    .canvas-node-composer-settings-trigger [data-trigger-status] {
+        color: var(--cn-text);
+    }
+
     .canvas-node-composer-settings-trigger.ant-btn:focus-visible {
         outline: var(--stroke-2) solid var(--control-focus-ring);
         outline-offset: -2px;
@@ -13179,21 +13226,20 @@
         padding-inline: 0 !important;
     }
 
-    .canvas-reference-tools-popover {
-        width: 280px !important;
-        max-width: calc(100vw - 24px) !important;
+    .canvas-reference-tools-popover .canvas-reference-tools-surface {
+        border: 1px solid var(--border) !important;
+        border-radius: var(--r-md) !important;
+        background: var(--popover) !important;
+        box-shadow: var(--shadow-md) !important;
     }
 
-    .canvas-reference-tools-popover .ant-popover-content,
-    .canvas-reference-tools-popover .ant-popover-inner,
-    .canvas-reference-tools-popover .ant-popover-inner-content {
-        box-sizing: border-box;
-        width: 100% !important;
-        max-width: calc(100vw - 24px);
+    .canvas-reference-tools-mention-button:enabled:is(:hover, :focus-visible) {
+        background: color-mix(in srgb, currentColor 8%, transparent);
     }
 
-    .canvas-reference-tools-popover .ant-popover-inner-content {
-        padding: 0 !important;
+    .canvas-reference-tools-mention-button:focus-visible {
+        outline: var(--stroke-2) solid var(--control-focus-ring);
+        outline-offset: -2px;
     }
 
     .canvas-node-generate,
@@ -13278,21 +13324,47 @@
         }
 
         .canvas-node-composer-footer {
-            gap: var(--space-2);
+            column-gap: var(--space-1);
+            row-gap: var(--space-2);
             padding-top: var(--space-2);
-        }
-
-        .canvas-video-reference-mode {
-            min-width: 8em;
         }
 
         .canvas-node-composer-footer .canvas-node-composer-model-trigger {
             min-height: var(--canvas-video-composer-control-size);
-            padding-inline: var(--space-2) var(--space-3);
+            gap: var(--space-1);
+            padding-inline: var(--space-1);
+        }
+
+        .canvas-node-composer-model-trigger .canvas-model-picker-trigger-text {
+            font-size: var(--fs-body);
+            line-height: var(--lh-heading);
+        }
+
+        .canvas-node-composer-output-tools .canvas-node-composer-settings-trigger.ant-btn {
+            height: var(--canvas-video-composer-control-size) !important;
+            gap: var(--space-1);
+            padding-inline: var(--space-1) !important;
+            font-size: var(--fs-body) !important;
+            line-height: var(--lh-heading);
         }
 
         .canvas-node-composer-footer .canvas-node-composer-model-trigger:is(:hover, [aria-expanded="true"]) {
             background: var(--canvas-composer-control-hover) !important;
+        }
+
+        .canvas-node-composer-footer :is(.canvas-node-composer-model-trigger .canvas-model-picker-chevron, .canvas-video-mode-chevron) {
+            width: var(--space-3);
+            height: var(--space-3);
+            flex: none;
+            color: var(--cn-muted);
+        }
+
+        .canvas-node-composer-footer :is(.canvas-node-composer-model-trigger[aria-expanded="true"] .canvas-model-picker-chevron, .canvas-video-reference-mode.ant-select-open .canvas-video-mode-chevron) {
+            color: var(--cn-text);
+        }
+
+        .canvas-video-reference-mode.ant-select-open .canvas-video-mode-chevron {
+            transform: rotate(180deg);
         }
 
         .canvas-node-composer-reference-tools-trigger {
@@ -13305,21 +13377,12 @@
         }
 
         .canvas-node-generate-button {
-            width: var(--canvas-video-composer-control-size);
-            height: var(--canvas-video-composer-control-size);
-        }
-
-        .canvas-node-generate-button.has-video-cost {
             width: auto;
             min-width: var(--canvas-video-composer-control-size);
-            gap: var(--space-1);
+            height: var(--canvas-video-composer-control-size);
             padding-inline: var(--space-3);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .canvas-node-generate-button.has-video-cost > svg {
-            width: var(--space-4);
-            height: var(--space-4);
+            font-size: var(--fs-caption);
+            font-weight: 500;
         }
     }
 
@@ -13467,6 +13530,13 @@
 
     .canvas-node-composer-resize-handle:focus-visible {
         outline: none;
+    }
+
+    /* 空编辑器保留的换行不应把占位提示推到输入起点的下一行。 */
+    [data-mention-placeholder-at-start]::after {
+        position: absolute;
+        inset: 0;
+        padding: inherit;
     }
 
     .canvas-resource-inline-mention {
@@ -26774,6 +26844,19 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     border-radius: var(--r-lg) !important;
 }
 
+.ant-select.app-unified-select.canvas-video-reference-mode {
+    --unified-select-surface: transparent;
+    --unified-select-surface-hover: transparent;
+    --unified-select-surface-open: transparent;
+    align-items: center;
+    column-gap: var(--space-1);
+    min-width: calc(5em + var(--space-8));
+    min-height: var(--canvas-video-composer-control-size);
+    padding: 0 var(--space-1);
+    font-size: var(--fs-body);
+    line-height: var(--lh-heading);
+}
+
 .ant-select.app-unified-select:hover:not(.ant-select-disabled) {
     border: 0 !important;
     border-color: transparent !important;
@@ -26810,6 +26893,11 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 
 .ant-select.app-unified-select.ant-select-open .ant-select-suffix {
     color: color-mix(in srgb, var(--foreground) 72%, transparent) !important;
+}
+
+.ant-select.app-unified-select.canvas-video-reference-mode .ant-select-content,
+.ant-select.app-unified-select.canvas-video-reference-mode .ant-select-suffix {
+    margin-inline-end: 0 !important;
 }
 
 .ant-select.app-unified-select[data-input-modality="pointer"],
@@ -26850,6 +26938,32 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     border: 0 !important;
     background: color-mix(in srgb, var(--popover-foreground) 10%, var(--popover)) !important;
     color: var(--popover-foreground) !important;
+}
+
+.canvas-video-reference-mode-popup .ant-select-item-option.ant-select-item-option-disabled {
+    color: var(--control-disabled-fg) !important;
+    cursor: not-allowed;
+}
+
+.canvas-video-settings .video-output-options {
+    --video-output-row-bg: color-mix(in srgb, currentColor 14%, transparent);
+    --video-output-row-border: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.canvas-video-settings .video-output-options [data-slot="switch"][data-state="off"] {
+    background-color: color-mix(in srgb, currentColor 42%, transparent);
+}
+
+.canvas-video-settings .video-output-options [data-slot="switch"][data-state="on"] {
+    background-color: var(--control-switch-checked-bg);
+}
+
+.canvas-video-settings .video-output-options .sc-switch-thumb[data-state="off"] {
+    background-color: var(--control-switch-off-handle);
+}
+
+.canvas-video-settings .video-output-options .sc-switch-thumb[data-state="on"] {
+    background-color: var(--control-switch-checked-handle);
 }
 
 /* 图片浮层保留透明外壳，使原图缩放和拖动不被内容面板裁切。 */

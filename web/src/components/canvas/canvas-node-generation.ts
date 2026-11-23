@@ -15,7 +15,7 @@ import { compileCharacterReferencePrompt, normalizeCharacterImageMentions } from
 import { createCanvasReferenceLabeler } from "@/lib/canvas/canvas-reference-slots";
 import { nodeReferenceImage } from "@/lib/canvas/canvas-project-generation";
 import { isCanvasWorkflowProvider } from "@/lib/canvas/canvas-workflow";
-import { canvasVideoFrameIssue, canvasVideoReferenceMode, videoMediaMentionIssue } from "@/lib/canvas/canvas-video-reference-mode";
+import { VIDEO_FRAME_MENTION_ISSUE, canvasVideoFrameIssue, canvasVideoReferenceMode } from "@/lib/canvas/canvas-video-reference-mode";
 import { nodeGenerationPrompt } from "@/lib/canvas/generation-contract";
 import type { ModelReferenceLimits } from "@/lib/model-selection";
 import type { Asset } from "@/stores/use-asset-store";
@@ -124,7 +124,7 @@ function buildRawNodeGenerationContext(nodeId: string, nodes: CanvasNodeData[], 
         );
         if (issue) throw new Error(issue);
     }
-    const onlyMediaIds = videoMode === "frames" ? frameIds : videoMode === "text" && sourceNode?.metadata?.videoReferenceMode === "text" ? [] : undefined;
+    const onlyMediaIds = videoMode === "frames" ? frameIds : undefined;
     // 豆包音频按连线决定纯文本、参考音频或参考图片，不能因为提示词里没有逐个 @ 就丢掉已连接素材。
     const includeConnectedAudioMedia = Boolean(sourceNode && getNodeGenerationMode(sourceNode) === "audio");
     if (onlyMediaIds || (promptOnly && hasConnectedMedia) || (sourceNode ? Boolean(nodeGenerationPrompt(sourceNode).trim()) && (sourceNode.type === CanvasNodeType.Config || isWorkflowSource) : false) || hasExplicitResourceMention) {
@@ -223,7 +223,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
     for (const { input } of mentions) {
         if (!input) continue;
         if (onlyMediaIds && input.type !== "text" && !onlyMediaIds.includes(input.nodeId)) {
-            throw new Error(videoMediaMentionIssue(onlyMediaIds.length ? "frames" : "text"));
+            throw new Error(VIDEO_FRAME_MENTION_ISSUE);
         }
         selectedIds.add(input.nodeId);
     }

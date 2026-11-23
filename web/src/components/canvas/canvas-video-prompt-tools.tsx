@@ -1,11 +1,11 @@
-import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, type DragEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeftRight, Check, ChevronDown, Image as ImageIcon } from "lucide-react";
+import { ArrowLeftRight, Check, ChevronDown, Image as ImageIcon, Plus } from "lucide-react";
 import { observeMovablePopupAnchor } from "@/lib/movable-popup-anchor";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
-import type { CanvasNodeMetadata } from "@/types/canvas";
+import type { CanvasNodeMetadata, CanvasVideoFrameKey } from "@/types/canvas";
 import { useTranslation } from "react-i18next";
 
 type VideoFrameOption = {
@@ -21,30 +21,55 @@ type CompactMenuItem = {
     previewUrl?: string;
 };
 
+type FrameSlot = "start" | "end";
+
 type CanvasVideoPromptToolsProps = {
     metadata?: CanvasNodeMetadata;
     frameOptions: VideoFrameOption[];
+    singleFrame?: boolean;
     onMetadataChange: (patch: Partial<CanvasNodeMetadata>) => void;
     referenceMode?: "frames" | "all";
     referenceSummary?: { imageCount: number; videoCount: number; audioCount: number };
     disabled?: boolean;
+    thumbnailSlots?: boolean;
+    onUploadFrame?: (key: CanvasVideoFrameKey) => void;
 };
 
 const EMPTY_FRAME_VALUE = "__none__";
+const UPLOAD_FRAME_VALUE = "__upload__";
+const FRAME_DRAG_TYPE = "application/x-canvas-video-frame";
 const MENU_GAP = 6;
 const MENU_MARGIN = 8;
 const MENU_ITEM_HEIGHT = 28;
 const CONTROL_TEXT_STYLE: CSSProperties = { fontFamily: "inherit", fontSize: 11, fontWeight: 400, letterSpacing: 0, lineHeight: 1 };
 
-export function CanvasVideoPromptTools({ metadata, frameOptions, onMetadataChange, referenceMode = "frames", referenceSummary, disabled }: CanvasVideoPromptToolsProps) {
+function frameSlotAt(target: EventTarget): FrameSlot | undefined {
+    const slot = target instanceof Element ? target.closest<HTMLElement>("[data-frame-slot]")?.dataset.frameSlot : undefined;
+    if (slot === "start" || slot === "end") return slot;
+}
+
+export function CanvasVideoPromptTools({ metadata, frameOptions, onMetadataChange, referenceMode = "frames", referenceSummary, singleFrame, disabled, thumbnailSlots, onUploadFrame }: CanvasVideoPromptToolsProps) {
     const { t } = useTranslation();
     const theme = canvasThemes[useActiveTheme()];
     const startFrame = metadata?.videoStartFrameNodeId || EMPTY_FRAME_VALUE;
     const endFrame = metadata?.videoEndFrameNodeId || EMPTY_FRAME_VALUE;
+    const hasStartFrame = frameOptions.some((item) => item.nodeId === startFrame);
+    const hasEndFrame = frameOptions.some((item) => item.nodeId === endFrame);
+    const canDragFrames = Boolean(thumbnailSlots && !singleFrame && !disabled);
+    const [draggedFrame, setDraggedFrame] = useState<FrameSlot | null>(null);
 
-    const setFrame = (key: "videoStartFrameNodeId" | "videoEndFrameNodeId", value: string) => {
+    const setFrame = (key: CanvasVideoFrameKey, value: string) => {
         const next = value === EMPTY_FRAME_VALUE ? undefined : value;
-        onMetadataChange(key === "videoStartFrameNodeId" ? { videoStartFrameNodeId: next } : { videoEndFrameNodeId: next });
+        onMetadataChange({ [key]: next });
+    };
+
+    const exchangeFrames = () => {
+        onMetadataChange({ videoStartFrameNodeId: hasEndFrame ? endFrame : undefined, videoEndFrameNodeId: hasStartFrame ? startFrame : undefined });
+    };
+
+    const isFrameDropTarget = (event: DragEvent<HTMLDivElement>) => {
+        const target = frameSlotAt(event.target);
+        return canDragFrames && draggedFrame !== null && target !== undefined && target !== draggedFrame && event.dataTransfer.types.includes(FRAME_DRAG_TYPE);
     };
 
     if (referenceMode === "all") {
@@ -73,50 +98,134 @@ export function CanvasVideoPromptTools({ metadata, frameOptions, onMetadataChang
         );
     }
 
-    if (!frameOptions.length) return null;
+    if (!thumbnailSlots && !frameOptions.length) return null;
 
     return (
-        <div className="canvas-video-frame-pair" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+        <div
+            className="canvas-video-frame-pair"
+            data-thumbnail-slots={thumbnailSlots || undefined}
+            data-dragging-frame={canDragFrames ? draggedFrame : undefined}
+            data-canvas-no-zoom
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onDragStart={(event) => {
+                if (!canDragFrames) return;
+                const slot = frameSlotAt(event.target);
+                if (!slot || !(slot === "start" ? hasStartFrame : hasEndFrame)) return;
+                event.stopPropagation();
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData(FRAME_DRAG_TYPE, slot);
+                setDraggedFrame(slot);
+            }}
+            onDragOver={(event) => {
+                if (!isFrameDropTarget(event)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(event) => {
+                if (!isFrameDropTarget(event) || event.dataTransfer.getData(FRAME_DRAG_TYPE) !== draggedFrame) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setDraggedFrame(null);
+                exchangeFrames();
+            }}
+            onDragEnd={() => setDraggedFrame(null)}
+        >
             <FrameMenu
                 label={t("canvasC.videoPromptTools.startFrame")}
                 value={startFrame}
                 options={frameOptions.filter((item) => item.nodeId !== endFrame)}
                 theme={theme}
                 disabled={disabled}
+                thumbnail={thumbnailSlots}
+                dragSlot={canDragFrames ? "start" : undefined}
+                onUpload={onUploadFrame ? () => onUploadFrame("videoStartFrameNodeId") : undefined}
                 onChange={(value) => setFrame("videoStartFrameNodeId", value)}
             />
-            <button
-                type="button"
-                className="canvas-video-frame-swap"
-                title={t("canvasC.videoPromptTools.swap")}
-                aria-label={t("canvasC.videoPromptTools.swap")}
-                disabled={disabled || !frameOptions.some((item) => item.nodeId === startFrame) || !frameOptions.some((item) => item.nodeId === endFrame)}
-                onClick={() => onMetadataChange({ videoStartFrameNodeId: endFrame, videoEndFrameNodeId: startFrame })}
-            >
-                <ArrowLeftRight aria-hidden />
-            </button>
-            <FrameMenu label={t("canvasC.videoPromptTools.endFrame")} value={endFrame} options={frameOptions.filter((item) => item.nodeId !== startFrame)} theme={theme} disabled={disabled} onChange={(value) => setFrame("videoEndFrameNodeId", value)} />
+            {!singleFrame && (
+                <button
+                    type="button"
+                    className="canvas-video-frame-swap"
+                    title={t("canvasC.videoPromptTools.swap")}
+                    aria-label={t("canvasC.videoPromptTools.swap")}
+                    disabled={disabled || (thumbnailSlots ? !hasStartFrame && !hasEndFrame : !hasStartFrame || !hasEndFrame)}
+                    onClick={exchangeFrames}
+                >
+                    <ArrowLeftRight aria-hidden />
+                </button>
+            )}
+            {(!singleFrame || endFrame !== EMPTY_FRAME_VALUE) && (
+                <FrameMenu
+                    label={t("canvasC.videoPromptTools.endFrame")}
+                    value={endFrame}
+                    options={singleFrame ? [] : frameOptions.filter((item) => item.nodeId !== startFrame)}
+                    theme={theme}
+                    disabled={disabled}
+                    thumbnail={thumbnailSlots}
+                    dragSlot={canDragFrames ? "end" : undefined}
+                    onUpload={!singleFrame && onUploadFrame ? () => onUploadFrame("videoEndFrameNodeId") : undefined}
+                    onChange={(value) => setFrame("videoEndFrameNodeId", value)}
+                />
+            )}
         </div>
     );
 }
 
-function FrameMenu({ label, value, options, theme, onChange, disabled }: { label: string; value: string; options: VideoFrameOption[]; theme: CanvasTheme; onChange: (value: string) => void; disabled?: boolean }) {
+function FrameMenu({
+    label,
+    value,
+    options,
+    theme,
+    onChange,
+    onUpload,
+    disabled,
+    thumbnail,
+    dragSlot,
+}: {
+    label: string;
+    value: string;
+    options: VideoFrameOption[];
+    theme: CanvasTheme;
+    onChange: (value: string) => void;
+    onUpload?: () => void;
+    disabled?: boolean;
+    thumbnail?: boolean;
+    dragSlot?: FrameSlot;
+}) {
     const { t } = useTranslation();
     const selected = options.find((item) => item.nodeId === value);
-    const items = [{ value: EMPTY_FRAME_VALUE, label: t("canvasC.videoPromptTools.none") }, ...options.map((option) => ({ value: option.nodeId, label: `${option.label} · ${option.title}`, previewUrl: option.previewUrl }))];
-    return (
+    const items = [
+        ...(onUpload ? [{ value: UPLOAD_FRAME_VALUE, label: t("canvasPage.batchReferences.uploadLabel") }] : []),
+        { value: EMPTY_FRAME_VALUE, label: t("canvasC.videoPromptTools.none") },
+        ...options.map((option) => ({ value: option.nodeId, label: `${option.label} · ${option.title}`, previewUrl: option.previewUrl })),
+    ];
+    const PlaceholderIcon = (onUpload || thumbnail) && !selected ? Plus : ImageIcon;
+    const trigger = (
         <CompactMenuButton
             theme={theme}
             title={label}
             label={selected?.label || t("canvasC.videoPromptTools.none")}
-            icon={selected?.previewUrl ? <img src={selected.previewUrl} alt="" className="size-6 shrink-0 rounded object-cover" /> : <ImageIcon className="size-5 shrink-0 opacity-60" />}
+            icon={selected?.previewUrl ? <img src={selected.previewUrl} alt="" draggable={thumbnail ? false : undefined} className="size-6 shrink-0 rounded object-cover" /> : <PlaceholderIcon aria-hidden className="size-5 shrink-0 opacity-60" />}
             disabled={disabled}
+            thumbnail={thumbnail}
             value={value}
             items={items}
             menuWidth={220}
             maxMenuHeight={208}
-            onSelect={onChange}
+            onSelect={(next) => {
+                if (next === UPLOAD_FRAME_VALUE) onUpload?.();
+                else onChange(next);
+            }}
         />
+    );
+
+    if (!thumbnail) return trigger;
+    return (
+        <div className="canvas-video-frame-slot" data-frame-slot={dragSlot} draggable={Boolean(dragSlot && selected)}>
+            <span>{label}</span>
+            {trigger}
+        </div>
     );
 }
 
@@ -131,6 +240,7 @@ function CompactMenuButton({
     maxMenuHeight,
     onSelect,
     disabled,
+    thumbnail,
 }: {
     theme: CanvasTheme;
     title: string;
@@ -142,11 +252,13 @@ function CompactMenuButton({
     maxMenuHeight: number;
     onSelect: (value: string) => void;
     disabled?: boolean;
+    thumbnail?: boolean;
 }) {
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
     const [position, setPosition] = useState<{ left: number; top: number; width: number; maxHeight: number } | null>(null);
+    const menuVisible = open && Boolean(position);
 
     const updatePosition = () => {
         const rect = triggerRef.current?.getBoundingClientRect();
@@ -165,6 +277,10 @@ function CompactMenuButton({
         if (open) updatePosition();
     }, [open, items.length, maxMenuHeight, menuWidth]);
 
+    useLayoutEffect(() => {
+        if (menuVisible) menuRef.current?.querySelector("button")?.focus();
+    }, [menuVisible]);
+
     useEffect(() => {
         if (!open) return;
         const close = (event: PointerEvent) => {
@@ -173,7 +289,9 @@ function CompactMenuButton({
             setOpen(false);
         };
         const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") setOpen(false);
+            if (event.key !== "Escape") return;
+            setOpen(false);
+            if (menuRef.current?.contains(document.activeElement)) triggerRef.current?.focus();
         };
         const reposition = () => updatePosition();
         const stopMovingAnchor = triggerRef.current ? observeMovablePopupAnchor(triggerRef.current, reposition) : undefined;
@@ -233,8 +351,9 @@ function CompactMenuButton({
                                           event.currentTarget.style.background = selected ? theme.toolbar.itemHover : "transparent";
                                       }}
                                       onClick={() => {
-                                          onSelect(item.value);
                                           setOpen(false);
+                                          triggerRef.current?.focus();
+                                          onSelect(item.value);
                                       }}
                                   >
                                       {item.previewUrl ? <img src={item.previewUrl} alt="" className="size-4 shrink-0 rounded object-cover" /> : null}
@@ -265,11 +384,15 @@ function CompactMenuButton({
                 onPointerDown={(event) => event.stopPropagation()}
             >
                 {icon}
-                <span className="min-w-0 flex-1 truncate text-left">
-                    <span className="canvas-video-frame-label">{title}</span>
-                    {label}
-                </span>
-                <ChevronDown className="size-3 shrink-0 opacity-55" />
+                {!thumbnail && (
+                    <>
+                        <span className="min-w-0 flex-1 truncate text-left">
+                            <span className="canvas-video-frame-label">{title}</span>
+                            {label}
+                        </span>
+                        <ChevronDown className="size-3 shrink-0 opacity-55" aria-hidden />
+                    </>
+                )}
             </button>
             {menu}
         </>

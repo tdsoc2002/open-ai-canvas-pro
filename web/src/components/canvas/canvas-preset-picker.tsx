@@ -18,7 +18,6 @@ export function CanvasPresetPicker({
     onOpenChange,
     onSelect,
     compact = false,
-    dense = false,
     appearance = "default",
 }: {
     mode: CanvasGenerationMode;
@@ -27,7 +26,6 @@ export function CanvasPresetPicker({
     onOpenChange?: (open: boolean) => void;
     onSelect: (preset: CanvasPromptPreset) => void;
     compact?: boolean;
-    dense?: boolean;
     appearance?: "default" | "quiet";
 }) {
     const theme = canvasThemes[useActiveTheme()];
@@ -121,14 +119,18 @@ export function CanvasPresetPicker({
         >
             <button
                 type="button"
-                className={`canvas-preset-picker-trigger ${appearance === "quiet" ? "canvas-node-composer-header-action" : ""} inline-flex shrink-0 items-center justify-center gap-1 rounded-lg transition focus-visible:outline-none ${compact ? "size-6" : dense ? "h-6 px-2" : "h-7 px-2"}`}
+                className={
+                    appearance === "quiet"
+                        ? `canvas-node-composer-header-action ${compact ? "is-icon" : "is-labeled"}`
+                        : `canvas-preset-picker-trigger inline-flex shrink-0 items-center justify-center gap-1 rounded-lg transition focus-visible:outline-none ${compact ? "size-6" : "h-7 px-2"}`
+                }
                 style={appearance === "quiet" ? undefined : { background: theme.accent.primarySoft, color: theme.accent.primary }}
                 title={appearance === "quiet" ? "提示词模板" : "打开提示词预设"}
                 aria-label={appearance === "quiet" ? "提示词模板" : "打开提示词预设"}
                 aria-expanded={actualOpen}
             >
-                {appearance === "quiet" ? <LayoutTemplate className="size-3" /> : <LayoutTemplate className={dense ? "size-3" : "size-3.5"} />}
-                {compact ? null : <span className="text-[var(--fs-tiny)] font-medium">{appearance === "quiet" ? "提示词模板" : "预设"}</span>}
+                <LayoutTemplate aria-hidden className={appearance === "quiet" ? undefined : "size-3.5"} />
+                {compact ? null : appearance === "quiet" ? "提示词模板" : <span className="text-[var(--fs-tiny)] font-medium">预设</span>}
             </button>
         </Popover>
     );

@@ -1,10 +1,10 @@
 // 节点提示词面板的参考素材区：已连接参考的缩略图货架、自动 @ 引用工具与拖拽排序。
 
-import { Image as AntImage, Popover } from "antd";
+import { Image as AntImage, Popover, Switch } from "antd";
 import { AtSign, FileText, GripVertical, ImageIcon, Link2, Maximize2, Music2, Pencil, Plus, SlidersHorizontal, UserRound, Video, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasTheme } from "./canvas-node-prompt-panel";
@@ -14,14 +14,12 @@ export function ReferenceToolsPopover({
     autoLinkEnabled,
     onAutoMention,
     onAutoLinkEnabledChange,
-    accent,
     compact,
 }: {
     canAutoMention: boolean;
     autoLinkEnabled: boolean;
     onAutoMention: () => void;
     onAutoLinkEnabledChange: (enabled: boolean) => void;
-    accent: string;
     compact: boolean;
 }) {
     const [open, setOpen] = useState(false);
@@ -33,48 +31,50 @@ export function ReferenceToolsPopover({
             onOpenChange={setOpen}
             trigger="click"
             placement="topRight"
-            rootClassName="canvas-reference-tools-popover"
+            classNames={{ root: "canvas-reference-tools-popover", container: "canvas-reference-tools-surface" }}
+            styles={{
+                root: { width: "min(232px, calc(100vw - 24px))", filter: "none" },
+                container: { padding: "var(--space-2)" },
+                content: { padding: 0, color: "var(--popover-foreground)" },
+            }}
             arrow={false}
-            align={{ offset: [0, -8] }}
-            styles={{ root: { width: "min(280px, calc(100vw - 24px))" }, container: { width: "100%" }, content: { width: "100%", padding: 12 } }}
             content={
-                <div className="space-y-2">
-                    <div>
-                        <div className="text-sm font-medium leading-5">智能引用</div>
-                        <div className="mt-0.5 text-xs leading-4 text-black/50 dark:text-white/50">输入素材序号或名称后按 Tab，可快速引用</div>
-                    </div>
-                    <div className="flex min-h-6 items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            <Link2 className="size-3.5" />
-                            AutoLink
+                <>
+                    <div className="px-2 pt-1 text-sm font-semibold leading-5">智能引用</div>
+                    <div className="px-2 py-2">
+                        <div className="flex min-h-7 items-center justify-between gap-3 text-sm">
+                            <span className="flex items-center gap-2">
+                                <Link2 aria-hidden className="size-3.5 text-muted-foreground" />
+                                AutoLink
+                            </span>
+                            <Switch size="small" checked={autoLinkEnabled} onChange={onAutoLinkEnabledChange} aria-label="AutoLink" />
                         </div>
+                        <div className="text-xs leading-5 text-muted-foreground">
+                            输入素材名称或序号，按 <kbd className="rounded border border-border px-1 font-sans text-[11px]">Tab</kbd> 引用
+                        </div>
+                    </div>
+                    <div className="border-t border-border pt-1">
                         <button
                             type="button"
-                            role="switch"
-                            aria-checked={autoLinkEnabled}
-                            aria-label={autoLinkEnabled ? "关闭 AutoLink" : "开启 AutoLink"}
-                            className="canvas-reference-autolink-switch relative inline-flex h-5 w-9 items-center rounded-full border transition-colors"
-                            style={{ background: autoLinkEnabled ? `${accent}14` : "transparent", borderColor: autoLinkEnabled ? accent : "color-mix(in srgb, currentColor 22%, transparent)", color: accent }}
-                            onClick={() => onAutoLinkEnabledChange(!autoLinkEnabled)}
+                            className="canvas-reference-tools-mention-button flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-sm transition-colors disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-65"
+                            disabled={!canAutoMention}
+                            onClick={onAutoMention}
                         >
-                            <span className={`size-3.5 rounded-full shadow-sm transition-transform ${autoLinkEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} style={{ background: autoLinkEnabled ? accent : "currentColor" }} />
+                            <AtSign aria-hidden className="size-3.5" />
+                            一键引用全文
                         </button>
                     </div>
-                    <button
-                        type="button"
-                        className="canvas-reference-tools-mention-button flex h-7 w-full items-center justify-center gap-2 rounded-md border px-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-45"
-                        style={{ borderColor: accent, color: accent, background: "transparent" }}
-                        disabled={!canAutoMention}
-                        onClick={onAutoMention}
-                    >
-                        <AtSign className="size-3.5" />
-                        一键引用全文
-                    </button>
-                </div>
+                </>
             }
         >
-            <button type="button" className={`canvas-node-composer-settings-trigger canvas-node-composer-reference-tools-trigger inline-flex shrink-0 items-center gap-1 ${compact ? "is-compact" : ""}`} aria-label="打开智能引用" title="智能引用">
-                <SlidersHorizontal className="size-3.5" />
+            <button
+                type="button"
+                className={`canvas-node-composer-settings-trigger canvas-node-composer-reference-tools-trigger inline-flex shrink-0 items-center gap-1 ${compact ? "is-compact" : ""}`}
+                aria-label="智能引用"
+                aria-expanded={open}
+                title="智能引用"
+            >
+                <SlidersHorizontal aria-hidden className="size-3.5" />
                 {!compact ? <span>引用</span> : null}
             </button>
         </Popover>
@@ -89,6 +89,7 @@ export function referenceShelfHeading(references: CanvasResourceReference[]) {
 export function ConnectedReferenceShelf({
     targetNodeId,
     references,
+    frameSlots,
     theme,
     onInsert,
     onPick,
@@ -99,6 +100,7 @@ export function ConnectedReferenceShelf({
 }: {
     targetNodeId?: string;
     references: CanvasResourceReference[];
+    frameSlots?: ReactNode;
     theme: CanvasTheme;
     onInsert: (reference: CanvasResourceReference) => void;
     onPick?: () => void;
@@ -112,7 +114,7 @@ export function ConnectedReferenceShelf({
     const [imagePreview, setImagePreview] = useState<CanvasResourceReference | null>(null);
     const [draggedReferenceId, setDraggedReferenceId] = useState<string | null>(null);
     const [dropTargetReferenceId, setDropTargetReferenceId] = useState<string | null>(null);
-    if (!activeReferences.length && !onPick) return null;
+    if (!activeReferences.length && !onPick && !frameSlots) return null;
 
     const moveReference = (sourceId: string, targetId: string) => {
         if (!onReorder || sourceId === targetId) return;
@@ -136,6 +138,7 @@ export function ConnectedReferenceShelf({
         <>
             <div className="canvas-node-composer-references" role="group" aria-label="已连接素材">
                 <div className="canvas-node-composer-references-track thin-scrollbar">
+                    {frameSlots}
                     {activeReferences.map((reference, index) => {
                         const canPreview = Boolean(reference.previewUrl) && (reference.kind === "image" || reference.kind === "character" || reference.kind === "video");
                         const isDropTarget = dropTargetReferenceId === reference.id;

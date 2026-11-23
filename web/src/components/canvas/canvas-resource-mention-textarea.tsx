@@ -156,7 +156,8 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
         return [...activeCanvasReferences, ...assetReferences.filter((item) => value.includes(canvasResourceMentionToken(item)))];
     }, [activeCanvasReferences, assetReferences, highlightLabels, value]);
     const useRichEditor = Boolean(activeReferences.length);
-    const showRichPlaceholder = useRichEditor && compositionValue === null && splitMentionText(value, activeReferences).every((part) => part.type === "mention" || !part.text.trim());
+    const blankPrompt = !value.trim();
+    const showRichPlaceholder = useRichEditor && compositionValue === null && (blankPrompt || splitMentionText(value, activeReferences).every((part) => part.type === "mention" || !part.text.trim()));
     useLayoutEffect(() => {
         const container = containerRef.current;
         if (container) return observeCanvasEditorWheelZoom(container);
@@ -518,6 +519,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
                     aria-label={props["aria-label"]}
                     aria-placeholder={props.placeholder}
                     data-placeholder={showRichPlaceholder ? props.placeholder : undefined}
+                    data-mention-placeholder-at-start={showRichPlaceholder && blankPrompt ? true : undefined}
                     aria-disabled={props.disabled}
                     aria-readonly={readOnly}
                     contentEditable={!props.disabled && !props.readOnly}

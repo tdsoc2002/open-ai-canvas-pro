@@ -13,17 +13,19 @@ type SettingsPopoverProps = {
     children: ReactNode;
     placement?: CanvasSettingsPlacement;
     buttonClassName?: string;
+    triggerStatus?: { icon: ReactNode; label: string };
     width?: number;
     onOpenChange?: (open: boolean) => void;
     getPopupContainer?: (trigger: HTMLElement) => HTMLElement;
     autoAdjustOverflow?: boolean;
 };
 
-export function CanvasSettingsPopover({ label, summary, children, placement = "topLeft", buttonClassName, width = 356, onOpenChange, getPopupContainer, autoAdjustOverflow = true }: SettingsPopoverProps) {
+export function CanvasSettingsPopover({ label, summary, children, placement = "topLeft", buttonClassName, triggerStatus, width = 356, onOpenChange, getPopupContainer, autoAdjustOverflow = true }: SettingsPopoverProps) {
     const [open, setOpen] = useState(false);
     const popoverRef = usePopoverAnchorAlign(open);
     const id = useId();
     const theme = canvasThemes[useActiveTheme()];
+    const triggerSummary = triggerStatus ? `${summary} · ${triggerStatus.label}` : summary;
     const change = (next: boolean) => {
         setOpen(next);
         onOpenChange?.(next);
@@ -69,12 +71,18 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
                 size="small"
                 aria-expanded={open}
                 aria-controls={open ? id : undefined}
-                aria-label={`${label}：${summary}`}
-                title={`${label} · ${summary}`}
+                aria-label={`${label}：${triggerSummary}`}
+                title={`${label} · ${triggerSummary}`}
+                data-has-trigger-status={triggerStatus ? true : undefined}
                 className={`canvas-generation-settings-trigger ${buttonClassName || "!h-8 !max-w-[180px] !justify-start !rounded-full !px-2"}`}
                 icon={<Settings2 className="size-3.5" />}
             >
                 <span className="truncate">{summary}</span>
+                {triggerStatus ? (
+                    <span data-trigger-status className="inline-flex shrink-0" aria-hidden="true">
+                        {triggerStatus.icon}
+                    </span>
+                ) : null}
             </Button>
         </Popover>
     );

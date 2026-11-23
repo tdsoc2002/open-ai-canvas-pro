@@ -32,12 +32,14 @@ const { VideoSettingsPanel, videoResolutionLabel } = await import("../src/compon
 const { defaultConfig, createModelChannel, encodeChannelModel, useConfigStore } = await import("../src/stores/use-config-store");
 const { useUserStore } = await import("../src/stores/use-user-store");
 const { CanvasConfigNodePanel } = await import("../src/components/canvas/canvas-config-node-panel");
+const { CanvasVideoSettingsPopover } = await import("../src/components/canvas/canvas-video-settings-popover");
 const { CanvasNodeType } = await import("../src/types/canvas");
 const { defaultModelCapabilityConfig } = await import("../src/lib/model-capabilities");
 const { projectImageParameters } = await import("../src/lib/image-parameters");
 const { canvasThemes } = await import("../src/lib/canvas-theme");
 const { mediaSettingIssues } = await import("../src/lib/media-settings");
 const { backendProviderConfig } = await import("../src/services/api/generation-task");
+const { translate } = await import("../src/i18n");
 
 afterAll(() => {
     dom.happyDOM.abort();
@@ -162,6 +164,63 @@ test("真实图片设置面板自动移除旧扩展，保留兼容种子并允�
     }
 });
 
+test("画布视频规格与声音状态共用设置按钮，声音在弹窗里切换", async () => {
+    const withAudio = defaultModelCapabilityConfig();
+    withAudio.video!.generateAudio = { supported: true, default: true };
+    const silent = defaultModelCapabilityConfig();
+    silent.video!.generateAudio = { supported: false, default: false };
+    const channel = createModelChannel({
+        id: "video-sound",
+        scope: "system",
+        interfaceType: "newapi-channel-2",
+        models: ["with-audio", "silent"],
+        modelCosts: [
+            { model: "with-audio", capability: "video", capabilityConfig: withAudio, unitPriceMicrocredits: 0 },
+            { model: "silent", capability: "video", capabilityConfig: silent, unitPriceMicrocredits: 0 },
+        ],
+    });
+    let config = { ...defaultConfig, channels: [channel], model: encodeChannelModel(channel.id, "with-audio"), videoGenerateAudio: "" };
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const render = () =>
+        root.render(
+            <CanvasVideoSettingsPopover
+                config={config}
+                onConfigChange={(field, value) => {
+                    config = { ...config, [field]: value };
+                    render();
+                }}
+            />,
+        );
+    const audioLabel = translate("library.tasks.params.audio");
+    try {
+        await act(async () => render());
+        const settingsTrigger = host.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')!;
+        expect(host.querySelectorAll("button")).toHaveLength(1);
+        expect(settingsTrigger.getAttribute("aria-label")).toContain(`${audioLabel} · ${translate("library.tasks.params.enabled")}`);
+        const speaker = settingsTrigger.querySelector<HTMLElement>("[data-trigger-status]")!;
+        await act(async () => speaker.click());
+        expect(settingsTrigger.getAttribute("aria-expanded")).toBe("true");
+        expect(config.videoGenerateAudio).toBe("");
+        const panelToggle = document.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="生成声音"]');
+        expect(panelToggle?.getAttribute("aria-checked")).toBe("true");
+        expect(document.querySelector('button[role="switch"][aria-label="添加水印"]')).toBeNull();
+        await act(async () => panelToggle!.click());
+        expect(config.videoGenerateAudio).toBe("false");
+        expect(settingsTrigger.getAttribute("aria-label")).toContain(`${audioLabel} · ${translate("library.tasks.params.disabled")}`);
+
+        config = { ...config, model: encodeChannelModel(channel.id, "silent") };
+        await act(async () => render());
+        expect(settingsTrigger.querySelector("[data-trigger-status]")).toBeNull();
+        expect(document.querySelector('button[role="switch"][aria-label="生成声音"]')).toBeNull();
+        expect(host.querySelectorAll("button")).toHaveLength(1);
+    } finally {
+        await act(async () => root.unmount());
+        host.remove();
+    }
+});
+
 test("真实视频设置面板自动适配时长与分辨率，不发送不支持的音频", async () => {
     const capabilityConfig = defaultModelCapabilityConfig();
     capabilityConfig.video = {
@@ -194,6 +253,9 @@ test("真实视频设置面板自动适配时长与分辨率，不发送不支�
         await act(async () => render());
         expect(host.querySelector('[role="alert"]')).toBeNull();
         expect(mediaSettingIssues(config, "video")).toEqual([]);
+        expect(host.querySelector('button[role="switch"][aria-label="生成声音"]')).toBeNull();
+        expect(host.querySelector('button[role="switch"][aria-label="添加水印"]')).toBeNull();
+        expect(host.textContent).not.toContain("输出");
         expect(backendProviderConfig(config, "video")).toMatchObject({ size: "9:16", videoSeconds: "5", vquality: "720p", videoGenerateAudio: undefined });
         config = { ...config, vquality: "auto" };
         await act(async () => render());

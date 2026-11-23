@@ -200,6 +200,7 @@ import {
     type CanvasFolderTheme,
     type CanvasNodeData,
     type CanvasNodeMetadata,
+    type CanvasVideoFrameKey,
     type StoryboardColumn,
     type StoryboardShotCount,
     type StoryboardShotDuration,
@@ -2258,7 +2259,7 @@ function CanvasViewportPage() {
     );
 
     const uploadVideoReference = useCallback(
-        async (nodeId: string, file: File) => {
+        async (nodeId: string, file: File, frame?: CanvasVideoFrameKey) => {
             const target = nodesRef.current.find((node) => node.id === nodeId);
             if (!target || target.metadata?.locked || isCanvasNodeGenerating(target, runningNodeId)) return;
             if (uploadNodeType(file) !== CanvasNodeType.Image) {
@@ -2271,7 +2272,7 @@ function CanvasViewportPage() {
             if (!sourceId) return;
             const current = nodesRef.current.find((node) => node.id === nodeId);
             const referenceMode = canvasVideoReferenceMode(current, false);
-            if (!current || !referenceMode || current.metadata?.locked || isCanvasNodeGenerating(current, runningNodeId)) {
+            if (!current || !referenceMode || (frame && referenceMode !== "frames") || current.metadata?.locked || isCanvasNodeGenerating(current, runningNodeId)) {
                 message.warning("图片已加入画布，视频节点当前无法连接参考图");
                 return;
             }
@@ -2285,7 +2286,8 @@ function CanvasViewportPage() {
             connectionsRef.current = nextConnections;
             setConnections(nextConnections);
             if (referenceMode === "frames") {
-                if (!current.metadata?.videoStartFrameNodeId) handleConfigNodeChange(nodeId, { videoStartFrameNodeId: sourceId });
+                if (frame) handleConfigNodeChange(nodeId, { [frame]: sourceId });
+                else if (!current.metadata?.videoStartFrameNodeId) handleConfigNodeChange(nodeId, { videoStartFrameNodeId: sourceId });
             } else if (current.metadata?.videoReferenceMode === "text") {
                 handleConfigNodeChange(nodeId, { videoReferenceMode: "all", videoEditOperation: "reference_to_video" });
             }

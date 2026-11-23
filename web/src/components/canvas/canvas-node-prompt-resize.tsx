@@ -12,7 +12,6 @@ import {
     PROMPT_EDITOR_MAX_LINES,
     PROMPT_EDITOR_MIN_HEIGHT,
     PROMPT_EDITOR_VERTICAL_PADDING,
-    PROMPT_REFERENCE_SHELF_HEIGHT,
 } from "./canvas-node-prompt-panel";
 
 export function PromptResizeHandle({ height, min, max, onResize }: { height: number; min: number; max: number; onResize: (height: number) => void }) {
@@ -189,8 +188,7 @@ export function PromptModalResizeHandle({
     );
 }
 
-export function promptEditorBounds(expanded: boolean, hasReferences: boolean, fontSize = 16) {
-    const shelfHeight = hasReferences ? PROMPT_REFERENCE_SHELF_HEIGHT : 0;
+export function promptEditorBounds(expanded: boolean, shelfHeight: number, fontSize = 16) {
     const min = (expanded ? PROMPT_EDITOR_EXPANDED_MIN_HEIGHT : PROMPT_EDITOR_MIN_HEIGHT) + shelfHeight;
     const lineHeight = Math.ceil(fontSize * 1.6);
     const max = Math.max(min, (expanded ? lineHeight * PROMPT_EDITOR_EXPANDED_MAX_LINES + PROMPT_EDITOR_EXPANDED_VERTICAL_PADDING : lineHeight * PROMPT_EDITOR_MAX_LINES + PROMPT_EDITOR_VERTICAL_PADDING) + shelfHeight);

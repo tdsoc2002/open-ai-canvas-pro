@@ -2,6 +2,8 @@ import { inferVideoOperation, type ModelInputSummary } from "@/lib/model-selecti
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type CanvasVideoReferenceMode } from "@/types/canvas";
 import { isCanvasWorkflowProvider } from "./canvas-workflow";
 
+export const VIDEO_FRAME_MENTION_ISSUE = "提示词引用了首尾帧以外的素材，请调整引用或切换到全能参考";
+
 export function usesProjectedVideoReferences(node: CanvasNodeData | undefined) {
     const metadata = node?.metadata;
     return metadata?.dramaRef?.kind === "segment" && !metadata.videoReferenceMode && Boolean(metadata.videoStartFrameNodeId || metadata.videoEndFrameNodeId);
@@ -11,7 +13,7 @@ export function canvasVideoReferenceMode(node: CanvasNodeData | undefined, hasMe
     if (node?.type !== CanvasNodeType.Video || isCanvasWorkflowProvider(node.metadata)) return undefined;
     const { videoReferenceMode, videoEditOperation, videoStartFrameNodeId, videoEndFrameNodeId } = node.metadata ?? {};
     if (videoEditOperation && !["text_to_video", "reference_to_video", "image_to_video", "audio_to_video"].includes(videoEditOperation)) return undefined;
-    if (videoReferenceMode === "frames" || videoReferenceMode === "text") return videoReferenceMode;
+    if (videoReferenceMode === "frames") return videoReferenceMode;
     if (usesProjectedVideoReferences(node)) return "all";
     if (!videoReferenceMode && videoEditOperation !== "reference_to_video" && (videoStartFrameNodeId || videoEndFrameNodeId)) return "frames";
     return hasMedia ? "all" : "text";
@@ -39,8 +41,4 @@ export function canvasVideoFrameIssue(metadata: CanvasNodeMetadata | undefined, 
     if (end && !imageIds.includes(end)) return "尾帧图片已断开，请重新选择或移除尾帧";
     if (start && start === end) return "首帧和尾帧不能使用同一张图片";
     return "";
-}
-
-export function videoMediaMentionIssue(mode: "text" | "frames") {
-    return mode === "frames" ? "提示词引用了首尾帧以外的素材，请调整引用或切换到全能参考" : "文生视频不使用媒体引用，请移除提示词中的媒体引用或切换到全能参考";
 }

@@ -135,6 +135,38 @@ test("行首参考图前后都能放置光标，零宽锚点不进入提示词",
     expect(getEditableSelection(editor)).toEqual({ start: token.length, end: token.length });
 });
 
+test("空提示词包含浏览器换行时，占位提示仍使用首行定位", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const image: CanvasResourceReference = { id: "image", nodeId: "image", kind: "image", label: "图片1", active: true };
+    const placeholder = "描述要生成的视频";
+    const render = (value: string): void => root.render(<CanvasResourceMentionTextarea value={value} references={[image]} placeholder={placeholder} onChange={render} aria-label="视频提示词" />);
+    try {
+        await act(async () => render(""));
+        const editor = host.querySelector<HTMLElement>('[role="textbox"]')!;
+        await act(async () => {
+            editor.focus();
+            editor.replaceChildren(document.createElement("br"));
+            editor.dispatchEvent(new dom.InputEvent("input", { bubbles: true }));
+        });
+        expect(editor.dataset.placeholder).toBe(placeholder);
+        expect(editor.hasAttribute("data-mention-placeholder-at-start")).toBe(true);
+        expect(serializeEditableValue(editor).trim()).toBe("");
+
+        await act(async () => {
+            editor.textContent = "镜头推近";
+            editor.dispatchEvent(new dom.InputEvent("input", { bubbles: true }));
+        });
+        expect(editor.hasAttribute("data-placeholder")).toBe(false);
+        expect(editor.hasAttribute("data-mention-placeholder-at-start")).toBe(false);
+        expect(serializeEditableValue(editor)).toBe("镜头推近");
+    } finally {
+        await act(async () => root.unmount());
+        host.remove();
+    }
+});
+
 for (const inModal of [true, false]) {
     test(`${inModal ? "放大" : "普通"}编辑器在故事板标签后显示占位提示，输入正文后隐藏且不写入内容`, async () => {
         const host = document.createElement("div");
@@ -170,6 +202,7 @@ for (const inModal of [true, false]) {
                 await act(async () => render(tokens));
                 const editor = host.querySelector<HTMLElement>('[role="textbox"]')!;
                 expect(editor.dataset.placeholder).toBe(placeholder);
+                expect(editor.hasAttribute("data-mention-placeholder-at-start")).toBe(false);
                 expect(editor.getAttribute("aria-placeholder")).toBe(placeholder);
                 expect(editor.querySelectorAll("[data-mention-token]")).toHaveLength(2);
                 expect(serializeEditableValue(editor)).toBe(tokens);
