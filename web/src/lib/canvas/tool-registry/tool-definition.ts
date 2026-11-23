@@ -52,7 +52,6 @@ export type ToolbarHandlers = {
     // 主工具栏——面板开关（组件内部状态，由组件实现）
     onToggleAddPanel: (event: MouseEvent<HTMLElement>) => void;
     onToggleAppearancePanel: (event: MouseEvent<HTMLElement>) => void;
-    onToggleSettingsPanel: () => void;
     // 多选工具栏
     onAlign: (mode: CanvasAlignmentMode) => void;
     onArrange: (mode: "row" | "column" | "grid" | "flow") => void;
@@ -133,7 +132,6 @@ export type ToolContext = {
     /** 主工具栏面板开关状态（仅主工具栏使用） */
     addPanelOpen: boolean;
     appearancePanelOpen: boolean;
-    settingsPanelOpen: boolean;
     handlers: ToolbarHandlers;
 };
 
@@ -214,12 +212,4 @@ export type AddNodeMenuCommand = {
     defaultOrder: number;
     applicable?: (ctx: AddNodeMenuContext) => boolean;
     run: (ctx: AddNodeMenuContext) => void;
-};
-
-/** 用户偏好——排序与显隐 */
-export type ToolbarPrefs = {
-    /** 工具 id 按显示顺序排列 */
-    order: string[];
-    /** 用户隐藏的工具 id */
-    hidden: string[];
 };

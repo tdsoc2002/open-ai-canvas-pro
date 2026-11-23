@@ -366,12 +366,11 @@ export function CanvasNodeToolbar({
         mergingVideos: false,
         addPanelOpen: false,
         appearancePanelOpen: false,
-        settingsPanelOpen: false,
         handlers: nodeHoverHandlers,
     };
 
     // 注册表统一提供动作合同、适用性和节点 Dock 层级。
-    const registryTools = resolveToolbarTools("node-hover", nodeHoverCtx, null);
+    const registryTools = resolveToolbarTools("node-hover", nodeHoverCtx);
     const registryToolbarTools: ToolbarTool[] = registryTools.map((tool) => {
         const placement = resolveNodeToolbarPlacement(tool, nodeHoverCtx);
         return {

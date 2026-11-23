@@ -36,24 +36,6 @@
     font-size: var(--fs-caption);
 }
 
-.canvas-node-tool-controls-inline .canvas-node-fixed-chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    height: calc(var(--space-6) + var(--space-1));
-    max-width: 7rem;
-    padding: 0 var(--space-2);
-    border-radius: var(--r-md);
-    font-size: var(--fs-ui);
-    font-weight: 500;
-    line-height: 1;
-}
-.canvas-node-tool-controls-inline .canvas-node-fixed-chip > svg {
-    width: var(--space-4);
-    height: var(--space-4);
-    flex-shrink: 0;
-}
 .canvas-main-with-workspace {
     --canvas-workspace-edge: var(--space-2);
     --canvas-workspace-left: max(var(--canvas-workspace-edge), env(safe-area-inset-left));
@@ -194,6 +176,10 @@
     gap: var(--space-1);
     flex-shrink: 0;
 }
+.canvas-workspace-rail-tools {
+    margin-inline: calc(-1 * var(--space-1));
+    padding-top: var(--space-1);
+}
 .canvas-workspace-rail .canvas-workspace-rail-button {
     padding: 0;
     position: relative;
@@ -233,6 +219,11 @@
     width: 100%;
     text-align: center;
 }
+.canvas-workspace-rail-tools .canvas-workspace-rail-button > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .canvas-workspace-rail svg {
     display: block;
     width: 18px;
@@ -244,7 +235,7 @@
     background: var(--dock-command-hover);
     color: inherit;
 }
-.canvas-workspace-rail .canvas-workspace-rail-button[aria-pressed="true"] {
+.canvas-workspace-rail .canvas-workspace-rail-button:is([aria-pressed="true"], [aria-expanded="true"]) {
     background: var(--dock-command-active);
     color: var(--dock-command-active-text);
 }
@@ -252,7 +243,8 @@
 .canvas-workspace-rail :focus:not([data-input-modality="keyboard"]) {
     outline: none;
 }
-.canvas-workspace-rail :focus-visible[data-input-modality="keyboard"] {
+.canvas-workspace-rail :focus-visible[data-input-modality="keyboard"],
+.canvas-workspace-rail-tools .canvas-workspace-rail-button:focus-visible {
     outline: 1px solid var(--dock-command-active-text);
     outline-offset: -2px;
 }

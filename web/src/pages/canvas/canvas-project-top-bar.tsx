@@ -1,10 +1,11 @@
 import { workspacePath } from "@/lib/workspace-routes";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
-import { Clapperboard, CloudDownload, CopyPlus, Focus, FolderKanban, Home, LayoutGrid, Workflow, LoaderCircle, Menu, PanelsLeftBottom, Pencil, Plus, Redo2, Save, Search, Share2, Trash2, Undo2, Upload } from "lucide-react";
+import { Clapperboard, CloudDownload, CopyPlus, Eraser, Focus, FolderKanban, Home, LayoutGrid, Workflow, LoaderCircle, Menu, PanelsLeftBottom, Pencil, Plus, Redo2, Save, Search, Share2, Trash2, Undo2, Upload } from "lucide-react";
 import { Button, Dropdown } from "antd";
 import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
 
+import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { WorkspaceAccountMenu } from "@/components/layout/workspace-account-menu";
 import { WorkspaceCreditGiftMark } from "@/components/layout/workspace-credit-gift-mark";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
@@ -14,9 +15,9 @@ import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
 import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
 import { canvasThemes, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
+import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { useThemePack } from "@/themes/use-theme-pack";
-import { CanvasShortcutsModal } from "./canvas-shortcuts-modal";
 
 export type CanvasProjectView = "canvas" | "assets";
 
@@ -27,9 +28,24 @@ type CanvasAuxiliaryCommands = {
     shortDramaGuide?: { progress: CanvasShortDramaProgress; collapsed: boolean; onToggle: () => void };
 };
 
-type CanvasProjectHeadingProps = CanvasAuxiliaryCommands & {
+type CanvasProjectMenuProps = CanvasAuxiliaryCommands & {
+    inRail: boolean;
     view: CanvasProjectView;
     onViewChange: (view: CanvasProjectView) => void;
+    canUndo: boolean;
+    canRedo: boolean;
+    onCreateProject: () => void;
+    onDeleteProject: () => void;
+    onClearCanvas?: () => void;
+    onSave: () => void | Promise<void>;
+    onImportImage: () => void;
+    onUndo: () => void;
+    onRedo: () => void;
+    onOpenSearch: () => void;
+};
+
+type CanvasProjectHeadingProps = {
+    menu?: ReactNode;
     title: string;
     titleDraft: string;
     isTitleEditing: boolean;
@@ -37,56 +53,105 @@ type CanvasProjectHeadingProps = CanvasAuxiliaryCommands & {
     onStartTitleEditing: () => void;
     onFinishTitleEditing: () => void;
     onCancelTitleEditing: () => void;
-    canUndo: boolean;
-    canRedo: boolean;
-    onCreateProject: () => void;
-    onDeleteProject: () => void;
-    onSave: () => void | Promise<void>;
-    onImportImage: () => void;
-    onUndo: () => void;
-    onRedo: () => void;
     syncIcon?: ReactNode;
     onOpenSearch: () => void;
     /** kind=drama 表示关联的是自动制作短剧，链接回短剧制作台。 */
     projectContext?: CanvasContextSummary & { projectId: string; projectName: string; kind?: "drama" };
 };
 
-type CanvasTopBarProps = Pick<CanvasProjectHeadingProps, "view" | "onViewChange" | "onOpenSearch"> &
+type CanvasTopBarProps = Pick<CanvasProjectHeadingProps, "onOpenSearch"> &
     CanvasAuxiliaryCommands & {
         projectHeading?: ReactNode;
+        viewSwitch?: ReactNode;
         onShare?: () => void;
         onThemeChange: (theme: CanvasColorTheme) => void;
-        shortcutRequestNonce: number;
         collaborationControlRef?: Ref<HTMLDivElement>;
     };
 
-export function CanvasProjectHeading({
+export function CanvasProjectMenu({
+    inRail,
     view,
     onViewChange,
-    title,
-    titleDraft,
-    isTitleEditing,
-    onTitleDraftChange,
-    onStartTitleEditing,
-    onFinishTitleEditing,
-    onCancelTitleEditing,
     canUndo,
     canRedo,
     onCreateProject,
     onDeleteProject,
+    onClearCanvas,
     onSave,
     onImportImage,
     onUndo,
     onRedo,
-    syncIcon,
     onOpenSearch,
-    projectContext,
     onImportLibTV,
     onImportTapNow,
     onEnterFocusMode,
     shortDramaGuide,
-}: CanvasProjectHeadingProps) {
+}: CanvasProjectMenuProps) {
     const joysee = useThemePack()?.workspaceStyle === "joysee";
+    const theme = canvasThemes[useCanvasThemeStore((state) => state.theme)];
+    const logoConfigured = useAppearanceStore((state) => state.appearance.logoConfigured);
+
+    return (
+        <CanvasTopBarTooltip label="打开画布菜单">
+            <Dropdown
+                trigger={["click"]}
+                menu={{
+                    items: [
+                        {
+                            key: "view",
+                            icon: view === "canvas" ? <PanelsLeftBottom className="size-4" /> : <Workflow className="size-4" />,
+                            label: view === "canvas" ? "切换到资产视图" : "切换到画布视图",
+                            onClick: () => onViewChange(view === "canvas" ? "assets" : "canvas"),
+                        },
+                        { type: "divider" },
+                        { key: "home", icon: <Home className="size-4" />, label: <Link to={workspacePath("/")}>主页</Link> },
+                        { key: "projects", icon: <LayoutGrid className="size-4" />, label: <Link to={workspacePath("/canvas")}>画布</Link> },
+                        { type: "divider" },
+                        { key: "new", icon: <Plus className="size-4" />, label: "新建画布", onClick: onCreateProject },
+                        { key: "delete", danger: true, icon: <Trash2 className="size-4" />, label: "删除当前画布", onClick: onDeleteProject },
+                        { key: "save", icon: <Save className="size-4" />, label: <MenuLabel text="保存" shortcut="⌘ S" />, onClick: () => void onSave() },
+                        { type: "divider" },
+                        { key: "import", icon: <Upload className="size-4" />, label: "导入素材", onClick: onImportImage },
+                        ...(joysee
+                            ? [
+                                  {
+                                      key: "import-canvas",
+                                      icon: <CloudDownload className="size-4" />,
+                                      label: "导入第三方画布",
+                                      children: [
+                                          { key: "libtv", icon: <CopyPlus className="size-4" />, label: "导入 LibTV 画布", onClick: onImportLibTV },
+                                          { key: "tapnow", icon: <CloudDownload className="size-4" />, label: "导入 TapNow 画布", onClick: onImportTapNow },
+                                      ],
+                                  },
+                                  { key: "focus", icon: <Focus className="size-4" />, label: "进入专注模式", onClick: onEnterFocusMode },
+                                  ...(shortDramaGuide ? [{ key: "drama-guide", icon: <Clapperboard className="size-4" />, label: shortDramaGuide.collapsed ? "展开短剧流程" : "收起短剧流程", onClick: shortDramaGuide.onToggle }] : []),
+                              ]
+                            : []),
+                        { key: "search", icon: <Search className="size-4" />, label: <MenuLabel text="搜索节点" shortcut="⌘ F" />, onClick: onOpenSearch },
+                        { type: "divider" },
+                        { key: "undo", disabled: !canUndo, icon: <Undo2 className="size-4" />, label: <MenuLabel text="撤销" shortcut="⌘ Z" />, onClick: onUndo },
+                        { key: "redo", disabled: !canRedo, icon: <Redo2 className="size-4" />, label: <MenuLabel text="重做" shortcut="⌘ ⇧ Z / ⌘ Y" />, onClick: onRedo },
+                        ...(onClearCanvas ? [{ type: "divider" as const }, { key: "clear", danger: true, icon: <Eraser className="size-4" />, label: "清空画布", onClick: onClearCanvas }] : []),
+                    ],
+                }}
+            >
+                <button type="button" className="canvas-project-menu-trigger canvas-topbar-action grid size-9 place-items-center rounded-full" style={{ color: theme.node.text }} aria-label="打开画布菜单" aria-haspopup="menu">
+                    {inRail ? (
+                        <BrandLogoFrame
+                            className={`app-workspace-brand-mark grid shrink-0 place-items-center${logoConfigured ? "" : " is-builtin"}`}
+                            logoClassName="size-5 object-contain"
+                            fallback={<span className="app-workspace-brand-glyph" aria-hidden />}
+                        />
+                    ) : (
+                        <Menu className="size-5" />
+                    )}
+                </button>
+            </Dropdown>
+        </CanvasTopBarTooltip>
+    );
+}
+
+export function CanvasProjectHeading({ menu, title, titleDraft, isTitleEditing, onTitleDraftChange, onStartTitleEditing, onFinishTitleEditing, onCancelTitleEditing, syncIcon, onOpenSearch, projectContext }: CanvasProjectHeadingProps) {
     const theme = canvasThemes[useCanvasThemeStore((state) => state.theme)];
     const titleRef = useRef<HTMLDivElement>(null);
 
@@ -101,53 +166,7 @@ export function CanvasProjectHeading({
 
     return (
         <header className="canvas-topbar-cluster canvas-topbar-project-cluster pointer-events-auto flex min-w-0 items-center gap-2 justify-self-start" style={{ color: theme.node.text, "--dock-command-hover": theme.toolbar.itemHover } as CSSProperties}>
-            <CanvasTopBarTooltip label="打开画布菜单">
-                <Dropdown
-                    trigger={["click"]}
-                    menu={{
-                        items: [
-                            {
-                                key: "view",
-                                icon: view === "canvas" ? <PanelsLeftBottom className="size-4" /> : <Workflow className="size-4" />,
-                                label: view === "canvas" ? "切换到资产视图" : "切换到画布视图",
-                                onClick: () => onViewChange(view === "canvas" ? "assets" : "canvas"),
-                            },
-                            { type: "divider" },
-                            { key: "home", icon: <Home className="size-4" />, label: <Link to={workspacePath("/")}>主页</Link> },
-                            { key: "projects", icon: <LayoutGrid className="size-4" />, label: <Link to={workspacePath("/canvas")}>画布</Link> },
-                            { type: "divider" },
-                            { key: "new", icon: <Plus className="size-4" />, label: "新建画布", onClick: onCreateProject },
-                            { key: "delete", danger: true, icon: <Trash2 className="size-4" />, label: "删除当前画布", onClick: onDeleteProject },
-                            { key: "save", icon: <Save className="size-4" />, label: <MenuLabel text="保存" shortcut="⌘ S" />, onClick: () => void onSave() },
-                            { type: "divider" },
-                            { key: "import", icon: <Upload className="size-4" />, label: "导入素材", onClick: onImportImage },
-                            ...(joysee
-                                ? [
-                                      {
-                                          key: "import-canvas",
-                                          icon: <CloudDownload className="size-4" />,
-                                          label: "导入第三方画布",
-                                          children: [
-                                              { key: "libtv", icon: <CopyPlus className="size-4" />, label: "导入 LibTV 画布", onClick: onImportLibTV },
-                                              { key: "tapnow", icon: <CloudDownload className="size-4" />, label: "导入 TapNow 画布", onClick: onImportTapNow },
-                                          ],
-                                      },
-                                      { key: "focus", icon: <Focus className="size-4" />, label: "进入专注模式", onClick: onEnterFocusMode },
-                                      ...(shortDramaGuide ? [{ key: "drama-guide", icon: <Clapperboard className="size-4" />, label: shortDramaGuide.collapsed ? "展开短剧流程" : "收起短剧流程", onClick: shortDramaGuide.onToggle }] : []),
-                                  ]
-                                : []),
-                            { key: "search", icon: <Search className="size-4" />, label: <MenuLabel text="搜索节点" shortcut="⌘ F" />, onClick: onOpenSearch },
-                            { type: "divider" },
-                            { key: "undo", disabled: !canUndo, icon: <Undo2 className="size-4" />, label: <MenuLabel text="撤销" shortcut="⌘ Z" />, onClick: onUndo },
-                            { key: "redo", disabled: !canRedo, icon: <Redo2 className="size-4" />, label: <MenuLabel text="重做" shortcut="⌘ ⇧ Z / ⌘ Y" />, onClick: onRedo },
-                        ],
-                    }}
-                >
-                    <button type="button" className="canvas-topbar-action grid size-9 place-items-center rounded-full" style={{ color: theme.node.text }} aria-label="打开画布菜单">
-                        <Menu className="size-5" />
-                    </button>
-                </Dropdown>
-            </CanvasTopBarTooltip>
+            {menu}
 
             <div ref={titleRef} className="canvas-topbar-title-block flex min-w-0 flex-auto flex-col items-start overflow-hidden">
                 {isTitleEditing ? (
@@ -207,7 +226,7 @@ export function CanvasProjectHeading({
     );
 }
 
-export function CanvasTopBar({ projectHeading, view, onViewChange, onOpenSearch, onImportLibTV, onImportTapNow, onShare, onThemeChange, shortcutRequestNonce, onEnterFocusMode, shortDramaGuide, collaborationControlRef }: CanvasTopBarProps) {
+export function CanvasTopBar({ projectHeading, viewSwitch, onOpenSearch, onImportLibTV, onImportTapNow, onShare, onThemeChange, onEnterFocusMode, shortDramaGuide, collaborationControlRef }: CanvasTopBarProps) {
     const joysee = useThemePack()?.workspaceStyle === "joysee";
     const colorTheme = useCanvasThemeStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
@@ -215,19 +234,14 @@ export function CanvasTopBar({ projectHeading, view, onViewChange, onOpenSearch,
     const user = useUserStore((state) => state.user);
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const { availableMicrocredits, refreshing } = useWalletBalance(user?.id, creditsEnabled);
-    const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [importMenuOpen, setImportMenuOpen] = useState(false);
-
-    useEffect(() => {
-        if (shortcutRequestNonce > 0) setShortcutsOpen(true);
-    }, [shortcutRequestNonce]);
 
     return (
         <>
             <div className="canvas-topbar pointer-events-none absolute inset-x-0 top-0 z-[var(--z-toolbar)] grid h-[var(--canvas-topbar-h)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-4 sm:px-5">
                 {projectHeading}
 
-                <CanvasViewSwitch view={view} onChange={onViewChange} dockStyle={dockStyle} theme={theme} />
+                {viewSwitch}
 
                 <div className="canvas-topbar-cluster canvas-topbar-tools-cluster pointer-events-auto col-start-3 row-start-1 flex items-center gap-2 justify-self-end" style={dockStyle}>
                     {collaborationControlRef ? <div ref={collaborationControlRef} className="canvas-topbar-presence shrink-0 empty:hidden" /> : null}
@@ -312,35 +326,50 @@ export function CanvasTopBar({ projectHeading, view, onViewChange, onOpenSearch,
                     {joysee ? <WorkspaceAccountMenu themePreference={{ theme: colorTheme, onChange: onThemeChange }} /> : null}
                 </div>
             </div>
-            <CanvasShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         </>
     );
 }
 
-// 居中的视图切换：胶囊轨道里两个圆形图标按钮，当前视图用反色圆形标出；两项都是持久状态，用 aria-pressed 表达。
-// 文字收进提示与 aria-label。窄屏两侧命令组占满时隐藏，入口保留在画布菜单里。
-function CanvasViewSwitch({ view, onChange, dockStyle, theme }: { view: CanvasProjectView; onChange: (view: CanvasProjectView) => void; dockStyle: CSSProperties; theme: CanvasTheme }) {
+export function CanvasViewSwitch({ view, onChange, theme, inToolbar }: { view: CanvasProjectView; onChange: (view: CanvasProjectView) => void; theme: CanvasTheme; inToolbar: boolean }) {
     const items: Array<{ value: CanvasProjectView; label: string; icon: ReactNode }> = [
         { value: "canvas", label: "画布", icon: <Workflow /> },
         { value: "assets", label: "资产", icon: <PanelsLeftBottom /> },
     ];
+    const visibleItems = inToolbar ? items.filter((item) => item.value !== view) : items;
     const style = {
-        ...dockStyle,
+        ...canvasDockStyle(theme, theme.node.text),
         "--view-switch-idle": theme.node.muted,
         "--view-switch-hover": theme.node.text,
         "--view-switch-active-bg": theme.node.text,
         "--view-switch-active-fg": theme.canvas.background,
     } as CSSProperties;
     return (
-        <div role="group" aria-label="画布视图" className="canvas-topbar-cluster canvas-topbar-view-switch pointer-events-auto col-start-2 row-start-1 hidden items-center justify-self-center xl:flex" style={style}>
-            {items.map((item) => (
-                <CanvasTopBarTooltip key={item.value} label={view === item.value ? `当前：${item.label}视图` : `切换到${item.label}视图`}>
-                    {/* 未分层的 `button { color: inherit }` 会压过 @layer 里的颜色规则，颜色走行内变量，由样式表按状态切换。 */}
-                    <button type="button" className="canvas-topbar-view-option" style={{ color: "var(--view-switch-color)" }} aria-label={`${item.label}视图`} aria-pressed={view === item.value} onClick={() => onChange(item.value)}>
-                        {item.icon}
-                    </button>
-                </CanvasTopBarTooltip>
-            ))}
+        <div
+            role={inToolbar ? undefined : "group"}
+            aria-label={inToolbar ? undefined : "画布视图"}
+            className={`canvas-view-switch pointer-events-auto items-center ${inToolbar ? "flex" : "canvas-topbar-cluster col-start-2 row-start-1 hidden justify-self-center xl:flex"}`}
+            style={style}
+        >
+            {visibleItems.map((item) => {
+                const label = `${item.label}视图`;
+                const selected = view === item.value;
+                const actionLabel = `切换到${label}`;
+                return (
+                    <CanvasTopBarTooltip key={item.value} label={selected ? `当前：${label}` : actionLabel} placement={inToolbar ? "top" : "bottom"}>
+                        {/* 未分层的 `button { color: inherit }` 会压过 @layer 里的颜色规则，颜色走行内变量，由样式表按状态切换。 */}
+                        <button
+                            type="button"
+                            className="canvas-view-switch-option"
+                            style={{ color: "var(--view-switch-color)" }}
+                            aria-label={inToolbar ? actionLabel : label}
+                            aria-pressed={inToolbar ? undefined : selected}
+                            onClick={() => onChange(item.value)}
+                        >
+                            {item.icon}
+                        </button>
+                    </CanvasTopBarTooltip>
+                );
+            })}
         </div>
     );
 }
@@ -350,9 +379,9 @@ function CanvasViewSwitch({ view, onChange, dockStyle, theme }: { view: CanvasPr
 // 因此提示必须走 portal 的浮层层级。
 // 提示向下弹出会盖住顶栏下方的节点工具栏：离开立即消失，且提示本身不接收指针，避免截获下方按钮的点击。
 // suppressed 用于对应菜单展开期间不再显示提示。
-function CanvasTopBarTooltip({ label, suppressed = false, children }: { label: string; suppressed?: boolean; children: ReactNode }) {
+function CanvasTopBarTooltip({ label, suppressed = false, placement = "bottom", children }: { label: string; suppressed?: boolean; placement?: "top" | "bottom"; children: ReactNode }) {
     return (
-        <Tooltip title={suppressed ? null : label} placement="bottom" mouseLeaveDelay={0} styles={{ root: { pointerEvents: "none" } }}>
+        <Tooltip title={suppressed ? null : label} placement={placement} mouseLeaveDelay={0} styles={{ root: { pointerEvents: "none" } }}>
             <span className="relative inline-flex">{children}</span>
         </Tooltip>
     );

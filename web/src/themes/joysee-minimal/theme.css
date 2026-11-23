@@ -49,12 +49,30 @@
     --user-page-bg: var(--joysee-navigation);
 }
 :root[data-skin="joysee-minimal"] .app-workspace-sidebar-nav {
-    --workspace-nav-active-bg: color-mix(in srgb, var(--joysee-brand) 13%, var(--joysee-navigation));
+    --workspace-nav-active-bg: color-mix(in srgb, var(--joysee-brand) 10%, var(--joysee-navigation));
     --workspace-nav-active-hover-bg: var(--workspace-nav-active-bg);
+    --workspace-nav-label-gap: var(--space-2);
+    --workspace-history-thumb-size: var(--space-7);
     background: var(--joysee-navigation);
 }
-:root[data-skin="joysee-minimal"] .app-workspace-sidebar-nav .app-workspace-nav-link.is-active .app-workspace-nav-icon {
-    color: var(--joysee-brand);
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-nav:not(.is-collapsed) .app-workspace-sidebar-navigation {
+    gap: var(--space-3);
+}
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-nav:not(.is-collapsed) .app-workspace-sidebar-navigation > .app-workspace-nav-group + .app-workspace-nav-group {
+    padding-top: 0;
+    border-top: 0;
+}
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-navigation .app-workspace-nav-group-label {
+    margin-bottom: var(--space-2);
+}
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-navigation .app-workspace-nav-link:not(.is-active) {
+    font-weight: 500 !important;
+}
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-navigation .app-workspace-nav-link:not(.is-active) .app-workspace-nav-icon {
+    color: var(--user-ink-muted);
+}
+:root[data-skin="joysee-minimal"] .app-workspace-sidebar-navigation .app-workspace-nav-link.is-active {
+    color: var(--joysee-brand) !important;
 }
 :root[data-skin="joysee-minimal"] .app-workspace-brand-mark.is-builtin {
     background: var(--primary);
@@ -65,7 +83,10 @@
     background:
         radial-gradient(54% 58% at 0% 0%, color-mix(in srgb, var(--joysee-brand) 18%, transparent), transparent 74%), radial-gradient(52% 54% at 100% 0%, color-mix(in srgb, var(--status-warning) 13%, transparent), transparent 76%), var(--background) !important;
 }
-:root[data-skin="joysee-minimal"] .app-user-workspace .app-workspace-shell.is-creation-workspace .app-workspace-topbar,
+:root[data-skin="joysee-minimal"] .app-user-workspace .app-workspace-shell.is-creation-workspace .app-workspace-topbar {
+    border-bottom: 0 !important;
+    background: transparent !important;
+}
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-home,
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-home-scroll {
     background: transparent !important;

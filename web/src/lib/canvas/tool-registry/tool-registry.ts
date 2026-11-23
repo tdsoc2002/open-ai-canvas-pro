@@ -5,7 +5,7 @@ import type { FloatingDockCommand, FloatingDockEntry, FloatingDockSwitch } from 
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { listCreatableNodeDefinitions } from "@/lib/canvas/node-registry";
 
-import type { AddNodeMenuCommand, AddNodeMenuContext, NodeToolbarGroup, ToolCategory, ToolContext, ToolDefinition, ToolbarId, ToolbarPrefs } from "./tool-definition";
+import type { AddNodeMenuCommand, AddNodeMenuContext, NodeToolbarGroup, ToolCategory, ToolContext, ToolDefinition, ToolbarId } from "./tool-definition";
 
 /** 模块级注册表 */
 const registry = new Map<ToolbarId, ToolDefinition[]>();
@@ -64,69 +64,57 @@ function getPluginNodeMenuCommands(): AddNodeMenuCommand[] {
         });
 }
 
-/** 默认偏好：全部工具按 defaultOrder 排列；defaultVisible 为 false 的进入 hidden */
-export function defaultToolbarPrefs(toolbar: ToolbarId): ToolbarPrefs {
-    const tools = getToolbarTools(toolbar);
-    return {
-        order: tools.map((tool) => tool.id),
-        hidden: tools.filter((tool) => !tool.defaultVisible).map((tool) => tool.id),
-    };
-}
-
-/**
- * 解析工具栏条目——核心函数
- *
- * 流程：过滤 applicable → 应用用户排序 → 过滤用户隐藏 → 生成 FloatingDockEntry（含 separator 分组）
- */
-export function resolveToolbarEntries(toolbar: ToolbarId, ctx: ToolContext, prefs: ToolbarPrefs | null): FloatingDockEntry[] {
-    const tools = resolveToolbarTools(toolbar, ctx, prefs);
+/** 按工具类别为可用条目插入分隔线。 */
+export function resolveToolbarEntries(toolbar: ToolbarId, ctx: ToolContext): FloatingDockEntry[] {
+    const tools = resolveToolbarTools(toolbar, ctx);
     return buildEntriesWithSeparators(tools, ctx);
 }
 
-export function resolveMainToolbarLayout(ctx: ToolContext, prefs: ToolbarPrefs | null) {
+export function resolveMainToolbarLayout(ctx: ToolContext, { rail = false, compact = false } = {}) {
     const dock: FloatingDockEntry[] = [];
     const more: FloatingDockCommand[] = [];
     const destructive: FloatingDockCommand[] = [];
     let quickCommands = 0;
+    let railAdd: FloatingDockCommand | undefined;
     let previousGroup: string | undefined;
-    for (const tool of resolveToolbarTools("main", ctx, prefs)) {
+    for (const tool of resolveToolbarTools("main", ctx)) {
         const entry = toolToEntry(tool, ctx);
         if (entry.kind !== "switch" && entry.id !== "tool-style") {
             if (entry.danger) {
+                if (rail && entry.id === "tool-clear") continue;
                 destructive.push(entry);
                 continue;
             }
-            if (quickCommands >= 4) {
+            if (rail && entry.id === "tool-add") {
+                railAdd = entry;
+                continue;
+            }
+            if ((compact && entry.id !== "tool-canvas-mode") || quickCommands >= (rail ? 3 : 4)) {
                 more.push(entry);
                 continue;
             }
             quickCommands++;
+            // 保留常驻命令的原有分配，避免移除两个入口后其余菜单命令补到 Dock。
+            if (rail && (entry.id === "tool-assets" || entry.id === "tool-undo")) {
+                more.push(entry);
+                continue;
+            }
         }
         const group = entry.kind === "switch" ? "mode" : tool.category === "history" ? "history" : "action";
         if (previousGroup && group !== previousGroup) dock.push({ kind: "separator", id: `before-${entry.id}` });
         dock.push(entry);
         previousGroup = group;
     }
-    return { dock, more, destructive };
+    const moreCommands = rail ? more.filter(({ id }) => id !== "tool-assets" && id !== "tool-undo" && id !== "tool-redo" && id !== "tool-workspace" && id !== "tool-pose-library") : more;
+    return { dock, more: moreCommands, destructive, railAdd };
 }
 
 /**
  * 解析工具栏工具——返回过滤排序后的 ToolDefinition[]（不含 separator）。
  * 供需要后处理工具列表的场景使用（如节点悬停工具栏合并图片工具）。
  */
-export function resolveToolbarTools(toolbar: ToolbarId, ctx: ToolContext, prefs: ToolbarPrefs | null): ToolDefinition[] {
-    const allTools = getToolbarTools(toolbar);
-    const applicableTools = allTools.filter((tool) => !tool.applicable || tool.applicable(ctx));
-    const effectivePrefs = prefs ?? defaultToolbarPrefs(toolbar);
-    const hiddenSet = new Set(effectivePrefs.hidden);
-    const visibleTools = applicableTools.filter((tool) => !hiddenSet.has(tool.id));
-    const orderIndex = new Map(effectivePrefs.order.map((id, index) => [id, index]));
-    return [...visibleTools].sort((a, b) => {
-        const ai = orderIndex.has(a.id) ? orderIndex.get(a.id)! : Number.MAX_SAFE_INTEGER;
-        const bi = orderIndex.has(b.id) ? orderIndex.get(b.id)! : Number.MAX_SAFE_INTEGER;
-        if (ai !== bi) return ai - bi;
-        return a.defaultOrder - b.defaultOrder;
-    });
+export function resolveToolbarTools(toolbar: ToolbarId, ctx: ToolContext): ToolDefinition[] {
+    return getToolbarTools(toolbar).filter((tool) => tool.defaultVisible && (!tool.applicable || tool.applicable(ctx)));
 }
 
 /** 将节点工具定义解析为唯一的 Dock 展示层级和排序。 */

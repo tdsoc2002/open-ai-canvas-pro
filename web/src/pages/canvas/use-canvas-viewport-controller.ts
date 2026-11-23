@@ -25,7 +25,7 @@ function agentFocusEditingInside(container: HTMLElement) {
 
 type UseCanvasViewportControllerOptions = {
     agentFocus: AgentCanvasFocus | null;
-    /** false 时 Agent 改动只轻闪节点，不移动镜头（HUD 上的"镜头跟随 Agent"开关）。 */
+    /** false 时 Agent 改动只轻闪节点，不移动镜头。 */
     agentFollowCamera?: boolean;
     containerRef: { current: HTMLDivElement | null };
     size: CanvasViewportSize;

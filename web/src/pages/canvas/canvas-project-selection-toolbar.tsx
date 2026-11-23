@@ -5,7 +5,7 @@ import { CanvasSelectionToolbar } from "@/components/canvas/canvas-workspace-ove
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
-import { defaultToolbarPrefs, readToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
+import { resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
 import type { CanvasAlignmentMode } from "@/lib/canvas/canvas-layout";
 import { useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
 
@@ -69,12 +69,10 @@ export function CanvasProjectSelectionToolbar({
         mergingVideos,
         addPanelOpen: false,
         appearancePanelOpen: false,
-        settingsPanelOpen: false,
         handlers,
     };
 
-    const prefs = readToolbarPrefs("selection") ?? defaultToolbarPrefs("selection");
-    const items = resolveToolbarEntries("selection", ctx, prefs);
+    const items = resolveToolbarEntries("selection", ctx);
 
     return (
         <CanvasSelectionToolbar anchorRef={anchorRef} containerRef={containerRef} count={count}>

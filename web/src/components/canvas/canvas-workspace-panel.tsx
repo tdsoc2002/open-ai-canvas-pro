@@ -1,7 +1,7 @@
 import { CanvasWorkspaceAssetPanel } from "./canvas-workspace-asset-panel";
 import { CanvasWorkspaceHistoryPanel } from "./canvas-workspace-history-panel";
 import type { InsertAssetPayload } from "./asset-picker-modal";
-import { useDeferredValue, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useDeferredValue, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, type Ref } from "react";
 import { Button, Grid } from "antd";
 import { Home, Layers3, Images, ListChecks, History, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { AppDrawer } from "@/components/ui/product/app-drawer";
@@ -19,6 +19,9 @@ import "./canvas-workspace-panel.css";
 
 export function CanvasWorkspacePanel({
     heading,
+    railMenu,
+    railFooter,
+    railToolsRef,
     projectId,
     nodes,
     selectedNodeIds,
@@ -31,7 +34,10 @@ export function CanvasWorkspacePanel({
     onProjectAssets,
     onCancelTask,
 }: {
-    heading: ReactNode;
+    heading?: ReactNode;
+    railMenu?: ReactNode;
+    railFooter?: ReactNode;
+    railToolsRef?: Ref<HTMLDivElement>;
     projectId: string;
     nodes: CanvasNodeData[];
     selectedNodeIds: Set<string>;
@@ -117,13 +123,15 @@ export function CanvasWorkspacePanel({
             <div
                 className="canvas-workspace-shell"
                 onKeyDown={(event) => {
-                    if (open && event.key === "Escape" && !event.defaultPrevented) {
+                    const target = event.target as Element;
+                    if (open && event.key === "Escape" && !event.defaultPrevented && event.currentTarget.contains(target) && !target.closest(".canvas-workspace-rail-menu")) {
                         event.stopPropagation();
                         closePanel();
                     }
                 }}
             >
                 <nav className="canvas-workspace-rail" aria-label="画布左侧菜单" data-canvas-wheel-scroll>
+                    {railMenu ? <div className="canvas-workspace-rail-menu">{railMenu}</div> : null}
                     <div className="canvas-workspace-rail-items">
                         {entries.map(({ id, label, icon: Icon }) => (
                             <button
@@ -148,6 +156,8 @@ export function CanvasWorkspacePanel({
                             </button>
                         ))}
                     </div>
+                    {railToolsRef ? <div ref={railToolsRef} className="canvas-workspace-rail-items canvas-workspace-rail-tools" /> : null}
+                    {railFooter ? <div className="canvas-workspace-rail-footer">{railFooter}</div> : null}
                 </nav>
                 {open ? (
                     <aside id="canvas-workspace-details" className="min-h-0 min-w-0 flex-1" aria-label="画布工作区">

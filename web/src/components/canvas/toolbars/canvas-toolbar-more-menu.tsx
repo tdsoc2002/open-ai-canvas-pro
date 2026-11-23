@@ -4,7 +4,7 @@ import type { FloatingDockCommand } from "@/components/ui/aceternity/floating-do
 type Props = {
     id: string;
     label: string;
-    x: string;
+    x?: string;
     commands: FloatingDockCommand[];
     destructive: FloatingDockCommand[];
     onChoose: (command: FloatingDockCommand, event: MouseEvent<HTMLButtonElement>) => void;

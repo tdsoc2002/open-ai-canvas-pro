@@ -3,7 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Hand, MousePointer2 } from "lucide-react";
 
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
-import { CANVAS_MODE_TOOL_ID, defaultToolbarPrefs, migrateToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
+import { resolveMainToolbarLayout, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
+
+const CANVAS_MODE_TOOL_ID = "tool-canvas-mode";
 
 function createMainContext(canvasTool: "move" | "box-select" = "box-select"): ToolContext {
     return {
@@ -21,21 +23,20 @@ function createMainContext(canvasTool: "move" | "box-select" = "box-select"): To
         mergingVideos: false,
         addPanelOpen: false,
         appearancePanelOpen: false,
-        settingsPanelOpen: false,
         handlers: {} as ToolbarHandlers,
     };
 }
 
 describe("canvas toolbar mode switch", () => {
     test("keeps the same toolbar slots when canvas selection changes", () => {
-        const empty = resolveToolbarEntries("main", createMainContext(), null);
-        const selected = resolveToolbarEntries("main", { ...createMainContext(), selectedCount: 3 }, null);
+        const empty = resolveToolbarEntries("main", createMainContext());
+        const selected = resolveToolbarEntries("main", { ...createMainContext(), selectedCount: 3 });
         expect(selected.map((entry) => entry.id)).toEqual(empty.map((entry) => entry.id));
         expect(selected.some((entry) => entry.id === "tool-delete")).toBe(false);
     });
 
     test.each(["default", "compact"] as const)("renders %s canvas modes as an icon-only segmented switch", (size) => {
-        const entries = resolveToolbarEntries("main", createMainContext(), null);
+        const entries = resolveToolbarEntries("main", createMainContext());
         const modeSwitch = entries.find((entry) => entry.kind === "switch");
         if (!modeSwitch) throw new Error("Missing canvas mode switch");
         const html = renderToStaticMarkup(<FloatingDock size={size} items={[modeSwitch]} />);
@@ -53,7 +54,7 @@ describe("canvas toolbar mode switch", () => {
     });
 
     test("renders grab and box-select as one dock switch", () => {
-        const entries = resolveToolbarEntries("main", createMainContext("box-select"), null);
+        const entries = resolveToolbarEntries("main", createMainContext("box-select"));
         const modeSwitch = entries.find((entry) => entry.kind === "switch" && entry.id === CANVAS_MODE_TOOL_ID);
 
         expect(modeSwitch?.kind).toBe("switch");
@@ -64,7 +65,7 @@ describe("canvas toolbar mode switch", () => {
     });
 
     test("reflects the active canvas tool on the switch", () => {
-        const entries = resolveToolbarEntries("main", createMainContext("move"), null);
+        const entries = resolveToolbarEntries("main", createMainContext("move"));
         const modeSwitch = entries.find((entry) => entry.kind === "switch");
         expect(modeSwitch?.kind === "switch" && modeSwitch.value).toBe("move");
     });
@@ -73,7 +74,7 @@ describe("canvas toolbar mode switch", () => {
         ["box-select", MousePointer2, false],
         ["move", Hand, true],
     ] as const)("renders %s as one toggle button in the combined dock", (canvasTool, Icon, pressed) => {
-        const entries = resolveToolbarEntries("main", { ...createMainContext(canvasTool), singleCanvasModeButton: true }, null);
+        const entries = resolveToolbarEntries("main", { ...createMainContext(canvasTool), singleCanvasModeButton: true });
         const mode = entries.find((entry) => entry.id === CANVAS_MODE_TOOL_ID);
         expect(mode?.kind).toBe("command");
         if (!mode) throw new Error("Missing canvas mode button");
@@ -86,55 +87,28 @@ describe("canvas toolbar mode switch", () => {
     });
 
     test("keeps undo, redo and workspace available in the main dock", () => {
-        const entries = resolveToolbarEntries("main", { ...createMainContext(), singleCanvasModeButton: true, canUndo: true, canRedo: true }, null);
+        const entries = resolveToolbarEntries("main", { ...createMainContext(), singleCanvasModeButton: true, canUndo: true, canRedo: true });
         expect(entries).toEqual(expect.arrayContaining([expect.objectContaining({ id: "tool-undo", disabled: false }), expect.objectContaining({ id: "tool-redo", disabled: false }), expect.objectContaining({ id: "tool-workspace" })]));
     });
 
-    test("migrates legacy separate tool prefs into the switch item", () => {
-        const migrated = migrateToolbarPrefs("main", {
-            order: ["tool-move", "tool-box-select", "tool-undo", "tool-add"],
-            hidden: [],
-        });
-        expect(migrated.order[0]).toBe(CANVAS_MODE_TOOL_ID);
-        expect(migrated.order).not.toContain("tool-move");
-        expect(migrated.order).not.toContain("tool-box-select");
-        expect(migrated.hidden).toEqual([]);
-    });
+    test.each([false, true])("places canvas appearance in the dock and leaves no rail menu entries (compact: %s)", (compact) => {
+        const context = { ...createMainContext(), singleCanvasModeButton: true, selectedCount: 2 };
+        const { dock, more, destructive } = resolveMainToolbarLayout(context, { rail: true, compact });
 
-    test("hides the switch only when both legacy tools were hidden", () => {
-        const oneHidden = migrateToolbarPrefs("main", {
-            order: ["tool-move", "tool-box-select", "tool-undo"],
-            hidden: ["tool-move"],
-        });
-        expect(oneHidden.hidden).toEqual([]);
-
-        const bothHidden = migrateToolbarPrefs("main", {
-            order: ["tool-undo", "tool-move", "tool-box-select"],
-            hidden: ["tool-move", "tool-box-select"],
-        });
-        expect(bothHidden.order[1]).toBe(CANVAS_MODE_TOOL_ID);
-        expect(bothHidden.hidden).toEqual([CANVAS_MODE_TOOL_ID]);
-    });
-
-    test("leaves non-main toolbar prefs unchanged", () => {
-        const prefs = { order: ["tool-move"], hidden: ["tool-box-select"] };
-        expect(migrateToolbarPrefs("selection", prefs)).toEqual(prefs);
-    });
-
-    test("keeps the switch visible in default main toolbar prefs", () => {
-        expect(defaultToolbarPrefs("main").order[0]).toBe(CANVAS_MODE_TOOL_ID);
-        expect(defaultToolbarPrefs("main").hidden).toEqual([]);
+        expect(dock.map(({ id }) => id)).toEqual([CANVAS_MODE_TOOL_ID, "tool-style"]);
+        expect(more).toHaveLength(0);
+        expect(destructive).toHaveLength(0);
     });
 
     test("hides rarely used arrange tools from the selection toolbar by default", () => {
-        const prefs = defaultToolbarPrefs("selection");
-        expect(prefs.hidden).toEqual(expect.arrayContaining(["selection-arrange-row", "selection-arrange-column", "selection-arrange-grid", "selection-arrange-flow", "selection-create-reference-group"]));
-
-        const entries = resolveToolbarEntries("selection", createMainContext(), null);
+        const entries = resolveToolbarEntries("selection", createMainContext());
         expect(entries.some((entry) => entry.id === "selection-align-left")).toBe(true);
         expect(entries.some((entry) => entry.id === "selection-distribute-x")).toBe(true);
         expect(entries.some((entry) => entry.id === "selection-batch-connect")).toBe(true);
         expect(entries.some((entry) => entry.id === "selection-arrange-grid")).toBe(false);
+        expect(entries.some((entry) => entry.id === "selection-arrange-row")).toBe(false);
+        expect(entries.some((entry) => entry.id === "selection-arrange-column")).toBe(false);
+        expect(entries.some((entry) => entry.id === "selection-arrange-flow")).toBe(false);
         expect(entries.some((entry) => entry.id === "selection-create-reference-group")).toBe(false);
     });
 

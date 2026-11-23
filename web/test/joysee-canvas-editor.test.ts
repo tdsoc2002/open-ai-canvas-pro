@@ -9,11 +9,17 @@ describe("乐见真实画布编辑器组件合同", () => {
         expect(page).toContain('useThemePack()?.workspaceStyle === "joysee"');
         expect(page).toContain("const combineCanvasTools = joyseeEditor && !focusMode");
         expect(page).toContain("viewControls={combineCanvasTools ? canvasViewControls : undefined}");
-        expect(page).toMatch(/canvas-workspace-zoom-controls[\s\S]+?\{!combineCanvasTools \? canvasViewControls : null\}[\s\S]+?onFollowAgentChange=\{setAgentFollowCamera\}/);
+        expect(page).toContain("const leftCanvasTools = joyseeEditor && showWorkspace");
+        expect(page).toContain("railToolsRef={leftCanvasTools ? setRailToolsHost : undefined}");
+        expect(page).toContain("viewSwitch={leftCanvasTools ? undefined : viewSwitch}");
+        expect(page).toContain("viewSwitch={leftCanvasTools ? viewSwitch : undefined}");
+        expect(page).toContain("!isAssetView && !focusMode && !combineCanvasTools ? (");
+        expect(page).toContain("onFollowAgentChange={dramaCanvas ? undefined : setAgentFollowCamera}");
+        expect(page).not.toContain("CanvasAgentHud");
         expect(page).toContain("vertical={joyseeEditor && focusMode}");
         for (const callback of ["onScaleChange={setZoomScale}", "onFitContent={fitCanvasContent}", "onHideNodeConnectionsChange={setHideNodeConnections}"]) expect(page).toContain(callback);
         const toolbar = source("components/canvas/canvas-toolbar.tsx");
-        expect(toolbar).toMatch(/joysee-canvas-dock pointer-events-auto[\s\S]+?<FloatingDock ref=\{dockRef\} items=\{dockItems\}[\s\S]+?joysee-canvas-dock-divider[\s\S]+?\{viewControls\}/);
+        expect(toolbar).toMatch(/joysee-canvas-dock pointer-events-auto[\s\S]+?<FloatingDock ref=\{dockRef\} items=\{dockItems\}[\s\S]+?joysee-canvas-dock-divider[\s\S]+?\{viewSwitch\}\s*\{viewControls\}/);
         expect(toolbar).toContain("getPanelX(rootRef.current, panelAnchor.current, width)");
     });
 

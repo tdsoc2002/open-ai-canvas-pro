@@ -89,7 +89,7 @@
     z-index: var(--dock-z-popover);
     transform: translateX(-50%);
     width: min(192px, 100%);
-    max-height: calc(100dvh - var(--canvas-inset-y) - var(--canvas-dock-popover-offset) - var(--space-3));
+    max-height: var(--canvas-toolbar-popup-max-height, calc(100dvh - var(--canvas-inset-y) - var(--canvas-dock-popover-offset) - var(--space-3)));
     overflow-y: auto;
     overscroll-behavior: contain;
     pointer-events: auto;
@@ -121,6 +121,16 @@
     flex-shrink: 0;
     color: var(--cn-muted);
     stroke-width: var(--button-icon-stroke);
+}
+.canvas-main-toolbar[data-rail-popup] > :is(.canvas-toolbar-popup, .canvas-toolbar-more-menu) {
+    --canvas-rail-popup-left: calc(var(--canvas-rail-popup-right) + var(--space-3));
+    --canvas-rail-popup-top: clamp(var(--space-3), var(--canvas-rail-popup-trigger-top), 50dvh);
+    --canvas-toolbar-popup-max-height: calc(100dvh - var(--canvas-rail-popup-top) - var(--space-3));
+    position: fixed;
+    inset: var(--canvas-rail-popup-top) auto auto var(--canvas-rail-popup-left);
+    max-width: calc(100vw - var(--canvas-rail-popup-left) - var(--space-3));
+    transform: none;
+    transform-origin: top left;
 }
 .canvas-toolbar-more-menu button:is(:hover, :focus-visible):not(:disabled) {
     background: var(--button-tonal-hover-bg);

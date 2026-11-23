@@ -1,13 +1,15 @@
 import { useTranslation } from "react-i18next";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { AppModal } from "@/components/ui/product/app-modal";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Kbd } from "@/components/ui/base/kbd";
 
 import { CANVAS_SHORTCUT_CATEGORIES, filterCanvasShortcuts, type CanvasShortcutItem } from "@/lib/canvas/canvas-shortcuts";
 import "./canvas-shortcuts.css";
 
-export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export const CANVAS_SHORTCUTS_PANEL_ID = "canvas-shortcuts-panel";
+
+export function CanvasShortcuts({ open, onClose, railTriggerRef }: { open: boolean; onClose: () => void; railTriggerRef?: RefObject<HTMLButtonElement | null> }) {
     const { t } = useTranslation();
     const inputRef = useRef<HTMLInputElement>(null);
     const resultsRef = useRef<HTMLDivElement>(null);
@@ -16,7 +18,8 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
     useEffect(() => {
         if (!open) return;
         setQuery("");
-    }, [open]);
+        if (railTriggerRef) inputRef.current?.focus({ preventScroll: true });
+    }, [open, railTriggerRef]);
 
     useEffect(() => {
         if (resultsRef.current) resultsRef.current.scrollTop = 0;
@@ -71,6 +74,34 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
             </div>
         </div>
     );
+
+    if (railTriggerRef) {
+        if (!open) return null;
+        const close = () => {
+            onClose();
+            railTriggerRef.current?.focus({ preventScroll: true });
+        };
+        return (
+            <section
+                id={CANVAS_SHORTCUTS_PANEL_ID}
+                className="canvas-shortcuts-panel"
+                role="dialog"
+                aria-label={t("canvasPage.shortcuts.title")}
+                data-canvas-no-zoom
+                onWheel={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
+                    event.stopPropagation();
+                    close();
+                }}
+            >
+                <button className="canvas-workspace-close" type="button" aria-label={t("common.close")} onClick={close}>
+                    <X className="size-4" />
+                </button>
+                {content}
+            </section>
+        );
+    }
 
     return (
         <AppModal

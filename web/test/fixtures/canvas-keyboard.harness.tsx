@@ -21,7 +21,7 @@ async function mount(overrides: Partial<Options> = {}) {
         setSelectedNodeIds: noop,
         setSelectedConnectionId: noop,
         setContextMenu: noop,
-        setShortcutRequestNonce: noop,
+        setShortcutsOpen: noop,
         setInfoNodeId: mock(noop),
         setCropNodeId: noop,
         setRegionEditNodeId: noop,

@@ -274,6 +274,22 @@
         line-height: 1.375;
     }
 
+    [data-generation-mode="video"] .canvas-node-composer-model-trigger .canvas-model-picker-trigger-text {
+        font-size: var(--fs-body);
+        line-height: var(--lh-heading);
+    }
+
+    [data-generation-mode="video"] .canvas-node-composer-model-trigger .canvas-model-picker-chevron {
+        width: var(--space-3);
+        height: var(--space-3);
+        flex: none;
+        color: var(--cn-muted);
+    }
+
+    [data-generation-mode="video"] .canvas-node-composer-model-trigger[aria-expanded="true"] .canvas-model-picker-chevron {
+        color: var(--cn-text);
+    }
+
     .canvas-model-picker-chevron {
         color: color-mix(in srgb, var(--foreground) 52%, transparent);
         flex: 0 0 14px;

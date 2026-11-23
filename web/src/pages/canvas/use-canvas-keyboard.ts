@@ -10,7 +10,7 @@ type UseCanvasKeyboardOptions = {
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
-    setShortcutRequestNonce: Dispatch<SetStateAction<number>>;
+    setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
     setInfoNodeId: Dispatch<SetStateAction<string | null>>;
     setCropNodeId: Dispatch<SetStateAction<string | null>>;
     setRegionEditNodeId: Dispatch<SetStateAction<string | null>>;
@@ -57,7 +57,7 @@ export function useCanvasKeyboard({
     setSelectedNodeIds,
     setSelectedConnectionId,
     setContextMenu,
-    setShortcutRequestNonce,
+    setShortcutsOpen,
     setInfoNodeId,
     setCropNodeId,
     setRegionEditNodeId,
@@ -136,7 +136,7 @@ export function useCanvasKeyboard({
             }
             if (event.key === "?" && !isModifierShortcut && !event.altKey) {
                 event.preventDefault();
-                setShortcutRequestNonce((value) => value + 1);
+                setShortcutsOpen(true);
                 return;
             }
             if (isModifierShortcut && !event.altKey && (key === "1" || key === "2" || key === "3")) {
@@ -257,7 +257,7 @@ export function useCanvasKeyboard({
         setRegionEditNodeId,
         setSelectedConnectionId,
         setSelectedNodeIds,
-        setShortcutRequestNonce,
+        setShortcutsOpen,
         shouldPreferCopiedNodes,
         toggleFocusMode,
         undoCanvas,

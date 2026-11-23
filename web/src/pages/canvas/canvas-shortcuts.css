@@ -1,7 +1,25 @@
-.canvas-shortcuts-modal {
+.canvas-shortcuts-modal,
+.canvas-shortcuts-panel {
     container-type: inline-size;
 }
 
+.canvas-shortcuts-panel {
+    position: absolute;
+    z-index: var(--z-canvas-overlay-active);
+    inset-inline-start: calc(var(--canvas-workspace-rail-width) + var(--space-2));
+    inset-block-end: var(--canvas-inset-y);
+    display: flex;
+    width: min(72rem, calc(100% - var(--canvas-workspace-rail-width) - var(--space-4) - env(safe-area-inset-right)));
+    max-height: min(40rem, calc(100% - var(--canvas-topbar-offset) - var(--canvas-inset-y)));
+    flex-direction: column;
+    overflow: hidden;
+    border: var(--stroke-1) solid var(--border);
+    border-radius: var(--r-xl);
+    background: var(--popover);
+    box-shadow: var(--elevation-overlay);
+}
+
+.canvas-shortcuts-panel > .canvas-workspace-close,
 .canvas-shortcuts-modal .ant-modal-close {
     inset-block-start: var(--space-3);
     inset-inline-end: var(--space-2);

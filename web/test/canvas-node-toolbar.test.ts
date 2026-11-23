@@ -22,7 +22,6 @@ function createNodeContext(node: CanvasNodeData): ToolContext {
         mergingVideos: false,
         addPanelOpen: false,
         appearancePanelOpen: false,
-        settingsPanelOpen: false,
         handlers: {} as ToolbarHandlers,
     };
 }
@@ -31,10 +30,10 @@ describe("canvas node toolbar model", () => {
     test("relative depth is offered only for available, non-loading videos and runs lazily", () => {
         const node: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 720, height: 405, metadata: { storageKey: "resource:video" } };
         const ctx = createNodeContext(node);
-        expect(resolveToolbarTools("node-hover", ctx, null).some((tool) => tool.id === "depthVideo")).toBe(false);
+        expect(resolveToolbarTools("node-hover", ctx).some((tool) => tool.id === "depthVideo")).toBe(false);
         const received: CanvasNodeData[] = [];
         ctx.handlers.onNodeDepthVideo = (source) => received.push(source);
-        const tool = resolveToolbarTools("node-hover", ctx, null).find((tool) => tool.id === "depthVideo")!;
+        const tool = resolveToolbarTools("node-hover", ctx).find((tool) => tool.id === "depthVideo")!;
         expect(tool).toBeDefined();
         expect(received).toEqual([]);
         tool.run(ctx);
@@ -44,14 +43,14 @@ describe("canvas node toolbar model", () => {
             { ...ctx, nodeMetadata: {} },
             { ...ctx, workspaceMode: "simple" as const },
         ]) {
-            expect(resolveToolbarTools("node-hover", unavailable, null).some((tool) => tool.id === "depthVideo")).toBe(false);
+            expect(resolveToolbarTools("node-hover", unavailable).some((tool) => tool.id === "depthVideo")).toBe(false);
         }
     });
 
     test("edit copy delegates the selected image once and refuses unavailable sources", () => {
         const node: CanvasNodeData = { id: "image", type: CanvasNodeType.Image, title: "图片", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { content: "image.png" } };
         const ctx = createNodeContext(node);
-        const tool = resolveToolbarTools("node-hover", ctx, null).find((item) => item.id === "createEditCopy")!;
+        const tool = resolveToolbarTools("node-hover", ctx).find((item) => item.id === "createEditCopy")!;
         expect(tool).toBeDefined();
         expect(tool.disabled?.(ctx)).toBe(true);
         const received: CanvasNodeData[] = [];
@@ -72,14 +71,14 @@ describe("canvas node toolbar model", () => {
         uploading.handlers = ctx.handlers;
         expect(tool.disabled?.(uploading)).toBe(true);
         const empty = createNodeContext({ ...node, metadata: {} });
-        expect(resolveToolbarTools("node-hover", empty, null).some((item) => item.id === "createEditCopy")).toBe(false);
+        expect(resolveToolbarTools("node-hover", empty).some((item) => item.id === "createEditCopy")).toBe(false);
         const video = createNodeContext({ ...node, type: CanvasNodeType.Video });
-        expect(resolveToolbarTools("node-hover", video, null).some((item) => item.id === "createEditCopy")).toBe(false);
+        expect(resolveToolbarTools("node-hover", video).some((item) => item.id === "createEditCopy")).toBe(false);
     });
 
     test("preserves empty, simple and busy video states", () => {
         const ctx = createNodeContext({ id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: {} });
-        const emptyTools = resolveToolbarTools("node-hover", ctx, null);
+        const emptyTools = resolveToolbarTools("node-hover", ctx);
         expect(emptyTools.some((tool) => tool.id === "extractAudio")).toBe(false);
         expect(
             resolveNodeToolbarPlacement(
@@ -89,10 +88,10 @@ describe("canvas node toolbar model", () => {
         ).toBe("primary");
         ctx.nodeMetadata = { content: "video.mp4" };
         ctx.extractingAudio = true;
-        const audio = resolveToolbarTools("node-hover", ctx, null).find((tool) => tool.id === "extractAudio")!;
+        const audio = resolveToolbarTools("node-hover", ctx).find((tool) => tool.id === "extractAudio")!;
         expect(audio.disabled?.(ctx)).toBe(true);
         ctx.workspaceMode = "simple";
-        expect(resolveToolbarTools("node-hover", ctx, null).some((tool) => tool.id === "extractAudio")).toBe(false);
+        expect(resolveToolbarTools("node-hover", ctx).some((tool) => tool.id === "extractAudio")).toBe(false);
     });
 
     test("image menu actions remain lazy and keep the original node", () => {
@@ -122,7 +121,7 @@ describe("canvas node toolbar model", () => {
 
     test("uses the redesigned video terminology from the registry", () => {
         const ctx = createNodeContext({ id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { content: "video.mp4" } });
-        const tools = new Map(resolveToolbarTools("node-hover", ctx, null).map((tool) => [tool.id, tool]));
+        const tools = new Map(resolveToolbarTools("node-hover", ctx).map((tool) => [tool.id, tool]));
         const displayLabel = (id: string) => {
             const value = tools.get(id)?.displayLabel;
             return typeof value === "function" ? value(ctx) : value;
@@ -141,13 +140,13 @@ describe("canvas node toolbar model", () => {
         ctx.handlers.onNodeDownloadSubtitles = (target) => {
             received.push(target);
         };
-        const tool = resolveToolbarTools("node-hover", ctx, null).find((item) => item.id === "downloadSubtitles")!;
+        const tool = resolveToolbarTools("node-hover", ctx).find((item) => item.id === "downloadSubtitles")!;
         expect(tool).toBeDefined();
         expect(resolveNodeToolbarPlacement(tool, ctx).group).toBe("more");
         tool.run(ctx);
         expect(received).toEqual([node]);
         ctx.nodeMetadata = { subtitleEntries: [] };
-        expect(resolveToolbarTools("node-hover", ctx, null).some((item) => item.id === "downloadSubtitles")).toBe(false);
+        expect(resolveToolbarTools("node-hover", ctx).some((item) => item.id === "downloadSubtitles")).toBe(false);
     });
 
     test("image-only tools carry presentation metadata instead of relying on component ID lists", () => {

@@ -45,7 +45,7 @@ test("image style and presets remain visible without the prompt template picker"
     expect(source).toContain("canvas-node-tool-controls-inline");
     expect(source).toContain("<CanvasChooseImageStylePicker");
     expect(source).toContain("<CanvasNineGridPicker");
-    expect(source).toContain('dense appearance="quiet"');
+    expect(source).toContain('appearance="quiet"');
     expect(source).toContain('const showPromptTemplates = !simpleMode && mode !== "image"');
     expect(source).toMatch(/\{showPromptTemplates\s*\?\s*\(?\s*<CanvasPresetPicker/);
     expect(source).toContain("if (showPromptTemplates &&");
@@ -98,7 +98,7 @@ test("rail inherits canvas dock colors from the workspace shell", () => {
     }
 });
 
-test("project heading, rail and inline panel stay in one corner without intercepting the rest of the canvas", () => {
+test("project heading follows the editor layout and the workspace panel leaves the canvas interactive", () => {
     const page = readFileSync(new URL("../src/pages/canvas/project.tsx", import.meta.url), "utf8");
     const panel = component("canvas-workspace-panel.tsx");
     const styles = component("canvas-workspace-panel.css");
@@ -106,8 +106,10 @@ test("project heading, rail and inline panel stay in one corner without intercep
     expect(page).not.toContain("canvas-workspace-backdrop");
     expect(page).toContain("canvas-main-with-workspace");
     expect(styles).toContain(".canvas-main-with-workspace .canvas-editor-shell {\n    z-index: 0;");
-    expect(page).toContain("heading={projectHeading}");
-    expect(page).toContain("projectHeading={!showWorkspace ? projectHeading : undefined}");
+    expect(page).toContain('leftCanvasTools ? "canvas-edge-layout" : ""');
+    expect(page).toContain("heading={leftCanvasTools ? undefined : projectHeading}");
+    expect(page).toContain("railMenu={leftCanvasTools ? projectMenu : undefined}");
+    expect(page).toContain("projectHeading={!showWorkspace || leftCanvasTools ? projectHeading : undefined}");
     expect(panel).toMatch(/\{heading\}\s*<div\s+className="canvas-workspace-shell"/);
     expect(panel).not.toContain("screens.lg");
     expect(styles).toMatch(/\.canvas-workspace-corner \{[^}]*pointer-events: none;/);

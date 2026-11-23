@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Switch } from "@/components/ui/base/switch";
-import { Ellipsis, Palette, Info, Settings2 } from "lucide-react";
+import { Ellipsis, Palette, Info } from "lucide-react";
 
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
@@ -9,13 +10,12 @@ import { CanvasAppearanceControls } from "@/components/canvas/canvas-appearance-
 import { useCanvasOverlayLayer } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
 import { useCanvasCreateCommands } from "@/components/canvas/use-canvas-create-commands";
-import { ToolbarSettingsModal } from "@/components/canvas/toolbars/toolbar-settings-modal";
 import { CanvasToolbarMoreMenu } from "./toolbars/canvas-toolbar-more-menu";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { canvasThemes, type CanvasBackgroundMode, type CanvasTheme } from "@/lib/canvas-theme";
-import { readToolbarPrefs, resolveMainToolbarLayout, type ToolContext, type ToolbarHandlers, type ToolbarPrefs } from "@/lib/canvas/tool-registry";
+import { resolveMainToolbarLayout, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { useTranslation } from "react-i18next";
 import type { CanvasNodeTypeId, CanvasToolMode, CanvasWorkspaceMode } from "@/types/canvas";
@@ -58,6 +58,10 @@ export function CanvasToolbar({
     onOpenProjectCharacters,
     onOpenPoseLibrary,
     viewControls,
+    viewSwitch,
+    railToolsHost,
+    onOpenRailTools,
+    compactRailTools = false,
     vertical = false,
     compact = false,
 }: {
@@ -97,6 +101,10 @@ export function CanvasToolbar({
     onOpenProjectCharacters: () => void;
     onOpenPoseLibrary?: () => void;
     viewControls?: ReactNode;
+    viewSwitch?: ReactNode;
+    railToolsHost?: HTMLDivElement | null;
+    onOpenRailTools?: () => void;
+    compactRailTools?: boolean;
     vertical?: boolean;
     /** 紧凑尺寸：短剧精修画布把视野留给节点。 */
     compact?: boolean;
@@ -109,27 +117,32 @@ export function CanvasToolbar({
     const theme = canvasThemes[colorTheme];
     const [panel, setPanel] = useState<"add" | "appearance" | "more" | null>(null);
     const panelAnchor = useRef<HTMLElement | null>(null);
+    const [railPanelAnchor, setRailPanelAnchor] = useState<{ right: number; top: number } | null>(null);
+    const addPanelId = useId();
     const moreId = useId();
     const moreLabel = t("canvasC.toolbar.moreTools", "更多工具");
-    const [settingsOpen, setSettingsOpen] = useState(false);
     const [panelX, setPanelX] = useState("50%");
-    const [prefs, setPrefs] = useState<ToolbarPrefs | null>(() => readToolbarPrefs("main"));
 
     useEffect(() => {
         if (panel) bringToFront();
     }, [panel, bringToFront]);
 
-    // 设置面板关闭后重新读取偏好（用户可能调整了排序/显隐）
-    useEffect(() => {
-        if (!settingsOpen) setPrefs(readToolbarPrefs("main"));
-    }, [settingsOpen]);
-
     const togglePanel = (next: NonNullable<typeof panel>, event: ReactMouseEvent<HTMLElement>, width: number) => {
-        if (dockRef.current?.contains(event.currentTarget)) panelAnchor.current = event.currentTarget;
-        if (!vertical && panelAnchor.current) setPanelX(getPanelX(rootRef.current, panelAnchor.current, width));
+        const trigger = event.currentTarget;
+        if (railToolsHost?.contains(trigger)) {
+            const { right, top } = trigger.getBoundingClientRect();
+            onOpenRailTools?.();
+            panelAnchor.current = trigger;
+            setRailPanelAnchor({ right, top });
+        } else if (dockRef.current?.contains(trigger)) {
+            panelAnchor.current = trigger;
+            setRailPanelAnchor(null);
+        }
+        if (!vertical && panelAnchor.current && !railToolsHost?.contains(panelAnchor.current)) setPanelX(getPanelX(rootRef.current, panelAnchor.current, width));
         setPanel((current) => (current === next ? null : next));
     };
     const runAddAction = (action: () => void) => {
+        if (railPanelAnchor) panelAnchor.current?.focus({ preventScroll: true });
         action();
         setPanel(null);
     };
@@ -140,7 +153,7 @@ export function CanvasToolbar({
         const closeFloatingPanels = (event: PointerEvent) => {
             const element = event.target instanceof Element ? event.target : null;
             if (panelAnchor.current?.contains(element)) return;
-            if (rootRef.current?.contains(element) && !dockRef.current?.contains(element) && !element?.closest(".joysee-canvas-dock-views")) return;
+            if (rootRef.current?.contains(element) && !element?.closest(".joysee-canvas-dock") && !dockRef.current?.contains(element)) return;
             if (element?.closest(".ant-color-picker,.ant-popover")) return;
             setPanel(null);
         };
@@ -152,11 +165,21 @@ export function CanvasToolbar({
             panelAnchor.current?.focus({ preventScroll: true });
         };
         document.addEventListener("keydown", closeOnEscape, true);
+        const rail = railPanelAnchor ? railToolsHost?.closest("nav") : null;
+        const closeRailPanel = () => setPanel(null);
+        if (rail) {
+            rail.addEventListener("scroll", closeRailPanel);
+            window.addEventListener("resize", closeRailPanel);
+        }
         return () => {
             document.removeEventListener("pointerdown", closeFloatingPanels, true);
             document.removeEventListener("keydown", closeOnEscape, true);
+            if (rail) {
+                rail.removeEventListener("scroll", closeRailPanel);
+                window.removeEventListener("resize", closeRailPanel);
+            }
         };
-    }, [panel]);
+    }, [panel, railPanelAnchor, railToolsHost]);
 
     // 构建 handlers（主工具栏只需要部分回调，其余用 no-op 占位满足类型）
     const handlers: ToolbarHandlers = {
@@ -186,10 +209,6 @@ export function CanvasToolbar({
         onShowImageInfoChange,
         onToggleAddPanel: (event) => togglePanel("add", event, 420),
         onToggleAppearancePanel: (event) => togglePanel("appearance", event, 296),
-        onToggleSettingsPanel: () => {
-            setPanel(null);
-            setSettingsOpen(true);
-        },
         // 以下为多选/节点悬停工具栏回调，主工具栏不使用，用 no-op 占位
         onAlign: () => {},
         onArrange: () => {},
@@ -248,33 +267,55 @@ export function CanvasToolbar({
         mergingVideos: false,
         addPanelOpen: panel === "add",
         appearancePanelOpen: panel === "appearance",
-        settingsPanelOpen: settingsOpen,
         handlers,
     };
 
-    const { dock, more, destructive } = resolveMainToolbarLayout(ctx, prefs);
-    const dockItems = [...dock, { id: "tool-more", label: moreLabel, icon: <Ellipsis />, expands: true, menuId: moreId, active: panel === "more", onClick: (event: ReactMouseEvent<HTMLElement>) => togglePanel("more", event, 192) }];
-    const settingsCommand = { id: "tool-settings", label: t("canvasC.toolbar.settings", "工具栏设置"), icon: <Settings2 />, onClick: handlers.onToggleSettingsPanel };
+    const { dock, more, destructive, railAdd } = resolveMainToolbarLayout(ctx, { rail: Boolean(railToolsHost), compact: Boolean(railToolsHost && compactRailTools) });
+    const hasMoreCommands = more.length > 0 || destructive.length > 0;
+    const moreCommand = { id: "tool-more", label: moreLabel, icon: <Ellipsis />, expands: true, menuId: moreId, active: panel === "more", onClick: (event: ReactMouseEvent<HTMLElement>) => togglePanel("more", event, 192) };
+    const dockItems = railToolsHost || !hasMoreCommands ? dock : [...dock, moreCommand];
 
     // 中央空白起点与主工具栏共用同一份命令解析，避免素材类型和插件节点逐渐分叉。
     const createCommands = useCanvasCreateCommands(ctx, runAddAction);
+    const toolbarStyle = { zIndex, "--canvas-rail-popup-right": railPanelAnchor ? `${railPanelAnchor.right}px` : undefined, "--canvas-rail-popup-trigger-top": railPanelAnchor ? `${railPanelAnchor.top}px` : undefined } as CSSProperties;
 
     return (
         <div
             ref={rootRef}
             data-canvas-no-zoom
-            className={`canvas-main-toolbar pointer-events-none absolute flex ${vertical ? "canvas-focus-tool-rail" : "inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] justify-center"} ${viewControls ? "has-view-controls" : ""}`}
-            style={{ zIndex }}
+            data-rail-popup={railPanelAnchor ? "" : undefined}
+            className={`canvas-main-toolbar pointer-events-none absolute flex ${vertical ? "canvas-focus-tool-rail" : "inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] justify-center"} ${viewControls ? "has-view-controls" : ""} ${railToolsHost ? "is-left-aligned" : ""}`}
+            style={toolbarStyle}
             onPointerDownCapture={bringToFront}
             onFocusCapture={bringToFront}
             onWheel={vertical || viewControls ? (event) => event.stopPropagation() : undefined}
         >
-            <AnimatePresence>{panel === "add" ? <AddNodeMenu x={panelX} vertical={vertical} theme={theme} commands={createCommands} /> : null}</AnimatePresence>
+            {railToolsHost
+                ? createPortal(
+                      <>
+                          {railAdd ? (
+                              <button type="button" className="canvas-workspace-rail-button" aria-expanded={panel === "add"} aria-controls={panel === "add" ? addPanelId : undefined} onClick={railAdd.onClick}>
+                                  {railAdd.icon}
+                                  <span>{railAdd.label}</span>
+                              </button>
+                          ) : null}
+                          {hasMoreCommands ? (
+                              <button type="button" className="canvas-workspace-rail-button" aria-haspopup="menu" aria-expanded={panel === "more"} aria-controls={panel === "more" ? moreId : undefined} onClick={moreCommand.onClick}>
+                                  {moreCommand.icon}
+                                  <span>{moreLabel}</span>
+                              </button>
+                          ) : null}
+                      </>,
+                      railToolsHost,
+                  )
+                : null}
+            <AnimatePresence>{panel === "add" ? <AddNodeMenu id={addPanelId} x={panelX} vertical={vertical} fromRail={Boolean(railPanelAnchor)} label={t("canvasA.createMenu.title")} theme={theme} commands={createCommands} /> : null}</AnimatePresence>
 
             {viewControls ? (
                 <div className="canvas-floating-dock joysee-canvas-dock pointer-events-auto relative" style={canvasDockStyle(theme)}>
                     <FloatingDock ref={dockRef} items={dockItems} variant="toolbar" size="compact" className="joysee-canvas-dock-group" />
                     <span className="joysee-canvas-dock-divider" aria-hidden />
+                    {viewSwitch}
                     {viewControls}
                 </div>
             ) : (
@@ -289,12 +330,12 @@ export function CanvasToolbar({
                 />
             )}
 
-            {panel === "more" && (
+            {hasMoreCommands && panel === "more" && (
                 <CanvasToolbarMoreMenu
                     id={moreId}
                     label={moreLabel}
-                    x={panelX}
-                    commands={[...more, settingsCommand]}
+                    x={railPanelAnchor ? undefined : panelX}
+                    commands={more}
                     destructive={destructive}
                     onDismiss={() => setPanel(null)}
                     onChoose={(command, event) => {
@@ -313,7 +354,7 @@ export function CanvasToolbar({
                         exit={{ opacity: 0 }}
                         transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
                         className="canvas-toolbar-popup pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[296px] max-w-full"
-                        style={vertical ? undefined : { left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}
+                        style={vertical || railPanelAnchor ? undefined : { left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}
                     >
                         <SpotlightSurface
                             role="region"
@@ -355,21 +396,27 @@ export function CanvasToolbar({
                     </motion.div>
                 ) : null}
             </AnimatePresence>
-
-            <ToolbarSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} toolbar="main" />
         </div>
     );
 }
 
-function AddNodeMenu({ x, vertical, theme, commands }: { x: string; vertical: boolean; theme: CanvasTheme; commands: CanvasCreateCommand[] }) {
+function AddNodeMenu({ id, x, vertical, fromRail, label, theme, commands }: { id: string; x: string; vertical: boolean; fromRail: boolean; label: string; theme: CanvasTheme; commands: CanvasCreateCommand[] }) {
+    const menuRef = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        if (fromRail) menuRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    }, [fromRail]);
     return (
         <motion.div
+            ref={menuRef}
+            id={id}
+            role={fromRail ? "dialog" : undefined}
+            aria-label={fromRail ? label : undefined}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
             className="canvas-toolbar-popup pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[420px] max-w-full"
-            style={vertical ? undefined : { left: x || "50%", transformOrigin: "bottom center", x: "-50%" }}
+            style={vertical || fromRail ? undefined : { left: x || "50%", transformOrigin: "bottom center", x: "-50%" }}
         >
             <SpotlightSurface
                 spotlightColor={theme.toolbar.itemHover}

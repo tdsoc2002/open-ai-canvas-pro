@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { CircleDashed, Focus, Grip, HelpCircle, Map, Minus, Plus, RotateCcw, Search } from "lucide-react";
+import { Eye, EyeOff, Focus, Grip, HelpCircle, LocateFixed, LocateOff, Map, Minus, Plus, RotateCcw, Search } from "lucide-react";
 import { subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
 import { canvasBottomRowLayout, canvasOverlayBounds } from "@/lib/canvas/canvas-overlay-layout";
 import { CanvasZoomReadout, useCanvasZoomPercent } from "./canvas-zoom-readout";
@@ -13,11 +13,14 @@ type CanvasZoomControlsProps = {
     onAutoArrange?: () => void;
     hideNodeConnections?: boolean;
     onHideNodeConnectionsChange?: (value: boolean) => void;
+    followAgent?: boolean;
+    onFollowAgentChange?: (value: boolean) => void;
     isMiniMapOpen: boolean;
     onToggleMiniMap: () => void;
-    onOpenShortcuts: () => void;
+    onOpenShortcuts?: () => void;
     containerRef?: RefObject<HTMLDivElement | null>;
     embedded?: boolean;
+    compact?: boolean;
 };
 
 const QUICK_ZOOM_LEVELS = [0.25, 0.5, 1, 2] as const;
@@ -25,7 +28,22 @@ const QUICK_ZOOM_LEVELS = [0.25, 0.5, 1, 2] as const;
 const MAIN_TOOLBAR_SHIFT = "--canvas-main-toolbar-shift";
 const MAIN_TOOLBAR_MAX_WIDTH = "--canvas-main-toolbar-max-width";
 
-export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoArrange, hideNodeConnections = false, onHideNodeConnectionsChange, isMiniMapOpen, onToggleMiniMap, onOpenShortcuts, containerRef, embedded = false }: CanvasZoomControlsProps) {
+export function CanvasZoomControls({
+    scale,
+    onScaleChange,
+    onFitContent,
+    onAutoArrange,
+    hideNodeConnections = false,
+    onHideNodeConnectionsChange,
+    followAgent = false,
+    onFollowAgentChange,
+    isMiniMapOpen,
+    onToggleMiniMap,
+    onOpenShortcuts,
+    containerRef,
+    embedded = false,
+    compact = false,
+}: CanvasZoomControlsProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const liveScaleRef = useRef(scale);
     const rangeRef = useRef<HTMLInputElement>(null);
@@ -167,8 +185,56 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
     }
 
     const modifier = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl ";
-    const connectionLabel = hideNodeConnections ? "显示全部连线" : "设置隐藏节点连线";
+    const connectionLabel = "隐藏节点连线";
+    const connectionAction = hideNodeConnections ? "显示全部连线" : connectionLabel;
+    const ConnectionIcon = hideNodeConnections ? EyeOff : Eye;
     const mapLabel = isMiniMapOpen ? "关闭小地图" : "打开小地图";
+    const FollowIcon = followAgent ? LocateFixed : LocateOff;
+    const arrangeControl = onAutoArrange ? (
+        <button type="button" aria-label="自动整理节点" title="自动整理节点" onClick={onAutoArrange}>
+            <Grip aria-hidden="true" />
+            {compact ? "自动整理节点" : null}
+        </button>
+    ) : null;
+    const connectionControl = onHideNodeConnectionsChange ? (
+        <button type="button" aria-label={connectionLabel} title={connectionAction} aria-pressed={hideNodeConnections} onClick={() => onHideNodeConnectionsChange(!hideNodeConnections)}>
+            <ConnectionIcon aria-hidden="true" />
+            {compact ? connectionLabel : null}
+        </button>
+    ) : null;
+    const mapControl = (
+        <button
+            type="button"
+            aria-label={mapLabel}
+            title={mapLabel}
+            aria-pressed={isMiniMapOpen}
+            onClick={() => {
+                onToggleMiniMap();
+                if (compact) {
+                    setPrecisionOpen(false);
+                    triggerRef.current?.focus();
+                }
+            }}
+        >
+            <Map aria-hidden="true" />
+            {compact ? mapLabel : null}
+        </button>
+    );
+    const shortcutsControl = onOpenShortcuts ? (
+        <button
+            type="button"
+            className={compact ? undefined : "canvas-view-help"}
+            aria-label="画布快捷键"
+            title="画布快捷键"
+            onClick={() => {
+                setPrecisionOpen(false);
+                onOpenShortcuts();
+            }}
+        >
+            <HelpCircle aria-hidden="true" />
+            {compact ? "画布快捷键" : null}
+        </button>
+    ) : null;
 
     return (
         <div
@@ -180,17 +246,13 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
             onWheel={(event) => event.stopPropagation()}
         >
             <div className="canvas-view-pill" role="group" aria-label="画布视图控制">
-                {onAutoArrange && (
-                    <button type="button" aria-label="自动整理节点" title="自动整理节点" onClick={onAutoArrange}>
-                        <Grip />
-                    </button>
-                )}
-                {onHideNodeConnectionsChange && (
-                    <button type="button" aria-label={connectionLabel} title={connectionLabel} aria-pressed={hideNodeConnections} onClick={() => onHideNodeConnectionsChange(!hideNodeConnections)}>
-                        <CircleDashed />
-                    </button>
-                )}
-                {(onAutoArrange || onHideNodeConnectionsChange) && <i className="canvas-view-divider" aria-hidden />}
+                {!compact ? (
+                    <>
+                        {arrangeControl}
+                        {connectionControl}
+                        {(arrangeControl || connectionControl) && <i className="canvas-view-divider" aria-hidden />}
+                    </>
+                ) : null}
                 <button
                     ref={triggerRef}
                     type="button"
@@ -259,15 +321,32 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                                 </button>
                             ))}
                         </div>
+                        {compact ? (
+                            <>
+                                <hr />
+                                {arrangeControl}
+                                {connectionControl}
+                                {mapControl}
+                                {shortcutsControl}
+                            </>
+                        ) : null}
+                        {onFollowAgentChange ? (
+                            <>
+                                <hr />
+                                <button type="button" aria-pressed={followAgent} onClick={() => onFollowAgentChange(!followAgent)}>
+                                    <FollowIcon aria-hidden="true" />
+                                    镜头跟随 Agent
+                                    <span className="ml-auto text-[length:var(--fs-caption)] text-[var(--cn-muted)]" aria-hidden="true">
+                                        {followAgent ? "开" : "关"}
+                                    </span>
+                                </button>
+                            </>
+                        ) : null}
                     </div>
                 )}
-                <button type="button" aria-label={mapLabel} title={mapLabel} aria-pressed={isMiniMapOpen} onClick={onToggleMiniMap}>
-                    <Map />
-                </button>
+                {!compact ? mapControl : null}
             </div>
-            <button type="button" className="canvas-view-help" aria-label="画布快捷键" title="画布快捷键" onClick={onOpenShortcuts}>
-                <HelpCircle />
-            </button>
+            {!compact ? shortcutsControl : null}
         </div>
     );
 }

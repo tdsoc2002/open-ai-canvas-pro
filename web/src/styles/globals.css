@@ -2239,13 +2239,13 @@
     }
 
     /* 视图切换：胶囊轨道 + 圆形图标按钮，当前视图为反色圆形（深色主题白底深色图标，浅色主题反之）；各状态形状不变。 */
-    .canvas-topbar-cluster.canvas-topbar-view-switch {
+    .canvas-view-switch {
         gap: var(--space-1);
         padding: var(--space-1);
         border-radius: var(--r-full);
     }
 
-    .canvas-topbar-view-option {
+    .canvas-view-switch-option {
         display: grid;
         place-items: center;
         width: var(--space-8);
@@ -2260,30 +2260,30 @@
             color var(--motion-instant) ease-out;
     }
 
-    .canvas-topbar-view-option svg {
+    .canvas-view-switch-option svg {
         width: var(--space-4);
         height: var(--space-4);
         stroke-width: 1.75;
     }
 
-    .canvas-topbar-view-option:hover:not([aria-pressed="true"]) {
+    .canvas-view-switch-option:hover:not([aria-pressed="true"]) {
         --view-switch-color: var(--view-switch-hover);
         background: var(--dock-command-hover);
     }
 
-    .canvas-topbar-view-option[aria-pressed="true"] {
+    .canvas-view-switch-option[aria-pressed="true"] {
         background: var(--view-switch-active-bg);
         --view-switch-color: var(--view-switch-active-fg);
         box-shadow: 0 1px 2px color-mix(in srgb, black 24%, transparent);
     }
 
-    .canvas-topbar-view-option:focus-visible {
+    .canvas-view-switch-option:focus-visible {
         outline: 2px solid var(--view-switch-hover);
         outline-offset: 2px;
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .canvas-topbar-view-option {
+        .canvas-view-switch-option {
             transition: none;
         }
     }
@@ -9994,54 +9994,6 @@
         max-height: 84dvh;
     }
 
-    .canvas-toolbar-settings-modal {
-        max-width: calc(100vw - var(--space-8));
-    }
-
-    .canvas-toolbar-settings-modal .ant-modal-container,
-    .canvas-toolbar-settings-modal .ant-modal-content {
-        overflow: hidden;
-        border: 0 !important;
-        border-radius: var(--r-xl);
-        padding: 0 !important;
-        background: var(--cn-spatial-elevated) !important;
-    }
-
-    .canvas-toolbar-settings-modal .ant-modal-content {
-        box-shadow: var(--workspace-overlay-shadow) !important;
-    }
-
-    .canvas-toolbar-settings-modal .ant-modal-container {
-        box-shadow: none !important;
-    }
-
-    .canvas-toolbar-settings-modal .ant-modal-body {
-        padding: 0 !important;
-    }
-
-    .canvas-toolbar-settings-card {
-        background: var(--cn-spatial-surface);
-        transition:
-            background-color var(--motion-dur-fast) var(--motion-ease-out),
-            opacity var(--motion-dur-fast) var(--motion-ease-out);
-    }
-
-    .canvas-toolbar-settings-card:hover {
-        background: color-mix(in srgb, var(--cn-spatial-surface) 72%, var(--cn-spatial-elevated));
-    }
-
-    .canvas-toolbar-settings-card.is-hidden {
-        background: color-mix(in srgb, var(--cn-spatial-surface) 52%, transparent);
-    }
-
-    .canvas-toolbar-settings-card.is-hidden .canvas-toolbar-settings-card-content {
-        opacity: var(--opa-subtle);
-    }
-
-    .canvas-toolbar-settings-card.is-dragging {
-        opacity: var(--opa-muted);
-    }
-
     :where(.ant-select-dropdown, .ant-dropdown-menu, .ant-popover-inner) {
         border: 1px solid var(--workspace-border);
         box-shadow: var(--elevation-overlay) !important;
@@ -11509,7 +11461,7 @@
         padding: var(--space-3);
     }
 
-    .canvas-node-shell:is([data-node-state="selected"], [data-node-state="focus"]) .canvas-video-empty {
+    [data-node-lod="full"] > .canvas-node-shell:is([data-node-state="selected"], [data-node-state="focus"]) .canvas-video-empty {
         outline: var(--stroke-1) solid var(--control-selected-fg);
         outline-offset: calc(-1 * var(--stroke-1));
     }
@@ -13335,11 +13287,6 @@
             padding-inline: var(--space-1);
         }
 
-        .canvas-node-composer-model-trigger .canvas-model-picker-trigger-text {
-            font-size: var(--fs-body);
-            line-height: var(--lh-heading);
-        }
-
         .canvas-node-composer-output-tools .canvas-node-composer-settings-trigger.ant-btn {
             height: var(--canvas-video-composer-control-size) !important;
             gap: var(--space-1);
@@ -13352,18 +13299,15 @@
             background: var(--canvas-composer-control-hover) !important;
         }
 
-        .canvas-node-composer-footer :is(.canvas-node-composer-model-trigger .canvas-model-picker-chevron, .canvas-video-mode-chevron) {
+        .canvas-node-composer-footer .canvas-video-mode-chevron {
             width: var(--space-3);
             height: var(--space-3);
             flex: none;
             color: var(--cn-muted);
         }
 
-        .canvas-node-composer-footer :is(.canvas-node-composer-model-trigger[aria-expanded="true"] .canvas-model-picker-chevron, .canvas-video-reference-mode.ant-select-open .canvas-video-mode-chevron) {
-            color: var(--cn-text);
-        }
-
         .canvas-video-reference-mode.ant-select-open .canvas-video-mode-chevron {
+            color: var(--cn-text);
             transform: rotate(180deg);
         }
 
@@ -25820,7 +25764,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
         color var(--user-motion);
 }
 .app-user-workspace .app-workspace-nav-link .app-workspace-nav-main {
-    gap: calc(var(--space-2) - var(--space-half)) !important;
+    gap: var(--workspace-nav-label-gap, calc(var(--space-2) - var(--space-half))) !important;
 }
 .app-user-workspace .app-workspace-nav-link .app-workspace-nav-icon svg,
 .app-user-workspace .app-workspace-nav-link .app-workspace-nav-main > svg {

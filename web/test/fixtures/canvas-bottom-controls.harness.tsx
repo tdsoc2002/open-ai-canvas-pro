@@ -41,9 +41,8 @@ for (const [key, value] of Object.entries({
 const { act, useState } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { CanvasZoomControls } = await import("../../src/components/canvas/canvas-zoom-controls");
-const { CanvasAgentHud } = await import("../../src/components/canvas/canvas-agent-hud");
 const { CanvasToolbar } = await import("../../src/components/canvas/canvas-toolbar");
-const { clearToolbarPrefs, defaultToolbarPrefs, persistToolbarPrefs } = await import("../../src/lib/canvas/tool-registry");
+const { scopedLocalStorage } = await import("../../src/lib/user-scope");
 afterAll(() => dom.happyDOM.abort());
 
 // happy-dom does not compile Tailwind; supply the inset used by the measured layout.
@@ -84,14 +83,12 @@ test("真实缩放组件按完整外壳避让，变宽后换行，收窄后回�
                     </div>
                     <div className="canvas-workspace-zoom-controls">
                         <CanvasZoomControls scale={1} onScaleChange={noop} onFitContent={noop} isMiniMapOpen={false} onToggleMiniMap={noop} onOpenShortcuts={noop} />
-                        <CanvasAgentHud nodeCount={3} connectionCount={2} followAgent={false} onFollowAgentChange={noop} />
                     </div>
                 </main>,
             ),
         );
         const shell = host.querySelector<HTMLElement>(".canvas-workspace-zoom-controls")!;
         const toolbar = host.querySelector<HTMLElement>(".canvas-main-toolbar")!;
-        expect(shell.querySelector(".canvas-agent-hud")).not.toBeNull();
         expect(toolbar.style.getPropertyValue("--canvas-main-toolbar-shift")).toBe("136px");
         expect(300 + 136).toBeGreaterThanOrEqual(20 + controlsWidth + 16);
         expect(shell.style.bottom).toBe("22px");
@@ -124,7 +121,19 @@ test("真实缩放组件按完整外壳避让，变宽后换行，收窄后回�
     }
 });
 
-function MainToolbarHarness({ onCommand = noop, selectedCount = 2, isProjectLinked = false }: { onCommand?: (command: string) => void; selectedCount?: number; isProjectLinked?: boolean }) {
+function MainToolbarHarness({
+    onCommand = noop,
+    selectedCount = 2,
+    isProjectLinked = false,
+    railToolsHost,
+    compactRailTools = Boolean(railToolsHost),
+}: {
+    onCommand?: (command: string) => void;
+    selectedCount?: number;
+    isProjectLinked?: boolean;
+    railToolsHost?: HTMLDivElement;
+    compactRailTools?: boolean;
+}) {
     const [canvasTool, setCanvasTool] = useState<"move" | "box-select">("box-select");
     const props: ComponentProps<typeof CanvasToolbar> = {
         selectedCount,
@@ -162,12 +171,49 @@ function MainToolbarHarness({ onCommand = noop, selectedCount = 2, isProjectLink
         onOpenMyAssets: noop,
         onOpenProjectCharacters: noop,
         onOpenPoseLibrary: noop,
+        railToolsHost,
+        compactRailTools,
+        viewControls: railToolsHost ? <span /> : undefined,
     };
     return <CanvasToolbar {...props} />;
 }
 
+test.each([false, true])("左侧竖栏保留添加节点，底部工具栏打开画布外观（紧凑模式 %s）", async (compactRailTools) => {
+    const host = document.createElement("div");
+    const rail = document.createElement("div");
+    document.body.append(rail, host);
+    const root = createRoot(host);
+    try {
+        await act(async () => root.render(<MainToolbarHarness railToolsHost={rail} compactRailTools={compactRailTools} />));
+        const buttons = [...rail.querySelectorAll("button")];
+        expect(buttons.map((button) => button.textContent)).toEqual(["添加节点"]);
+        const [add] = buttons;
+        expect([...host.querySelectorAll(".joysee-canvas-dock button")].map((item) => item.getAttribute("aria-label"))).toEqual(["抓手工具", "画布外观"]);
+        expect(host.querySelector(".joysee-canvas-dock-group .aceternity-dock-separator")).toBeNull();
+        await act(async () => add.click());
+        const create = host.querySelector('[role="dialog"]')!;
+        expect(create.id).toBe(add.getAttribute("aria-controls")!);
+        expect(create.contains(document.activeElement)).toBe(true);
+        expect([...create.querySelectorAll("button")].some((button) => button.textContent === "姿势库")).toBe(true);
+        await act(async () => document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+        expect(add.getAttribute("aria-expanded")).toBe("false");
+        expect(document.activeElement).toBe(add);
+        const appearance = host.querySelector<HTMLButtonElement>('.joysee-canvas-dock [aria-label="画布外观"]')!;
+        await act(async () => appearance.click());
+        expect(appearance.getAttribute("aria-expanded")).toBe("true");
+        expect(host.querySelector('.canvas-toolbar-popup [role="region"]')).not.toBeNull();
+        expect(host.querySelector(".canvas-main-toolbar")?.hasAttribute("data-rail-popup")).toBe(false);
+        await act(async () => document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+        expect(appearance.getAttribute("aria-expanded")).toBe("false");
+        expect(document.activeElement).toBe(appearance);
+    } finally {
+        await act(async () => root.unmount());
+        rail.remove();
+        host.remove();
+    }
+});
+
 test("真实主工具条保留所有命令、单一模式选中、键盘焦点与 Escape 关闭", async () => {
-    clearToolbarPrefs("main");
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -193,7 +239,7 @@ test("真实主工具条保留所有命令、单一模式选中、键盘焦点�
         const more = dock.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!;
         const menuItems = () => [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
         await act(async () => more.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
-        expect(menuItems().map((item) => item.textContent)).toEqual(["姿势库", "工作区", "工具栏设置", "清空画布"]);
+        expect(menuItems().map((item) => item.textContent)).toEqual(["姿势库", "工作区", "清空画布"]);
         expect(document.activeElement).toBe(menuItems()[0]);
         await act(async () => menuItems()[0].dispatchEvent(new dom.KeyboardEvent("keydown", { key: "End", bubbles: true })));
         expect(document.activeElement).toBe(menuItems().at(-1));
@@ -212,13 +258,6 @@ test("真实主工具条保留所有命令、单一模式选中、键盘焦点�
         );
         expect(host.querySelector('[role="menu"]')).toBeNull();
         expect(calls).toEqual(["undo", "redo", "clear"]);
-        const appearance = dock.querySelector<HTMLButtonElement>('[aria-label="画布外观"]')!;
-        await act(async () => appearance.click());
-        expect(appearance.getAttribute("aria-expanded")).toBe("true");
-        expect(host.querySelector('.canvas-toolbar-popup [role="region"]')).not.toBeNull();
-        await act(async () => document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
-        expect(appearance.getAttribute("aria-expanded")).toBe("false");
-        expect(document.activeElement).toBe(appearance);
         const add = dock.querySelector<HTMLButtonElement>('[aria-label="添加节点"]')!;
         await act(async () => add.click());
         expect(add.getAttribute("aria-expanded")).toBe("true");
@@ -227,32 +266,29 @@ test("真实主工具条保留所有命令、单一模式选中、键盘焦点�
     } finally {
         await act(async () => root.unmount());
         host.remove();
-        clearToolbarPrefs("main");
     }
 });
 
-test("真实主工具条按用户顺序分配四个常驻命令，隐藏项不会在更多菜单中复现", async () => {
-    const defaults = defaultToolbarPrefs("main");
-    persistToolbarPrefs("main", { order: ["tool-pose-library", ...defaults.order.filter((id) => id !== "tool-pose-library")], hidden: ["tool-workspace", "tool-clear"] });
+test("主工具栏恢复默认布局，即使浏览器仍有旧的排序和隐藏偏好", async () => {
+    const oldPrefsKey = "canvas-toolbar-prefs-main-v1";
+    scopedLocalStorage.setItem(oldPrefsKey, JSON.stringify({ order: ["tool-pose-library"], hidden: ["tool-canvas-mode", "tool-add", "tool-workspace"] }));
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
     try {
         await act(async () => root.render(<MainToolbarHarness />));
         const labels = [...host.querySelectorAll('[role="toolbar"] button')].map((button) => button.getAttribute("aria-label"));
-        expect(labels[0]).toBe("姿势库");
-        expect(labels).not.toContain("重做");
+        expect(labels.slice(0, 3)).toEqual(["区域选择", "抓手工具", "添加节点"]);
         await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!.click());
-        expect([...host.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(["重做", "工具栏设置"]);
+        expect([...host.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(["姿势库", "工作区", "清空画布"]);
     } finally {
         await act(async () => root.unmount());
         host.remove();
-        clearToolbarPrefs("main");
+        scopedLocalStorage.removeItem(oldPrefsKey);
     }
 });
 
-test("没有选区或已关联项目时，菜单沿用原命令状态；全隐藏仍可恢复工具栏", async () => {
-    clearToolbarPrefs("main");
+test("没有选区或已关联项目时，菜单沿用原命令状态", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -263,15 +299,8 @@ test("没有选区或已关联项目时，菜单沿用原命令状态；全隐�
         expect(host.querySelector('[aria-label="素材库"]')).toBeNull();
         expect(menuItems().some((item) => item.textContent === "素材库")).toBe(false);
         expect(menuItems().some((item) => item.textContent === "删除选中节点")).toBe(false);
-        const defaults = defaultToolbarPrefs("main");
-        persistToolbarPrefs("main", { order: defaults.order, hidden: defaults.order });
-        await act(async () => root.render(<MainToolbarHarness key="hidden" />));
-        expect(host.querySelectorAll('[role="toolbar"] button')).toHaveLength(1);
-        await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!.click());
-        expect(menuItems().map((item) => item.textContent)).toEqual(["工具栏设置"]);
     } finally {
         await act(async () => root.unmount());
-        clearToolbarPrefs("main");
         host.remove();
     }
 });
@@ -350,6 +379,7 @@ test("真实视图控制保留缩放、快速比例、连线、小地图及快�
         const [scale, setScale] = useState(1);
         const [minimap, setMinimap] = useState(false);
         const [hideConnections, setHideConnections] = useState(false);
+        const [followAgent, setFollowAgent] = useState(true);
         return (
             <CanvasZoomControls
                 scale={scale}
@@ -361,6 +391,8 @@ test("真实视图控制保留缩放、快速比例、连线、小地图及快�
                 onAutoArrange={() => calls.push("arrange")}
                 hideNodeConnections={hideConnections}
                 onHideNodeConnectionsChange={setHideConnections}
+                followAgent={followAgent}
+                onFollowAgentChange={setFollowAgent}
                 isMiniMapOpen={minimap}
                 onToggleMiniMap={() => setMinimap((value) => !value)}
                 onOpenShortcuts={() => calls.push("shortcuts")}
@@ -372,6 +404,12 @@ test("真实视图控制保留缩放、快速比例、连线、小地图及快�
         await act(async () => root.render(<ViewControls />));
         expect(host.querySelector('[aria-label="放大画布"]')).toBeNull();
         await click("精确缩放");
+        const follow = host.querySelector<HTMLButtonElement>('.canvas-zoom-menu button[aria-pressed="true"]')!;
+        expect(follow.textContent).toContain("镜头跟随 Agent");
+        await act(async () => follow.click());
+        expect(follow.getAttribute("aria-pressed")).toBe("false");
+        await act(async () => follow.click());
+        expect(follow.getAttribute("aria-pressed")).toBe("true");
         await click("放大画布");
         await click("缩小画布");
         expect(scales).toEqual([1.1, 1]);
@@ -387,8 +425,17 @@ test("真实视图控制保留缩放、快速比例、连线、小地图及快�
         expect(document.activeElement).toBe(precision);
         await click("打开小地图");
         expect(host.querySelector('[aria-label="关闭小地图"]')?.getAttribute("aria-pressed")).toBe("true");
-        await click("设置隐藏节点连线");
-        expect(host.querySelector('[aria-label="显示全部连线"]')?.getAttribute("aria-pressed")).toBe("true");
+        const connectionToggle = host.querySelector<HTMLButtonElement>('[aria-label="隐藏节点连线"]')!;
+        expect(connectionToggle.getAttribute("aria-pressed")).toBe("false");
+        expect(connectionToggle.querySelector(".lucide-eye")).not.toBeNull();
+        await click("隐藏节点连线");
+        expect(host.querySelector('[aria-label="隐藏节点连线"]')).toBe(connectionToggle);
+        expect(connectionToggle.getAttribute("aria-pressed")).toBe("true");
+        expect(connectionToggle.title).toBe("显示全部连线");
+        expect(connectionToggle.querySelector(".lucide-eye-off")).not.toBeNull();
+        await click("隐藏节点连线");
+        expect(connectionToggle.getAttribute("aria-pressed")).toBe("false");
+        expect(connectionToggle.title).toBe("隐藏节点连线");
         await click("自动整理节点");
         await click("画布快捷键");
         expect(calls).toEqual(["fit", "arrange", "shortcuts"]);
@@ -405,6 +452,7 @@ test("内嵌视图控件不启动独立工具条避让，缩放和视图命令�
     let zoom = 1;
     let fitCount = 0;
     let hideConnections = false;
+    let minimapToggles = 0;
     try {
         await act(async () =>
             root.render(
@@ -414,12 +462,13 @@ test("内嵌视图控件不启动独立工具条避让，缩放和视图命令�
                             <div className="canvas-floating-dock joysee-canvas-dock">
                                 <CanvasZoomControls
                                     embedded
+                                    compact
                                     scale={1}
                                     onScaleChange={(scale) => (zoom = scale)}
                                     onFitContent={() => fitCount++}
                                     onHideNodeConnectionsChange={(value) => (hideConnections = value)}
                                     isMiniMapOpen={false}
-                                    onToggleMiniMap={noop}
+                                    onToggleMiniMap={() => minimapToggles++}
                                     onOpenShortcuts={noop}
                                 />
                             </div>
@@ -436,6 +485,7 @@ test("内嵌视图控件不启动独立工具条避让，缩放和视图命令�
             await act(async () => button!.click());
         };
         expect(host.querySelector('button[aria-label="缩小画布"], button[aria-label="放大画布"]')).toBeNull();
+        expect(host.querySelector('button[aria-label="隐藏节点连线"]')).toBeNull();
         await click("精确缩放");
         expect(host.querySelectorAll('[role="dialog"] button[aria-label="缩小画布"]')).toHaveLength(1);
         expect(host.querySelectorAll('[role="dialog"] button[aria-label="放大画布"]')).toHaveLength(1);
@@ -444,11 +494,15 @@ test("内嵌视图控件不启动独立工具条避让，缩放和视图命令�
         expect(half).toBeDefined();
         await act(async () => half!.click());
         await click("适应画布");
-        await click("设置隐藏节点连线");
+        await click("隐藏节点连线");
         expect(zoom).toBe(0.5);
         expect(fitCount).toBe(1);
         expect(hideConnections).toBe(true);
         expect(host.querySelector<HTMLInputElement>('input[aria-label="精确缩放画布"]')?.value).toBe("50");
+        await click("打开小地图");
+        expect(minimapToggles).toBe(1);
+        expect(host.querySelector('[role="dialog"]')).toBeNull();
+        expect(document.activeElement).toBe(host.querySelector('button[aria-label="精确缩放"]'));
     } finally {
         await act(async () => root.unmount());
         host.remove();
@@ -481,7 +535,7 @@ test("缩放读数收起前导位，菜单对齐按钮并留在画布内", async
             root.render(
                 <main>
                     <div className="canvas-floating-dock">
-                        <CanvasZoomControls embedded scale={0.26} onScaleChange={noop} onFitContent={noop} isMiniMapOpen={false} onToggleMiniMap={noop} onOpenShortcuts={noop} />
+                        <CanvasZoomControls embedded scale={0.26} onScaleChange={noop} onFitContent={noop} isMiniMapOpen={false} onToggleMiniMap={noop} />
                     </div>
                 </main>,
             ),

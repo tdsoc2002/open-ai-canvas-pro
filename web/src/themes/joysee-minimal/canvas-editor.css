@@ -9,40 +9,86 @@
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-shell {
+    flex: 1;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
 }
 
-/* 侧轨与标题由工作区统一排列，其他顶栏控件仍以画布全宽布局。 */
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar {
     left: 0;
     padding-inline: var(--space-2);
 }
 
-:root[data-skin="joysee-minimal"].dark .joysee-canvas-editor:not(.canvas-edge-layout) .canvas-topbar > .canvas-topbar-cluster {
-    --dock-surface: var(--background);
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor.canvas-edge-layout {
+    --canvas-topbar-h: var(--space-12);
+    --canvas-workspace-left: 0px;
+    --canvas-workspace-rail-width: calc(var(--space-16) - var(--space-2) + env(safe-area-inset-left));
+    --canvas-edge-topbar-height: calc(var(--canvas-topbar-h) + env(safe-area-inset-top));
+    --canvas-topbar-offset: calc(var(--canvas-edge-topbar-height) + var(--space-2));
 }
 
-:root[data-skin="joysee-minimal"].dark .joysee-canvas-editor:not(.canvas-edge-layout) .canvas-workspace-corner:not(.is-expanded) {
-    --canvas-workspace-material: var(--background);
+:root[data-skin="joysee-minimal"].dark .joysee-canvas-editor.canvas-edge-layout {
+    --canvas-edge-navigation: var(--background);
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail {
-    padding-inline: var(--space-1);
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-corner {
+    inset: 0 max(var(--space-2), env(safe-area-inset-right)) 0 0;
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-items {
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-corner > .canvas-workspace-shell {
+    margin-block-end: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    pointer-events: none;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-shell::before {
+    content: none;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail {
+    --canvas-rail-start-padding: calc(var(--space-1) + env(safe-area-inset-left));
+    width: var(--canvas-workspace-rail-width);
+    padding-block: 0 max(var(--space-2), env(safe-area-inset-bottom));
+    padding-inline: var(--canvas-rail-start-padding) var(--space-1);
+    background: var(--canvas-edge-navigation, var(--joysee-navigation));
+    pointer-events: auto;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-tools {
+    margin-inline: 0;
+    padding-block-start: 0;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items {
     row-gap: var(--space-3);
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-items .canvas-workspace-rail-button {
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items:not(:empty)::before {
+    content: "";
+    align-self: center;
+    width: var(--space-4);
+    height: var(--stroke-1);
+    margin-block: var(--space-1);
+    background: color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items .canvas-workspace-rail-button {
     grid-template-rows: var(--space-8) auto;
     min-height: 0;
     aspect-ratio: 1;
+    gap: var(--space-1);
     background: transparent;
+    font-weight: 400;
+    line-height: var(--space-3);
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-button > svg {
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items .canvas-workspace-rail-button:not(:is(:hover, [aria-pressed="true"], [aria-expanded="true"])) {
+    color: color-mix(in srgb, var(--foreground) 78%, transparent);
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items .canvas-workspace-rail-button > svg {
     box-sizing: border-box;
     width: var(--space-8);
     height: var(--space-8);
@@ -50,18 +96,82 @@
     border-radius: var(--r-md);
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-button:hover > svg {
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items .canvas-workspace-rail-button:hover > svg {
     background: var(--dock-command-hover);
 }
 
-:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-button[aria-pressed="true"] > svg {
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-items .canvas-workspace-rail-button:is([aria-pressed="true"], [aria-expanded="true"]) > svg {
     background: var(--dock-command-active);
 }
 
-:root[data-skin="joysee-minimal"].dark .canvas-shortcuts-modal {
-    --popover: var(--card);
-    --control-selected-bg: color-mix(in srgb, var(--joysee-brand) 12%, var(--card));
-    --control-selected-fg: var(--joysee-brand);
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-menu {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+    display: grid;
+    flex-shrink: 0;
+    margin-inline: calc(-1 * var(--canvas-rail-start-padding)) calc(-1 * var(--space-1));
+    background: var(--canvas-edge-navigation, var(--canvas-edge-surface));
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-menu .canvas-project-menu-trigger {
+    width: 100%;
+    height: var(--canvas-edge-topbar-height);
+    padding-block-start: env(safe-area-inset-top);
+    padding-inline-start: env(safe-area-inset-left);
+    border-radius: 0;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-menu .canvas-project-menu-trigger:focus-visible {
+    outline: var(--focus-ring-width) solid var(--dock-command-active-text);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail-footer {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 1;
+    flex-shrink: 0;
+    margin-block-start: auto;
+    background: inherit;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-workspace-rail .canvas-workspace-rail-button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--dock-command-active-text);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout #canvas-workspace-details {
+    margin-block: var(--canvas-edge-topbar-height) env(safe-area-inset-bottom);
+    border-inline-start: var(--stroke-1) solid var(--canvas-workspace-outline);
+    border-end-end-radius: var(--r-2xl);
+    background: var(--canvas-edge-surface);
+    overflow: hidden;
+    pointer-events: auto;
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-topbar {
+    left: var(--canvas-workspace-rail-width);
+    height: var(--canvas-edge-topbar-height);
+    padding-block-start: env(safe-area-inset-top);
+    padding-inline: var(--space-2) max(var(--space-2), env(safe-area-inset-right));
+    background: var(--canvas-edge-navigation, var(--canvas-edge-surface));
+    pointer-events: auto;
+}
+
+:root[data-skin="joysee-minimal"].dark .canvas-edge-layout .canvas-shortcuts-panel {
+    --dock-command-active-text: var(--joysee-brand);
+    background: var(--card);
+}
+
+:root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-topbar > :is(.canvas-topbar-project-cluster, .canvas-topbar-tools-cluster) {
+    --dock-surface: transparent;
+    --dock-shadow: none;
+    padding-block: 0;
+    border: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
 }
 
 /* 原生设备列表留在顶栏 DOM，展开时跨过下方资产视图的层叠上下文。 */
@@ -109,6 +219,9 @@
     left: calc(var(--canvas-workspace-inset, 0px) + var(--canvas-inset-x));
     --canvas-dock-popover-offset: var(--space-16);
 }
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-main-toolbar.is-left-aligned {
+    justify-content: flex-start;
+}
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor.canvas-main-with-workspace .canvas-main-toolbar.has-view-controls {
     justify-content: flex-start;
@@ -123,7 +236,14 @@
     padding: var(--space-half) var(--space-1);
 }
 
-/* 窄屏在各组内横向滚动，两个组共用一条底板，浮层不被滚动容器裁切。 */
+:root[data-skin="joysee-minimal"] .joysee-canvas-dock > .canvas-view-switch {
+    --dock-surface: transparent;
+    --dock-shadow: none;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+/* 各组共用一条底板，浮层不被滚动容器裁切。 */
 :root[data-skin="joysee-minimal"] .joysee-canvas-dock :is(.joysee-canvas-dock-group, .joysee-canvas-dock-views) {
     min-width: 0;
 }
@@ -151,6 +271,13 @@
     /* 保留右下角助手入口的空间，工具仍可在同一行横向滚动。 */
     :root[data-skin="joysee-minimal"]:has(.canvas-agent-launcher[data-near-bottom-right]:not([aria-hidden="true"])) .joysee-canvas-editor .canvas-main-toolbar.has-view-controls {
         right: calc(var(--space-24) + var(--space-12));
+    }
+}
+
+@media (max-width: 480px) {
+    /* 窄屏的小源形象可能贴近小地图右侧，给收起按钮留出独立的点击区。 */
+    :root[data-skin="joysee-minimal"]:has(.canvas-agent-launcher[data-near-bottom-right]:not([aria-hidden="true"])) .canvas-edge-layout .canvas-minimap {
+        margin-bottom: calc(var(--space-16) + var(--space-2));
     }
 }
 
@@ -199,9 +326,9 @@
     translate: 0 -50%;
 }
 
-@media (min-width: 992px) {
-    :root[data-skin="joysee-minimal"] .joysee-canvas-editor.canvas-workspace-expanded .canvas-topbar {
-        left: var(--canvas-workspace-inset);
+@media (max-width: 991px) {
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout #canvas-workspace-details {
+        margin-block-end: calc(var(--canvas-inset-y) + var(--space-12) + var(--space-2));
     }
 }
 
@@ -212,8 +339,50 @@
         --canvas-topbar-h: 56px;
     }
 
+    :root[data-skin="joysee-minimal"]:has(.canvas-agent-launcher[data-near-bottom-right]:not([aria-hidden="true"])) .canvas-edge-layout .canvas-main-toolbar.has-view-controls {
+        right: clamp(var(--space-24), 32vw, calc(var(--space-24) + var(--space-12)));
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock {
+        column-gap: var(--space-half);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock-group {
+        padding-inline: 0;
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock-group .aceternity-dock-command {
+        width: var(--space-8);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock .canvas-view-switch-option {
+        width: var(--space-7);
+        height: var(--space-7);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock .canvas-view-scale {
+        padding-inline: var(--space-1);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock .canvas-view-scale > svg {
+        display: none;
+    }
+
     :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar {
         grid-template-columns: minmax(0, 1fr) 0 auto;
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-topbar {
+        padding-inline: var(--space-1) max(var(--space-1), env(safe-area-inset-right));
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-topbar > :is(.canvas-topbar-project-cluster, .canvas-topbar-tools-cluster) {
+        gap: var(--space-half);
+        padding-inline: 0;
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .canvas-topbar-project-cluster .canvas-sync-status-trigger {
+        width: var(--space-4);
     }
 
     :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-topbar-wallet {
@@ -250,5 +419,32 @@
     :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-node-composer-footer > .ml-auto {
         flex: 1 1 100%;
         justify-content: flex-start;
+    }
+}
+
+@media (max-width: 359px) {
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock {
+        padding-inline: var(--space-half);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock-divider {
+        display: none;
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock-group .aceternity-dock-command {
+        width: var(--space-7);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock .canvas-view-switch-option {
+        width: var(--space-6);
+        height: var(--space-6);
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock .canvas-view-pill {
+        padding-inline: 0;
+    }
+
+    :root[data-skin="joysee-minimal"] .canvas-edge-layout .joysee-canvas-dock .canvas-view-scale {
+        padding-inline: var(--space-half);
     }
 }
