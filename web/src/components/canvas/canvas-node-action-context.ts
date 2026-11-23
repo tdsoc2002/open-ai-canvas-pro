@@ -7,7 +7,6 @@ import type { CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 // 通过 Context 注入，避免改动 world-layers。无 Provider 时静默降级为 no-op。
 export type CanvasNodeActionContextValue = {
     upload?: (node: CanvasNodeData) => void;
-    openVideoSetup?: (node: CanvasNodeData, mode: "text" | "frames") => void;
     download?: (node: CanvasNodeData) => void;
     duplicate?: (node: CanvasNodeData) => void;
     deleteNode?: (node: CanvasNodeData) => void;

@@ -1663,31 +1663,9 @@ function CanvasViewportPage() {
         },
         [updateNodeFromContent],
     );
-    const openVideoSetup = useCallback(
-        (node: CanvasNodeData, mode: "text" | "frames") => {
-            const current = nodesRef.current.find((item) => item.id === node.id);
-            if (!current || current.metadata?.locked || isCanvasNodeGenerating(current, runningNodeId)) return;
-            const firstFrame = mentionReferencesByNodeId.get(node.id)?.find((reference) => reference.kind === "image");
-            if (current.metadata?.videoReferenceMode !== mode) {
-                handleConfigNodeChange(node.id, {
-                    videoReferenceMode: mode,
-                    videoEditOperation: mode === "frames" ? "image_to_video" : "text_to_video",
-                    videoStartFrameNodeId: mode === "frames" ? current.metadata?.videoStartFrameNodeId || firstFrame?.nodeId : undefined,
-                    videoEndFrameNodeId: mode === "frames" ? current.metadata?.videoEndFrameNodeId : undefined,
-                });
-            }
-            const selection = new Set([node.id]);
-            selectedNodeIdsRef.current = selection;
-            setSelectedNodeIds(selection);
-            setSelectedConnectionId(null);
-            setDialogNodeId(node.id);
-        },
-        [handleConfigNodeChange, mentionReferencesByNodeId, nodesRef, runningNodeId],
-    );
     const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
         () => ({
             upload: replaceCanvasNodeMedia,
-            openVideoSetup,
             download: downloadNodeImage,
             duplicate: duplicateNodeFromContent,
             deleteNode: deleteNodeFromContent,
@@ -1711,7 +1689,6 @@ function CanvasViewportPage() {
             duplicateNodeFromContent,
             extractLayerMaterials,
             openArtCritique,
-            openVideoSetup,
             replaceCanvasNodeMedia,
             updateMediaNodeFromContent,
             updateNodeFromContent,

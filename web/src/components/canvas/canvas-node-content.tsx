@@ -16,7 +16,9 @@ import { formatBytes } from "@/lib/image-utils";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { isResourceUrl } from "@/services/api/resources";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
+import { nodeGenerationPrompt } from "@/lib/canvas/generation-contract";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
+import { splitMentionText } from "./canvas-mention-editable";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { CanvasFileUploadContent } from "./canvas-file-upload-content";
 import { MarkdownTextPreview } from "./canvas-markdown-text-preview";
@@ -253,6 +255,12 @@ function TextContent({ node, theme, isEditingContent, contentReadOnly, textareaR
     // 兼容已经被旧同步逻辑写成资源 URL 的文本节点：上传文本时 prompt
     // 保存的是原文，可在远端修复完成前先恢复展示与编辑内容。
     const textContent = isResourceUrl(rawContent) && prompt && !isResourceUrl(prompt) ? prompt : rawContent;
+    const draftPrompt = !textContent && node.metadata?.status !== "success" ? nodeGenerationPrompt(node) : "";
+    const draftPreview = draftPrompt.includes("@")
+        ? splitMentionText(draftPrompt, mentionReferences)
+              .map((part) => (part.type === "mention" ? `@${part.reference.displayLabel || part.reference.label}` : part.text))
+              .join("")
+        : draftPrompt;
 
     return (
         <div className="flex h-full w-full flex-col overflow-hidden pt-10">
@@ -285,7 +293,7 @@ function TextContent({ node, theme, isEditingContent, contentReadOnly, textareaR
                 />
             ) : (
                 <div className="thin-scrollbar block h-full w-full select-text overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-4 pb-4 pt-0 font-mono" style={textStyle} onWheel={(event) => event.stopPropagation()}>
-                    {textContent || <span style={{ color: theme.node.placeholder }}>双击编辑文字</span>}
+                    {textContent || draftPreview}
                 </div>
             )}
         </div>

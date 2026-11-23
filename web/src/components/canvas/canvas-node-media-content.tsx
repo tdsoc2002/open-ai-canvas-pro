@@ -2,13 +2,12 @@
 //
 // 视频节点优先展示静态封面，缺图才按需抽帧，点击后才启动播放器。
 
-import { Image as ImageIcon, ImageOff, Layers2, LoaderCircle, Music2, Play, RotateCw, Type, Video } from "lucide-react";
+import { Image as ImageIcon, ImageOff, LoaderCircle, Music2, Play, RotateCw, Video } from "lucide-react";
 import "./canvas-image-state.css";
 import "./canvas-video-preview-play.css";
 import { type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { canvasNodeVideoPreviewReference } from "@/lib/canvas/canvas-media-preview";
-import { canvasVideoReferenceMode } from "@/lib/canvas/canvas-video-reference-mode";
 import { createDefaultSubtitleStyle } from "@/types/timeline";
 import { CanvasVideoPreviewImage } from "./canvas-video-preview-image";
 import { VideoPlayer } from "@/components/video-player";
@@ -73,21 +72,15 @@ export function ImageNodeContent(props: CanvasNodeContentProps) {
 export function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchPreviewNodes, batchExpanded, batchOpening, batchRecovering, onToggleBatch }: CanvasNodeContentProps) {
     const isCharacterReference = node.metadata?.workflowKind === "character" && node.metadata?.characterView === "multi";
     const content = (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
-            <div className="flex size-14 items-center justify-center rounded-[var(--r-lg)]" style={{ background: theme.toolbar.activeBg }}>
-                <ImageIcon className="size-6 opacity-30" />
-            </div>
-            {isCharacterReference ? (
-                <div className="max-w-[80%] text-center">
-                    <div className="truncate text-xs font-medium" title={node.metadata?.characterName || node.title} style={{ color: theme.node.muted }}>
-                        {node.metadata?.characterName || node.title}
-                    </div>
-                    <div className="mt-1 text-[var(--fs-tiny)] tracking-[0.12em] opacity-50">多视角参考 · 待生成</div>
+        <EmptyMediaContent
+            icon={
+                <div className="flex size-14 items-center justify-center rounded-[var(--r-lg)]" style={{ background: theme.toolbar.activeBg }}>
+                    <ImageIcon className="size-6 opacity-30" aria-hidden />
                 </div>
-            ) : (
-                <span className="text-[var(--fs-tiny)] tracking-[0.18em] opacity-50">空图片节点</span>
-            )}
-        </div>
+            }
+            label={isCharacterReference ? `${node.metadata?.characterName || node.title} · 多视角参考待生成` : "空图片节点"}
+            color={theme.node.placeholder}
+        />
     );
     if (isBatchRoot)
         return (
@@ -98,9 +91,9 @@ export function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchP
     return content;
 }
 
-export function VideoNodeContent({ node, theme, contentReadOnly, mediaActive = false, onMediaPlayRequest }: CanvasNodeContentProps) {
+export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlayRequest }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
-    const { openVideoSetup, updateMediaNode } = useCanvasNodeActions();
+    const { updateMediaNode } = useCanvasNodeActions();
     const { url, loading, onError } = useVideoPlaybackUrl(node, mediaActive);
     const preview = canvasNodeVideoPreviewReference(node);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
@@ -165,18 +158,7 @@ export function VideoNodeContent({ node, theme, contentReadOnly, mediaActive = f
         return (
             <div className="canvas-video-empty" style={{ color: theme.node.muted }}>
                 <Play className="size-12 fill-current opacity-55" aria-hidden />
-                {openVideoSetup && !contentReadOnly && canvasVideoReferenceMode(node, false) ? (
-                    <div className="canvas-video-empty-actions" aria-label="开始视频创作" role="group">
-                        <button type="button" onClick={() => openVideoSetup(node, "frames")}>
-                            <Layers2 aria-hidden /> 使用首尾帧
-                        </button>
-                        <button type="button" onClick={() => openVideoSetup(node, "text")}>
-                            <Type aria-hidden /> 从提示词开始
-                        </button>
-                    </div>
-                ) : (
-                    <span>空视频节点</span>
-                )}
+                <span className="sr-only">空视频节点</span>
             </div>
         );
     }
@@ -240,7 +222,7 @@ export function inferVideoHasAudio(metadata: CanvasNodeData["metadata"]): boolea
 }
 
 export function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
-    if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" />} label="空音频节点" color={theme.node.placeholder} />;
+    if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" aria-hidden />} label="空音频节点" color={theme.node.placeholder} />;
     return <CanvasAudioPlayer node={node} theme={theme} />;
 }
 
@@ -521,9 +503,9 @@ export function MediaLoadingState({ icon, label }: { icon: ReactNode; label: str
 
 export function EmptyMediaContent({ icon, label, color }: { icon: ReactNode; label: string; color: string }) {
     return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color }}>
+        <div className="flex h-full w-full items-center justify-center" style={{ color }}>
             {icon}
-            <span className="text-sm">{label}</span>
+            <span className="sr-only">{label}</span>
         </div>
     );
 }
