@@ -27,7 +27,7 @@ import { PanoramaNodeContent } from "./nodes/panorama-node";
 import { ArtCritiqueNodeContent } from "./nodes/ai-art-critique-node";
 import { MediaConversionNodeContent } from "./nodes/media-conversion-node";
 import { MEDIA_CONVERSION_NODE_TYPE } from "@/lib/media-conversion/contracts";
-import { AudioNodeContent, EmptyImageContent, ImageNodeContent, InactiveVideoPreview, VideoNodeContent } from "./canvas-node-media-content";
+import { AudioNodeContent, EmptyImageContent, EmptyVideoContent, ImageNodeContent, InactiveVideoPreview, VideoNodeContent } from "./canvas-node-media-content";
 import { ErrorContent, LoadingContent, UnknownNodeContent } from "./canvas-node-status-content";
 
 export type CanvasNodeContentProps = {
@@ -54,6 +54,7 @@ export type CanvasNodeContentProps = {
     onToggleBatch?: () => void;
     disableMediaEffects?: boolean;
     mediaActive?: boolean;
+    mediaHoverPlayback?: boolean;
     onMediaPlayRequest?: (nodeId: string) => void;
 };
 
@@ -109,6 +110,9 @@ export function CanvasNodeContent(props: CanvasNodeContentProps) {
 }
 
 function CanvasNodeShellContent({ node, theme }: { node: CanvasNodeData; theme: CanvasTheme }) {
+    if (node.type === CanvasNodeType.Video && !node.metadata?.content && !node.metadata?.storageKey && node.metadata?.status !== "loading" && node.metadata?.status !== "error") {
+        return <EmptyVideoContent theme={theme} />;
+    }
     const Icon = node.type === CanvasNodeType.Video ? Video : node.type === CanvasNodeType.Audio ? Music2 : node.type === CanvasNodeType.Image ? ImageIcon : FileText;
     return (
         <div className="flex size-full flex-col items-center justify-center gap-2 rounded-[var(--node-radius)] px-3 text-center" style={{ background: theme.node.fill, color: theme.node.muted }}>

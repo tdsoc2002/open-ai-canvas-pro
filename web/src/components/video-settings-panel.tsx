@@ -8,7 +8,7 @@ import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceRatio } from "@/lib/seedance-video";
 import { isVolcengineArkVideoProtocol } from "@/lib/model-protocols";
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, videoDimensionsForRatioAndResolution, videoResolutionComparisonKey, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
+import { formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, videoResolutionComparisonKey, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
 import { modelCapabilityConfigFor, resolveVideoRatioValue, resolveVideoResolutionValue, videoDurationOptions, type VideoCapabilityConfig } from "@/lib/model-capabilities";
 import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 
@@ -72,7 +72,6 @@ function VideoProfileControls({
     priceTiers?: ReturnType<typeof modelPriceTiers>;
 }) {
     const { seconds, resolution, ratio } = preserveVideoSettings(profile, { seconds: config.videoSeconds, resolution: config.vquality, ratio: config.size }, protocol);
-    const dimensions = profile.ratios.length && resolution !== "auto" ? videoDimensionsForRatioAndResolution(ratio, resolution) : undefined;
     const configuredResolutions = profile.resolutions.map((value) => ({ value, label: formatVideoResolutionLabel(value) }));
     return (
         <ImageSettingsTheme theme={theme}>
@@ -96,13 +95,6 @@ function VideoProfileControls({
                     </SettingGroup>
                 ) : null}
                 <VideoRatioOptions ratios={profile.ratios} selected={ratio} theme={theme} onChange={(value) => onConfigChange("size", value)} />
-                {dimensions ? (
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                        <DimensionValue prefix="W" value={dimensions.width} theme={theme} />
-                        <span className="text-xs opacity-45">×</span>
-                        <DimensionValue prefix="H" value={dimensions.height} theme={theme} />
-                    </div>
-                ) : null}
                 <VideoDurationControl profile={profile} value={Number(seconds)} theme={theme} disabled={(value) => !hasPriceTierForVideoSelection(priceTiers, resolution, value)} onChange={(value) => onConfigChange("videoSeconds", String(value))} />
                 <VideoOutputSettings config={config} profile={profile} theme={theme} onConfigChange={onConfigChange} />
             </div>
@@ -244,7 +236,7 @@ function OptionPill({ selected, disabled = false, theme, onClick, children, prev
                     {preview}
                 </span>
             ) : null}
-            {children}
+            <span className="min-w-0">{children}</span>
         </button>
     );
 }
@@ -260,17 +252,6 @@ function SettingGroup({ title, action, children }: { title: string; action?: Rea
                 {action}
             </div>
             {children}
-        </div>
-    );
-}
-
-function DimensionValue({ prefix, value, theme }: { prefix: string; value: number; theme: CanvasTheme }) {
-    return (
-        <div className="flex h-8 overflow-hidden rounded-md text-[var(--fs-label)]" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
-            <span className="grid w-7 place-items-center" style={{ color: theme.node.muted }}>
-                {prefix}
-            </span>
-            <span className="min-w-0 flex-1 px-2 leading-8 tabular-nums">{value}</span>
         </div>
     );
 }

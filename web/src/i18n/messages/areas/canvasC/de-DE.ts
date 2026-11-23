@@ -3,7 +3,6 @@ import type { zhCN } from "./zh-CN";
 export const deDE: DeepStringRecord<typeof zhCN> = {
     toolbar: {
         moreTools: "Weitere Werkzeuge",
-        settings: "Werkzeugleiste anpassen",
         appearance: "Canvas-Darstellung",
         appearanceSubtitle: "Farben und Raster",
         mediaInfo: "Medieninfos",

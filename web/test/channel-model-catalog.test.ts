@@ -439,7 +439,7 @@ describe("public channel model catalog", () => {
         await createVideoGenerationTask(config, "synthetic prompt");
 
         expect(html).toContain("768P竖 · 16:9 · 8s");
-        expect(panelHtml).toMatch(/aria-pressed="true"[^>]*>768P竖<\/button>/);
+        expect(panelHtml).toMatch(/aria-pressed="true"[^>]*><span[^>]*>768P竖<\/span><\/button>/);
         expect(body.resolution_name).toBe("768p竖");
     });
 });

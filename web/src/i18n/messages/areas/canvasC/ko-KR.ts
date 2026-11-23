@@ -3,7 +3,6 @@ import type { zhCN } from "./zh-CN";
 export const koKR: DeepStringRecord<typeof zhCN> = {
     toolbar: {
         moreTools: "도구 더 보기",
-        settings: "도구 모음 설정",
         appearance: "캔버스 외관",
         appearanceSubtitle: "색상과 그리드",
         mediaInfo: "미디어 정보",

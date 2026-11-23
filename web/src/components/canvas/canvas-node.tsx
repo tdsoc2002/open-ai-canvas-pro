@@ -61,6 +61,7 @@ type CanvasNodeProps = {
     scale: number;
     isSelected: boolean;
     mediaActive?: boolean;
+    mediaHoverPlayback?: boolean;
     isRelated: boolean;
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
@@ -100,6 +101,7 @@ type CanvasNodeProps = {
     onOpenPrevis?: (node: CanvasNodeData) => void;
     onOpenDrawing?: (node: CanvasNodeData) => void;
     onMediaPlayRequest?: (nodeId: string) => void;
+    onMediaHoverChange?: (nodeId: string, hovering: boolean) => void;
     onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
 };
 
@@ -110,6 +112,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     scale,
     isSelected,
     mediaActive = false,
+    mediaHoverPlayback = false,
     isRelated,
     isFocusRelated,
     isConnectionTarget,
@@ -148,6 +151,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     onOpenPrevis,
     onOpenDrawing,
     onMediaPlayRequest,
+    onMediaHoverChange,
     onContextMenu,
 }: CanvasNodeProps) {
     const theme = canvasThemes[useActiveTheme()];
@@ -184,6 +188,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const resizeMotion = useCanvasNodeResizeStyle(nodeRef, data, dragOffset);
     const handleResizePointerDown = useCanvasNodeResize(data, scale, scriptMinHeight, onResize, readOnly);
     const generationStatus = data.metadata?.status;
+    const canHoverPlay = onMediaHoverChange && data.type === CanvasNodeType.Video && Boolean(data.metadata?.content || data.metadata?.storageKey) && generationStatus !== "loading" && generationStatus !== "error";
     const generationRevealing = useGenerationReveal(generationStatus, disableMediaEffects);
     const statusShownInContent = canvasNodeRendersStatusContent(data, { isBatchRoot, isEditingContent, hasCustomRenderer: Boolean(renderNodeContent) });
     const statusBadge = generationStatus === "success" ? (generationRevealing ? generationStatus : undefined) : (generationStatus === "loading" || generationStatus === "error") && !statusShownInContent ? generationStatus : undefined;
@@ -305,6 +310,15 @@ export const CanvasNode = React.memo(function CanvasNode({
                         outline: !showChrome && isActive ? `1px solid ${theme.node.activeStroke}` : undefined,
                     } as React.CSSProperties
                 }
+                onPointerEnter={
+                    canHoverPlay
+                        ? (event) => {
+                              if (event.pointerType === "mouse" && event.buttons === 0 && !isConnecting && !dragOffset) onMediaHoverChange(data.id, true);
+                          }
+                        : undefined
+                }
+                onPointerLeave={canHoverPlay ? () => onMediaHoverChange(data.id, false) : undefined}
+                onPointerDown={canHoverPlay ? () => onMediaHoverChange(data.id, false) : undefined}
                 onMouseDown={(event) => onMouseDown(event, data.id)}
                 onDoubleClick={(event) => {
                     if (isBatchRoot) {
@@ -381,6 +395,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onToggleBatch={() => onToggleBatch?.(data.id)}
                         disableMediaEffects={disableMediaEffects}
                         mediaActive={mediaActive}
+                        mediaHoverPlayback={mediaHoverPlayback}
                         onMediaPlayRequest={onMediaPlayRequest}
                     />
                 </div>
@@ -489,6 +504,7 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.scale === next.scale &&
         previous.isSelected === next.isSelected &&
         previous.mediaActive === next.mediaActive &&
+        previous.mediaHoverPlayback === next.mediaHoverPlayback &&
         previous.isRelated === next.isRelated &&
         previous.isFocusRelated === next.isFocusRelated &&
         previous.isConnectionTarget === next.isConnectionTarget &&
@@ -531,6 +547,8 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.onOpenTextEditor === next.onOpenTextEditor &&
         previous.onOpenPrevis === next.onOpenPrevis &&
         previous.onOpenDrawing === next.onOpenDrawing &&
+        previous.onMediaPlayRequest === next.onMediaPlayRequest &&
+        previous.onMediaHoverChange === next.onMediaHoverChange &&
         previous.onContextMenu === next.onContextMenu
     );
 }

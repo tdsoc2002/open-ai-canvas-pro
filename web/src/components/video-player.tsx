@@ -18,6 +18,7 @@ type VideoPlayerProps = {
     brandColor?: string;
     preload?: MediaPlayerProps["preload"];
     autoPlay?: boolean;
+    startMuted?: boolean;
     dataCanvasNoZoom?: boolean;
     compactControls?: boolean;
     /** Explicitly marks videos known to have an audio track (or not). */
@@ -75,7 +76,22 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
  */
-export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, hasAudio, onCanPlay, onPlay, onError }: VideoPlayerProps) {
+export function VideoPlayer({
+    src,
+    mimeType,
+    title = "视频",
+    className,
+    brandColor = "#f5f5f5",
+    preload = "metadata",
+    autoPlay = false,
+    startMuted = false,
+    dataCanvasNoZoom = false,
+    compactControls = false,
+    hasAudio,
+    onCanPlay,
+    onPlay,
+    onError,
+}: VideoPlayerProps) {
     const [detectedHasAudio, setDetectedHasAudio] = useState<boolean | undefined>(undefined);
     const autoPlayAttemptedRef = useRef(false);
     const audioProbeGenerationRef = useRef(0);
@@ -181,7 +197,7 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
             streamType="on-demand"
             playsInline
             autoPlay={autoPlay}
-            muted={noAudio ? true : undefined}
+            muted={startMuted || noAudio ? true : undefined}
             load="eager"
             preload={preload}
             data-canvas-no-zoom={dataCanvasNoZoom ? "true" : undefined}

@@ -1,4 +1,6 @@
 .canvas-video-preview-play {
+    opacity: 0;
+    pointer-events: none;
     background: var(--canvas-card-media-chip-bg, color-mix(in srgb, var(--color-neutral-950) 76%, transparent));
     border: var(--stroke-1) solid color-mix(in srgb, var(--canvas-card-media-chip-ink, var(--color-neutral-0)) 55%, transparent);
     box-shadow: var(--elevation-overlay);
@@ -10,8 +12,21 @@
 }
 
 .canvas-video-preview-play:focus-visible {
+    opacity: 1;
     outline: var(--stroke-2) solid var(--canvas-card-media-chip-ink, var(--color-neutral-0));
     outline-offset: var(--space-1);
+}
+
+.no-motion .canvas-video-preview-play {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+    .canvas-video-preview-play {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

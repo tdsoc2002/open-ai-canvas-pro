@@ -82,6 +82,7 @@ mock.module("@/services/project-asset-sync", () => ({
     },
 }));
 const { useCanvasUpload } = await import("@/pages/canvas/use-canvas-upload");
+const { CanvasNode } = await import("@/components/canvas/canvas-node");
 const { VideoPreviewPlayButton } = await import("@/components/canvas/canvas-node-media-content");
 const { assetPickerItemsToInsertPayloads } = await import("@/components/canvas/asset-picker-modal");
 let api: ReturnType<typeof useCanvasUpload>;
@@ -302,6 +303,52 @@ test("library import retains long titles for every media type and uploaded text 
     });
     expect(nodesRef.current.map((node) => node.title)).toEqual(payloads.map((payload) => payload.title));
     expect(nodesRef.current[0].metadata?.originalFileName).toBe(title);
+});
+
+test("仅悬停已有视频的画面才请求播放，移开或按下鼠标时撤销悬停", async () => {
+    const calls: boolean[] = [];
+    const node: CanvasNodeData = {
+        id: "video",
+        type: CanvasNodeType.Video,
+        title: "样片",
+        position: { x: 0, y: 0 },
+        width: 320,
+        height: 180,
+        metadata: { content: "/clip.mp4" },
+    };
+    await act(async () =>
+        root!.render(
+            <CanvasNode
+                data={node}
+                renderLOD="preview"
+                scale={0.2}
+                isSelected={false}
+                isRelated={false}
+                isFocusRelated={false}
+                isConnectionTarget={false}
+                showImageInfo={false}
+                onMouseDown={silent}
+                onHoverStart={silent}
+                onHoverEnd={silent}
+                onConnectStart={silent}
+                onResize={silent}
+                onContentChange={silent}
+                onContextMenu={silent}
+                onMediaHoverChange={(_, hovering) => calls.push(hovering)}
+            />,
+        ),
+    );
+    const cover = container.querySelector(".canvas-node-shell")!;
+    const pointer = async (type: string, pointerType: string, buttons = 0) => act(async () => cover.dispatchEvent(new dom.PointerEvent(type, { bubbles: true, pointerType, buttons })));
+
+    await pointer("pointerover", "touch");
+    await pointer("pointerover", "mouse", 1);
+    expect(calls).toEqual([]);
+    await pointer("pointerover", "mouse");
+    await pointer("pointerout", "mouse");
+    await pointer("pointerover", "mouse");
+    await pointer("pointerdown", "mouse", 1);
+    expect(calls).toEqual([true, false, true, false]);
 });
 
 test("video play control keeps a media foreground in either theme and native keyboard semantics", async () => {

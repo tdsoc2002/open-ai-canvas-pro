@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { Link2 } from "lucide-react";
 import { CANVAS_CONNECTION_STROKE_WIDTH, canvasThemes } from "@/lib/canvas-theme";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -95,9 +95,27 @@ const EMPTY_CANVAS_NODES: CanvasNodeData[] = [];
 
 export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(props: CanvasProjectWorldLayersProps) {
     const { viewportScale } = props;
-    const [activeMediaNodeId, setActiveMediaNodeId] = useState<string | null>(null);
+    const [activeMedia, setActiveMedia] = useState<{ nodeId: string; hover: boolean } | null>(null);
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const handleMediaHoverChange = useCallback((nodeId: string, hovering: boolean) => {
+        clearTimeout(hoverTimer.current);
+        if (!hovering) {
+            setActiveMedia((current) => (current?.nodeId === nodeId && current.hover ? null : current));
+            return;
+        }
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.querySelector("html.no-motion, body.no-motion")) return;
+        hoverTimer.current = setTimeout(() => {
+            setActiveMedia((current) => (current?.nodeId === nodeId ? current : { nodeId, hover: true }));
+        }, 350);
+    }, []);
+    const handleMediaPlayRequest = useCallback((nodeId: string) => {
+        clearTimeout(hoverTimer.current);
+        setActiveMedia({ nodeId, hover: false });
+    }, []);
+    useEffect(() => () => clearTimeout(hoverTimer.current), []);
+    const activeMediaNodeId = activeMedia?.nodeId;
     useEffect(() => {
-        if (activeMediaNodeId && !props.nodeById.has(activeMediaNodeId)) setActiveMediaNodeId(null);
+        if (activeMediaNodeId && !props.nodeById.has(activeMediaNodeId)) setActiveMedia(null);
     }, [activeMediaNodeId, props.nodeById]);
     const mountedNodes = useCanvasProgressiveNodeMount(props.candidateNodes, props.immediateRenderNodeIds, props.renderViewBounds);
     const gestureIds = useMemo(() => new Set(props.gestureNodes.map((node) => node.id)), [props.gestureNodes]);
@@ -198,7 +216,9 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         scale={viewportScale}
                         isSelected={props.selectedNodeIds.has(node.id)}
                         mediaActive={activeMediaNodeId === node.id}
-                        onMediaPlayRequest={setActiveMediaNodeId}
+                        mediaHoverPlayback={activeMediaNodeId === node.id && activeMedia?.hover === true}
+                        onMediaPlayRequest={handleMediaPlayRequest}
+                        onMediaHoverChange={handleMediaHoverChange}
                         isRelated={props.relatedNodeIds.has(node.id)}
                         isFocusRelated={props.activeNodeId === node.id}
                         isConnectionTarget={props.connectionTargetNodeId === node.id || props.batchConnectionPreview?.targetNodeId === node.id}

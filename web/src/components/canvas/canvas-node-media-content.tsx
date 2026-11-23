@@ -1,8 +1,8 @@
 // 画布节点的媒体内容：图片、视频、音频的预览、懒加载与失活占位。
 //
-// 视频节点优先展示静态封面，缺图才按需抽帧，点击后才启动播放器。
+// 视频节点优先展示静态封面，缺图才按需抽帧，悬停或手动播放时启动播放器。
 
-import { Image as ImageIcon, ImageOff, LoaderCircle, Music2, Play, RotateCw, Video } from "lucide-react";
+import { Image as ImageIcon, ImageOff, Music2, Play, RotateCw, Video } from "lucide-react";
 import "./canvas-image-state.css";
 import "./canvas-video-preview-play.css";
 import { type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -91,7 +91,16 @@ export function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchP
     return content;
 }
 
-export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlayRequest }: CanvasNodeContentProps) {
+export function EmptyVideoContent({ theme }: { theme: CanvasTheme }) {
+    return (
+        <div className="canvas-video-empty" style={{ color: theme.node.muted }}>
+            <Play className="size-12 fill-current opacity-55" aria-hidden />
+            <span className="sr-only">空视频节点</span>
+        </div>
+    );
+}
+
+export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverPlayback = false, onMediaPlayRequest }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const { updateMediaNode } = useCanvasNodeActions();
     const { url, loading, onError } = useVideoPlaybackUrl(node, mediaActive);
@@ -154,15 +163,8 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
         };
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMediaNode, url]);
 
-    if (!node.metadata?.content && !node.metadata?.storageKey) {
-        return (
-            <div className="canvas-video-empty" style={{ color: theme.node.muted }}>
-                <Play className="size-12 fill-current opacity-55" aria-hidden />
-                <span className="sr-only">空视频节点</span>
-            </div>
-        );
-    }
-    if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} onPlay={() => onMediaPlayRequest?.(node.id)} />;
+    if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyVideoContent theme={theme} />;
+    if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} onPlay={onMediaPlayRequest ? () => onMediaPlayRequest(node.id) : undefined} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -180,11 +182,10 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
                     decoding="sync"
                     draggable={false}
                     className={`absolute inset-0 size-full select-none object-contain transition-opacity duration-150 ${videoReady ? "opacity-0" : "opacity-100"}`}
-                    loadingFallback={<LoaderCircle className="size-5 animate-spin text-white/55" />}
                     fallback={<Video className="size-7 text-white/40" />}
                 />
             ) : !url || loading ? (
-                <MediaLoadingState icon={<LoaderCircle className="size-5 animate-spin" />} label={loading ? "正在加载视频" : "视频资源不可用"} />
+                <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={loading ? "正在加载视频" : "视频资源不可用"} theme={theme} />
             ) : null}
             {url ? (
                 <div className={`relative z-[1] transition-opacity duration-150 ${videoReady ? "opacity-100" : "opacity-0"}`} style={{ width: fitWidth, height: Math.round(fitHeight) }}>
@@ -195,6 +196,7 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
                         title={node.title || "视频"}
                         hasAudio={inferVideoHasAudio(node.metadata)}
                         autoPlay
+                        startMuted={mediaHoverPlayback}
                         preload="metadata"
                         brandColor={theme.accent.primary}
                         className="h-full w-full rounded-[var(--node-radius)] bg-black"
@@ -324,7 +326,6 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                         decoding="sync"
                         draggable={false}
                         className="pointer-events-none size-full select-none object-contain"
-                        loadingFallback={<LoaderCircle className="size-5 animate-spin text-white/55" />}
                         fallback={<Video className="size-7 text-white/40" />}
                         onUnavailable={markPreviewUnavailable}
                     />
@@ -337,7 +338,7 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
     }
     return (
         <div ref={previewRef} className="group/video-preview relative size-full">
-            <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={hydrating ? "正在生成首帧" : !nearViewport ? "进入视口后加载首帧" : onPlay ? "点击播放视频" : ""} theme={theme} />
+            <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={hydrating ? "正在生成首帧" : !nearViewport ? "进入视口后加载首帧" : ""} theme={theme} />
             {playButton}
         </div>
     );
@@ -347,7 +348,7 @@ export function VideoPreviewPlayButton({ title, onPlay }: { title: string; onPla
     return (
         <button
             type="button"
-            className="canvas-video-preview-play absolute left-1/2 top-1/2 z-[var(--node-z-overlay)] grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full backdrop-blur"
+            className="canvas-video-preview-play absolute left-3 top-3 z-[var(--node-z-overlay)] grid size-11 place-items-center rounded-full backdrop-blur"
             style={{ color: "var(--canvas-card-media-chip-ink, var(--color-neutral-0))" }}
             aria-label={`播放 ${title}`}
             title="播放视频"
@@ -488,15 +489,6 @@ export function InactiveMediaCard({ icon, title, hint, theme }: { icon: ReactNod
                 {title}
             </span>
             {hint ? <span className="text-[var(--fs-tiny)] opacity-50">{hint}</span> : null}
-        </div>
-    );
-}
-
-export function MediaLoadingState({ icon, label }: { icon: ReactNode; label: string }) {
-    return (
-        <div role="status" className="flex size-full flex-col items-center justify-center gap-2 rounded-[var(--node-radius)] bg-black text-white/75">
-            <span className="grid size-10 place-items-center rounded-full bg-white/10">{icon}</span>
-            <span className="text-xs font-medium">{label}</span>
         </div>
     );
 }

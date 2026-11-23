@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 
 import { CanvasNode } from "../src/components/canvas/canvas-node";
+import type { CanvasNodeRenderLOD } from "../src/lib/canvas/canvas-node-lod";
 import { canvasNodeCanResyncTask } from "../src/lib/canvas/canvas-task-state";
 import { subscribeTaskTicker } from "../src/lib/canvas/task-ticker";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
@@ -14,12 +15,13 @@ const createdAt = () => new Date(Date.now() - 103_000).toISOString();
 // 渲染前先让它走一下，否则“已用时”会按模块加载时刻计算，测试结果取决于前面跑了多久。
 const refreshTaskTicker = () => subscribeTaskTicker(() => {})();
 
-function renderNode(metadata: CanvasNodeData["metadata"], type: CanvasNodeData["type"] = CanvasNodeType.Image, renderNodeContent?: (node: CanvasNodeData) => ReactNode) {
+function renderNode(metadata: CanvasNodeData["metadata"], type: CanvasNodeData["type"] = CanvasNodeType.Image, renderNodeContent?: (node: CanvasNodeData) => ReactNode, renderLOD?: CanvasNodeRenderLOD) {
     refreshTaskTicker();
     return renderToStaticMarkup(
         <CanvasNode
             data={{ id: "node", type, title: "去掉水印", position: { x: 0, y: 0 }, width: 240, height: 420, metadata }}
             scale={1}
+            renderLOD={renderLOD}
             isSelected={false}
             isRelated={false}
             isFocusRelated={false}
@@ -41,6 +43,22 @@ function renderNode(metadata: CanvasNodeData["metadata"], type: CanvasNodeData["
 }
 
 const occurrences = (markup: string, text: string) => markup.split(text).length - 1;
+
+test("视频节点缩小时沿用未生成空态，并保留已有视频封面", () => {
+    const full = renderNode({}, CanvasNodeType.Video);
+    const emptyContent = full.match(/<div class="canvas-video-empty".*?<\/div>/)?.[0] ?? "";
+    expect(emptyContent).toContain("lucide-play");
+    for (const lod of ["preview", "shell"] as const) {
+        const markup = renderNode({}, CanvasNodeType.Video, undefined, lod);
+        expect(markup).toContain(`data-node-lod="${lod}"`);
+        expect(markup).toContain(emptyContent);
+        for (const status of ["loading", "error"] as const) {
+            expect(renderNode({ status }, CanvasNodeType.Video, undefined, lod)).not.toContain("canvas-video-empty");
+        }
+    }
+    const preview = renderNode({ content: "/video.mp4", previewContent: "/cover.jpg" }, CanvasNodeType.Video, undefined, "preview");
+    expect(preview).toContain('<img alt="去掉水印 静态预览"');
+});
 
 describe("画布节点生成中", () => {
     test("分镜自定义标题栏已有任务状态时不叠加外层徽章，缺少渲染器时仍显示通用状态", () => {

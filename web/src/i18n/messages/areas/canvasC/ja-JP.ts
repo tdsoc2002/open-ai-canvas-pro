@@ -3,7 +3,6 @@ import type { zhCN } from "./zh-CN";
 export const jaJP: DeepStringRecord<typeof zhCN> = {
     toolbar: {
         moreTools: "その他のツール",
-        settings: "ツールバー設定",
         appearance: "キャンバスの外観",
         appearanceSubtitle: "配色とグリッド",
         mediaInfo: "メディア情報",
