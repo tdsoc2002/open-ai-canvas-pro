@@ -27,6 +27,37 @@
     --canvas-workspace-material: var(--background);
 }
 
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail {
+    padding-inline: var(--space-1);
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-items {
+    row-gap: var(--space-3);
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-items .canvas-workspace-rail-button {
+    grid-template-rows: var(--space-8) auto;
+    min-height: 0;
+    aspect-ratio: 1;
+    background: transparent;
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-button > svg {
+    box-sizing: border-box;
+    width: var(--space-8);
+    height: var(--space-8);
+    padding: calc((var(--space-8) - var(--space-5)) / 2);
+    border-radius: var(--r-md);
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-button:hover > svg {
+    background: var(--dock-command-hover);
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-workspace-rail-button[aria-pressed="true"] > svg {
+    background: var(--dock-command-active);
+}
+
 :root[data-skin="joysee-minimal"].dark .canvas-shortcuts-modal {
     --popover: var(--card);
     --control-selected-bg: color-mix(in srgb, var(--joysee-brand) 12%, var(--card));
@@ -77,6 +108,10 @@
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-main-toolbar.has-view-controls {
     left: calc(var(--canvas-workspace-inset, 0px) + var(--canvas-inset-x));
     --canvas-dock-popover-offset: var(--space-16);
+}
+
+:root[data-skin="joysee-minimal"] .joysee-canvas-editor.canvas-main-with-workspace .canvas-main-toolbar.has-view-controls {
+    justify-content: flex-start;
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-dock {

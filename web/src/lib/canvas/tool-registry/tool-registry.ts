@@ -91,7 +91,7 @@ export function resolveMainToolbarLayout(ctx: ToolContext, prefs: ToolbarPrefs |
     let previousGroup: string | undefined;
     for (const tool of resolveToolbarTools("main", ctx, prefs)) {
         const entry = toolToEntry(tool, ctx);
-        if (entry.kind !== "switch") {
+        if (entry.kind !== "switch" && entry.id !== "tool-style") {
             if (entry.danger) {
                 destructive.push(entry);
                 continue;

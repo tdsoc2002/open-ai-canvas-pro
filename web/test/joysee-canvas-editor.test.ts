@@ -14,7 +14,7 @@ describe("乐见真实画布编辑器组件合同", () => {
         for (const callback of ["onScaleChange={setZoomScale}", "onFitContent={fitCanvasContent}", "onHideNodeConnectionsChange={setHideNodeConnections}"]) expect(page).toContain(callback);
         const toolbar = source("components/canvas/canvas-toolbar.tsx");
         expect(toolbar).toMatch(/joysee-canvas-dock pointer-events-auto[\s\S]+?<FloatingDock ref=\{dockRef\} items=\{dockItems\}[\s\S]+?joysee-canvas-dock-divider[\s\S]+?\{viewControls\}/);
-        expect(toolbar).toContain("getPanelX(dockRef.current, panelAnchor.current, width)");
+        expect(toolbar).toContain("getPanelX(rootRef.current, panelAnchor.current, width)");
     });
 
     test("精简顶栏不删除导入、搜索、专注及重命名入口", () => {

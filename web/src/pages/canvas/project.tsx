@@ -3223,7 +3223,6 @@ function CanvasViewportPage() {
                                             onUndo={undoCanvas}
                                             onRedo={redoCanvas}
                                             onUpload={() => handleUploadRequest()}
-                                            onDelete={() => deleteNodes(new Set(selectedNodeIds))}
                                             onClear={() => setClearConfirmOpen(true)}
                                             onDeselect={deselectCanvas}
                                             onAppearanceChange={applyCanvasAppearance}

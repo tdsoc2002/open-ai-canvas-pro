@@ -31,15 +31,7 @@ describe("canvas toolbar mode switch", () => {
         const empty = resolveToolbarEntries("main", createMainContext(), null);
         const selected = resolveToolbarEntries("main", { ...createMainContext(), selectedCount: 3 }, null);
         expect(selected.map((entry) => entry.id)).toEqual(empty.map((entry) => entry.id));
-        const idleDelete = empty.find((entry) => entry.id === "tool-delete");
-        const activeDelete = selected.find((entry) => entry.id === "tool-delete");
-        expect(idleDelete && "disabled" in idleDelete && idleDelete.disabled).toBe(true);
-        expect(activeDelete && "disabled" in activeDelete && activeDelete.disabled).toBe(false);
-        const idleMarkup = renderToStaticMarkup(<FloatingDock variant="toolbar" items={empty} />);
-        const selectedMarkup = renderToStaticMarkup(<FloatingDock variant="toolbar" items={selected} />);
-        expect(idleMarkup.match(/<button[^>]*aria-label="删除选中节点"[^>]*>/)?.[0]).toContain("disabled");
-        expect(selectedMarkup.match(/<button[^>]*aria-label="删除 3 个节点"[^>]*>/)?.[0]).not.toContain("disabled");
-        expect(selectedMarkup.match(/<button\b/g)?.length).toBe(idleMarkup.match(/<button\b/g)?.length);
+        expect(selected.some((entry) => entry.id === "tool-delete")).toBe(false);
     });
 
     test.each(["default", "compact"] as const)("renders %s canvas modes as an icon-only segmented switch", (size) => {

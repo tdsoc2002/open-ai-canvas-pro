@@ -53,8 +53,6 @@ export type ToolbarHandlers = {
     onToggleAddPanel: (event: MouseEvent<HTMLElement>) => void;
     onToggleAppearancePanel: (event: MouseEvent<HTMLElement>) => void;
     onToggleSettingsPanel: () => void;
-    // 主工具栏——删除选中
-    onDeleteSelected: () => void;
     // 多选工具栏
     onAlign: (mode: CanvasAlignmentMode) => void;
     onArrange: (mode: "row" | "column" | "grid" | "flow") => void;

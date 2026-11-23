@@ -152,7 +152,6 @@ function MainToolbarHarness({ onCommand = noop, selectedCount = 2, isProjectLink
         onUndo: () => onCommand("undo"),
         onRedo: () => onCommand("redo"),
         onUpload: noop,
-        onDelete: () => onCommand("delete"),
         onClear: () => onCommand("clear"),
         onDeselect: noop,
         onAppearanceChange: noop,
@@ -177,7 +176,7 @@ test("真实主工具条保留所有命令、单一模式选中、键盘焦点�
         await act(async () => root.render(<MainToolbarHarness onCommand={(command) => calls.push(command)} />));
         const dock = host.querySelector<HTMLElement>('[data-dock-variant="toolbar"]')!;
         expect(dock).not.toBeNull();
-        expect([...dock.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"))).toEqual(["区域选择", "抓手工具", "添加节点", "素材库", "撤销", "重做", "更多工具"]);
+        expect([...dock.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"))).toEqual(["区域选择", "抓手工具", "添加节点", "素材库", "撤销", "重做", "画布外观", "更多工具"]);
         const select = dock.querySelector<HTMLButtonElement>('[aria-label="区域选择"]')!;
         await act(async () => {
             select.focus();
@@ -194,7 +193,7 @@ test("真实主工具条保留所有命令、单一模式选中、键盘焦点�
         const more = dock.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!;
         const menuItems = () => [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
         await act(async () => more.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
-        expect(menuItems().map((item) => item.textContent)).toEqual(["姿势库", "工作区", "画布外观", "工具栏设置", "删除 2 个节点", "清空画布"]);
+        expect(menuItems().map((item) => item.textContent)).toEqual(["姿势库", "工作区", "工具栏设置", "清空画布"]);
         expect(document.activeElement).toBe(menuItems()[0]);
         await act(async () => menuItems()[0].dispatchEvent(new dom.KeyboardEvent("keydown", { key: "End", bubbles: true })));
         expect(document.activeElement).toBe(menuItems().at(-1));
@@ -205,16 +204,21 @@ test("真实主工具条保留所有命令、单一模式选中、键盘焦点�
         );
         expect(document.activeElement).toBe(more);
         expect(more.getAttribute("aria-expanded")).toBe("false");
-        for (const label of ["删除 2 个节点", "清空画布"]) {
-            await act(async () => more.click());
-            await act(async () =>
-                menuItems()
-                    .find((item) => item.textContent === label)!
-                    .click(),
-            );
-            expect(host.querySelector('[role="menu"]')).toBeNull();
-        }
-        expect(calls).toEqual(["undo", "redo", "delete", "clear"]);
+        await act(async () => more.click());
+        await act(async () =>
+            menuItems()
+                .find((item) => item.textContent === "清空画布")!
+                .click(),
+        );
+        expect(host.querySelector('[role="menu"]')).toBeNull();
+        expect(calls).toEqual(["undo", "redo", "clear"]);
+        const appearance = dock.querySelector<HTMLButtonElement>('[aria-label="画布外观"]')!;
+        await act(async () => appearance.click());
+        expect(appearance.getAttribute("aria-expanded")).toBe("true");
+        expect(host.querySelector('.canvas-toolbar-popup [role="region"]')).not.toBeNull();
+        await act(async () => document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+        expect(appearance.getAttribute("aria-expanded")).toBe("false");
+        expect(document.activeElement).toBe(appearance);
         const add = dock.querySelector<HTMLButtonElement>('[aria-label="添加节点"]')!;
         await act(async () => add.click());
         expect(add.getAttribute("aria-expanded")).toBe("true");
@@ -239,7 +243,7 @@ test("真实主工具条按用户顺序分配四个常驻命令，隐藏项不�
         expect(labels[0]).toBe("姿势库");
         expect(labels).not.toContain("重做");
         await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!.click());
-        expect([...host.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(["重做", "画布外观", "工具栏设置", "删除 2 个节点"]);
+        expect([...host.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(["重做", "工具栏设置"]);
     } finally {
         await act(async () => root.unmount());
         host.remove();
@@ -258,7 +262,7 @@ test("没有选区或已关联项目时，菜单沿用原命令状态；全隐�
         await act(async () => host.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!.click());
         expect(host.querySelector('[aria-label="素材库"]')).toBeNull();
         expect(menuItems().some((item) => item.textContent === "素材库")).toBe(false);
-        expect(menuItems().find((item) => item.textContent === "删除选中节点")?.disabled).toBe(true);
+        expect(menuItems().some((item) => item.textContent === "删除选中节点")).toBe(false);
         const defaults = defaultToolbarPrefs("main");
         persistToolbarPrefs("main", { order: defaults.order, hidden: defaults.order });
         await act(async () => root.render(<MainToolbarHarness key="hidden" />));

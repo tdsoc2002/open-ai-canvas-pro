@@ -47,7 +47,6 @@ export function CanvasToolbar({
     onUndo,
     onRedo,
     onUpload,
-    onDelete,
     onClear,
     onDeselect,
     onAppearanceChange,
@@ -87,7 +86,6 @@ export function CanvasToolbar({
     onUndo: () => void;
     onRedo: () => void;
     onUpload: () => void;
-    onDelete: () => void;
     onClear: () => void;
     onDeselect: () => void;
     onAppearanceChange: (appearance: CanvasAppearance) => void;
@@ -128,7 +126,7 @@ export function CanvasToolbar({
 
     const togglePanel = (next: NonNullable<typeof panel>, event: ReactMouseEvent<HTMLElement>, width: number) => {
         if (dockRef.current?.contains(event.currentTarget)) panelAnchor.current = event.currentTarget;
-        if (!vertical && panelAnchor.current) setPanelX(getPanelX(dockRef.current, panelAnchor.current, width));
+        if (!vertical && panelAnchor.current) setPanelX(getPanelX(rootRef.current, panelAnchor.current, width));
         setPanel((current) => (current === next ? null : next));
     };
     const runAddAction = (action: () => void) => {
@@ -192,7 +190,6 @@ export function CanvasToolbar({
             setPanel(null);
             setSettingsOpen(true);
         },
-        onDeleteSelected: onDelete,
         // 以下为多选/节点悬停工具栏回调，主工具栏不使用，用 no-op 占位
         onAlign: () => {},
         onArrange: () => {},

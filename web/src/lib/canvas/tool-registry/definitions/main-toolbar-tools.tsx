@@ -1,4 +1,4 @@
-import { PanelsTopLeft, Eraser, FolderOpen, Hand, MousePointer2, Palette, PersonStanding, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
+import { PanelsTopLeft, Eraser, FolderOpen, Hand, MousePointer2, Palette, PersonStanding, Plus, Redo2, Undo2 } from "lucide-react";
 
 import { registerToolbarTools, type ToolDefinition } from "@/lib/canvas/tool-registry";
 import type { CanvasToolMode } from "@/types/canvas";
@@ -103,18 +103,6 @@ export const mainToolbarTools: ToolDefinition[] = [
         expands: true,
         active: (ctx) => ctx.appearancePanelOpen,
         run: (ctx, event) => ctx.handlers.onToggleAppearancePanel(event!),
-    },
-    {
-        id: "tool-delete",
-        toolbar: "main",
-        category: "danger",
-        label: (ctx) => (ctx.selectedCount > 1 ? `删除 ${ctx.selectedCount} 个节点` : "删除选中节点"),
-        icon: <Trash2 />,
-        defaultVisible: true,
-        defaultOrder: 90,
-        danger: true,
-        disabled: (ctx) => ctx.selectedCount === 0,
-        run: (ctx) => ctx.handlers.onDeleteSelected(),
     },
     {
         id: "tool-clear",
