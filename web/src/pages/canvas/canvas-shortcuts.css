@@ -1,0 +1,195 @@
+.canvas-shortcuts-modal {
+    container-type: inline-size;
+}
+
+.canvas-shortcuts-modal .ant-modal-close {
+    inset-block-start: var(--space-3);
+    inset-inline-end: var(--space-2);
+}
+
+.canvas-shortcuts-shell {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    max-height: 86dvh;
+    flex-direction: column;
+    color: var(--foreground);
+}
+
+.canvas-shortcuts-header {
+    display: grid;
+    flex-shrink: 0;
+    grid-template-columns: auto minmax(0, 12rem);
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    border-block-end: var(--stroke-1) solid var(--border);
+    padding: var(--space-3) var(--space-12) var(--space-3) var(--space-4);
+}
+
+.canvas-shortcuts-header h2 {
+    margin: 0;
+    font-size: var(--fs-body);
+    font-weight: 600;
+}
+
+.canvas-shortcuts-search {
+    display: flex;
+    min-width: 0;
+    min-height: var(--space-8);
+    align-items: center;
+    gap: var(--space-2);
+    border: var(--stroke-1) solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface-hover);
+    padding-inline: var(--space-2);
+    color: var(--muted-foreground);
+}
+
+.canvas-shortcuts-search:focus-within {
+    border-color: var(--control-focus-ring);
+}
+
+.canvas-shortcuts-search > svg {
+    width: var(--space-4);
+    height: var(--space-4);
+    flex-shrink: 0;
+}
+
+.canvas-shortcuts-search input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-size: var(--fs-label);
+}
+
+.canvas-shortcuts-search button {
+    flex-shrink: 0;
+    border-radius: var(--r-xs);
+    padding-inline: var(--space-1);
+    color: var(--muted-foreground);
+    font-size: var(--fs-label);
+    cursor: pointer;
+}
+
+.canvas-shortcuts-search button:focus-visible {
+    outline: var(--stroke-1) solid var(--control-focus-ring);
+}
+
+.canvas-shortcuts-results {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.canvas-shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-block: var(--space-4);
+}
+
+.canvas-shortcuts-group {
+    min-width: 0;
+    padding-inline: var(--space-3);
+}
+
+.canvas-shortcuts-group + .canvas-shortcuts-group {
+    border-inline-start: var(--stroke-1) solid var(--border);
+}
+
+.canvas-shortcuts-group h3 {
+    margin: 0 0 var(--space-2);
+    color: var(--brand, var(--foreground));
+    font-size: var(--fs-ui);
+    font-weight: 600;
+}
+
+.canvas-shortcuts-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.canvas-shortcuts-row {
+    display: grid;
+    min-height: var(--space-8);
+    grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content);
+    align-items: center;
+    gap: var(--space-2);
+    padding-block: var(--space-2);
+    font-size: var(--fs-ui);
+    line-height: 1.4;
+}
+
+.canvas-shortcuts-keys,
+.canvas-shortcuts-combination {
+    display: flex;
+    align-items: center;
+    justify-content: end;
+    gap: var(--space-1);
+    color: var(--muted-foreground);
+    font-size: var(--fs-label);
+}
+
+.canvas-shortcuts-keys {
+    flex-wrap: wrap;
+}
+
+.canvas-shortcuts-combination {
+    white-space: nowrap;
+}
+
+.canvas-shortcuts-combination kbd {
+    min-width: var(--space-5);
+    height: var(--space-5);
+    border: 0;
+    background: var(--surface-hover);
+    padding-inline: var(--space-1);
+    color: var(--muted-foreground);
+    font-size: var(--fs-label);
+}
+
+.canvas-shortcuts-empty {
+    margin: 0;
+    padding: var(--space-8) var(--space-4);
+    color: var(--muted-foreground);
+    text-align: center;
+}
+
+@container (width < 65rem) {
+    .canvas-shortcuts-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        row-gap: var(--space-3);
+    }
+
+    .canvas-shortcuts-group:nth-child(odd) {
+        border-inline-start: 0;
+    }
+}
+
+@container (width < 33rem) {
+    .canvas-shortcuts-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .canvas-shortcuts-group + .canvas-shortcuts-group {
+        border-inline-start: 0;
+        border-block-start: var(--stroke-1) solid var(--border);
+        padding-block-start: var(--space-2);
+    }
+}
+
+@container (width < 22rem) {
+    .canvas-shortcuts-header {
+        grid-template-columns: minmax(0, 1fr);
+        padding-inline-end: var(--space-4);
+    }
+
+    .canvas-shortcuts-header h2 {
+        padding-inline-end: var(--space-8);
+    }
+}

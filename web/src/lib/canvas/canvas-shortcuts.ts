@@ -3,6 +3,7 @@ export type CanvasShortcutCategoryId = "common" | "navigation" | "selection" | "
 export type CanvasShortcutCategory = {
     id: CanvasShortcutCategoryId;
     label: string;
+    shortLabel: string;
     description: string;
 };
 
@@ -12,23 +13,24 @@ export type CanvasShortcutItem = {
     title: string;
     description: string;
     keys: string[][];
+    compactKeys?: string[][];
     keywords?: string[];
 };
 
-export const CANVAS_MODIFIER_KEY = "Ctrl / Cmd";
+export const CANVAS_MODIFIER_KEY = "Ctrl/Cmd";
 
 export const CANVAS_SHORTCUT_CATEGORIES: CanvasShortcutCategory[] = [
-    { id: "common", label: "常用", description: "搜索、保存与界面" },
-    { id: "navigation", label: "视图与导航", description: "平移、缩放与定位" },
-    { id: "selection", label: "选择与连接", description: "批量选择和节点连接" },
-    { id: "editing", label: "编辑与文件", description: "编辑、撤销与导入" },
+    { id: "common", label: "常用", shortLabel: "常用", description: "搜索、保存与界面" },
+    { id: "navigation", label: "视图与导航", shortLabel: "视图", description: "平移、缩放与定位" },
+    { id: "selection", label: "选择与连接", shortLabel: "选择", description: "批量选择和节点连接" },
+    { id: "editing", label: "编辑与文件", shortLabel: "编辑", description: "编辑、撤销与导入" },
 ];
 
 export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "search",
         category: "common",
-        title: "搜索画布节点",
+        title: "搜索节点",
         description: "按名称或内容搜索并定位节点",
         keys: [[CANVAS_MODIFIER_KEY, "F"]],
         keywords: ["查找", "定位", "find", "search"],
@@ -36,7 +38,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "shortcuts",
         category: "common",
-        title: "打开快捷键中心",
+        title: "快捷键",
         description: "查看画布中的键盘和鼠标操作",
         keys: [["?"]],
         keywords: ["帮助", "说明", "help"],
@@ -44,7 +46,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "agent",
         category: "common",
-        title: "打开或收起 Agent",
+        title: "切换 Agent",
         description: "打开后光标直接在输入框里；焦点在 Agent 里时再按一次收起",
         keys: [[CANVAS_MODIFIER_KEY, "J"]],
         keywords: ["助手", "AI", "对话", "agent"],
@@ -60,17 +62,18 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "focus",
         category: "common",
-        title: "进入或退出专注模式",
-        description: "隐藏界面干扰，聚焦当前画布",
+        title: "专注模式",
+        description: "进入或退出专注模式，聚焦当前画布",
         keys: [["Shift", CANVAS_MODIFIER_KEY, "F"]],
         keywords: ["沉浸", "全屏", "focus"],
     },
     {
         id: "pan",
         category: "navigation",
-        title: "平移视图",
+        title: "平移",
         description: "触控板双指滑动，按住空格键 / 中键拖动，或切到抓手工具后拖动画布",
         keys: [["触控板双指"], ["Space", "左键拖动"], ["中键拖动"]],
+        compactKeys: [["双指滑动"], ["空格左拖"], ["中键拖动"]],
         keywords: ["移动", "画布", "触控板", "pan"],
     },
     {
@@ -84,7 +87,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "resize-selected-image",
         category: "navigation",
-        title: "等比例调整选中图片大小",
+        title: "等比缩放图片",
         description: "单选一张未锁定的图片，按住 Ctrl 滚动滚轮；只改变画布上的显示尺寸，原图像素不变。触控板捏合仍缩放画布",
         keys: [["Ctrl", "滚轮"]],
         keywords: ["图片", "节点", "大小", "比例"],
@@ -92,7 +95,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "zoom-controls",
         category: "navigation",
-        title: "精确调整缩放",
+        title: "缩放比例",
         description: "使用画布缩放滑杆调整比例",
         keys: [["缩放滑杆"]],
         keywords: ["比例", "zoom"],
@@ -100,18 +103,19 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "zoom-steps",
         category: "navigation",
-        title: "步进缩放画布",
+        title: "逐级缩放",
         description: "按固定步长放大或缩小画布",
         keys: [
             [CANVAS_MODIFIER_KEY, "+"],
             [CANVAS_MODIFIER_KEY, "-"],
         ],
+        compactKeys: [[CANVAS_MODIFIER_KEY, "+ / −"]],
         keywords: ["放大", "缩小", "zoom"],
     },
     {
         id: "zoom-presets",
         category: "navigation",
-        title: "快速调整视图",
+        title: "视图预设",
         description: "0/1 恢复 100%，2 适应画布，3 适应选择",
         keys: [
             [CANVAS_MODIFIER_KEY, "0"],
@@ -119,20 +123,22 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
             [CANVAS_MODIFIER_KEY, "2"],
             [CANVAS_MODIFIER_KEY, "3"],
         ],
+        compactKeys: [[CANVAS_MODIFIER_KEY, "0–3"]],
         keywords: ["100%", "适应", "居中", "缩放", "fit"],
     },
     {
         id: "box-select",
         category: "selection",
-        title: "框选多个节点",
+        title: "框选",
         description: "空白处左键拖动默认框选；Shift 追加、Command/Ctrl 切换、Alt 移除",
         keys: [["空白处左键拖动"], ["Shift", "拖动"], [CANVAS_MODIFIER_KEY, "拖动"], ["Alt", "拖动"]],
+        compactKeys: [["空白左拖"], [`Shift/${CANVAS_MODIFIER_KEY}/Alt`, "拖动"]],
         keywords: ["多选", "范围", "selection"],
     },
     {
         id: "box-select-tool",
         category: "selection",
-        title: "使用区域选择工具",
+        title: "区域选择",
         description: "底部工具栏的胶囊开关切到区域选择后，空白处拖动可连续框选",
         keys: [["区域选择", "拖动"]],
         keywords: ["工具栏", "多选", "selection"],
@@ -140,18 +146,19 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "add-selection",
         category: "selection",
-        title: "追加选择节点",
+        title: "追加选择",
         description: "保留已有选择并加入更多节点",
         keys: [
             ["Shift", "点击"],
             [CANVAS_MODIFIER_KEY, "点击"],
         ],
+        compactKeys: [[`Shift/${CANVAS_MODIFIER_KEY}`, "点击"]],
         keywords: ["多选", "添加", "selection"],
     },
     {
         id: "remove-selection",
         category: "selection",
-        title: "移除选择节点",
+        title: "移除选择",
         description: "从当前选择中移除点击或框选的节点",
         keys: [["Alt", "点击 / 框选"]],
         keywords: ["取消", "排除", "selection"],
@@ -167,7 +174,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "batch-connect",
         category: "selection",
-        title: "批量连接节点",
+        title: "批量连线",
         description: "为两个或更多已选节点进入批量连接模式",
         keys: [["Alt", "L"]],
         keywords: ["连线", "连接", "link"],
@@ -183,7 +190,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "paste",
         category: "editing",
-        title: "粘贴节点或剪贴板内容",
+        title: "粘贴",
         description: "粘贴已复制节点、文本或图片",
         keys: [[CANVAS_MODIFIER_KEY, "V"]],
         keywords: ["剪贴板", "paste"],
@@ -191,7 +198,7 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "delete",
         category: "editing",
-        title: "删除选中内容",
+        title: "删除选中",
         description: "删除选中的节点或连线",
         keys: [["Delete"], ["Backspace"]],
         keywords: ["移除", "delete"],
@@ -213,12 +220,13 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
             [CANVAS_MODIFIER_KEY, "Shift", "Z"],
             [CANVAS_MODIFIER_KEY, "Y"],
         ],
+        compactKeys: [[CANVAS_MODIFIER_KEY, "Shift+Z / Y"]],
         keywords: ["恢复", "redo"],
     },
     {
         id: "escape",
         category: "editing",
-        title: "取消当前操作",
+        title: "取消操作",
         description: "取消选择、关闭浮层或退出专注模式",
         keys: [["Esc"]],
         keywords: ["关闭", "退出", "cancel"],
@@ -242,7 +250,7 @@ export function filterCanvasShortcuts(query: string, category?: CanvasShortcutCa
         if (!terms.length) return true;
 
         const categoryLabel = CANVAS_SHORTCUT_CATEGORIES.find((entry) => entry.id === shortcut.category)?.label || "";
-        const searchableText = [shortcut.title, shortcut.description, categoryLabel, shortcut.keys.flat().join(" "), ...(shortcut.keywords || [])].join(" ").toLocaleLowerCase();
+        const searchableText = [shortcut.title, shortcut.description, categoryLabel, ...shortcut.keys.flat(), ...(shortcut.compactKeys?.flat() ?? []), ...(shortcut.keywords || [])].join(" ").toLocaleLowerCase();
         return terms.every((term) => searchableText.includes(term));
     });
 }
