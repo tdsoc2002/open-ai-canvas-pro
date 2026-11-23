@@ -8,6 +8,8 @@ import { imagePresetForRatio, imageSizeConfigWithPresets } from "@/lib/image-siz
 import { defaultImageCapabilityConfig } from "@/lib/model-capabilities";
 import { WorkbenchStudio } from "@/pages/workbench/workbench-studio";
 import { ChoiceChips, ComposerFooter, ComposerSection, CountStepper, PromptSection, ReferenceSection, videoRatioOptions } from "@/pages/workbench/workbench-composer";
+import { WorkbenchGallery, type GalleryActions, type GalleryBatch } from "@/pages/workbench/workbench-gallery";
+import type { GenerationTask } from "@/services/api/task-center";
 
 describe("乐见生成工作台呈现合同", () => {
     for (const kind of ["image", "video"] as const) {
@@ -295,6 +297,73 @@ test("画面描述保留编辑器和场景预设，不显示灵感词快捷选�
     expect(html).toContain("画面描述编辑器");
     expect(html).toContain("标准单镜头");
     expect(html).not.toContain("灵感词");
+});
+
+test("作品卡片显示真实阶段，只在供应商有生成进度时显示百分比", () => {
+    const noop = () => {};
+    const actions: GalleryActions = {
+        openOutput: noop,
+        download: noop,
+        cancelTask: noop,
+        retryTask: noop,
+        reuse: noop,
+        copyPrompt: noop,
+        downloadAll: noop,
+        cancelBatch: noop,
+        retryFailed: noop,
+        resume: noop,
+        dismiss: noop,
+        visible: noop,
+        measure: noop,
+    };
+    const createdAt = "2026-01-01T00:00:00Z";
+    const render = (status: Pick<GenerationTask, "status" | "stage" | "mediaStage" | "progress">) => {
+        const task: GenerationTask = { id: "task", type: "video", prompt: "人物走过街道", attempts: 1, createdAt, updatedAt: createdAt, ...status };
+        const batch: GalleryBatch = {
+            key: "batch",
+            createdAt,
+            prompt: task.prompt,
+            chips: [],
+            tiles: [{ type: "active", key: task.id, task, slot: 0 }],
+            tasks: [task],
+            outputs: [],
+            counts: { done: 0, active: 1, failed: 0, pending: 0, total: 1 },
+            resumable: 0,
+            submitting: false,
+            localOnly: false,
+        };
+        return renderToStaticMarkup(
+            <WorkbenchGallery
+                kind="video"
+                batches={[batch]}
+                loading={false}
+                filter="all"
+                query=""
+                busyTaskIds={new Set()}
+                actions={actions}
+                quickTools={[]}
+                historyCapped={false}
+                onFilterChange={noop}
+                onQueryChange={noop}
+                onRefresh={noop}
+                onOpenLibrary={noop}
+                onChooseTool={noop}
+            />,
+        );
+    };
+
+    const queued = render({ status: "queued", stage: "候车 · 前面 3 条", progress: 4 });
+    expect(queued).toContain('role="status">候车 · 前面 3 条');
+    expect(queued).not.toContain("wb-tile-progress");
+    const generating = render({ status: "running", stage: "processing", progress: 1 });
+    expect(generating).toContain('role="status">正在生成视频');
+    expect(generating).toContain(">1%</small>");
+    const saving = render({ status: "running", stage: "保存遇到问题，正在自动重试", mediaStage: "upload", progress: 98 });
+    expect(saving).toContain('role="status">保存遇到问题，正在重试');
+    expect(saving).not.toContain("wb-tile-progress");
+    const uncertain = render({ status: "running", stage: "submission_unknown", progress: 4 });
+    expect(uncertain).toContain('role="status">提交结果待确认');
+    expect(uncertain).not.toContain("wb-tile-progress");
 });
 
 test.each([

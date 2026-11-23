@@ -1,7 +1,7 @@
 import { App, Button } from "antd";
 import { Clapperboard, Image as ImageIcon, RotateCcw } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { ImageSizePicker } from "@/components/image-size-picker";
@@ -1083,9 +1083,19 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             pollKickRef.current();
         }
         const unit = kind === "image" ? "批" : "条";
-        if (created && !failure) message.success(created > 1 ? `已提交 ${created} 个任务，正在生成` : "已提交，正在生成");
-        else if (created) message.warning(`已提交 ${created} 个任务，其余未提交：${failure}`);
-        else if (failure) message.error(indices.length > 1 ? `这${unit}没有提交成功：${failure}` : failure);
+        if (created) {
+            const summary = created > 1 ? `已提交 ${created} 个任务` : "任务已提交";
+            const detail = failure ? `${summary}，其余未提交：${failure}` : summary;
+            const content = showGallery ? (
+                detail
+            ) : (
+                <>
+                    {detail} <Link to="/tasks">查看创作历史</Link>
+                </>
+            );
+            if (failure) message.warning(content);
+            else message.success(content);
+        } else if (failure) message.error(indices.length > 1 ? `这${unit}没有提交成功：${failure}` : failure);
     };
 
     const submit = async () => {

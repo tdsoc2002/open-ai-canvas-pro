@@ -6,6 +6,7 @@ import { WorkspaceNoResultsState, WorkspaceState } from "@/components/layout/wor
 import { SegmentedControl } from "@/components/ui/base/segmented-control/segmented-control";
 import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
 import { RelativeTime } from "@/components/ui/product/relative-time";
+import { generationPhaseHint, generationPhaseLabel, generationTaskPhase, generationTaskShowsProgress } from "@/lib/generation-task-display";
 import { cn } from "@/lib/utils";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { WorkbenchKind, WorkbenchTool } from "@/services/api/workbench";
@@ -193,20 +194,24 @@ function OutputTile({ batch, tile, kind, actions }: { batch: GalleryBatch; tile:
     );
 }
 
-function ProgressTile({ tile, actions, busy }: { tile: Extract<GalleryTile, { type: "active" }>; actions: GalleryActions; busy: boolean }) {
+function ProgressTile({ tile, kind, actions, busy }: { tile: Extract<GalleryTile, { type: "active" }>; kind: WorkbenchKind; actions: GalleryActions; busy: boolean }) {
     const { task } = tile;
-    const progress = Math.max(4, Math.min(99, Math.round(task.progress || 0)));
+    const phase = generationTaskPhase(task);
+    const progress = phase === "generating" && generationTaskShowsProgress(task) ? Math.min(100, Math.round(task.progress ?? 0)) : null;
+    const hint = phase === "uncertain" ? generationPhaseHint(phase, kind, task.stage) : "";
     return (
-        <div className="wb-tile is-active" aria-busy="true">
+        <div className="wb-tile is-active">
             <span className="wb-tile-shimmer" aria-hidden />
             <span className="wb-tile-state">
-                <LoaderCircle className="wb-spin" />
-                <strong>{task.status === "queued" ? "排队中" : task.stage || "生成中"}</strong>
-                <small>{progress}%</small>
+                <LoaderCircle className="wb-spin" aria-hidden />
+                <strong role="status">{generationPhaseLabel(phase, kind, task.stage)}</strong>
+                {progress !== null ? <small>{progress}%</small> : hint ? <small>{hint}</small> : null}
             </span>
-            <span className="wb-tile-progress" aria-hidden>
-                <span style={{ transform: `translateX(${progress - 100}%)` }} />
-            </span>
+            {progress !== null ? (
+                <span className="wb-tile-progress" aria-hidden>
+                    <span style={{ transform: `translateX(${progress - 100}%)` }} />
+                </span>
+            ) : null}
             {tile.slot === 0 ? (
                 <Tooltip title="取消这个任务">
                     <button type="button" className="wb-tile-cancel" data-icon-only aria-label="取消任务" disabled={busy} onClick={() => actions.cancelTask(task)}>
@@ -247,7 +252,7 @@ const BatchCard = memo(function BatchCard({ batch, kind, actions, busyTaskIds }:
         batch.submitting && counts.done + counts.failed === 0 && !batch.tasks.length
             ? "正在提交"
             : counts.active
-              ? `${counts.done} / ${counts.total} 已完成 · ${counts.active} ${unit}生成中`
+              ? `${counts.done} / ${counts.total} 已完成 · ${counts.active} ${unit}处理中`
               : counts.failed || batch.resumable
                 ? `${counts.done} / ${counts.total} 已完成`
                 : `${counts.total} ${unit}`;
@@ -333,7 +338,7 @@ const BatchCard = memo(function BatchCard({ batch, kind, actions, busyTaskIds }:
                     tile.type === "output" ? (
                         <OutputTile key={tile.key} batch={batch} tile={tile} kind={kind} actions={actions} />
                     ) : tile.type === "active" ? (
-                        <ProgressTile key={tile.key} tile={tile} actions={actions} busy={busyTaskIds.has(tile.task.id)} />
+                        <ProgressTile key={tile.key} tile={tile} kind={kind} actions={actions} busy={busyTaskIds.has(tile.task.id)} />
                     ) : tile.type === "failed" ? (
                         <FailedTile key={tile.key} task={tile.task} actions={actions} busy={busyTaskIds.has(tile.task.id)} />
                     ) : tile.type === "loading" ? (
@@ -387,7 +392,7 @@ export function WorkbenchGallery({
     onChooseTool: (tool: WorkbenchTool) => void;
 }) {
     const visible = batches.filter((batch) => galleryBatchMatches(batch, filter, query));
-    // 筛选计数按批次统计，与筛选结果一致；生成中的作品数单独按张 / 条显示。
+    // 筛选计数按批次统计，正在处理的作品数按张或条统计。
     const totals = batches.reduce(
         (sum, batch) => ({
             outputs: sum.outputs + batch.outputs.length,
@@ -405,7 +410,7 @@ export function WorkbenchGallery({
                     <h2>作品</h2>
                     <span>
                         {totals.outputs} {unit}
-                        {totals.generating ? ` · ${totals.generating} ${unit}生成中` : ""}
+                        {totals.generating ? ` · ${totals.generating} ${unit}处理中` : ""}
                     </span>
                 </div>
                 <div className="wb-gallery-tools">
