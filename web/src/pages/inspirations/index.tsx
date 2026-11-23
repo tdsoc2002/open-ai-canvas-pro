@@ -1,5 +1,6 @@
-import { App, Button, Dropdown, Input } from "antd";
-import { ChevronDown, Download, Heart, Import, MoreHorizontal, Pencil, Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { App, Button, Dropdown } from "antd";
+import { ChevronDown, Download, Heart, Import, MoreHorizontal, Pencil, Plus, RotateCcw, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ListSearchInput } from "@/components/ui/base/list-search-input";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
@@ -429,7 +430,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                         </button>
                     ))}
                 </div>
-                <Input allowClear prefix={<Search className="size-4" />} placeholder="搜索标题、描述或标签" aria-label="搜索灵感" value={search} onChange={(event) => setSearch(event.target.value)} className="inspiration-hall-search" />
+                <ListSearchInput placeholder="搜索标题、描述或标签" aria-label="搜索灵感" value={search} onValueChange={setSearch} className="inspiration-hall-search" />
             </div>
 
             <div className="inspiration-hall-secondary-toolbar">

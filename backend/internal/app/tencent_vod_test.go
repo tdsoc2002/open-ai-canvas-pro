@@ -166,14 +166,18 @@ func TestTencentVODAdminSavesModelAndResolvesTrustedScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := svc.resolveProviderConfig(providerConfig{ChannelID: channel.ID, Model: channelModel.ModelKey, BaseURL: "https://untrusted.example", tencentVODAppID: 99})
+	resolved, err := svc.resolveProviderConfig(providerConfig{ChannelID: channel.ID, Model: channelModel.ModelKey, BaseURL: "https://untrusted.example", tencentVODAppID: 99}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if resolved.BaseURL != tencentVODBaseURL || resolved.tencentVODAppID != appID || resolved.Model != "vs-2.5" || len(resolved.Headers) != 0 {
 		t.Fatal("stored system settings did not override task-supplied settings")
 	}
-	if paths := svc.SystemProxyDeclaredPostPaths(model.ChannelInterfaceTencentVODVS); len(paths) != 0 {
+	contract, err := svc.ResolveSystemProxyContract(model.ChannelInterfaceTencentVODVS, channelModel.ProtocolRelease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if paths := contract.DeclaredPostPaths(); len(paths) != 0 {
 		t.Fatalf("browser proxy paths unexpectedly allowed: %v", paths)
 	}
 }

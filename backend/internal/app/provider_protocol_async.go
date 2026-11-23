@@ -11,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"yingce/backend/internal/model"
 	"yingce/backend/internal/protocol"
 )
 
@@ -56,7 +58,14 @@ func uploadProtocolMedia(ctx context.Context, input canvasGenerationInput, adapt
 				if err != nil {
 					return err
 				}
-				body, err := executeProtocolRequest(withProviderRequestKind(ctx, "upload"), input.Config, spec)
+				uploadConfig := input.Config
+				if input.Config.InterfaceType == string(model.ChannelInterfaceEvoLinkSeedAudio) {
+					uploadConfig, err = evoLinkSeedUploadConfig(uploadConfig)
+					if err != nil {
+						return err
+					}
+				}
+				body, err := executeProtocolRequest(withProviderRequestKind(ctx, "upload"), uploadConfig, spec)
 				if err != nil {
 					return fmt.Errorf("上传参考素材失败：%w", err)
 				}
@@ -80,6 +89,61 @@ func uploadProtocolMedia(ctx context.Context, input canvasGenerationInput, adapt
 		}
 	}
 	return nil
+}
+
+func evoLinkSeedUploadConfig(config providerConfig) (providerConfig, error) {
+	origin, err := url.Parse(strings.TrimSpace(config.BaseURL))
+	if err != nil || origin.Scheme != "https" || !strings.EqualFold(origin.Hostname(), "api.evolink.ai") ||
+		origin.User != nil || (origin.Port() != "" && origin.Port() != "443") {
+		return providerConfig{}, InvalidModelSelection("EvoLink 参考音频仅支持使用官方 HTTPS 渠道上传")
+	}
+	config.BaseURL = "https://files-api.evolink.ai"
+	config.Headers = nil
+	config.SecretKey = ""
+	return config, nil
+}
+
+type protocolHTTPReceipt struct {
+	parse  func([]byte) (protocol.CreateResult, error)
+	result protocol.CreateResult
+	err    error
+	parsed bool
+}
+
+func (receipt *protocolHTTPReceipt) decode(body []byte) (protocol.CreateResult, error) {
+	if !receipt.parsed {
+		receipt.result, receipt.err = receipt.parse(body)
+		receipt.parsed = true
+	}
+	return receipt.result, receipt.err
+}
+
+func withProtocolHTTPReceipt(ctx context.Context, receipt *protocolHTTPReceipt) context.Context {
+	if metadata, ok := ctx.Value(providerAnalyticsKey{}).(providerAnalyticsContext); ok {
+		metadata.ProtocolReceipt = receipt
+		return context.WithValue(ctx, providerAnalyticsKey{}, metadata)
+	}
+	return ctx
+}
+
+func submitProtocolMediaTask(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter, request protocol.GenerationRequest, spec protocol.RequestSpec) (protocol.CreateResult, error) {
+	receipt := protocolHTTPReceipt{parse: func(body []byte) (protocol.CreateResult, error) {
+		if parser, ok := adapter.(protocol.RequestAwareCreateParser); ok {
+			return parser.ParseCreateWithRequest(ctx, request, body)
+		}
+		return adapter.ParseCreate(ctx, body)
+	}}
+	if adapter.Metadata().Poll != "" {
+		ctx = withProtocolHTTPReceipt(ctx, &receipt)
+	}
+	body, streamed, err := executeIdempotentProtocolCreate(ctx, input, spec, adapter.Metadata().IdempotentCreate)
+	if err != nil {
+		return protocol.CreateResult{}, err
+	}
+	if streamed != nil {
+		return protocol.CreateResult{Status: protocol.StatusSucceeded, Result: streamed}, nil
+	}
+	return receipt.decode(body)
 }
 
 // executeIdempotentProtocolCreate 只在清单声明 idempotentCreate 时重试 create：上游以宿主幂等键

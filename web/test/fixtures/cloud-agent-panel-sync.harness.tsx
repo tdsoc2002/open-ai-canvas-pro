@@ -1,6 +1,7 @@
 import { afterAll, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import type { AgentEvent, AgentRun } from "@/services/api/agent";
+import type { Skill } from "@/services/api/skills";
 import type { CloudAgentConversation, CloudAgentPendingSubmission } from "@/services/cloud-agent-conversations";
 import type { TextThinkingConfig } from "@/lib/text-thinking";
 import type { AgentRequestTarget } from "@/lib/agent-page-context";
@@ -56,9 +57,10 @@ let sendOverride: (() => Promise<{ run: AgentRun }>) | undefined;
 let draftCanvasUntilPrepared = false;
 let canvasPrepared = false;
 const cloudCalls: string[] = [];
+const skillRequests: string[] = [];
+let addedSkills: Skill[] = [];
 const refreshRequests: Array<{ observedConversationIds?: string[]; canvasId?: string }> = [];
 let generated = 0;
-let skillPresetReads = 0;
 let composer: Record<string, any>;
 let header: Record<string, any>;
 let conversationUI: Record<string, any>;
@@ -152,11 +154,17 @@ mock.module("@/services/cloud-agent-history", () => ({
 mock.module("@/services/api/skills", () => ({
     ...skillsApi,
     listSkillPresets: async () => {
-        skillPresetReads++;
+        skillRequests.push("presets");
         return { presets: [] };
     },
-    listSkills: async () => ({ skills: [] }),
-    listAddedSkills: async () => ({ skills: [] }),
+    listSkills: async ({ scope }: { scope: string }) => {
+        skillRequests.push(scope);
+        return { skills: [] };
+    },
+    listAddedSkills: async () => {
+        skillRequests.push("installed");
+        return { skills: addedSkills };
+    },
     listSkillLibraryCategories: async () => ({ categories: [] }),
     addSkill: async () => {
         throw new Error("不应安装技能");
@@ -283,11 +291,13 @@ async function mount(
     initialPending: CloudAgentPendingSubmission | null = null,
     target: AgentRequestTarget = { canvasId: "shared-canvas" },
     initialPrefill?: Omit<AgentPrefillRequest, "id">,
-    options: { draftCanvas?: boolean } = {},
+    options: { draftCanvas?: boolean; addedSkills?: Skill[] } = {},
 ) {
     draftCanvasUntilPrepared = Boolean(options.draftCanvas);
     canvasPrepared = false;
     cloudCalls.length = 0;
+    skillRequests.length = 0;
+    addedSkills = options.addedSkills ?? [];
     local = [initial];
     activeId = initial.id;
     remote = cloud;
@@ -299,7 +309,6 @@ async function mount(
     capabilitiesOverride = undefined;
     sendOverride = undefined;
     generated = 0;
-    skillPresetReads = 0;
     subscriptions.length = 0;
     refreshRequests.length = 0;
     setActiveUserScope("sync-user");
@@ -354,7 +363,7 @@ function configureModels(ambiguous: boolean, thinking?: TextThinkingConfig) {
 test("技能组合只在主动打开技能库后请求，模型控件独立置于输入区顶部", async () => {
     const mounted = await mount(chat("empty", null), []);
     try {
-        expect(skillPresetReads).toBe(0);
+        expect(skillRequests).not.toContain("presets");
         const skills = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === "打开技能库");
         const modelButton = document.querySelector("[data-test-composer-model]");
         const draft = document.querySelector("textarea");
@@ -363,7 +372,51 @@ test("技能组合只在主动打开技能库后请求，模型控件独立置�
         expect(Boolean(draft!.compareDocumentPosition(skills!) & dom.Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
         await act(async () => skills!.click());
         expect(controls.skillsOpen).toBe(true);
-        expect(skillPresetReads).toBe(1);
+        expect(skillRequests.filter((request) => request === "presets")).toHaveLength(1);
+    } finally {
+        await mounted.close();
+    }
+});
+
+test("普通聊天和窗口聚焦跳过技能查询，输入技能快捷键才读取已装技能", async () => {
+    const mounted = await mount(chat("local", makeRun("previous")), []);
+    try {
+        await act(async () => composer.onPromptChange("你好"));
+        await focus();
+        expect(skillRequests).toEqual([]);
+        addedSkills = [{ skillId: "shot-breakdown", skillName: "分镜", isAdded: true } as Skill];
+        await act(async () => composer.onPromptChange("请用/分镜。"));
+        expect(skillRequests).toEqual(["installed"]);
+        await act(async () => composer.onPromptChange("/"));
+        expect(skillRequests).toEqual(["installed"]);
+        await act(async () => controls.onSkillsOpenChange(true));
+        expect(skillRequests).toContain("presets");
+        expect(skillRequests).toContain("created");
+        await act(async () => composer.onPromptChange("请用/分镜。"));
+        await act(async () => {
+            composer.onSubmit();
+            await settle();
+        });
+        expect(sendInputs[0]?.pinnedSkillIds).toEqual(["shot-breakdown"]);
+    } finally {
+        await mounted.close();
+    }
+});
+
+test("发送时按当前技能目录移除在另一端卸载的固定技能", async () => {
+    const removed = { skillId: "removed", skillName: "已卸载", isAdded: true } as Skill;
+    const kept = { skillId: "kept", skillName: "保留", isAdded: true } as Skill;
+    const initial = { ...chat("local", makeRun("previous")), skillIds: [removed.skillId, kept.skillId] };
+    const mounted = await mount(initial, [], null, undefined, undefined, { addedSkills: [removed, kept] });
+    try {
+        expect(skillRequests).toContain("installed");
+        addedSkills = [kept];
+        await act(async () => composer.onPromptChange("开始下一轮"));
+        await act(async () => {
+            composer.onSubmit();
+            await settle();
+        });
+        expect(sendInputs[0]?.pinnedSkillIds).toEqual([kept.skillId]);
     } finally {
         await mounted.close();
     }

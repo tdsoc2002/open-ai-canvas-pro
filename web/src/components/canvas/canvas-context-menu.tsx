@@ -43,6 +43,7 @@ import { resolveAddNodeMenuCommands, type AddNodeMenuContext } from "@/lib/canva
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { CanvasNodeType, type CanvasFrameColor, type CanvasNodeData, type CanvasNodeTypeId, type CanvasWorkspaceMode, type ContextMenuState, type Position } from "@/types/canvas";
+import "./canvas-context-menu.css";
 
 type CanvasAssetCategory = NonNullable<NonNullable<CanvasNodeData["metadata"]>["assetCategory"]>;
 
@@ -229,14 +230,23 @@ export function CanvasNodeContextMenu({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-                className="aceternity-floating-panel fixed z-[var(--z-popover)] flex max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-[var(--r-lg)] border p-1.5 backdrop-blur-2xl backdrop-saturate-150"
+                className="canvas-context-panel aceternity-floating-panel fixed z-[var(--z-popover)] flex origin-top-left flex-col overflow-hidden rounded-[var(--r-lg)] border p-1.5 backdrop-blur-2xl backdrop-saturate-150"
                 style={
-                    { ...position, width: CONTEXT_MENU_WIDTH, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, "--menu-hover": theme.toolbar.itemHover, "--tw-ring-color": theme.node.muted } as CSSProperties
+                    {
+                        left: position.left,
+                        "--canvas-context-anchor-y": `${position.top}px`,
+                        width: CONTEXT_MENU_WIDTH,
+                        background: theme.spatial.elevated,
+                        borderColor: theme.toolbar.border,
+                        color: theme.node.text,
+                        "--menu-hover": theme.toolbar.itemHover,
+                        "--tw-ring-color": theme.node.muted,
+                    } as CSSProperties
                 }
                 onContextMenu={(event) => event.preventDefault()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
-                <div className="thin-scrollbar min-h-0 space-y-1 overflow-y-auto">
+                <div className="thin-scrollbar flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain [&>*]:shrink-0">
                     {menu.type === "node" && isFrame && frameColorOpen ? (
                         <>
                             <MenuHeader title="设置背板颜色" description={node?.title} onBack={() => setFrameColorOpen(false)} />
@@ -559,8 +569,8 @@ function MenuButton({
                     "--menu-item-hover": expanded ? "color-mix(in srgb, var(--menu-item-accent) 16%, transparent)" : (background ?? (danger ? `${theme.accent.danger}1a` : "var(--menu-hover)")),
                 } as CSSProperties
             }
-            aria-expanded={expanded}
             disabled={disabled}
+            aria-expanded={expanded}
             onClick={onClick}
         >
             <span
@@ -595,7 +605,7 @@ function MenuButton({
 
 function MenuDivider() {
     const theme = canvasThemes[useActiveTheme()];
-    return <div role="separator" className="mx-2 my-1.5 h-px" style={{ background: theme.toolbar.border, opacity: 0.7 }} />;
+    return <div role="separator" className="mx-2 my-1 h-px" style={{ background: theme.toolbar.border, opacity: 0.7 }} />;
 }
 
 function getContextMenuPosition(menu: ContextMenuState, estimatedHeight: number) {

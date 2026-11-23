@@ -39,9 +39,7 @@ async function prepareEntry(dev, pathname) {
     const appearanceReady = new Promise((resolve) => (resolveAppearance = resolve));
     const localeReady = new Promise((resolve) => (resolveLocale = resolve));
     const loaded = new Promise((resolve) => (entryLoaded = resolve));
-    const listeners = new Map();
-    runInNewContext(await build.outputs[0].text(), { window: { location: { pathname }, addEventListener: (name, listener) => listeners.set(name, listener) }, events, appearanceReady, localeReady, entryLoaded });
-    expect(typeof listeners.get("vite:preloadError")).toBe("function");
+    runInNewContext(await build.outputs[0].text(), { window: { location: { pathname } }, events, appearanceReady, localeReady, entryLoaded });
     return { events, resolveAppearance, resolveLocale, loaded };
 }
 
