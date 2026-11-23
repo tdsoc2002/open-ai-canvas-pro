@@ -409,10 +409,7 @@ export default function AnalyticsPanel({ users, channels }: Props) {
 
                 <aside className="admin-analytics-attention" aria-labelledby="admin-analytics-attention-title">
                     <div className="admin-analytics-attention-heading">
-                        <div>
-                            <h2 id="admin-analytics-attention-title">需要关注</h2>
-                            <p>优先展示可能需要处理的运行状态。</p>
-                        </div>
+                        <h2 id="admin-analytics-attention-title">需要关注</h2>
                         <AdminStatusBadge label={!data ? "状态未知" : failureTotal > 0 ? `${formatNumber(failureTotal)} 次异常` : "未记录异常"} tone={!data ? "neutral" : failureTotal > 0 ? "warning" : "success"} />
                     </div>
                     <div className="admin-analytics-attention-list">
@@ -453,10 +450,7 @@ export default function AnalyticsPanel({ users, channels }: Props) {
 
             <section id="admin-analytics-analysis" className="admin-analytics-analysis-section">
                 <div className="admin-analytics-analysis-heading">
-                    <div>
-                        <h2>深度分析</h2>
-                        <p>按模型、用户或异常类型继续核对当前统计范围。</p>
-                    </div>
+                    <h2>深度分析</h2>
                 </div>
                 <Tabs
                     activeKey={analysisTab}

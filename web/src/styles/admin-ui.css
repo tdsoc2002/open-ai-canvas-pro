@@ -8730,9 +8730,7 @@
     line-height: 20px;
 }
 
-.admin-analytics-section-heading p,
-.admin-analytics-attention-heading p,
-.admin-analytics-analysis-heading p {
+.admin-analytics-section-heading p {
     margin-top: 4px;
     color: var(--admin-text-muted);
     font-size: 12px;

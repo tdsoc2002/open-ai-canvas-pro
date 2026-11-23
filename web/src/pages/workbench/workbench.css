@@ -1549,11 +1549,6 @@
     font-weight: 600;
     letter-spacing: var(--ls-title);
 }
-.wb-library-title p {
-    margin: 4px 0 0;
-    color: var(--wb-ink-3);
-    font-size: var(--fs-caption);
-}
 .wb-library-search {
     width: 280px;
 }

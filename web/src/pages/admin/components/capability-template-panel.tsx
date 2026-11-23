@@ -105,7 +105,6 @@ function ScopedCapabilityTemplates({ form, protocols, channelMediaTransport, dis
         <section className="admin-model-editor-section" aria-label="能力模板">
             <header className="admin-model-editor-section-heading">
                 <h2>能力模板</h2>
-                <p>保存在本机，应用后保存模型生效。</p>
             </header>
             <div className="admin-model-editor-section-content space-y-3">
                 <div className="flex flex-wrap items-center gap-2">

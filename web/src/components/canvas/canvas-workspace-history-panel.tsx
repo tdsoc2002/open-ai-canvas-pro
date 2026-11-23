@@ -30,7 +30,7 @@ export function CanvasWorkspaceHistoryPanel({ tasks, refreshing, onRefresh, onCa
                         ))}
                     </div>
                 ) : (
-                    <WorkspaceState icon="canvas" compact title={t("canvasC.workspaceHistory.emptyTitle")} description={t("canvasC.workspaceHistory.emptyDescription")} />
+                    <WorkspaceState icon="canvas" compact title={t("canvasC.workspaceHistory.emptyTitle")} />
                 )}
             </div>
         </>

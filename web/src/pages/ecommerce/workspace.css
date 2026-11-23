@@ -1354,11 +1354,6 @@
     letter-spacing: -0.035em;
     line-height: 1.28;
 }
-.ecommerce-history-heading-copy p {
-    margin: 0;
-    color: var(--user-ink-muted);
-    font-size: 12px;
-}
 .ecommerce-history-close {
     display: grid;
     place-items: center;
@@ -1838,9 +1833,6 @@
     }
     .ecommerce-history-heading-copy h2 {
         font-size: 19px;
-    }
-    .ecommerce-history-heading-copy p {
-        display: none;
     }
     .ecommerce-history-controls {
         padding: 10px 18px;

@@ -175,7 +175,7 @@ test("income sits before expenses, paginates separately and ignores late respons
         expect(modal.requests[4]).toMatchObject({ type: "expenses", page: 1 });
         expect(document.body.textContent).not.toContain("兑换码充值");
         await act(async () => modal.requests[4]!.reply([]));
-        expect(document.body.textContent).toContain("提交生成任务后，消费与结算记录会显示在这里。");
+        expect(document.body.textContent).toContain("还没有积分记录");
         expect(document.body.textContent).not.toContain("还没有充值记录");
         expect(document.querySelector(".workspace-wallet-pagination")).toBeNull();
     } finally {
@@ -196,7 +196,7 @@ test("opening income directly uses its own empty state and retry filter", async 
         await act(async () => modal.requests[1]!.reply([]));
         expect(document.body.textContent).toContain("还没有充值记录");
         expect(document.body.textContent).not.toContain("充值历史暂时无法读取");
-        expect(document.body.textContent).not.toContain("提交生成任务后，消费与结算记录会显示在这里。");
+        expect(document.body.textContent).not.toContain("还没有积分记录");
     } finally {
         await modal.close();
     }

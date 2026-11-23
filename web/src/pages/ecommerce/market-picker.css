@@ -20,11 +20,6 @@
     font-weight: 600;
     line-height: var(--lh-heading);
 }
-.commerce-market-head p {
-    margin: var(--space-1) 0 0;
-    color: var(--user-ink-soft);
-    font-size: var(--fs-caption);
-}
 .commerce-market .commerce-market-close {
     display: grid;
     flex: none;

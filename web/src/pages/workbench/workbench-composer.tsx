@@ -78,11 +78,10 @@ export function SceneSection({
     onChoose: (tool: WorkbenchTool | null) => void;
     onRetry: () => void;
 }) {
-    const subtitle = tool ? workbenchToolSubtitle(tool) : kind === "image" ? "不套用场景模板，直接描述想要的商品画面" : "不套用场景模板，直接描述镜头里发生什么";
+    const subtitle = tool ? workbenchToolSubtitle(tool) : "";
     return (
         <ComposerSection
             title="出品场景"
-            hint={tool ? undefined : "自动套用模板与素材要求"}
             aside={
                 <Button size="small" type="text" className="wb-text-action" onClick={onOpenLibrary}>
                     全部场景
@@ -90,11 +89,11 @@ export function SceneSection({
                 </Button>
             }
         >
-            <button type="button" className="wb-scene-current" onClick={onOpenLibrary} aria-haspopup="dialog" title={tool ? `${tool.name}\n${subtitle}` : "选择出品场景"}>
+            <button type="button" className="wb-scene-current" onClick={onOpenLibrary} aria-haspopup="dialog" title={tool && subtitle ? `${tool.name}\n${subtitle}` : (tool?.name ?? "选择出品场景")}>
                 <SceneGlyph tool={tool} kind={kind} size="lg" />
                 <span className="wb-scene-current-copy">
                     <strong>{tool?.name || "自由创作"}</strong>
-                    <small>{subtitle}</small>
+                    {subtitle ? <small>{subtitle}</small> : null}
                 </span>
                 <span className="wb-scene-current-switch">更换</span>
             </button>

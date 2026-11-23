@@ -253,7 +253,6 @@ export function EcommerceProjectHistory({
                     <div className="ecommerce-history-heading-copy">
                         <span>COMMERCE / PROJECT LIBRARY</span>
                         <h2>我的电商项目</h2>
-                        <p>选择一个项目，继续上次的创作。</p>
                     </div>
                     <button type="button" className="ecommerce-history-close" aria-label="关闭历史项目" disabled={deleting} onClick={onClose}>
                         <X size={19} />

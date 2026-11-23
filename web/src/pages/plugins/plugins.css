@@ -664,13 +664,6 @@
     font-weight: 600;
 }
 
-.plugin-upload-panel-heading p {
-    margin-top: var(--space-1);
-    color: color-mix(in srgb, var(--foreground) 50%, transparent);
-    font-size: var(--fs-label);
-    line-height: 1.55;
-}
-
 .plugin-upload-panel-icon {
     display: grid;
     width: 38px;

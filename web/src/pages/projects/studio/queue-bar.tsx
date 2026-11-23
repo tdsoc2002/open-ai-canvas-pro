@@ -79,7 +79,6 @@ export function QueueBar({ projectId, summary, retrying, onRetry, onJump }: { pr
                                 {label}
                             </button>
                         ))}
-                        <span className="ml-auto drama-queue-hint">点击任一行查看请求详情</span>
                     </div>
                     <div className="drama-queue-list thin-scrollbar" role="list">
                         {jobs.map((job) => (

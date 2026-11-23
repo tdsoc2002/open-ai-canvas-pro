@@ -47,7 +47,6 @@ export function PreferencesPane() {
                 <section className="settings-preference-block">
                     <div className="settings-preference-heading">
                         <h3>{t("settings.preferences.interface")}</h3>
-                        <p>{t("settings.preferences.interfaceDescription")}</p>
                     </div>
                     <SettingsRow
                         label={t("settings.preferences.theme")}
@@ -109,7 +108,7 @@ export function PreferencesPane() {
                     ) : null}
                     {isMultilingualEnabled() && (
                         <>
-                            <SettingsRow label={t("language.label")} description={t("language.description")} align="top" control={null} className="border-b-0 pb-3" />
+                            <SettingsRow label={t("language.label")} align="top" control={null} className="border-b-0 pb-3" />
                             <LanguageOptionGrid />
                         </>
                     )}
@@ -117,16 +116,10 @@ export function PreferencesPane() {
                 <section className="settings-preference-block">
                     <div className="settings-preference-heading">
                         <h3>{t("settings.preferences.notifications")}</h3>
-                        <p>{t("settings.preferences.notificationsDescription")}</p>
                     </div>
-                    <SettingsRow
-                        label={t("settings.preferences.generationNotice")}
-                        description={t("settings.preferences.generationNoticeDescription")}
-                        control={<Switch checked={generationNotice} onChange={setGenerationNotice} aria-label={t("settings.preferences.generationNotice")} />}
-                    />
+                    <SettingsRow label={t("settings.preferences.generationNotice")} control={<Switch checked={generationNotice} onChange={setGenerationNotice} aria-label={t("settings.preferences.generationNotice")} />} />
                     <SettingsRow
                         label={t("settings.preferences.generationSound")}
-                        description={t("settings.preferences.generationSoundDescription")}
                         control={
                             <span className="flex items-center gap-3">
                                 <Button size="small" icon={<Volume2 className="size-3.5" />} onClick={() => playGenerationSuccessSound()}>
@@ -140,7 +133,6 @@ export function PreferencesPane() {
                 <section className="settings-preference-block">
                     <div className="settings-preference-heading">
                         <h3>{t("settings.preferences.canvas")}</h3>
-                        <p>{t("settings.preferences.canvasDescription")}</p>
                     </div>
                     <SettingsRow
                         label={t("settings.preferences.imageCount")}

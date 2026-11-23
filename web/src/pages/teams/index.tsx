@@ -44,7 +44,6 @@ export default function TeamsPage() {
         <WorkspacePage>
             <PageHeader
                 title="公司与团队"
-                description="进入已加入的公司和小组，管理成员与共享素材。"
                 actions={
                     <>
                         <Button icon={<UserPlus className="size-4" />} onClick={openTeamInvitations}>
@@ -63,7 +62,6 @@ export default function TeamsPage() {
                     <div className="rounded-xl border border-dashed border-border p-12 text-center">
                         <Users className="mx-auto mb-3 size-8 text-foreground/40" />
                         <h2 className="font-semibold">还没有加入团队</h2>
-                        <p className="mt-2 text-sm text-foreground/60">创建自己的团队，或在「团队邀请」中接受他人的邀请。</p>
                     </div>
                 ) : null}
                 <div className="grid items-start gap-4 md:grid-cols-2">

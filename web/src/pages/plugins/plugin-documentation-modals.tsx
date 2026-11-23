@@ -131,7 +131,6 @@ export function UploadPluginModal({ open, onClose, onUpload }: UploadPluginModal
                         </span>
                         <div>
                             <h2>安装插件包</h2>
-                            <p>选择站点插件包，安装后会出现在后台插件管理列表中。</p>
                         </div>
                     </div>
 

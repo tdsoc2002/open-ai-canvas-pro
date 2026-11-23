@@ -209,7 +209,6 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
                 >
                     <UploadCloud className="size-7" />
                     <strong>{t("library.assets.batch.chooseTitle")}</strong>
-                    <span>{t("library.assets.batch.chooseHint")}</span>
                 </button>
                 <input
                     ref={inputRef}

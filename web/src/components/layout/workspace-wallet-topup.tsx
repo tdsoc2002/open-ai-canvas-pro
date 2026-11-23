@@ -93,17 +93,13 @@ function TopupGroup({
     const { t } = useTranslation();
     const meta = KIND_META[kind];
     const Icon = meta.icon;
-    const description = t(`${meta.key}.description`);
     return (
         <section className={cn("wallet-topup-group", `is-${kind}`)} data-topup-kind={kind} aria-labelledby={`wallet-topup-group-${kind}`}>
             <header className="wallet-topup-group-head">
                 <span className="wallet-topup-kind-icon is-small" aria-hidden="true">
                     <Icon />
                 </span>
-                <div>
-                    <h3 id={`wallet-topup-group-${kind}`}>{t(`${meta.key}.group`)}</h3>
-                    <p>{description}</p>
-                </div>
+                <h3 id={`wallet-topup-group-${kind}`}>{t(`${meta.key}.group`)}</h3>
             </header>
             {children}
             {products.length ? (

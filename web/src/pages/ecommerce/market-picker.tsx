@@ -47,7 +47,6 @@ export function CommerceMarketPicker({
                 <header className="commerce-market-head">
                     <div>
                         <h2>投放平台与语言</h2>
-                        <p>平台决定图片规范与文案约束，语言决定图中文字。</p>
                     </div>
                     <button type="button" className="commerce-market-close" aria-label="关闭参数" onClick={onClose}>
                         <X size={16} />

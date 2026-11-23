@@ -46,14 +46,6 @@
     letter-spacing: -0.025em;
 }
 
-.mcp-manager-description {
-    max-width: 42rem;
-    margin: 6px 0 0;
-    color: var(--mcp-muted);
-    font-size: var(--fs-label);
-    line-height: 1.55;
-}
-
 .mcp-manager-stats {
     display: flex;
     flex: none;

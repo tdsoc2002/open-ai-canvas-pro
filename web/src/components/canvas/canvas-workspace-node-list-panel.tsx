@@ -60,7 +60,7 @@ export function CanvasWorkspaceNodeListPanel({
                 {results.length ? (
                     results.map((node) => <CanvasNodeListItem key={node.id} node={node} config={config} active={selectedNodeIds.has(node.id)} onSelect={() => onFocus(node.id)} />)
                 ) : (
-                    <WorkspaceState icon="canvas" compact title={t("canvasC.nodeList.emptyTitle")} description={t("canvasC.nodeList.emptyDescription")} />
+                    <WorkspaceState icon="canvas" compact title={t("canvasC.nodeList.emptyTitle")} />
                 )}
             </div>
         </>

@@ -688,13 +688,6 @@
     -webkit-line-clamp: 2;
 }
 
-.history-gallery-end {
-    margin: var(--space-6) 0;
-    color: var(--user-ink-muted);
-    font-size: var(--fs-caption);
-    text-align: center;
-}
-
 /* ---- 视频首帧占位 ---- */
 .task-center-video-thumb {
     position: relative;

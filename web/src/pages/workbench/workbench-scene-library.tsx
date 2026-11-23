@@ -70,7 +70,6 @@ export function SceneLibraryModal({
                 <header className="wb-library-head">
                     <div className="wb-library-title">
                         <h2>选择出品场景</h2>
-                        <p>{kind === "image" ? "选定后自动套用提示词模板，并提示需要上传的商品素材" : "选定后自动套用镜头模板，并提示首帧等素材要求"}</p>
                     </div>
                     <Input className="wb-library-search" aria-label="搜索场景" prefix={<Search className="size-4" />} allowClear value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索场景，如 白底、模特、开箱" />
                     <button type="button" className="wb-icon-button" data-icon-only aria-label="关闭" onClick={onClose}>

@@ -452,7 +452,6 @@ export function WorkbenchGallery({
                             compact
                             icon="assets"
                             title={kind === "image" ? "上传商品图，一次生成整套商品图" : "用一张商品图，批量生成商品视频"}
-                            description={kind === "image" ? "选好出品场景，上传商品原图，设置数量后生成。主图、场景图、模特图按批次保存在这里。" : "选好镜头场景，上传商品首帧，一次可并行生成多条。生成的视频按批次保存在这里。"}
                             action={
                                 <Button type="primary" onClick={onOpenLibrary}>
                                     选择出品场景
@@ -479,7 +478,6 @@ export function WorkbenchGallery({
                         compact
                         query={query}
                         title={query.trim() ? undefined : "这个筛选下还没有作品"}
-                        description={query.trim() ? undefined : "切换到“全部”查看所有批次。"}
                         onClear={() => {
                             onQueryChange("");
                             onFilterChange("all");

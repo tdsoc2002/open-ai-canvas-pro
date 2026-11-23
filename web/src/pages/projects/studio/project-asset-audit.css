@@ -32,7 +32,6 @@
     line-height: var(--lh-heading);
 }
 
-.drama-audit-intro p,
 .drama-audit-note,
 .drama-audit-segment-heading > span,
 .drama-audit-asset-body small,
@@ -41,11 +40,6 @@
     color: var(--text-secondary);
     font-size: var(--fs-label);
     line-height: var(--lh-body);
-}
-
-.drama-audit-intro p {
-    margin-top: var(--space-2);
-    font-size: var(--fs-ui);
 }
 
 .drama-audit-episodes {

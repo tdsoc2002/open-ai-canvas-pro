@@ -41,15 +41,6 @@
     line-height: 1.3;
 }
 
-.pose-header-subtitle {
-    margin-top: 2px;
-    overflow: hidden;
-    color: var(--text-secondary);
-    font-size: var(--fs-caption);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .pose-header-search {
     flex: none;
     width: min(300px, 40%);
@@ -709,10 +700,6 @@
     .pose-header {
         flex-wrap: wrap;
         padding: var(--space-3) 56px var(--space-3) var(--space-4);
-    }
-
-    .pose-header-subtitle {
-        white-space: normal;
     }
 
     .pose-header-search {

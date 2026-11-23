@@ -629,18 +629,6 @@
     font-size: var(--fs-section);
     font-weight: 600;
 }
-.drama-styles-head p {
-    margin-top: 4px;
-    font-size: var(--fs-tiny);
-    color: var(--drama-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.drama-styles-head p b {
-    color: var(--foreground);
-    font-weight: 600;
-}
 .drama-styles-search {
     width: 240px;
     flex: none;
@@ -3808,10 +3796,6 @@
     align-items: center;
     gap: 4px;
     padding: 8px 12px;
-}
-.drama-queue-hint {
-    font-size: var(--fs-micro);
-    color: var(--drama-faint);
 }
 .drama-queue-list {
     max-height: 280px;

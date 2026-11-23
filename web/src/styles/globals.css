@@ -6133,13 +6133,6 @@
         font-size: 13px;
         font-weight: 600;
     }
-    .settings-preference-heading p {
-        margin: 8px 0 0;
-        color: color-mix(in srgb, var(--foreground) 52%, transparent);
-        font-size: var(--fs-caption);
-        line-height: 1.6;
-    }
-
     .workflow-workspace-tabs {
         display: flex;
         justify-content: center;
@@ -21797,9 +21790,6 @@ html:not(.dark) .creation-custom-value {
     color: var(--foreground);
     font-size: var(--fs-body);
 }
-.batch-upload-dropzone span {
-    font-size: var(--fs-label);
-}
 .batch-upload-list {
     max-height: 260px;
     overflow: auto;
@@ -24940,6 +24930,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 }
 
 .workspace-wallet-history-toolbar {
+    align-items: center;
     margin-bottom: 0;
 }
 
@@ -24951,17 +24942,9 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     font-weight: 600;
 }
 
-.workspace-wallet-section-heading p,
-.workspace-wallet-history-toolbar p {
-    margin: 4px 0 0;
-    color: var(--user-ink-muted);
-    font-size: 11px;
-}
-
 .workspace-wallet-redeem-link {
     display: inline-flex;
     align-items: center;
-    margin-left: 8px;
     border-radius: 8px;
     background: var(--user-accent-soft);
     padding: 4px 8px;
@@ -25203,8 +25186,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 
 .workspace-wallet-inline-state strong,
 .workspace-wallet-inline-state span,
-.workspace-wallet-empty strong,
-.workspace-wallet-empty span {
+.workspace-wallet-empty strong {
     display: block;
 }
 
@@ -25214,8 +25196,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     font-size: 12px;
 }
 
-.workspace-wallet-inline-state span,
-.workspace-wallet-empty span {
+.workspace-wallet-inline-state span {
     margin-top: 4px;
 }
 
@@ -26047,10 +26028,6 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 }
 
 .app-user-workspace.settings-page .settings-preference-heading h3 {
-    color: var(--user-ink-muted);
-}
-
-.app-user-workspace.settings-page .settings-preference-heading p {
     color: var(--user-ink-muted);
 }
 

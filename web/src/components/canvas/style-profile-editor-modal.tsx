@@ -124,7 +124,7 @@ function StylePreview({ profile }: { profile: StyleProfileSnapshot }) {
             </div>
             <div className="p-4 sm:p-5">
                 <h3 className="text-base font-semibold">{profile.title || "未命名风格"}</h3>
-                <p className="mt-2 text-xs leading-5 text-foreground/48">{profile.description || "填写简介，让风格库中更容易判断它适合什么项目。"}</p>
+                {profile.description ? <p className="mt-2 text-xs leading-5 text-foreground/48">{profile.description}</p> : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                     {profile.tags.length ? profile.tags.map((tag) => <span key={tag} className="rounded bg-foreground/10 px-2 py-1 text-[var(--fs-tiny)] text-foreground/58">{tag}</span>) : <span className="text-[var(--fs-tiny)] text-foreground/35">暂无标签</span>}
                 </div>
@@ -144,14 +144,14 @@ function IdentityFields({ profile, onChange }: EditorFieldsProps) {
     const setSelection = (key: string, value: string) => onChange({ selection: { ...selection, [key]: value } });
     return (
         <div className="space-y-5">
-            <SectionHeading title="风格身份" description="名称、封面和标签会出现在“我的风格”中" />
+            <SectionHeading title="风格身份" />
             <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="风格名称" className="sm:col-span-2"><Input maxLength={80} showCount value={profile.title} placeholder="例如：东方志怪 · 工笔暗彩" onChange={(event) => onChange({ title: event.target.value })} /></Field>
                 <Field label="风格简介" className="sm:col-span-2"><Input.TextArea maxLength={500} showCount autoSize={{ minRows: 3, maxRows: 6 }} value={profile.description} placeholder="说明适用题材、画面气质和核心辨识度" onChange={(event) => onChange({ description: event.target.value })} /></Field>
                 <Field label="封面图 URL" className="sm:col-span-2"><Input value={profile.coverUrl} placeholder="可填写项目资源 URL 或可访问的图片地址" onChange={(event) => onChange({ coverUrl: event.target.value })} /></Field>
                 <Field label="标签" className="sm:col-span-2"><Select mode="tags" maxCount={20} tokenSeparators={[",", "，"]} value={profile.tags} placeholder="输入题材、媒介、色彩或质感后回车" onChange={(tags) => onChange({ tags })} /></Field>
             </div>
-            <SectionHeading title="辅助标注" description="这些字段用于检索和理解，不会限制你自由编写 Prompt" />
+            <SectionHeading title="辅助标注" />
             <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="题材世界"><Input value={selection.world || ""} placeholder="仙侠、都市、悬疑……" onChange={(event) => setSelection("world", event.target.value)} /></Field>
                 <Field label="视觉媒介"><Input value={selection.medium || ""} placeholder="真人实拍、二维、水墨……" onChange={(event) => setSelection("medium", event.target.value)} /></Field>
@@ -165,7 +165,7 @@ function IdentityFields({ profile, onChange }: EditorFieldsProps) {
 function PromptFields({ profile, onChange }: EditorFieldsProps) {
     return (
         <div className="space-y-5">
-            <SectionHeading title="完整风格 Prompt" description="直接定义项目长期稳定的美术系统；这里没有固定组合限制" />
+            <SectionHeading title="完整风格 Prompt" />
             <Field label="正向 Prompt">
                 <Input.TextArea value={profile.prompt} autoSize={{ minRows: 16, maxRows: 28 }} placeholder="填写视觉媒介、角色设计、色彩、材质、建筑世界观、影像基线和一致性规则……" onChange={(event) => onChange({ prompt: event.target.value })} />
             </Field>
@@ -180,7 +180,7 @@ function ExecutionFields({ profile, onChange, onEditAssets }: EditorFieldsProps 
     const enabled = profile.assets.filter((asset) => asset.enabled !== false);
     return (
         <div className="space-y-5">
-            <SectionHeading title="生成执行" description="控制模型资产不兼容时是继续使用 Prompt，还是阻止任务" />
+            <SectionHeading title="生成执行" />
             <Field label="执行策略">
                 <Segmented
                     block
@@ -204,8 +204,8 @@ function ExecutionFields({ profile, onChange, onEditAssets }: EditorFieldsProps 
 
 type EditorFieldsProps = { profile: StyleProfileSnapshot; onChange: (patch: Partial<StyleProfileSnapshot>) => void };
 
-function SectionHeading({ title, description }: { title: string; description: string }) {
-    return <div className="border-b border-border pb-3"><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-[var(--fs-label)] text-foreground/45">{description}</p></div>;
+function SectionHeading({ title }: { title: string }) {
+    return <h3 className="border-b border-border pb-3 text-sm font-semibold">{title}</h3>;
 }
 
 function Field({ label, className = "", children }: { label: string; className?: string; children: ReactNode }) {

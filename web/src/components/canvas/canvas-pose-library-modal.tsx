@@ -198,7 +198,6 @@ export function CanvasPoseLibraryModal({ open, onClose, onInsert }: { open: bool
                         </span>
                         <div className="min-w-0">
                             <h2 className="pose-header-title">姿势库</h2>
-                            <p className="pose-header-subtitle">挑选动作参考图插入画布，连到生图节点后人物会照着这个姿势生成</p>
                         </div>
                         {libraryEmpty ? null : (
                             <Input

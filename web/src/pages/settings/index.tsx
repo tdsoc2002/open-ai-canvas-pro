@@ -164,7 +164,6 @@ export default function SettingsPage() {
                 <div className="settings-pane-header">
                     <div className="min-w-0">
                         <h2>{t("settings.sections.models.label")}</h2>
-                        <p>{t("account.settings.modelsDescription")}</p>
                     </div>
                 </div>
                 <div className="settings-section">
@@ -194,7 +193,6 @@ export default function SettingsPage() {
                 <div className="settings-pane-header">
                     <div className="min-w-0">
                         <h2>{t("settings.sections.agent-memory.label")}</h2>
-                        <p>{t("account.settings.agentMemoryDescription")}</p>
                     </div>
                 </div>
                 <div className="settings-section">

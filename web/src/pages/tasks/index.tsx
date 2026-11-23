@@ -649,7 +649,6 @@ export default function TasksPage() {
                             }}
                         />
                     ) : null}
-                    {visibleTasks.length > 0 && (groupingActive || page * pageSize >= filteredTasks.length) ? <p className="history-gallery-end">{t("library.tasks.gallery.loadedEnd")}</p> : null}
                 </div>
             </WorkspacePage>
             <AppModal className="library-modal" title={t("library.tasks.create.title")} open={createOpen} onCancel={() => setCreateOpen(false)} onOk={submitTask} confirmLoading={creating} okText={t("library.tasks.create.submit")} destroyOnHidden={false}>

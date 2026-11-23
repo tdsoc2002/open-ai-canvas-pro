@@ -542,7 +542,6 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
                     <header className="flex min-h-16 flex-col gap-3 border-b px-4 py-3 pr-12 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:pr-14" style={{ borderColor: theme.node.stroke }}>
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold">风格中心</h2>
-                            <p className="mt-0.5 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>系统规范 · 个人风格 · 项目快照</p>
                         </div>
                         <div className="flex min-w-0 gap-2 sm:items-center">
                             <Input allowClear className="style-center-search min-w-0 flex-1" prefix={<Search className="size-3.5 text-foreground/35" />} value={query} placeholder="搜索风格、题材或媒介" onChange={(event) => setQuery(event.target.value)} />

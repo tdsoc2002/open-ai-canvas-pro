@@ -86,13 +86,6 @@
     font-weight: 600;
 }
 
-.wallet-topup-group-head p {
-    margin: var(--space-half) 0 0;
-    color: var(--user-ink-muted);
-    font-size: var(--fs-caption);
-    line-height: 1.5;
-}
-
 .wallet-topup-group-empty {
     border-radius: var(--radius-md);
     background: var(--wallet-topup-card-surface);

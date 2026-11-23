@@ -249,7 +249,6 @@ function MCPManagerContent({ scope, userId, initialTab, onTabChange }: { scope: 
                 <div className="mcp-manager-intro-row">
                     <div className="min-w-0">
                         <h2 className="mcp-manager-title">工具连接</h2>
-                        <p className="mcp-manager-description">把可靠的外部工具交给 Agent，连接、授权和执行边界都由你掌控。</p>
                     </div>
                     <div className="mcp-manager-stats" aria-label="MCP 概览">
                         <span>

@@ -918,7 +918,7 @@ export default function AssetsPage() {
                             <WorkspaceErrorState compact onRetry={() => void assetPageQuery.refetch()} />
                         ) : !hasActiveFilters && validAssets.length === 0 && totalAssets === 0 ? (
                             viewMode === "trash" ? (
-                                <WorkspaceState icon="assets" compact title={t("library.picker.recycleBinEmpty")} description={t("library.assets.trash.emptyDescription")} />
+                                <WorkspaceState icon="assets" compact title={t("library.picker.recycleBinEmpty")} />
                             ) : (
                                 <AssetsEmptyState onNew={openCreate} onImport={() => assetInputRef.current?.click()} onGoCanvas={() => navigate(workspacePath("/canvas"))} />
                             )

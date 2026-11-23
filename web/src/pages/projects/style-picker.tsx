@@ -126,7 +126,6 @@ export function DramaStylePicker({ value, onChange, disabled = false }: Omit<Sty
             <div className="drama-styles-head">
                 <div className="min-w-0">
                     <h2>视觉风格</h2>
-                    <p>表现形式与题材可分别选择，统一全剧角色、场景和镜头的画风</p>
                 </div>
                 {selected ? (
                     <button type="button" className="drama-styles-detail-link" onClick={() => setDetailId(selected.id)}>

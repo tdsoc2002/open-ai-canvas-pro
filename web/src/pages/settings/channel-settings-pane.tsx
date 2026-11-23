@@ -182,9 +182,9 @@ export function ChannelSettingsPane({ onOpenModels, onOpenRunningHub }: ChannelS
     return (
         <Form layout="vertical" requiredMark={false}>
             <div className="settings-pane-header">
-                <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                     <h2>{t("settings.sections.channels.label")}</h2>
-                    <p>{t("account.settings.channels.description")}<Button type="link" size="small" className="h-auto p-0 text-xs font-semibold" onClick={onOpenModels}>{t("account.layout.modelGuide.open")}</Button></p>
+                    <Button type="link" size="small" className="h-auto p-0 text-xs font-semibold" onClick={onOpenModels}>{t("account.layout.modelGuide.open")}</Button>
                 </div>
                 <div className="flex w-full gap-2 sm:w-auto sm:shrink-0">
                     <Button className="h-10 flex-1 sm:h-8 sm:flex-none" icon={<RefreshCw className="size-4" />} loading={loadingChannelIds.includes("all")} disabled={loadingChannelIds.some((id) => id !== "all")} onClick={() => void refreshAllModels()}>{t("account.settings.channels.fetchAll")}</Button>
@@ -194,7 +194,6 @@ export function ChannelSettingsPane({ onOpenModels, onOpenRunningHub }: ChannelS
             {onOpenRunningHub ? <section className="settings-section mb-3">
                 <div className="mb-3">
                     <h3 className="text-sm font-semibold">{t("account.settings.channels.workflowTitle")}</h3>
-                    <p className="mt-1 text-xs text-foreground/55">{t("account.settings.channels.workflowDescription")}</p>
                 </div>
                 <div className="grid gap-2 lg:grid-cols-2">
                     {onOpenRunningHub ? (
@@ -249,7 +248,6 @@ export function ChannelSettingsPane({ onOpenModels, onOpenRunningHub }: ChannelS
                                             <section className="model-editor-section">
                                                 <div>
                                                     <h2>{t("account.settings.channels.connectionTitle")}</h2>
-                                                    <p className="mt-1 text-xs text-foreground/50">{t("account.settings.channels.connectionDescription")}</p>
                                                 </div>
                                                 <div className="model-editor-connection-fields grid gap-3 sm:grid-cols-2">
                                                     <Form.Item label={t("account.settings.channels.name")} htmlFor={`channel-${channel.id}-name`} className="mb-0 sm:col-span-1"><Input id={`channel-${channel.id}-name`} value={channel.name} placeholder={t("account.settings.channels.namePlaceholder")} onChange={(event) => updateChannel(channel.id, { name: event.target.value })} onBlur={(event) => updateChannel(channel.id, { name: event.target.value.trim() || t("account.settings.channels.unnamed") })} /></Form.Item>
@@ -263,7 +261,6 @@ export function ChannelSettingsPane({ onOpenModels, onOpenRunningHub }: ChannelS
                                             <section className="model-editor-section">
                                                 <div>
                                                     <h2>{t("account.settings.channels.modelsTitle")}</h2>
-                                                    <p className="mt-1 text-xs text-foreground/50">{t("account.settings.channels.modelsDescription")}</p>
                                                 </div>
                                                 <Form.Item label={t("account.settings.channels.modelList")} htmlFor={`channel-${channel.id}-models`} className="mb-0"><Select id={`channel-${channel.id}-models`} mode="tags" showSearch allowClear maxTagCount="responsive" tokenSeparators={[",", "\n"]} placeholder={t("account.settings.channels.modelListPlaceholder")} value={channel.models} onChange={(models) => updateChannel(channel.id, { models: uniqueModels(models) })} /></Form.Item>
                                                 <ChannelModelSettings channel={channel} onChange={(modelCosts) => updateChannel(channel.id, { modelCosts })} />

@@ -168,13 +168,6 @@
     font-size: 22px;
     font-weight: 750;
 }
-.commerce-style-picker-head p {
-    max-width: 720px;
-    margin: 0;
-    color: var(--user-ink-muted);
-    font-size: 13px;
-    line-height: 1.7;
-}
 
 .commerce-style-picker-tabs {
     display: flex;

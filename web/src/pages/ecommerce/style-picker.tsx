@@ -156,7 +156,6 @@ export function CommerceStylePicker({
                             STYLE STUDIO · {total} 种风格
                         </small>
                         <h2>为这件商品选一种视觉风格</h2>
-                        <p>已按这件商品的品类推荐 {total} 套视觉方案，包含专属场景、字体和版式。可以按分类挑选，或点铅笔改写风格。</p>
                     </div>
                 </header>
                 <nav className="commerce-style-picker-tabs" role="tablist" aria-label="风格分类">

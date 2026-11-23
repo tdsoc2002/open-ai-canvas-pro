@@ -324,16 +324,13 @@ export function WorkspaceWalletModal({
                         <div className="workspace-wallet-content is-redeem">
                             <section className="workspace-wallet-section is-redeem">
                                 <div className="workspace-wallet-section-heading">
-                                    <div>
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <h3>{t("account.wallet.redeemTitle")}</h3>
-                                        <p>
-                                            {t("account.wallet.redeemDescription")}
-                                            {redeemPurchaseUrl ? (
-                                                <a className="workspace-wallet-redeem-link" href={redeemPurchaseUrl} target="_blank" rel="noopener noreferrer">
-                                                    {t("account.wallet.redeemGet")}
-                                                </a>
-                                            ) : null}
-                                        </p>
+                                        {redeemPurchaseUrl ? (
+                                            <a className="workspace-wallet-redeem-link" href={redeemPurchaseUrl} target="_blank" rel="noopener noreferrer">
+                                                {t("account.wallet.redeemGet")}
+                                            </a>
+                                        ) : null}
                                     </div>
                                     <TicketCheck />
                                 </div>
@@ -348,10 +345,7 @@ export function WorkspaceWalletModal({
                     ) : (
                         <div className="workspace-wallet-content is-history">
                             <div className="workspace-wallet-history-toolbar">
-                                <div>
-                                    <h3>{t(activeTab === "income" ? "account.wallet.tabIncome" : "account.wallet.tabHistory")}</h3>
-                                    <p>{t(activeTab === "income" ? "account.wallet.incomeDescription" : "account.wallet.historyDescription")}</p>
-                                </div>
+                                <h3>{t(activeTab === "income" ? "account.wallet.tabIncome" : "account.wallet.tabHistory")}</h3>
                                 <Button type="text" icon={<RefreshCw />} loading={walletLoading} onClick={() => void reloadWallet(page)}>
                                     {t("common.refresh")}
                                 </Button>
@@ -378,7 +372,6 @@ export function WorkspaceWalletModal({
                                     <div className="workspace-wallet-empty">
                                         <History />
                                         <strong>{t(activeTab === "income" ? "account.wallet.incomeEmpty" : "account.wallet.historyEmpty")}</strong>
-                                        <span>{t(activeTab === "income" ? "account.wallet.incomeEmptyHint" : "account.wallet.historyEmptyHint")}</span>
                                     </div>
                                 )}
                             </div>

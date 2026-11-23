@@ -30,7 +30,7 @@ export function CanvasWorkspaceTaskPanel({ tasks, refreshing, onRefresh, onCance
                         ))}
                     </div>
                 ) : (
-                    <WorkspaceState icon="canvas" compact title={t("canvasC.workspaceTasks.emptyTitle")} description={t("canvasC.workspaceTasks.emptyDescription")} />
+                    <WorkspaceState icon="canvas" compact title={t("canvasC.workspaceTasks.emptyTitle")} />
                 )}
             </div>
         </>

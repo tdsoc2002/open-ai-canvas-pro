@@ -17,10 +17,7 @@ export function PaymentOrdersPanel({ onOpen }: { onOpen: (id: string) => void })
     return (
         <div className="workspace-wallet-content is-history">
             <div className="workspace-wallet-history-toolbar">
-                <div>
-                    <h3>{t("account.payment.ordersTitle")}</h3>
-                    <p>{t("account.payment.ordersHint")}</p>
-                </div>
+                <h3>{t("account.payment.ordersTitle")}</h3>
                 <Button loading={query.isFetching} onClick={() => void query.refetch()}>
                     {t("common.refresh")}
                 </Button>

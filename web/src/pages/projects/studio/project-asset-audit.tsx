@@ -123,10 +123,7 @@ export function ProjectAssetAudit({ projectId, episodes, cast, activeEpisodeId, 
     return (
         <section className="drama-asset-audit" aria-label="按集核查资产">
             <div className="drama-audit-intro">
-                <div>
-                    <h2>分集资产配置</h2>
-                    <p>逐段核对人物、环境与道具，查看镜头配置和当前请求使用的参考图。</p>
-                </div>
+                <h2>分集资产配置</h2>
                 <span className="drama-audit-note">选择一集读取配置 · 共 {episodes.length} 集</span>
             </div>
             <nav className="drama-audit-episodes thin-scrollbar" aria-label="选择核查的集">
