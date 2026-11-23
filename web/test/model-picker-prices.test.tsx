@@ -47,14 +47,19 @@ test("各生成类型的模型按钮默认显示选中渠道，Logo 使用 20px"
         const cost = config.channels[0].modelCosts![0];
         const render = () => renderToStaticMarkup(<ModelPicker config={config} value={config.model} capability={capability} showConfiguredModelName showSelectedPrice={false} onChange={() => {}} />);
 
+        cost.displayName = "Seedance 2.5 Flash";
         cost.channelLabel = "腾讯 VOD 直连";
         const selected = render();
         expect(selected).toMatch(/class="canvas-model-picker-trigger-icon"><(?:img|svg)[^>]* width="20" height="20"/);
+        if (capability === "video") expect(selected).toMatch(/src="\/model-icons\/seedance-(light|dark)\.png"/);
         expect(selected).toContain('title="腾讯 VOD 直连"');
         expect(triggerText(selected)).toBe("腾讯 VOD 直连");
 
+        cost.displayName = "Wan 3.0 Prime";
         cost.channelLabel = "";
-        expect(triggerText(render())).toBe("h3-multi");
+        const fallback = render();
+        if (capability === "video") expect(fallback).toMatch(/src="\/model-icons\/wan-(light|dark)\.png"/);
+        expect(triggerText(fallback)).toBe("h3-multi");
     }
 });
 

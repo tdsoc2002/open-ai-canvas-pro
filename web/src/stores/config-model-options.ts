@@ -1,5 +1,6 @@
 // 渠道模型选项的编码、解析与展示：channelId + 模型名组合成选择值，按能力过滤可选模型。
 
+import { bundledModelLogos } from "@/lib/model-logo-id";
 import { type AiConfig, type ModelChannel, resolveModelChannel } from "./use-config-store";
 
 export const CHANNEL_MODEL_SEPARATOR = "::";
@@ -49,7 +50,13 @@ export function modelDisplayName(config: AiConfig, value: string) {
 
 export function modelIcon(config: AiConfig, value: string) {
     const model = modelOptionName(value);
-    return resolveModelChannel(config, value).modelCosts?.find((item) => item.model === model)?.icon || "";
+    const channel = resolveModelChannel(config, value);
+    const cost = channel.modelCosts?.find((item) => item.model === model);
+    const configuredIcon = cost?.icon?.trim();
+    if (configuredIcon) return configuredIcon;
+    if (channel.scope !== "system" || cost?.capability !== "video") return "";
+    const productName = cost.displayName?.trim() ?? "";
+    return bundledModelLogos.find((logo) => logo.productName.test(productName))?.id ?? "";
 }
 
 export function modelOptionLabel(config: AiConfig, value: string) {

@@ -5,9 +5,10 @@ import { AudioLines, Check, Cpu, Film, Grid2X2, Image, Layers3, MessageSquare, S
 import { toc } from "@lobehub/icons/es/toc";
 
 import { cn } from "@/lib/utils";
-import { createModelLogoResolver } from "@/lib/model-logo-id";
+import { bundledModelLogos, createModelLogoResolver } from "@/lib/model-logo-id";
 import { createModelLogoOption, MODEL_LOGO_CATEGORIES, MODEL_LOGO_FEATURED, type ModelLogoCategory } from "@/lib/model-logo-catalog";
 import { AppModal } from "@/components/ui/product/app-modal";
+import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 
 type LobeIconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
 
@@ -20,13 +21,11 @@ const iconLoaders = Object.fromEntries(
         .map(([path, loader]) => [path.match(/\/([^/]+)\/components\/(?:Mono|Color)\.js$/)?.[1], loader])
         .filter((entry): entry is [string, () => Promise<LobeIconComponent>] => Boolean(entry[0] && entry[1])),
 ) as Record<string, () => Promise<LobeIconComponent>>;
-const resolveIconId = createModelLogoResolver(Object.keys(iconLoaders));
+const resolveIconId = createModelLogoResolver([...Object.keys(iconLoaders), ...bundledModelLogos.map((logo) => logo.id)]);
 const iconRegistry = new Map<string, LobeIconComponent>();
 const iconLoadPromises = new Map<string, Promise<LobeIconComponent | undefined>>();
-const iconOptions = toc
-    .filter((item) => item.group === "model" || item.group === "provider" || item.group === "application")
-    .map(createModelLogoOption)
-    .filter((item) => Boolean(iconLoaders[item.id]));
+const lobeIconOptions = toc.filter((item) => ["model", "provider", "application"].includes(item.group) && Boolean(iconLoaders[item.id]));
+const iconOptions = [...lobeIconOptions, ...bundledModelLogos].map(createModelLogoOption);
 
 const logoFilters = [{ id: "all", label: "全部" } as const, ...MODEL_LOGO_CATEGORIES];
 type ModelLogoFilter = ModelLogoCategory | "all";
@@ -69,8 +68,15 @@ export function ModelLogo({ icon: rawIcon, size = 18, className }: { icon?: stri
             cancelled = true;
         };
     }, [icon]);
+    const bundledLogo = bundledModelLogos.find((logo) => logo.id === icon);
+    if (bundledLogo) return <BundledModelLogo id={bundledLogo.id} size={size} className={className} />;
     if (!Icon) return <Cpu className={cn("shrink-0 text-foreground/45", className)} size={size} aria-hidden />;
     return <Icon size={size} className={cn("shrink-0", className)} aria-hidden />;
+}
+
+function BundledModelLogo({ id, size, className }: { id: string; size: number; className?: string }) {
+    const theme = useActiveTheme();
+    return <img src={`/model-icons/${id.toLowerCase()}-${theme}.png`} width={size} height={size} alt="" className={cn("shrink-0 object-contain", className)} />;
 }
 
 export function ModelIconPicker({ value, onChange }: { value?: string; onChange?: (value: string) => void }) {

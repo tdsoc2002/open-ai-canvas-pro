@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { toc } from "@lobehub/icons/es/toc";
 import { createModelLogoOption, getModelLogoCatalogIssues, MODEL_LOGO_CATEGORIES, MODEL_LOGO_FEATURED } from "../src/lib/model-logo-catalog";
+import { bundledModelLogos } from "../src/lib/model-logo-id";
 
-const catalog = toc.filter((item) => ["model", "provider", "application"].includes(item.group));
+const catalog = [...toc.filter((item) => ["model", "provider", "application"].includes(item.group)), ...bundledModelLogos];
 const options = catalog.map(createModelLogoOption);
 const option = (id: string) => options.find((item) => item.id === id)!;
 
@@ -38,6 +39,8 @@ describe("模型 Logo 用途目录", () => {
         expect(option("Gemini").categories).toContain("llm");
         expect(option("Kling").categories).toEqual(["image", "video"]);
         expect(option("Sora").categories).toEqual(["video"]);
+        expect(option("Seedance").categories).toEqual(["video"]);
+        expect(option("Wan").categories).toEqual(["video"]);
         expect(option("Suno").categories).toEqual(["audio"]);
         expect(option("DeepSeek").categories).toEqual(["llm"]);
         expect(option("OpenRouter").categories).toEqual(["platform"]);
@@ -50,6 +53,8 @@ describe("模型 Logo 用途目录", () => {
             ["可灵", "Kling"],
             ["千问", "Qwen"],
             ["seedance", "Jimeng"],
+            ["sd2.5", "Seedance"],
+            ["通义万相", "Wan"],
             ["硅基流动", "SiliconCloud"],
             ["克劳德", "Claude"],
         ]) {

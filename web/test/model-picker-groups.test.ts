@@ -4,7 +4,7 @@ import { groupModelsByDisplayName, modelCompatibilityError, modelGroupReferenceL
 import { modelQuoteRequest, priceTiersForCurrentSelection, priceTierSummaryLabel, systemModelQuoteRequest } from "../src/lib/model-pricing";
 import { systemChannelModelChannels } from "../src/lib/user-session";
 import type { PublicChannelCatalog, PublicChannelModel } from "../src/services/api/logical-models";
-import { defaultConfig, normalizeConfigSnapshot, resolveModelRequestConfig, selectableModelsByCapability } from "../src/stores/use-config-store";
+import { defaultConfig, modelIcon, normalizeConfigSnapshot, resolveModelRequestConfig, selectableModelsByCapability } from "../src/stores/use-config-store";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
 import { buildGenerationConfig } from "../src/lib/canvas/canvas-project-generation";
 import { CanvasNodeType } from "../src/types/canvas";
@@ -35,6 +35,30 @@ function fixture() {
     ];
     return normalizeConfigSnapshot({ config: { ...defaultConfig, channels: systemChannelModelChannels(channels), model: "b::seedance-2.0", videoModel: "b::seedance-2.0" } }).config;
 }
+
+test("Seedance 和 Wan 视频组与选中模型共用各自品牌图标，后台设置的图标优先", () => {
+    const config = fixture();
+    const cost = config.channels[1].modelCosts![0];
+    cost.icon = "";
+    for (const [name, icon] of [
+        ["Seedance 2.5", "Seedance"],
+        ["Seedance 2.0", "Seedance"],
+        ["Seedance 2.0 Fast", "Seedance"],
+        ["Seedance 2.0 Mini", "Seedance"],
+        ["Seedance 2.5 Flash", "Seedance"],
+        ["Wan 3.0", "Wan"],
+        ["Wan 3.0 Prime", "Wan"],
+    ]) {
+        cost.displayName = name;
+        expect(modelIcon(config, config.model)).toBe(icon);
+        expect(groupModelsForPicker(config, [config.model])[0].icon).toBe(icon);
+    }
+    cost.icon = "ByteDance";
+    expect(modelIcon(config, config.model)).toBe("ByteDance");
+    cost.icon = "";
+    cost.displayName = "未分类";
+    expect(modelIcon(config, config.model)).toBe("");
+});
 
 test("same model display name groups all channels and preserves their prices", () => {
     const config = fixture();

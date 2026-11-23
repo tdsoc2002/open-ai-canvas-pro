@@ -10,7 +10,7 @@ export type ModelLogoCategory = (typeof MODEL_LOGO_CATEGORIES)[number]["id"];
 
 export const MODEL_LOGO_FEATURED: Record<ModelLogoCategory, string[]> = {
     image: ["OpenAI", "Gemini", "Midjourney", "Flux", "Jimeng", "Stability", "Ideogram", "Recraft", "AdobeFirefly", "Kolors", "CogView", "NanoBanana"],
-    video: ["Sora", "Kling", "Runway", "Vidu", "Luma", "Hailuo", "Pika", "PixVerse", "Jimeng", "CogVideo", "Hunyuan", "Minimax"],
+    video: ["Seedance", "Wan", "Sora", "Kling", "Runway", "Vidu", "Luma", "Hailuo", "Pika", "PixVerse", "Jimeng", "CogVideo", "Hunyuan", "Minimax"],
     llm: ["OpenAI", "Claude", "Gemini", "DeepSeek", "Qwen", "Doubao", "Grok", "Minimax", "Kimi", "ChatGLM"],
     audio: ["OpenAI", "ElevenLabs", "FishAudio", "Minimax", "Suno", "Udio", "Ace", "Coqui"],
     platform: ["OpenRouter", "SiliconCloud", "Volcengine", "Bailian", "AlibabaCloud", "Azure", "Fal", "Replicate", "HuggingFace", "Ollama"],
@@ -64,6 +64,8 @@ const categoryIds: Record<ModelLogoCategory, string[]> = {
         "Tripo",
     ],
     video: [
+        "Seedance",
+        "Wan",
         "OpenAI",
         "Google",
         "ByteDance",
@@ -448,6 +450,8 @@ const aliases: Record<string, string> = {
     ByteDance: "字节 Seedream Seedance",
     Doubao: "字节 Seedream Seedance",
     Jimeng: "字节 Seedream Seedance",
+    Seedance: "字节 即梦 sd2.5 sd2.0",
+    Wan: "通义万相 Wan 3.0 Wan 3.0 Prime",
     Qwen: "千问 通义万相 阿里 Qwen Image",
     Alibaba: "通义 千问 万相 Wan",
     Kling: "快手 可灵",
