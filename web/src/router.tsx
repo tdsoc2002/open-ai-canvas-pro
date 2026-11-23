@@ -10,12 +10,11 @@ import { RequireFeature } from "@/components/auth/require-feature";
 import { FullScreenLoader, WorkspaceRouteLoader } from "@/components/ui/aceternity/full-screen-loader";
 import { StudioOpening } from "@/pages/projects/studio/studio-opening";
 import { workspaceRoutePages } from "@/lib/workspace-route-modules";
-import { CanvasRefreshShell } from "@/pages/canvas/canvas-refresh-shell";
 import { AuthScene } from "@/pages/auth/auth-scene";
 import RouteErrorPage from "@/pages/route-error";
 import { isGuestWorkspacePath } from "@/lib/guest-workspace";
 import { teamIdFromPath } from "@/lib/team-query-keys";
-import { workspacePagePath, workspaceTeamId } from "@/lib/workspace-routes";
+import { workspaceTeamId } from "@/lib/workspace-routes";
 
 const AdminPage = lazy(() => import("@/pages/admin"));
 const EcommerceManagementPage = lazyAdminPage(() => import("@/pages/admin/ecommerce-management-page"));
@@ -100,11 +99,9 @@ function fullScreenDeferred(element: ReactNode) {
 
 function AuthenticatedWorkspaceLayout() {
     const { pathname } = useLocation();
-    const isCanvasProjectRoute = workspacePagePath(pathname).startsWith("/canvas/");
-    const fallback = isCanvasProjectRoute ? <CanvasRefreshShell /> : <FullScreenLoader label="正在打开创作空间" detail="准备当前页面" />;
     return (
         <RequireAuth allowAnonymous={isGuestWorkspacePath(pathname)}>
-            <Suspense fallback={fallback}>
+            <Suspense fallback={<FullScreenLoader label="正在打开创作空间" detail="准备当前页面" />}>
                 <UserLayout>
                     <Outlet />
                 </UserLayout>
@@ -206,7 +203,7 @@ const routes: RouteObject[] = [
                 children: [
                     { index: true, element: <Navigate to="canvas" replace /> },
                     { path: "canvas", element: deferred(<CanvasPage />) },
-                    { path: "canvas/:id", element: deferred(<CanvasProjectPage />, <CanvasRefreshShell />) },
+                    { path: "canvas/:id", element: deferred(<CanvasProjectPage />) },
                     { path: "assets", element: deferred(<AssetsPage />) },
                     { path: "create", element: <RequireFeature feature="creditsEnabled">{deferred(<CreatePage />)}</RequireFeature> },
                     { path: "members", element: deferred(<TeamMembersPage />) },
@@ -272,14 +269,7 @@ const routes: RouteObject[] = [
             },
             { path: "/projects/:projectId/*", element: <Navigate to=".." relative="path" replace /> },
             { path: "/canvas", element: <RequireAuth>{deferred(<CanvasPage />)}</RequireAuth> },
-            {
-                path: "/canvas/:id",
-                element: (
-                    <RequireAuth>
-                        <CanvasProjectPage />
-                    </RequireAuth>
-                ),
-            },
+            { path: "/canvas/:id", element: <RequireAuth>{deferred(<CanvasProjectPage />)}</RequireAuth> },
             {
                 path: "/admin",
                 element: <RequireAuth>{deferred(<AdminPage />)}</RequireAuth>,

@@ -48,6 +48,7 @@ import { useUserStore } from "@/stores/use-user-store";
 import { App, Button } from "antd";
 import { ArrowLeftRight } from "lucide-react";
 import { AppModal } from "@/components/ui/product/app-modal";
+import { WorkspaceRouteLoader } from "@/components/ui/aceternity/full-screen-loader";
 import { getNodeSpec } from "@/constant/canvas";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
@@ -157,7 +158,6 @@ import { CanvasNodeActionContext, type CanvasNodeActionContextValue } from "@/co
 import { bringCanvasNodeToFront, type CanvasNodeStackOrder } from "@/lib/canvas/canvas-node-stack-order";
 import { AiArtCritiqueModal } from "@/components/canvas/art-critique/ai-art-critique-modal";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
-import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { canvasNodeCanResyncTask } from "@/lib/canvas/canvas-task-state";
 import type { CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
 import { CanvasEmotionWorkspace } from "@/components/canvas/canvas-emotion-workspace";
@@ -243,7 +243,7 @@ export default function CanvasPage() {
         setMounted(true);
     }, []);
 
-    if (!mounted) return <CanvasRefreshShell />;
+    if (!mounted) return <WorkspaceRouteLoader />;
 
     return <CanvasViewportPage key={id} />;
 }
@@ -2897,7 +2897,7 @@ function CanvasViewportPage() {
                 <Link to={workspacePath("/canvas")}>返回画布库</Link>
             </main>
         );
-    if (!projectLoaded) return <CanvasRefreshShell />;
+    if (!projectLoaded) return <WorkspaceRouteLoader />;
 
     const canvasAuxiliaryCommands = {
         onImportLibTV: () => setLibTVImportOpen(true),

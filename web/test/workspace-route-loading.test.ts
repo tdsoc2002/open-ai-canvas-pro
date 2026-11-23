@@ -78,7 +78,6 @@ describe("workspace route loading", () => {
         expect(router).toContain('{ path: "/create", element: deferred(<CreatePage />) }');
         expect(router).toContain("<RequireAuth allowAnonymous={isGuestWorkspacePath(pathname)}>");
         expect(router).toContain('{ path: "/assets", element: <RequireAuth>{deferred(<AssetsPage />)}</RequireAuth> }');
-        expect(router).toMatch(/path: "\/canvas\/:id",\s+element: \(\s+<RequireAuth>\s+<CanvasProjectPage \/>\s+<\/RequireAuth>\s+\),/);
         expect(router).not.toContain('path: "/home"');
         expect(router).not.toContain("HomePage");
         expect(navigation).toContain('{ ...toolItem("create", "/", t), id: "home"');
@@ -99,6 +98,16 @@ describe("workspace route loading", () => {
         expect(canvasLibrary).toContain("window.requestAnimationFrame(() => navigate(");
         expect(canvasCard).toContain("onPointerEnter={onPrefetch}");
         expect(canvasCard).toContain("正在打开");
+    });
+
+    test("uses the shared loader while opening personal and team canvases", () => {
+        const router = source("../src/router.tsx");
+        const canvas = source("../src/pages/canvas/project.tsx");
+
+        expect(router).toContain('{ path: "/canvas/:id", element: <RequireAuth>{deferred(<CanvasProjectPage />)}</RequireAuth> }');
+        expect(router).toContain('{ path: "canvas/:id", element: deferred(<CanvasProjectPage />) }');
+        expect(canvas).toContain("if (!mounted) return <WorkspaceRouteLoader />;");
+        expect(canvas).toContain("if (!projectLoaded) return <WorkspaceRouteLoader />;");
     });
 
     test("keeps the drama studio views in-page and canvas-only state out of the global layout", () => {
