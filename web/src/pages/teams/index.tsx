@@ -41,7 +41,7 @@ export default function TeamsPage() {
         onError: (error) => message.error(error.message),
     });
     return (
-        <WorkspacePage>
+        <WorkspacePage className="*:flex *:min-h-full *:flex-col">
             <PageHeader
                 title="公司与团队"
                 actions={
@@ -55,12 +55,12 @@ export default function TeamsPage() {
                     </>
                 }
             />
-            <div className="mt-6">
+            <div className="mt-6 flex grow flex-col">
                 {teams.isError ? <TeamQueryError error={teams.error} retry={teams.refetch} /> : null}
                 {teams.isPending ? <p role="status">正在读取团队…</p> : null}
                 {teams.data?.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border p-12 text-center">
-                        <Users className="mx-auto mb-3 size-8 text-foreground/40" />
+                    <div className="flex grow flex-col items-center justify-center rounded-xl border border-dashed border-border p-12 text-center">
+                        <Users className="mb-3 size-8 text-foreground/40" />
                         <h2 className="font-semibold">还没有加入团队</h2>
                     </div>
                 ) : null}
