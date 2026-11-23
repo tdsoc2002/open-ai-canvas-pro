@@ -2932,8 +2932,7 @@ function CanvasViewportPage() {
         <CanvasProjectMenu
             {...canvasAuxiliaryCommands}
             inRail={leftCanvasTools}
-            view={canvasView}
-            onViewChange={changeCanvasView}
+            onOpenAssets={leftCanvasTools ? undefined : () => changeCanvasView("assets")}
             canUndo={historyState.canUndo}
             canRedo={historyState.canRedo}
             onCreateProject={createAndOpenProject}

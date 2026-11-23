@@ -136,5 +136,6 @@ test("资产视图覆盖整个编辑区，隐藏画布顶栏并提供返回入�
     expect(page).toMatch(/\{!isAssetView && !focusMode \? \(\s*<CanvasTopBar/);
     expect(page).toContain('className="canvas-asset-view-layer absolute inset-0');
     expect(page).toContain('onExit={() => changeCanvasView("canvas")}');
+    expect(page).toContain('onOpenAssets={leftCanvasTools ? undefined : () => changeCanvasView("assets")}');
     expect(component("canvas-workspace-panel.css")).not.toContain(".canvas-asset-view-layer");
 });

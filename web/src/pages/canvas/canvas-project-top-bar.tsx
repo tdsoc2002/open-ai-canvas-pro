@@ -30,8 +30,7 @@ type CanvasAuxiliaryCommands = {
 
 type CanvasProjectMenuProps = CanvasAuxiliaryCommands & {
     inRail: boolean;
-    view: CanvasProjectView;
-    onViewChange: (view: CanvasProjectView) => void;
+    onOpenAssets?: () => void;
     canUndo: boolean;
     canRedo: boolean;
     onCreateProject: () => void;
@@ -70,8 +69,7 @@ type CanvasTopBarProps = Pick<CanvasProjectHeadingProps, "onOpenSearch"> &
 
 export function CanvasProjectMenu({
     inRail,
-    view,
-    onViewChange,
+    onOpenAssets,
     canUndo,
     canRedo,
     onCreateProject,
@@ -97,15 +95,9 @@ export function CanvasProjectMenu({
                 trigger={["click"]}
                 menu={{
                     items: [
-                        {
-                            key: "view",
-                            icon: view === "canvas" ? <PanelsLeftBottom className="size-4" /> : <Workflow className="size-4" />,
-                            label: view === "canvas" ? "切换到资产视图" : "切换到画布视图",
-                            onClick: () => onViewChange(view === "canvas" ? "assets" : "canvas"),
-                        },
-                        { type: "divider" },
                         { key: "home", icon: <Home className="size-4" />, label: <Link to={workspacePath("/")}>主页</Link> },
                         { key: "projects", icon: <LayoutGrid className="size-4" />, label: <Link to={workspacePath("/canvas")}>画布</Link> },
+                        ...(onOpenAssets ? [{ key: "view", icon: <PanelsLeftBottom className="size-4" />, label: "切换到资产视图", onClick: onOpenAssets }] : []),
                         { type: "divider" },
                         { key: "new", icon: <Plus className="size-4" />, label: "新建画布", onClick: onCreateProject },
                         { key: "delete", danger: true, icon: <Trash2 className="size-4" />, label: "删除当前画布", onClick: onDeleteProject },
