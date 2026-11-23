@@ -57,26 +57,24 @@ function renderSidebar(path: string, collapsed: boolean, generationEnabled: bool
     }
 }
 
-test("左栏按约定的四组和入口顺序展示，路由和当前页标记不变", () => {
+test("乐见侧栏按约定的三组和入口顺序展示，路由和当前页标记不变", () => {
     const document = renderSidebar("/toolbox/video", false, true, true, true);
     const groups = [...document.querySelectorAll(".app-workspace-nav-group")];
-    expect(groups.map((group) => group.getAttribute("data-nav-group-heading"))).toEqual(["创作", "生成工具", "任务与素材", "灵感与技能"]);
+    expect(groups.map((group) => group.getAttribute("data-nav-group-heading"))).toEqual(["创作", "生成", "资源"]);
     const links = groups.map((group) => [...group.querySelectorAll("a[data-nav-id]")].map((item) => [item.textContent, item.getAttribute("href")]));
     expect(links).toEqual([
         [
-            ["首页", "/"],
-            ["画布", "/canvas"],
+            ["工作台", "/"],
+            ["画布库", "/canvas"],
             ["短剧项目", "/projects"],
         ],
         [
             ["图片生成", "/toolbox/image"],
             ["视频生成", "/toolbox/video"],
+            ["生成记录", "/tasks"],
         ],
         [
-            ["生成任务", "/tasks"],
             ["素材库", "/assets"],
-        ],
-        [
             ["灵感库", "/inspirations"],
             ["技能库", "/skills"],
         ],
@@ -87,19 +85,20 @@ test("左栏按约定的四组和入口顺序展示，路由和当前页标记�
 test("展开侧栏时分组标题不是按钮，仅保留整栏收起按钮", () => {
     const document = renderSidebar("/", false, true);
     const groups = [...document.querySelectorAll(".app-workspace-nav-group")];
-    expect(groups.map((group) => group.querySelector("h2")?.textContent)).toEqual(["创作", "生成工具", "任务与素材", "灵感与技能"]);
+    expect(groups.map((group) => group.querySelector("h2")?.textContent)).toEqual(["创作", "生成", "资源"]);
     const toggles = [...document.querySelectorAll("button[aria-expanded]")];
     expect(toggles).toHaveLength(1);
     expect(toggles[0]?.classList.contains("app-workspace-sidebar-collapse-toggle")).toBe(true);
     expect(toggles[0]?.getAttribute("aria-expanded")).toBe("true");
 });
 
-test("禁用生成工具时没有空分组，客态收起后仍可展开及访问完整名称", () => {
+test("禁用图片与视频生成时仍显示生成记录，客态收起后可展开及访问完整名称", () => {
     const document = renderSidebar("/", true, false);
     expect(document.querySelectorAll(".app-workspace-nav-group")).toHaveLength(3);
     expect(document.querySelector('[data-nav-id="plugins"]')).toBeNull();
     expect(document.querySelector('[data-nav-id="toolbox-image"]')).toBeNull();
-    expect(document.querySelector('[data-nav-id="canvas"]')?.getAttribute("aria-label")).toBe("画布");
+    expect(document.querySelector('[data-nav-group-heading="生成"] [data-nav-id="tasks"]')?.getAttribute("href")).toBe("/tasks");
+    expect(document.querySelector('[data-nav-id="canvas"]')?.getAttribute("aria-label")).toBe("画布库");
     expect(document.querySelector(".app-workspace-nav-group h2")).toBeNull();
     expect(document.querySelector(".app-workspace-sidebar-brand-row .app-workspace-sidebar-collapse-toggle")?.getAttribute("aria-expanded")).toBe("false");
 });

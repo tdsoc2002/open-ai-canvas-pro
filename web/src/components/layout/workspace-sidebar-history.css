@@ -111,9 +111,9 @@
 
 .workspace-history-thumb {
     display: grid;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
+    width: var(--workspace-history-thumb-size, var(--space-6));
+    height: var(--workspace-history-thumb-size, var(--space-6));
+    flex: 0 0 auto;
     place-items: center;
     overflow: hidden;
     border-radius: var(--r-sm);
@@ -216,8 +216,8 @@
 }
 
 .workspace-history-skeleton span:first-child {
-    width: 24px;
-    height: 24px;
+    width: var(--workspace-history-thumb-size, var(--space-6));
+    height: var(--workspace-history-thumb-size, var(--space-6));
     flex-shrink: 0;
 }
 

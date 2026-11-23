@@ -55,35 +55,32 @@ function toolItem(slug: NavigationToolSlug, to: string, t: TFunction): Workspace
 
 function buildNav(features: FeatureAvailability, t: TFunction, historyUnread: boolean, joysee: boolean, canUseSkills: boolean): WorkspaceNavGroup[] {
     const assets = { ...toolItem("assets", "/assets", t), title: t("nav.sidebar.assets") };
-    const canvas = { ...toolItem("canvas", "/canvas", t), title: t("nav.sidebar.canvas") };
+    const canvas = { ...toolItem("canvas", "/canvas", t), title: t(joysee ? "nav.sidebar.canvasLibrary" : "nav.sidebar.canvas") };
     const projects = features.shortDramaEnabled ? [{ ...toolItem("projects", "/projects", t), title: t("nav.sidebar.projects") }] : [];
     const skills = { ...toolItem("skills", "/skills", t), title: t("nav.sidebar.skills") };
     const inspirations = { id: "inspirations", title: t(joysee ? "nav.sidebar.inspirationLibrary" : "nav.sidebar.inspirations"), icon: Lightbulb, to: "/inspirations" };
-    const tasks = features.taskCenterEnabled ? [{ id: "tasks", title: t("nav.sidebar.history"), icon: HistoryIcon, to: "/tasks", unread: historyUnread }] : [];
+    const tasks = features.taskCenterEnabled ? [{ id: "tasks", title: t(joysee ? "nav.sidebar.generationHistory" : "nav.sidebar.history"), icon: HistoryIcon, to: "/tasks", unread: historyUnread }] : [];
     const groups: WorkspaceNavGroup[] = [
         {
             heading: t("nav.sections.create"),
             items: [
-                { ...toolItem("create", "/", t), id: "home", title: t("nav.sidebar.home") },
+                { ...toolItem("create", "/", t), id: "home", title: t(joysee ? "nav.sidebar.creationWorkbench" : "nav.sidebar.home") },
                 ...(joysee ? [canvas, ...projects] : [assets, canvas, ...projects]),
                 ...(features.teamsEnabled ? [{ id: "teams", title: "公司与团队", icon: Users, to: "/teams" }] : []),
                 ...(features.ecommerceEnabled ? [{ id: "ecommerce", title: t("nav.sidebar.ecommerce"), icon: ShoppingBag, to: "/ecommerce" }] : []),
             ],
         },
         {
-            heading: t("nav.sidebar.headingGeneration"),
+            heading: t(joysee ? "nav.sidebar.headingGenerate" : "nav.sidebar.headingGeneration"),
             items: [
                 ...(features.imageWorkbenchEnabled ? [{ id: "toolbox-image", title: t("nav.sidebar.toolboxImage"), icon: ImageIcon, to: "/toolbox/image" }] : []),
                 ...(features.videoWorkbenchEnabled ? [{ id: "toolbox-video", title: t("nav.sidebar.toolboxVideo"), icon: Video, to: "/toolbox/video" }] : []),
-                ...(joysee ? [] : [...(canUseSkills ? [skills] : []), ...tasks, inspirations]),
+                ...(!joysee && canUseSkills ? [skills] : []),
+                ...tasks,
+                ...(joysee ? [] : [inspirations]),
             ],
         },
-        ...(joysee
-            ? [
-                  { heading: t("nav.sidebar.headingAssets"), items: [...tasks, assets] },
-                  { heading: t("nav.sidebar.headingTools"), items: [inspirations, ...(canUseSkills ? [skills] : [])] },
-              ]
-            : []),
+        ...(joysee ? [{ heading: t("nav.sidebar.headingResources"), items: [assets, inspirations, ...(canUseSkills ? [skills] : [])] }] : []),
     ];
 
     return groups.filter(({ items }) => items.length > 0);
