@@ -101,6 +101,7 @@ export function InspirationDetailModal({
                                     <MetaRow label="来源">
                                         {source?.name ?? (item.sourceId && item.sourceId !== "original" ? (source?.label ?? "未标注来源") : "原创")}
                                         {item.credit ? ` · ${item.credit}` : ""}
+                                        {source?.license ? ` · ${source.license}` : ""}
                                     </MetaRow>
                                 ) : null}
                                 <MetaRow label="分类">{categoryLabel(item)}</MetaRow>

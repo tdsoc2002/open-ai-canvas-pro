@@ -2658,13 +2658,9 @@
         border-radius: 4px;
     }
 
-    /* 全屏加载只用于启动与少数整页入口：品牌、一道扫光、两行状态，不画装饰。
-       扫光轨道固定在视口正中，与 index.html 的启动信号同尺寸、同位置、同节奏，React 接管时原地继续；
-       品牌在轨道之上、文案在轨道之下，长文案只向下换行，不推动轨道。 */
-    .full-screen-loader {
-        position: fixed;
+    /* 四叶草在可用区域内居中，长文案只向下换行。 */
+    .page-loader {
         inset: 0;
-        z-index: var(--loader-z);
         display: grid;
         grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
         justify-items: center;
@@ -2674,47 +2670,12 @@
         color: var(--foreground);
     }
 
-    .full-screen-loader-mark {
-        display: grid;
-        grid-row: 1;
-        align-self: end;
-        width: 56px;
-        height: 56px;
-        margin-bottom: var(--space-8);
-        place-items: center;
-        border: 1px solid var(--border);
-        border-radius: var(--r-2xl);
-        background: var(--card);
-        color: var(--foreground);
-        animation: full-screen-loader-mark-enter 560ms var(--motion-ease-out) calc(40ms - var(--loader-elapsed, 0ms)) both;
-    }
-
-    /* 内置字形与侧栏品牌块一致：墨色实底反白，明暗主题自动反相；自定义 Logo 用中性浅底承托。 */
-    .full-screen-loader-mark.is-builtin {
-        border-color: transparent;
-        background: var(--foreground);
-        color: var(--background);
-    }
-
-    .full-screen-loader-mark-image {
-        width: 32px;
-        height: 32px;
-    }
-
-    .loader-brand-glyph {
-        display: block;
-        width: 34px;
-        height: 34px;
-        background: currentColor;
-        mask: url("/logo.svg") center / contain no-repeat;
-        -webkit-mask: url("/logo.svg") center / contain no-repeat;
-    }
-
-    .full-screen-loader .loading-signal {
+    .page-loader > .loading-clover {
         grid-row: 2;
+        color: var(--page-loader-accent, var(--foreground));
     }
 
-    .full-screen-loader-copy {
+    .page-loader-copy {
         display: flex;
         grid-row: 3;
         align-self: start;
@@ -2722,57 +2683,32 @@
         flex-direction: column;
         align-items: center;
         gap: var(--space-1);
-        margin-top: var(--space-6);
+        margin-top: var(--space-4);
         text-align: center;
         text-wrap: balance;
-        animation: full-screen-loader-copy-enter 560ms var(--motion-ease-out) calc(120ms - var(--loader-elapsed, 0ms)) both;
     }
 
-    .full-screen-loader-copy strong {
+    .page-loader-copy strong {
         color: var(--text-primary);
-        font-size: var(--fs-body);
-        font-weight: 500;
-        line-height: 20px;
+        font-size: var(--fs-heading);
+        font-weight: 600;
+        line-height: var(--lh-heading);
     }
 
-    .full-screen-loader-copy span {
-        color: var(--text-tertiary);
-        font-size: var(--fs-caption);
-        line-height: 18px;
+    .page-loader-copy span {
+        color: var(--text-secondary);
+        font-size: var(--fs-ui);
+        line-height: var(--lh-body);
     }
 
-    /* 加载信号：细轨 + 软边扫光，全屏与路由加载共用；--loader-clock 让接力的实例保持同一相位。
-       index.html 的 #root:empty::before 是它的启动期镜像，改尺寸、颜色或节奏时两边一起改。 */
-    .loading-signal {
-        --loading-signal-ink: color-mix(in srgb, var(--workspace-accent) 80%, transparent);
-        position: relative;
-        display: block;
-        width: 112px;
-        height: 2px;
-        flex: none;
-        overflow: hidden;
-        border-radius: var(--r-full);
-        background: color-mix(in srgb, var(--foreground) 10%, transparent);
-    }
-
-    .loading-signal i {
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 40%;
-        background: linear-gradient(90deg, transparent, var(--loading-signal-ink) 25%, var(--loading-signal-ink) 75%, transparent);
-        transform: translateX(-100%);
-        /* 缓入缓出但不长停：一轮里大部分时间扫光都在轨道上，两轮之间只空一小段。 */
-        animation: loading-signal-sweep 1500ms cubic-bezier(0.35, 0.05, 0.65, 0.95) calc(-1 * var(--loader-clock, 0ms)) infinite;
+    .full-screen-loader {
+        position: fixed;
+        z-index: var(--loader-z);
     }
 
     .workspace-route-loader {
         position: absolute;
-        inset: 0;
-        display: grid;
         min-height: 100%;
-        place-items: center;
-        background: var(--workspace-page);
-        color: var(--foreground);
         opacity: 0;
         transition: opacity var(--motion-instant) ease-out;
     }
@@ -2781,103 +2717,7 @@
         opacity: 1;
     }
 
-    .workspace-route-loader-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: var(--space-3);
-        color: var(--text-tertiary);
-        font-size: var(--fs-caption);
-    }
-
-    .workspace-route-loader-content .loading-signal {
-        width: 64px;
-    }
-
-    .workspace-route-loader-mark {
-        display: grid;
-        width: 36px;
-        height: 36px;
-        place-items: center;
-        border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
-        border-radius: var(--r-md);
-        background: var(--workspace-navigation);
-    }
-
-    .workspace-route-loader-logo {
-        display: grid;
-        place-items: center;
-        color: var(--foreground);
-    }
-
-    .workspace-route-loader-logo .loader-brand-glyph {
-        width: 16px;
-        height: 16px;
-    }
-
-    @keyframes full-screen-loader-mark-enter {
-        from {
-            opacity: 0;
-            transform: scale(0.94);
-        }
-        to {
-            opacity: 1;
-            transform: none;
-        }
-    }
-
-    @keyframes full-screen-loader-copy-enter {
-        from {
-            opacity: 0;
-            transform: translateY(4px);
-        }
-        to {
-            opacity: 1;
-            transform: none;
-        }
-    }
-
-    @keyframes full-screen-loader-fade {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
-    }
-
-    @keyframes loading-signal-sweep {
-        from {
-            transform: translateX(-100%);
-        }
-        to {
-            transform: translateX(250%);
-        }
-    }
-
-    @keyframes loading-signal-breathe {
-        0%,
-        100% {
-            opacity: 0.35;
-        }
-        50% {
-            opacity: 1;
-        }
-    }
-
-    /* 减少动态效果：入场只淡入；扫光停在轨道正中，整条信号轻呼吸，仍能看出页面在工作。 */
     @media (prefers-reduced-motion: reduce) {
-        .full-screen-loader-mark,
-        .full-screen-loader-copy {
-            animation-name: full-screen-loader-fade;
-        }
-        .loading-signal {
-            animation: loading-signal-breathe 1500ms ease-in-out calc(-1 * var(--loader-clock, 0ms)) infinite;
-        }
-        .loading-signal i {
-            transform: translateX(75%);
-            animation: none;
-        }
         .workspace-route-loader {
             transition: none;
         }

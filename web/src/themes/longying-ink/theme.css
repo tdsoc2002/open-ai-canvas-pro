@@ -925,60 +925,8 @@
     font-weight: 700;
 }
 
-/* 加载：一滴墨在纸上晕开再淡去，两滴交替；占位仍是原来那条 112×2 的轨道，位置不变。
-   网页刚打开时 index.html 里的启动信号是同一个动画，改动时两边一起改。 */
-:root[data-skin="longying-ink"] .loading-signal {
-    overflow: visible;
-    background: transparent;
-}
-
-:root[data-skin="longying-ink"] .loading-signal i,
-:root[data-skin="longying-ink"] .loading-signal::before {
-    position: absolute;
-    inset: auto;
-    top: 50%;
-    left: 50%;
-    width: 30px;
-    height: 30px;
-    margin: -15px 0 0 -15px;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--ink-ink) 0 34%, color-mix(in srgb, var(--ink-ink) 40%, transparent) 52%, transparent 70%);
-    content: "";
-    opacity: 0;
-    transform: scale(0.18);
-    animation: ink-loading-bloom 2200ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(-1 * var(--loader-clock, 0ms)) infinite;
-}
-
-:root[data-skin="longying-ink"] .loading-signal::before {
-    animation-delay: calc(1100ms - var(--loader-clock, 0ms));
-}
-
-@keyframes ink-loading-bloom {
-    0% {
-        opacity: 0.85;
-        transform: scale(0.18);
-        filter: blur(0);
-    }
-    70% {
-        opacity: 0.18;
-    }
-    100% {
-        opacity: 0;
-        transform: scale(1.5);
-        filter: blur(2.5px);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    :root[data-skin="longying-ink"] .loading-signal i {
-        animation: none;
-        opacity: 0.7;
-        transform: scale(0.6);
-    }
-
-    :root[data-skin="longying-ink"] .loading-signal::before {
-        display: none;
-    }
+:root[data-skin="longying-ink"] .page-loader[data-appearance-resolved="true"] {
+    --page-loader-accent: var(--ink-ink);
 }
 
 /* 技能、插件等卡片的分类强调色（上游蓝 / 粉 / 橙 / 紫 / 青）统一收成墨色。 */

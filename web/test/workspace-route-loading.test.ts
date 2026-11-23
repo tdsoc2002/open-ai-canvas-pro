@@ -81,7 +81,7 @@ describe("workspace route loading", () => {
         expect(router).toMatch(/path: "\/canvas\/:id",\s+element: \(\s+<RequireAuth>\s+<CanvasProjectPage \/>\s+<\/RequireAuth>\s+\),/);
         expect(router).not.toContain('path: "/home"');
         expect(router).not.toContain("HomePage");
-        expect(navigation).toContain('{ ...toolItem("create", "/", t), id: "home", title: t("nav.sidebar.home") }');
+        expect(navigation).toContain('{ ...toolItem("create", "/", t), id: "home"');
         expect(navigation).not.toContain('to: "/create"');
         expect(navigation).not.toContain('to: "/home"');
     });
@@ -130,17 +130,19 @@ describe("workspace route loading", () => {
         expect(announcements).toContain('lazy(() => import("@/components/ui/aceternity/announcement-timeline-modal")');
     });
 
-    test("uses a quiet brand loader for initial hydration", () => {
+    test("shares the clover between boot, full-screen, and workspace route loading", () => {
+        const html = source("../index.html");
         const loader = source("../src/components/ui/aceternity/full-screen-loader.tsx");
         const css = source("../src/styles/globals.css");
 
-        expect(loader).toContain("full-screen-loader-mark");
-        expect(loader).toContain("LoadingSignal");
-        expect(loader).not.toContain("YINGCE STUDIO");
-        expect(loader).not.toContain("loading-cue");
-        expect(css).toContain("@keyframes loading-signal-sweep");
-        expect(css).toContain("@media (prefers-reduced-motion: reduce)");
-        expect(css).not.toContain("@keyframes loading-cue-pulse");
+        expect(html).toContain('class="loading-clover" aria-hidden="true"');
+        expect(html).toContain("@keyframes loading-clover-pulse");
+        expect(html).toContain("@media (prefers-reduced-motion: reduce)");
+        expect(loader).toContain("<PageLoader fullScreen");
+        expect(loader).toContain('<PageLoader label={label} className={cn("workspace-route-loader"');
+        expect(loader).toContain('className="loading-clover" aria-hidden="true"');
+        expect(css).toContain(".page-loader > .loading-clover");
+        expect(css).not.toContain("@keyframes loading-signal-sweep");
     });
 });
 

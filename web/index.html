@@ -23,7 +23,17 @@
                 background: #0f0f11;
             }
             #boot-recovery {
+                position: fixed;
+                inset-inline: 24px;
+                top: calc(50% + 32px);
+                text-align: center;
+                font:
+                    600 16px/1.3 system-ui,
+                    sans-serif;
                 color: #171717;
+            }
+            #boot-recovery p {
+                margin: 0;
             }
             html.dark #boot-recovery {
                 color: #f5f5f5;
@@ -31,50 +41,50 @@
             #root:empty {
                 min-height: 100vh;
             }
-            /* 启动信号是 FullScreenLoader 里 .loading-signal 的镜像：同尺寸、同位置、同节奏，
-               并按同一 performance.now() 时钟对齐相位（见 body 内脚本），React 接管时扫光原地继续。
-               只用中性墨色，首屏保持品牌中性；改动时与 globals.css 的 .loading-signal 一起改。 */
-            #root:empty::before {
-                --boot-signal-ink: rgba(23, 23, 23, 0.8);
-                content: "";
+            #boot-recovery .loading-clover {
                 position: fixed;
                 left: 50%;
                 top: 50%;
-                width: 112px;
-                height: 2px;
-                margin: -1px 0 0 -56px;
-                border-radius: 999px;
-                background:
-                    linear-gradient(90deg, transparent, var(--boot-signal-ink) 25%, var(--boot-signal-ink) 75%, transparent) -66.667% 0 / 40% 100% no-repeat,
-                    rgba(16, 16, 20, 0.1);
-                animation: boot-signal-sweep 1500ms cubic-bezier(0.35, 0.05, 0.65, 0.95) calc(-1 * var(--boot-signal-clock, 0ms)) infinite;
+                transform: translate(-50%, -50%);
             }
-            html.dark #root:empty::before {
-                --boot-signal-ink: rgba(245, 245, 245, 0.8);
-                background-color: rgba(244, 244, 246, 0.1);
+            /* 启动占位与 FullScreenLoader 共用，入口脚本加载前也能显示。 */
+            .loading-clover {
+                display: grid;
+                width: 32px;
+                height: 32px;
+                grid-template: repeat(2, 1fr) / repeat(2, 1fr);
+                gap: 2px;
             }
-            @keyframes boot-signal-sweep {
-                from {
-                    background-position: -66.667% 0;
-                }
-                to {
-                    background-position: 166.667% 0;
-                }
+            .loading-clover > i {
+                border-radius: 72% 72% 14% 72%;
+                background: currentColor;
+                animation: loading-clover-pulse 1200ms linear calc(var(--clover-offset, 0ms) - var(--loader-clock, 0ms)) infinite;
             }
-            @keyframes boot-signal-breathe {
+            .loading-clover > i:nth-child(2) {
+                --clover-offset: -900ms;
+                transform: rotate(90deg);
+            }
+            .loading-clover > i:nth-child(3) {
+                --clover-offset: -300ms;
+                transform: rotate(-90deg);
+            }
+            .loading-clover > i:nth-child(4) {
+                --clover-offset: -600ms;
+                transform: rotate(180deg);
+            }
+            @keyframes loading-clover-pulse {
                 0%,
+                52%,
                 100% {
-                    opacity: 0.35;
+                    opacity: 0.36;
                 }
-                50% {
+                22% {
                     opacity: 1;
                 }
             }
             @media (prefers-reduced-motion: reduce) {
-                #root:empty::before {
-                    background-position: 50% 0;
-                    animation-name: boot-signal-breathe;
-                    animation-timing-function: ease-in-out;
+                .loading-clover > i {
+                    animation: none;
                 }
             }
         </style>
@@ -89,11 +99,15 @@
     </head>
     <body class="bg-background text-foreground antialiased">
         <div id="root"></div>
+        <section id="boot-recovery" role="status" aria-live="polite">
+            <span class="loading-clover" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <p>正在打开创作空间</p>
+        </section>
         <script>
-            // 放在 #root 之后：外链样式加载完、首帧绘制前才执行，启动信号从这一刻对齐 performance.now()。
-            document.getElementById("root").style.setProperty("--boot-signal-clock", performance.now() + "ms");
             // 入口或其依赖失败时 React 尚未挂载，路由错误页无法接管；提供不依赖外链资源的退出入口。
             var bootRoot = document.getElementById("root");
+            var bootNotice = document.getElementById("boot-recovery");
+            bootNotice.style.setProperty("--loader-clock", performance.now() + "ms");
             var bootTimer = setTimeout(function () {
                 if (bootRoot.childNodes.length) return;
                 var notice = document.createElement("section");
@@ -114,7 +128,7 @@
                     location.replace(url.toString());
                 };
                 notice.append(title, detail, retry);
-                document.body.appendChild(notice);
+                bootNotice.replaceWith(notice);
             }, 20000);
             var bootObserver = new MutationObserver(function () {
                 if (!bootRoot.childNodes.length) return;

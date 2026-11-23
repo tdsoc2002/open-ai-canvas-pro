@@ -8,7 +8,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { Select } from "@/components/ui/base/select";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { catalogIdOf, inspirationSourceOf, inspirationSources, type CreationInspiration, type InspirationSourceId } from "@/lib/inspirations/catalog";
+import { catalogIdOf, inspirationSources, type CreationInspiration, type InspirationSourceId } from "@/lib/inspirations/catalog";
 import { INSPIRATION_HALL_CATEGORIES, inspirationHallCategoryOf, type InspirationHallFilter } from "@/lib/inspirations/hall-categories";
 import { isFreshInspiration, localDayKey, orderInspirationsByLatest, orderInspirationsForToday } from "@/lib/inspirations/daily-order";
 import { isCustomInspiration, resolveInspirations } from "@/lib/inspirations/resolve";
@@ -378,10 +378,27 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
 
     return (
         <section ref={sectionRef} id="creation-inspirations" className="inspiration-hall" aria-labelledby="inspiration-hall-title">
-            <header className="inspiration-hall-header">
-                <div>
-                    <h1 id="inspiration-hall-title">灵感大厅</h1>
+            <h1 id="inspiration-hall-title" className="sr-only">
+                灵感大厅
+            </h1>
+            <header className="inspiration-hall-toolbar">
+                <div className="inspiration-hall-directions" role="group" aria-label="按创作方向筛选灵感">
+                    {INSPIRATION_HALL_CATEGORIES.map(({ value, label }) => (
+                        <button
+                            key={value}
+                            type="button"
+                            aria-pressed={hallFilter === value}
+                            onClick={() => {
+                                if (hallFilter === value) return;
+                                setHallFilter(value);
+                                setCategory("all");
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
                 </div>
+                <Input allowClear prefix={<Search className="size-4" />} placeholder="搜索标题、描述或标签" aria-label="搜索灵感" value={search} onChange={(event) => setSearch(event.target.value)} className="inspiration-hall-search" />
                 <div className="inspiration-hall-actions">
                     <Button
                         disabled={!hydrated}
@@ -411,26 +428,6 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                     </Dropdown>
                 </div>
             </header>
-
-            <div className="inspiration-hall-toolbar">
-                <div className="inspiration-hall-directions" role="group" aria-label="按创作方向筛选灵感">
-                    {INSPIRATION_HALL_CATEGORIES.map(({ value, label }) => (
-                        <button
-                            key={value}
-                            type="button"
-                            aria-pressed={hallFilter === value}
-                            onClick={() => {
-                                if (hallFilter === value) return;
-                                setHallFilter(value);
-                                setCategory("all");
-                            }}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-                <Input allowClear prefix={<Search className="size-4" />} placeholder="搜索标题、描述或标签" aria-label="搜索灵感" value={search} onChange={(event) => setSearch(event.target.value)} className="inspiration-hall-search" />
-            </div>
 
             <div className="inspiration-hall-secondary-toolbar">
                 <h2>{INSPIRATION_HALL_CATEGORIES.find(({ value }) => value === hallFilter)?.label}</h2>
@@ -511,7 +508,6 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                                         item={item}
                                         favorite={favorites.includes(id)}
                                         hidden={view === "hidden"}
-                                        showSources={inspirationSourcesVisible}
                                         onOpen={() => setDetail(item)}
                                         onToggleFavorite={() => toggleFavorite(id)}
                                         onRestore={() => {
@@ -583,7 +579,6 @@ function InspirationCard({
     item,
     favorite,
     hidden,
-    showSources,
     onOpen,
     onToggleFavorite,
     onRestore,
@@ -593,7 +588,6 @@ function InspirationCard({
     item: CreationInspiration;
     favorite: boolean;
     hidden: boolean;
-    showSources: boolean;
     onOpen: () => void;
     onToggleFavorite: () => void;
     onRestore: () => void;
@@ -607,8 +601,6 @@ function InspirationCard({
             <button type="button" className="inspiration-card-open" aria-label={`查看灵感：${item.title}`} aria-haspopup="dialog" onClick={onOpen}>
                 <span className="inspiration-card-cover">
                     <InspirationCover key={item.image} image={item.image} />
-                    {isFreshInspiration(item, Date.now()) ? <span className="inspiration-card-new">新</span> : null}
-                    {showSources ? <span className="inspiration-card-source">{inspirationSourceOf(item)?.label ?? "未标注来源"}</span> : null}
                 </span>
                 <span className="inspiration-card-body">
                     <strong className="inspiration-card-title" title={item.title}>

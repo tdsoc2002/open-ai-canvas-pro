@@ -15,7 +15,9 @@ describe("index.html boot recovery", () => {
         const html = readFileSync(resolve(import.meta.dir, "../index.html"), "utf8");
         const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).find((source) => source.includes("bootTimer"))!;
         const dom = new Window({ url: "https://canvas.example/canvas?mode=recent" });
-        dom.document.body.innerHTML = '<div id="root"></div>';
+        const bootShell = html.match(/<section id="boot-recovery"[\s\S]*?<\/section>/)![0];
+        dom.document.body.innerHTML = '<div id="root"></div>' + bootShell;
+        expect(dom.document.querySelectorAll("#boot-recovery .loading-clover i")).toHaveLength(4);
         let timer: (() => void) | undefined;
         let destination = "";
         try {

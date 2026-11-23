@@ -19,6 +19,9 @@
     --joysee-brand: #b5abf0;
     --joysee-navigation: #171717;
 }
+:root[data-skin="joysee-minimal"] .page-loader[data-appearance-resolved="true"] {
+    --page-loader-accent: var(--joysee-brand);
+}
 :root[data-skin="joysee-minimal"] :is(.app-user-workspace, .app-user-overlays, .app-product-workspace, .app-product-overlays) {
     --user-page-bg: var(--background);
     --user-surface: var(--card);

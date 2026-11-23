@@ -1,30 +1,9 @@
-/* 独立灵感大厅：标题与常用筛选常驻，完整管理功能按需展开。 */
 .inspiration-hall {
     container: inspiration-hall / inline-size;
     min-width: 0;
     width: 100%;
     scroll-margin-block-start: var(--space-24);
     color: var(--user-ink);
-}
-
-.inspiration-hall-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    margin-bottom: var(--space-3);
-}
-
-.inspiration-hall-header > div:first-child {
-    min-width: 0;
-}
-.inspiration-hall-header h1 {
-    margin: 0;
-    color: var(--user-ink);
-    font-size: var(--fs-section);
-    font-weight: 600;
-    letter-spacing: var(--ls-title);
-    line-height: 1.35;
 }
 
 .inspiration-hall-actions {
@@ -50,7 +29,7 @@
 
 .inspiration-hall-directions {
     display: flex;
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
     gap: var(--space-3);
     overflow-x: auto;
@@ -117,7 +96,6 @@
     flex: 0 0 auto;
     height: var(--user-control-height);
     min-width: 0;
-    margin-left: auto;
     background: transparent;
     border: 1px solid var(--user-border);
     border-radius: var(--user-radius-button);
@@ -259,36 +237,6 @@
     height: 100%;
     object-fit: cover;
 }
-.inspiration-card-source {
-    position: absolute;
-    bottom: var(--space-2);
-    left: var(--space-2);
-    max-width: calc(100% - var(--space-4));
-    overflow: hidden;
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--r-full);
-    background: var(--user-surface-raised);
-    color: var(--user-ink-muted);
-    font-size: var(--fs-tiny);
-    line-height: 1.5;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* 上新 7 天内的条目：左上角小标签，与右上角的操作按钮错开。 */
-.inspiration-card-new {
-    position: absolute;
-    top: var(--space-2);
-    left: var(--space-2);
-    padding: 0 var(--space-2);
-    border-radius: var(--r-full);
-    background: var(--user-surface-raised);
-    color: var(--user-ink);
-    font-size: var(--fs-tiny);
-    font-weight: 600;
-    line-height: 1.8;
-}
-
 /* 操作与详情按钮是兄弟节点；收藏和展开的菜单始终可见。 */
 .inspiration-card-actions {
     position: absolute;
@@ -504,16 +452,8 @@
 }
 
 @container inspiration-hall (max-width: 720px) {
-    .inspiration-hall-header {
-        align-items: flex-start;
-        gap: var(--space-3);
-    }
-    .inspiration-hall-header h1 {
-        font-size: var(--fs-heading-lg);
-    }
     .inspiration-hall-search.ant-input-affix-wrapper {
-        width: 100%;
-        margin-left: 0;
+        flex: 1 1 0;
     }
     .inspiration-hall-directions,
     .inspiration-hall-secondary-toolbar h2 {
@@ -539,9 +479,6 @@
 }
 
 @container inspiration-hall (max-width: 460px) {
-    .inspiration-hall-header {
-        flex-wrap: wrap;
-    }
     .inspiration-hall-toolbar {
         gap: var(--space-2);
     }
@@ -550,12 +487,6 @@
     }
     .inspiration-hall-modes > button {
         flex: 1;
-    }
-    .inspiration-card-source {
-        left: var(--space-1);
-        bottom: var(--space-1);
-        max-width: calc(100% - var(--space-2));
-        padding-inline: var(--space-2);
     }
     .inspiration-card-title {
         font-size: var(--fs-caption);
