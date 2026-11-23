@@ -222,6 +222,7 @@ func (s *Service) StartWorker() {
 	s.startInspirationFeedWorker()
 	s.startConsumptionReportWorker()
 	s.startFeishuFeedbackWorker()
+	s.startAigcQuotaWorker()
 	go s.syncAgentSessionLimit()
 	s.runWorkerLoop(func(ctx context.Context) {
 		ticker := time.NewTicker(3 * time.Second)

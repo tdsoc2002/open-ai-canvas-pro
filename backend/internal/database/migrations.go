@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 108
+const CurrentSchemaVersion int64 = 109
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -380,6 +380,9 @@ var schemaMigrations = []migration{
 		return tx.AutoMigrate(&model.Team{})
 	}},
 	{version: 108, name: "shared_workspace_content", checksum: "sha256:shared-workspace-content-v108", apply: migrateSharedWorkspaceContent},
+	{version: 109, name: "aigc_quota_snapshots", checksum: "sha256:aigc-quota-snapshots-v109", apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.AigcQuotaSnapshot{})
+	}},
 }
 
 func migrateAPILogGenerationContent(tx *gorm.DB) error {

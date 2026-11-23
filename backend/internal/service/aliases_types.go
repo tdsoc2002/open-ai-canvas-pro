@@ -12,6 +12,8 @@ const (
 )
 
 type (
+	AigcQuota                              = app.AigcQuota
+	AdminChannelAigcQuota                  = app.AdminChannelAigcQuota
 	SaveEcommerceProjectRequest            = app.SaveEcommerceProjectRequest
 	EcommerceCreativeDirectionsRequest     = app.EcommerceCreativeDirectionsRequest
 	EcommerceStyleChoice                   = app.EcommerceStyleChoice

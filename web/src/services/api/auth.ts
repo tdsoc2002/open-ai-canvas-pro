@@ -651,6 +651,38 @@ export function listAdminChannels(params: AdminListParams = {}) {
     return http.get<{ channels: ModelChannel[]; total: number; page: number; pageSize: number }>("/admin/channels", { params });
 }
 
+export type AdminAigcQuota = {
+    quotaType: "Image" | "Video" | "Text";
+    quotaLimit: number;
+    usage: number;
+    remaining: number;
+    unit: string;
+    quotaPeriod: string;
+    status: string;
+    updatedAt?: string;
+    errorCode?: string;
+    errorMessage?: string;
+};
+
+export type AdminChannelAigcQuota = {
+    channelId: string;
+    channelName: string;
+    appId: number;
+    status: "ok" | "not_configured" | "error";
+    quotas: AdminAigcQuota[];
+    updatedAt?: string;
+    errorCode?: string;
+    errorMessage?: string;
+};
+
+export function getAdminAigcQuotas() {
+    return http.get<{ items: AdminChannelAigcQuota[] }>("/admin/aigc-quotas");
+}
+
+export function refreshAdminAigcQuotas() {
+    return http.post<{ items: AdminChannelAigcQuota[] }>("/admin/aigc-quotas/refresh", undefined, { timeout: 60_000 });
+}
+
 export function createAdminChannel(input: Partial<ModelChannel> & { useGlobalConcurrency?: boolean }) {
     return http.post<{ channel: ModelChannel }>("/admin/channels", input);
 }

@@ -3,7 +3,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"yingce/backend/internal/service"
 
@@ -11,6 +13,38 @@ import (
 )
 
 func registerAdminChannelRoutes(r *gin.RouterGroup, svc *service.Service) {
+	r.GET("/admin/aigc-quotas", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		items, err := svc.AdminAigcQuotas(user)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"items": items})
+	})
+	r.POST("/admin/aigc-quotas/refresh", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 45*time.Second)
+		defer cancel()
+		if err := svc.RefreshAdminAigcQuotas(ctx, user); err != nil {
+			failService(c, err)
+			return
+		}
+		items, err := svc.AdminAigcQuotas(user)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"items": items})
+	})
 	registerChannelWebsiteRoutes(r, svc)
 	r.GET("/admin/channels", func(c *gin.Context) {
 		user, err := currentUser(c, svc)

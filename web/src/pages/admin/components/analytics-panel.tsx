@@ -13,6 +13,7 @@ import { exportAdminAnalytics, getAdminAnalytics, listAdminUsers, type AdminRefe
 import { analyticsFinanceColumns, formatCredits, formatFinanceCost, formatFinanceMargin } from "./analytics-finance";
 import { formatCountDelta, formatNumber, formatRateDelta } from "./analytics-trend-delta";
 import { Select } from "@/components/ui/base/select";
+import { AigcQuotaPanel } from "./aigc-quota-panel";
 
 type Props = {
     users: AdminReferenceData["users"];
@@ -208,6 +209,7 @@ export default function AnalyticsPanel({ users, channels }: Props) {
 
     return (
         <div className="admin-analytics-panel" aria-busy={loading}>
+            <AigcQuotaPanel />
             <ListToolbar
                 className="admin-analytics-toolbar"
                 active={Boolean(userId || model || channelId || capability)}

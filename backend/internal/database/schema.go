@@ -56,6 +56,7 @@ func Models() []any {
 		&model.SMSChannel{},
 		&model.SMSRecord{},
 		&model.ModelChannel{},
+		&model.AigcQuotaSnapshot{},
 		&model.ChannelModel{},
 		&model.ChannelModelPriceTier{},
 		&model.IDSequence{},
