@@ -51,6 +51,7 @@ type CanvasUploadProgress = {
 };
 
 type FileNodeUploadOptions = {
+    preserveSelection?: boolean;
     // 批量上传由批量入口统一展示进度、选中结果和汇总提示，并在全部完成后只刷新一次项目。
     batch?: { onLocalOnly: () => void };
     // Agent 输入框添加的附件：用调用方给的节点 ID（输入框立即就能引用它），不弹全局进度、不改选区；
@@ -196,7 +197,7 @@ export function useCanvasUpload({ canvasId, domainProjectId, nodesRef, selectedN
                           )
                         : [...current, placeholder],
                 );
-                if (!silent) selectInsertedNode(id, "close");
+                if (!silent && !options.preserveSelection) selectInsertedNode(id, "close");
                 let lastPercent: number | undefined;
                 let lastPaintAt = 0;
                 const onProgress = (loaded: number, total: number) => {

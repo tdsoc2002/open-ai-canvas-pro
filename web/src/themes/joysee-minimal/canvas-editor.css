@@ -107,7 +107,7 @@
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor .canvas-node-composer {
     border: 1px solid var(--canvas-composer-border);
-    box-shadow: var(--joysee-editor-shadow);
+    box-shadow: var(--canvas-video-composer-shadow, var(--joysee-editor-shadow));
 }
 
 :root[data-skin="joysee-minimal"] .joysee-canvas-editor [data-canvas-context-menu] {

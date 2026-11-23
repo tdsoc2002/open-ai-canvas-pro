@@ -37,9 +37,9 @@ export function canvasOverlayBounds(size: Size, insets: Partial<CanvasOverlayBou
 /** Measure screen-space chrome only when its size changes, never on canvas pan frames. */
 export function observeCanvasOverlayBounds(container: HTMLElement, onChange: (bounds: CanvasOverlayBounds) => void) {
     const root = container.closest("main") || container;
-    const left = [...root.querySelectorAll<HTMLElement>(".canvas-workspace-shell, .canvas-project-sidebar")];
+    const left = [...root.querySelectorAll<HTMLElement>(".canvas-workspace-shell, .canvas-project-sidebar, .canvas-focus-rail-dock")];
     const top = [...root.querySelectorAll<HTMLElement>(".canvas-topbar")];
-    const bottom = [...root.querySelectorAll<HTMLElement>(".canvas-floating-dock, .canvas-workspace-zoom-controls")];
+    const bottom = [...root.querySelectorAll<HTMLElement>(".canvas-floating-dock:not(.canvas-focus-rail-dock), .canvas-workspace-zoom-controls")];
     const measure = () => {
         const rect = container.getBoundingClientRect();
         const visibleRects = (elements: HTMLElement[]) =>

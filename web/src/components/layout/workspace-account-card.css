@@ -261,8 +261,11 @@
     justify-content: flex-start;
 }
 .workspace-account-card-actions > a,
-button.workspace-account-menu-row {
+:is(button, label).workspace-account-menu-row {
     color: var(--user-ink);
+}
+label.workspace-account-menu-row {
+    cursor: pointer;
 }
 .workspace-account-card-actions > a > span,
 .workspace-account-menu-label {
@@ -272,17 +275,20 @@ button.workspace-account-menu-row {
     white-space: normal;
 }
 .workspace-account-card-actions > a:hover,
-button.workspace-account-menu-row:hover {
+:is(button, label).workspace-account-menu-row:hover {
     background: var(--user-surface-muted);
 }
 .workspace-account-card-actions > a > svg:last-child,
 .workspace-account-menu-row {
     color: var(--user-ink-muted);
 }
-.workspace-account-menu-version {
+.workspace-account-menu-version,
+.workspace-account-menu-theme-state {
     max-width: 42%;
     color: var(--user-ink-muted);
     font-size: var(--fs-caption);
+}
+.workspace-account-menu-version {
     font-variant-numeric: tabular-nums;
 }
 .workspace-account-card :is(a, button):focus-visible {

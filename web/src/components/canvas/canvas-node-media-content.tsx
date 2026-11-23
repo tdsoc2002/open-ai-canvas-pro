@@ -2,12 +2,13 @@
 //
 // 视频节点优先展示静态封面，缺图才按需抽帧，点击后才启动播放器。
 
-import { Image as ImageIcon, ImageOff, LoaderCircle, Music2, Play, RotateCw, Video } from "lucide-react";
+import { Image as ImageIcon, ImageOff, Layers2, LoaderCircle, Music2, Play, RotateCw, Type, Video } from "lucide-react";
 import "./canvas-image-state.css";
 import "./canvas-video-preview-play.css";
 import { type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { canvasNodeVideoPreviewReference } from "@/lib/canvas/canvas-media-preview";
+import { canvasVideoReferenceMode } from "@/lib/canvas/canvas-video-reference-mode";
 import { createDefaultSubtitleStyle } from "@/types/timeline";
 import { CanvasVideoPreviewImage } from "./canvas-video-preview-image";
 import { VideoPlayer } from "@/components/video-player";
@@ -97,9 +98,9 @@ export function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchP
     return content;
 }
 
-export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlayRequest }: CanvasNodeContentProps) {
+export function VideoNodeContent({ node, theme, contentReadOnly, mediaActive = false, onMediaPlayRequest }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
-    const { updateMediaNode } = useCanvasNodeActions();
+    const { openVideoSetup, updateMediaNode } = useCanvasNodeActions();
     const { url, loading, onError } = useVideoPlaybackUrl(node, mediaActive);
     const preview = canvasNodeVideoPreviewReference(node);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
@@ -160,7 +161,25 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
         };
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMediaNode, url]);
 
-    if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
+    if (!node.metadata?.content && !node.metadata?.storageKey) {
+        return (
+            <div className="canvas-video-empty" style={{ color: theme.node.muted }}>
+                <Play className="size-12 fill-current opacity-55" aria-hidden />
+                {openVideoSetup && !contentReadOnly && canvasVideoReferenceMode(node, false) ? (
+                    <div className="canvas-video-empty-actions" aria-label="开始视频创作" role="group">
+                        <button type="button" onClick={() => openVideoSetup(node, "frames")}>
+                            <Layers2 aria-hidden /> 使用首尾帧
+                        </button>
+                        <button type="button" onClick={() => openVideoSetup(node, "text")}>
+                            <Type aria-hidden /> 从提示词开始
+                        </button>
+                    </div>
+                ) : (
+                    <span>空视频节点</span>
+                )}
+            </div>
+        );
+    }
     if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} onPlay={() => onMediaPlayRequest?.(node.id)} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);

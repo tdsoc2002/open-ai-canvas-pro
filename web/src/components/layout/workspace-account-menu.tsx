@@ -10,13 +10,15 @@ import { WorkspaceAccountCard } from "./workspace-account-card";
 import { UserAvatar } from "./user-avatar";
 import { UserGroupAvatarRing } from "./user-group-badge";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { useThemeStore, type ThemeName } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 
 /** 顶部与侧栏复用同一账户卡片；顶部额外保留版本和主题偏好。 */
-export function WorkspaceAccountMenu({ showThemeSwitch = true }: { showThemeSwitch?: boolean }) {
-    const theme = useThemeStore((state) => state.theme);
-    const setTheme = useThemeStore((state) => state.setTheme);
+export function WorkspaceAccountMenu({ themePreference }: { themePreference?: { theme: ThemeName; onChange: (theme: ThemeName) => void } }) {
+    const workspaceTheme = useThemeStore((state) => state.theme);
+    const setWorkspaceTheme = useThemeStore((state) => state.setTheme);
+    const theme = themePreference?.theme ?? workspaceTheme;
+    const setTheme = themePreference?.onChange ?? setWorkspaceTheme;
     const user = useUserStore((state) => state.user);
     const hydrated = useUserStore((state) => state.hydrated);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -44,13 +46,12 @@ export function WorkspaceAccountMenu({ showThemeSwitch = true }: { showThemeSwit
                     >
                         <div className="workspace-account-menu-footer">
                             <AppChangelogButton className="workspace-account-menu-row" showLabel showVersion labelClassName="workspace-account-menu-label" versionClassName="workspace-account-menu-version" />
-                            {showThemeSwitch ? (
-                                <div className="workspace-account-menu-row">
-                                    {theme === "dark" ? <Moon aria-hidden /> : <Sun aria-hidden />}
-                                    <span className="workspace-account-menu-label">{t("shell.darkMode")}</span>
-                                    <Switch size="sm" checked={theme === "dark"} onChange={(checked) => setTheme(checked ? "dark" : "light")} aria-label={t("shell.darkMode")} />
-                                </div>
-                            ) : null}
+                            <label className="workspace-account-menu-row">
+                                {theme === "dark" ? <Moon aria-hidden /> : <Sun aria-hidden />}
+                                <span className="workspace-account-menu-label">{t(themePreference ? "canvasC.toolbar.appearance" : "shell.darkMode")}</span>
+                                {themePreference ? <span className="workspace-account-menu-theme-state">{t(theme === "dark" ? "settings.preferences.themeDark" : "settings.preferences.themeLight")}</span> : null}
+                                <Switch size="sm" checked={theme === "dark"} onChange={(checked) => setTheme(checked ? "dark" : "light")} aria-label={t("shell.darkMode")} />
+                            </label>
                         </div>
                     </WorkspaceAccountCard>
                 }

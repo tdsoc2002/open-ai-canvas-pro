@@ -12,7 +12,7 @@ import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
 import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
-import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
+import { canvasThemes, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { useThemePack } from "@/themes/use-theme-pack";
@@ -55,6 +55,7 @@ type CanvasTopBarProps = Pick<CanvasProjectHeadingProps, "view" | "onViewChange"
     CanvasAuxiliaryCommands & {
         projectHeading?: ReactNode;
         onShare?: () => void;
+        onThemeChange: (theme: CanvasColorTheme) => void;
         shortcutRequestNonce: number;
         collaborationControlRef?: Ref<HTMLDivElement>;
     };
@@ -206,9 +207,10 @@ export function CanvasProjectHeading({
     );
 }
 
-export function CanvasTopBar({ projectHeading, view, onViewChange, onOpenSearch, onImportLibTV, onImportTapNow, onShare, shortcutRequestNonce, onEnterFocusMode, shortDramaGuide, collaborationControlRef }: CanvasTopBarProps) {
+export function CanvasTopBar({ projectHeading, view, onViewChange, onOpenSearch, onImportLibTV, onImportTapNow, onShare, onThemeChange, shortcutRequestNonce, onEnterFocusMode, shortDramaGuide, collaborationControlRef }: CanvasTopBarProps) {
     const joysee = useThemePack()?.workspaceStyle === "joysee";
-    const theme = canvasThemes[useCanvasThemeStore((state) => state.theme)];
+    const colorTheme = useCanvasThemeStore((state) => state.theme);
+    const theme = canvasThemes[colorTheme];
     const dockStyle = canvasDockStyle(theme, theme.node.text);
     const user = useUserStore((state) => state.user);
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
@@ -307,7 +309,7 @@ export function CanvasTopBar({ projectHeading, view, onViewChange, onOpenSearch,
                             <Button type="text" className="canvas-topbar-action !h-10 !w-10 !min-w-10 !rounded-xl !p-0" style={{ color: theme.node.text }} icon={<Share2 className="size-4" />} onClick={onShare} aria-label="分享画布" />
                         </CanvasTopBarTooltip>
                     )}
-                    {joysee ? <WorkspaceAccountMenu showThemeSwitch={false} /> : null}
+                    {joysee ? <WorkspaceAccountMenu themePreference={{ theme: colorTheme, onChange: onThemeChange }} /> : null}
                 </div>
             </div>
             <CanvasShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

@@ -26,7 +26,16 @@ import copyToClipboard from "copy-to-clipboard";
 import { saveAs } from "file-saver";
 import { serializeSrtEntries } from "@/lib/timeline/srt-parser";
 import { nanoid } from "nanoid";
-import { canvasAppearanceBaseTheme, canvasAppearanceForTheme, DEFAULT_CANVAS_BACKGROUND_MODE, normalizeCanvasAppearance, resolveCanvasAppearance, writeCanvasAppearanceDefault, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
+import {
+    canvasAppearanceBaseTheme,
+    canvasAppearanceForTheme,
+    DEFAULT_CANVAS_BACKGROUND_MODE,
+    normalizeCanvasAppearance,
+    resolveCanvasAppearance,
+    switchCanvasAppearanceTheme,
+    writeCanvasAppearanceDefault,
+    type CanvasAppearance,
+} from "@/lib/canvas/canvas-appearance";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { filterCanvasDisplayConnections, persistCanvasHideNodeConnections, readCanvasHideNodeConnections } from "@/lib/canvas/canvas-connection-visibility";
 import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
@@ -119,6 +128,11 @@ import { resolveCanvasEmptyStateKind } from "@/lib/canvas/canvas-starter";
 import { failedImageBatchChildren, markImageBatchRetrying, reconcileImageBatchRoot, restoreUnsubmittedImageBatchChild } from "@/lib/canvas/canvas-image-batch-retry";
 import { cinematicStoryboardColumns, createCanvasNode, getInputSummary, isHiddenBatchChild } from "@/lib/canvas/canvas-project-domain";
 import { bindStoryboardKeyframes, storyboardKeyframeTime, storyboardRowsFromBatchTable } from "@/lib/canvas/canvas-batch-storyboard";
+import { findAvailableGenerationGroupPosition } from "@/lib/canvas/canvas-generation-layout";
+import { IMAGE_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
+import { canvasConnectionError } from "@/lib/canvas/canvas-connection-policy";
+import { canvasVideoReferenceMode } from "@/lib/canvas/canvas-video-reference-mode";
+import { uploadNodeType } from "@/lib/canvas/canvas-file-upload";
 import { stampCanvasNodeChanges, updateCanvasNode, updateCanvasNodes } from "@/lib/canvas/canvas-node-timestamps";
 import { canvasAssetHandoffAttempt, finalizeCanvasAssetHandoff, uninsertedCanvasAssetHandoffPayloads } from "@/lib/canvas/canvas-asset-handoff";
 import { expandBatchSourceNodeIds } from "@/lib/canvas/canvas-batch-connection";
@@ -1649,9 +1663,31 @@ function CanvasViewportPage() {
         },
         [updateNodeFromContent],
     );
+    const openVideoSetup = useCallback(
+        (node: CanvasNodeData, mode: "text" | "frames") => {
+            const current = nodesRef.current.find((item) => item.id === node.id);
+            if (!current || current.metadata?.locked || isCanvasNodeGenerating(current, runningNodeId)) return;
+            const firstFrame = mentionReferencesByNodeId.get(node.id)?.find((reference) => reference.kind === "image");
+            if (current.metadata?.videoReferenceMode !== mode) {
+                handleConfigNodeChange(node.id, {
+                    videoReferenceMode: mode,
+                    videoEditOperation: mode === "frames" ? "image_to_video" : "text_to_video",
+                    videoStartFrameNodeId: mode === "frames" ? current.metadata?.videoStartFrameNodeId || firstFrame?.nodeId : undefined,
+                    videoEndFrameNodeId: mode === "frames" ? current.metadata?.videoEndFrameNodeId : undefined,
+                });
+            }
+            const selection = new Set([node.id]);
+            selectedNodeIdsRef.current = selection;
+            setSelectedNodeIds(selection);
+            setSelectedConnectionId(null);
+            setDialogNodeId(node.id);
+        },
+        [handleConfigNodeChange, mentionReferencesByNodeId, nodesRef, runningNodeId],
+    );
     const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
         () => ({
             upload: replaceCanvasNodeMedia,
+            openVideoSetup,
             download: downloadNodeImage,
             duplicate: duplicateNodeFromContent,
             deleteNode: deleteNodeFromContent,
@@ -1675,6 +1711,7 @@ function CanvasViewportPage() {
             duplicateNodeFromContent,
             extractLayerMaterials,
             openArtCritique,
+            openVideoSetup,
             replaceCanvasNodeMedia,
             updateMediaNodeFromContent,
             updateNodeFromContent,
@@ -2243,6 +2280,42 @@ function CanvasViewportPage() {
         [effectiveConfig, message],
     );
 
+    const uploadVideoReference = useCallback(
+        async (nodeId: string, file: File) => {
+            const target = nodesRef.current.find((node) => node.id === nodeId);
+            if (!target || target.metadata?.locked || isCanvasNodeGenerating(target, runningNodeId)) return;
+            if (uploadNodeType(file) !== CanvasNodeType.Image) {
+                message.warning("请选择图片作为视频参考");
+                return;
+            }
+            const size = IMAGE_NODE_MAX_SIZE;
+            const area = findAvailableGenerationGroupPosition(nodesRef.current, { x: target.position.x - size.width - 96, y: target.position.y }, size);
+            const sourceId = await createFileNode(file, { x: area.x + size.width / 2, y: area.y + size.height / 2 }, undefined, { preserveSelection: true });
+            if (!sourceId) return;
+            const current = nodesRef.current.find((node) => node.id === nodeId);
+            const referenceMode = canvasVideoReferenceMode(current, false);
+            if (!current || !referenceMode || current.metadata?.locked || isCanvasNodeGenerating(current, runningNodeId)) {
+                message.warning("图片已加入画布，视频节点当前无法连接参考图");
+                return;
+            }
+            const connection = { id: nanoid(), fromNodeId: sourceId, toNodeId: nodeId };
+            const issue = canvasConnectionError(effectiveConfig, nodesRef.current, connectionsRef.current, connection);
+            if (issue) {
+                message.warning(issue);
+                return;
+            }
+            const nextConnections = [...connectionsRef.current, connection];
+            connectionsRef.current = nextConnections;
+            setConnections(nextConnections);
+            if (referenceMode === "frames") {
+                if (!current.metadata?.videoStartFrameNodeId) handleConfigNodeChange(nodeId, { videoStartFrameNodeId: sourceId });
+            } else if (current.metadata?.videoReferenceMode === "text") {
+                handleConfigNodeChange(nodeId, { videoReferenceMode: "all", videoEditOperation: "reference_to_video" });
+            }
+        },
+        [connectionsRef, createFileNode, effectiveConfig, handleConfigNodeChange, message, nodesRef, runningNodeId, setConnections],
+    );
+
     const renderCanvasNodePanel = useCallback(
         (panelNode: CanvasNodeData) => {
             if (panelNode.type === CanvasNodeType.Script || panelNode.type === CanvasNodeType.Drawing) return null;
@@ -2293,6 +2366,7 @@ function CanvasViewportPage() {
                     onReorderReferences={handleReorderNodeReferences}
                     onReplaceReference={handleReplaceNodeReference}
                     onReplaceReferenceFiles={handleReplaceNodeReferenceFiles}
+                    onUploadVideoReference={uploadVideoReference}
                     onClose={() => setDialogNodeId(null)}
                     onNodeMouseDown={handleNodeMouseDown}
                     workspaceMode={workspaceMode}
@@ -2328,6 +2402,7 @@ function CanvasViewportPage() {
             handleReorderNodeReferences,
             handleReplaceNodeReference,
             handleReplaceNodeReferenceFiles,
+            uploadVideoReference,
             mentionReferencesByNodeId,
             message,
             projectId,
@@ -2953,6 +3028,7 @@ function CanvasViewportPage() {
                                     view={canvasView}
                                     onViewChange={changeCanvasView}
                                     onShare={workspaceTeamId ? undefined : () => setShareModalOpen(true)}
+                                    onThemeChange={(theme) => applyCanvasAppearance(switchCanvasAppearanceTheme(canvasAppearance, theme))}
                                     shortcutRequestNonce={shortcutRequestNonce}
                                     collaborationControlRef={joyseeEditor ? setCollaborationControlHost : undefined}
                                     onOpenSearch={() => setNodeSearchOpen(true)}

@@ -11506,6 +11506,49 @@
         transition: transform var(--motion-dur-slow-calc) var(--motion-ease-out);
     }
 
+    .canvas-video-empty {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+        border-radius: var(--node-radius);
+        padding: var(--space-3);
+        font-size: var(--fs-caption);
+    }
+
+    .canvas-node-shell:is([data-node-state="selected"], [data-node-state="focus"]) .canvas-video-empty {
+        outline: var(--stroke-1) solid var(--control-selected-fg);
+        outline-offset: calc(-1 * var(--stroke-1));
+    }
+
+    .canvas-video-empty-actions {
+        display: grid;
+        justify-items: start;
+        gap: var(--space-1);
+    }
+
+    .canvas-video-empty-actions button {
+        display: flex;
+        min-height: var(--space-8);
+        align-items: center;
+        gap: var(--space-2);
+        border-radius: var(--r-md);
+        padding-inline: var(--space-2);
+        color: var(--foreground);
+    }
+
+    .canvas-video-empty-actions button:is(:hover, :focus-visible) {
+        background: var(--surface-hover);
+    }
+
+    .canvas-video-empty-actions button svg {
+        width: var(--space-4);
+        height: var(--space-4);
+    }
+
     /* Only a valid connection approach tilts; selection and ordinary hover stay flat. */
     .canvas-node-shell[data-connection-tilt="true"] {
         transform: perspective(900px) rotateX(var(--connection-tilt-x, 0deg)) rotateY(var(--connection-tilt-y, 0deg));
@@ -11580,6 +11623,14 @@
     .canvas-node-composer.has-camera-panel {
         overflow: visible;
         z-index: 20;
+    }
+
+    .canvas-node-composer[data-generation-mode="video"] {
+        --canvas-video-composer-shadow: var(--shadow-xl);
+        border-radius: calc(var(--r-2xl) + var(--space-2));
+        background: color-mix(in srgb, var(--bg-secondary) 94%, var(--cn-text));
+        box-shadow: var(--canvas-video-composer-shadow);
+        padding: var(--space-4) clamp(var(--space-3), 3vw, var(--space-5));
     }
 
     /* 提示词优化保持在输入框附近，使用紧凑的 Popover 作为第二层输入工具。 */
@@ -12710,35 +12761,6 @@
         line-height: 1;
     }
 
-    .canvas-node-composer-mode:has(.canvas-video-reference-switch) {
-        height: auto;
-        flex-wrap: wrap;
-    }
-    .canvas-video-reference-switch {
-        max-width: 100%;
-        height: auto;
-        flex: none;
-        border-radius: var(--r-full);
-        background: var(--canvas-composer-control-surface);
-    }
-    .canvas-video-reference-switch :is(.app-segmented-item, .app-segmented-thumb) {
-        border-radius: var(--r-full);
-    }
-    .canvas-video-reference-switch .app-segmented-item {
-        min-height: var(--space-6);
-        padding-inline: var(--space-2);
-        font-size: var(--fs-caption);
-    }
-    .canvas-video-reference-switch .app-segmented-thumb {
-        background: var(--canvas-composer-control-hover);
-    }
-    .canvas-video-reference-switch .app-segmented-item:not([aria-checked="true"]) {
-        color: var(--cn-muted);
-    }
-    .canvas-video-reference-switch .app-segmented-item:disabled {
-        opacity: var(--button-disabled-opacity);
-    }
-
     .canvas-node-composer-header-action {
         border: 0;
         background: transparent;
@@ -13254,13 +13276,82 @@
         background: var(--canvas-composer-control-hover);
     }
 
-    @container (570px < width <= 760px) {
-        .canvas-node-composer-header:has(.canvas-video-reference-switch) .canvas-preset-picker-trigger {
-            width: var(--space-7);
-            padding-inline: 0;
+    [data-generation-mode="video"] {
+        --canvas-video-composer-control-size: calc(var(--space-8) + var(--space-1));
+
+        .canvas-node-composer-header {
+            min-height: var(--canvas-video-composer-control-size);
         }
-        .canvas-node-composer-header:has(.canvas-video-reference-switch) .canvas-preset-picker-trigger > span {
+
+        .canvas-node-composer-header-tools {
+            gap: var(--space-1);
+            justify-content: flex-start;
+        }
+
+        .canvas-node-composer-header-tools .canvas-node-composer-header-action {
+            background: var(--canvas-composer-control-surface);
+        }
+
+        .canvas-node-composer-header-action:disabled {
+            opacity: var(--button-disabled-opacity);
+            cursor: default;
+        }
+
+        .canvas-node-composer-window-tools::before {
             display: none;
+        }
+
+        .canvas-node-composer-editor {
+            margin-top: var(--space-3);
+        }
+
+        .canvas-node-composer-references {
+            padding-bottom: var(--space-3);
+        }
+
+        .canvas-node-composer-footer {
+            gap: var(--space-2);
+            padding-top: var(--space-2);
+        }
+
+        .canvas-video-reference-mode {
+            min-width: 8em;
+        }
+
+        .canvas-node-composer-footer .canvas-node-composer-model-trigger {
+            min-height: var(--canvas-video-composer-control-size);
+            padding-inline: var(--space-2) var(--space-3);
+        }
+
+        .canvas-node-composer-footer .canvas-node-composer-model-trigger:is(:hover, [aria-expanded="true"]) {
+            background: var(--canvas-composer-control-hover) !important;
+        }
+
+        .canvas-node-composer-reference-tools-trigger {
+            height: var(--canvas-video-composer-control-size);
+            border-radius: var(--button-radius);
+        }
+
+        .canvas-node-composer-reference-tools-trigger:is(:hover, :focus-visible, [aria-expanded="true"]) {
+            background: var(--canvas-composer-control-surface);
+        }
+
+        .canvas-node-generate-button {
+            width: var(--canvas-video-composer-control-size);
+            height: var(--canvas-video-composer-control-size);
+        }
+
+        .canvas-node-generate-button.has-video-cost {
+            width: auto;
+            min-width: var(--canvas-video-composer-control-size);
+            gap: var(--space-1);
+            padding-inline: var(--space-3);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .canvas-node-generate-button.has-video-cost > svg {
+            width: var(--space-4);
+            height: var(--space-4);
         }
     }
 
@@ -13281,6 +13372,23 @@
         .canvas-node-composer-window-tools {
             grid-column: 2;
             grid-row: 1;
+        }
+    }
+
+    @container (max-width: 570px) {
+        .canvas-node-composer[data-generation-mode="video"] {
+            .canvas-node-composer-header {
+                display: flex;
+                flex-wrap: nowrap;
+            }
+
+            .canvas-node-composer-header-tools {
+                flex-wrap: nowrap;
+                overflow: auto hidden;
+                padding: var(--space-1);
+                margin-inline-start: calc(-1 * var(--space-1));
+                scrollbar-width: thin;
+            }
         }
     }
 

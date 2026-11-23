@@ -3,9 +3,9 @@ import { InputNumber } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { ArrowUp, FileText, ImagePlus, LayoutList, LoaderCircle, Maximize2, Music2, Video, X, PenLine } from "lucide-react";
+import { ArrowUp, FileText, ImagePlus, LayoutList, LoaderCircle, Maximize2, Music2, Video, X, PenLine, Plus, Frame, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { Select } from "@/components/ui/base/select";
 
 import { ModelPicker } from "@/components/model-picker";
 import { modelOptionName, resolveModelChannel, useEffectiveConfig } from "@/stores/use-config-store";
@@ -79,6 +79,7 @@ type CanvasNodePromptPanelProps = {
     onReorderReferences?: (nodeId: string, orderedNodeIds: string[]) => void;
     onReplaceReference?: (nodeId: string, oldReference: CanvasResourceReference, sourceNodeId: string) => void;
     onReplaceReferenceFiles?: (nodeId: string, oldReference: CanvasResourceReference, files: File[]) => void;
+    onUploadVideoReference?: (nodeId: string, file: File) => Promise<void>;
     onClose?: () => void;
     onNodeMouseDown?: (event: ReactPointerEvent, nodeId: string) => void;
     onImageSettingsOpenChange?: (open: boolean) => void;
@@ -118,6 +119,7 @@ export function CanvasNodePromptPanel({
     onReorderReferences,
     onReplaceReference,
     onReplaceReferenceFiles,
+    onUploadVideoReference,
     onClose,
     onNodeMouseDown,
     onImageSettingsOpenChange,
@@ -146,6 +148,8 @@ export function CanvasNodePromptPanel({
     const promptRef = useRef(savedPrompt);
     const promptEditorActionsRef = useRef<CanvasResourceMentionTextareaActions | null>(null);
     const expandedPromptEditorActionsRef = useRef<CanvasResourceMentionTextareaActions | null>(null);
+    const videoReferenceInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingReference, setUploadingReference] = useState(false);
     const [presetOpen, setPresetOpen] = useState(false);
     const [expandedPresetOpen, setExpandedPresetOpen] = useState(false);
     const [nineGridOpen, setNineGridOpen] = useState(false);
@@ -255,7 +259,7 @@ export function CanvasNodePromptPanel({
     const credits = routeQuote ? batchQuoteTotal(routeQuote.amountMicrocredits, mode === "image" ? generationCount : 1) : configuredCredits;
     const activeReferenceCount = activeReferences.length;
     const canPickReferences = Boolean(onAddReference && !node.metadata?.locked);
-    const hasShelf = activeReferenceCount > 0 || canPickReferences;
+    const hasShelf = activeReferenceCount > 0 || (mode !== "video" && canPickReferences);
     const monochromeAccent = theme.node.activeStroke;
     const composerTokens = {
         "--canvas-composer-surface": theme.node.panel,
@@ -410,6 +414,24 @@ export function CanvasNodePromptPanel({
         }
     };
 
+    const videoModeControl = videoMode && (
+        <Select<CanvasVideoReferenceMode>
+            className="canvas-video-reference-mode"
+            size="sm"
+            variant="borderless"
+            virtual={false}
+            ariaLabel={t("canvasC.videoPromptTools.mode")}
+            value={videoMode}
+            disabled={Boolean(node.metadata?.locked) || isRunning}
+            options={[
+                { value: "text", label: t("canvasC.videoPromptTools.textMode") },
+                { value: "all", label: t("canvasC.videoPromptTools.allMode"), disabled: !hasMedia },
+                { value: "frames", label: t("canvasC.videoPromptTools.frameMode") },
+            ]}
+            onChange={changeVideoMode}
+        />
+    );
+
     const renderComposerHeader = (expanded: boolean) => (
         <div
             className="canvas-node-composer-header cursor-grab select-none active:cursor-grabbing"
@@ -425,31 +447,28 @@ export function CanvasNodePromptPanel({
                     <CanvasPortraitTexturePopover value={node.metadata?.portraitTexture} placement={expanded ? "topRight" : "topLeft"} onChange={(portraitTexture) => onConfigChange(node.id, { portraitTexture })} />
                     {activeReferenceCount > 0 ? <span className="canvas-node-composer-reference-heading">{referenceShelfHeading(activeReferences)}</span> : null}
                 </>
-            ) : (
+            ) : mode !== "video" ? (
                 <div className="canvas-node-composer-mode">
                     <span className="canvas-node-composer-mode-icon" style={{ color: monochromeAccent }}>
                         <GenerationModeIcon mode={mode} />
                     </span>
                     <span className="canvas-node-composer-mode-title truncate">{modeDisplayName(mode)}生成</span>
                     {activeReferenceCount > 0 ? <span className="canvas-node-composer-reference-heading">{referenceShelfHeading(activeReferences)}</span> : null}
-                    {videoMode && (
-                        <SegmentedControl<CanvasVideoReferenceMode>
-                            className="canvas-video-reference-switch"
-                            size="sm"
-                            ariaLabel={t("canvasC.videoPromptTools.mode")}
-                            value={videoMode}
-                            disabled={Boolean(node.metadata?.locked) || isRunning}
-                            options={[
-                                { value: "text", label: t("canvasC.videoPromptTools.textMode") },
-                                { value: "all", label: t("canvasC.videoPromptTools.allMode"), disabled: !hasMedia },
-                                { value: "frames", label: t("canvasC.videoPromptTools.frameMode"), disabled: !videoFrameOptions.length && videoMode !== "frames" },
-                            ]}
-                            onChange={changeVideoMode}
-                        />
-                    )}
                 </div>
-            )}
+            ) : null}
             <div className="canvas-node-composer-header-tools">
+                {videoMode && onUploadVideoReference ? (
+                    <button type="button" className="canvas-node-composer-header-action is-labeled" disabled={Boolean(node.metadata?.locked) || isRunning || uploadingReference} onClick={() => videoReferenceInputRef.current?.click()}>
+                        {uploadingReference ? <LoaderCircle className="motion-safe:animate-spin" aria-hidden /> : <Plus aria-hidden />}
+                        上传参考图
+                    </button>
+                ) : null}
+                {mode === "video" && canPickReferences ? (
+                    <button type="button" className="canvas-node-composer-header-action is-labeled" onClick={() => (expanded ? expandedPromptEditorActionsRef : promptEditorActionsRef).current?.openReferencePicker()}>
+                        <Frame aria-hidden />
+                        引用素材
+                    </button>
+                ) : null}
                 {!simpleMode && (mode === "image" || mode === "video") ? (
                     <div className="canvas-node-tool-controls canvas-node-tool-controls-inline flex items-center gap-1" data-canvas-no-zoom data-canvas-wheel-scroll onPointerDown={(e) => e.stopPropagation()}>
                         {mode === "image" ? (
@@ -533,9 +552,10 @@ export function CanvasNodePromptPanel({
         const showCost = creditsEnabled && credits !== null;
         const formattedCredits = credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
         const actionLabel = isRunning ? "生成中" : showCost ? `${routeQuote?.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，生成` : "生成";
+        const videoCost = mode === "video" && showCost && !isRunning;
         return (
             <div className="canvas-node-generate">
-                {showCost ? (
+                {showCost && mode !== "video" ? (
                     <span className="canvas-node-generate-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : actionLabel}>
                         <CreditSymbol />
                         <span>
@@ -544,8 +564,28 @@ export function CanvasNodePromptPanel({
                         </span>
                     </span>
                 ) : null}
-                <button type="button" className="canvas-node-generate-button" disabled={isSubmitDisabled} aria-busy={isRunning} aria-label={actionLabel} title={videoIssue || actionLabel} onClick={() => (expanded ? submitExpandedPrompt() : submit())}>
-                    {isRunning ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ArrowUp aria-hidden />}
+                <button
+                    type="button"
+                    className={videoCost ? "canvas-node-generate-button has-video-cost" : "canvas-node-generate-button"}
+                    disabled={isSubmitDisabled}
+                    aria-busy={isRunning}
+                    aria-label={actionLabel}
+                    title={videoIssue || (videoCost && routeQuote ? modelQuoteDescription(routeQuote) : actionLabel)}
+                    onClick={() => (expanded ? submitExpandedPrompt() : submit())}
+                >
+                    {isRunning ? (
+                        <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />
+                    ) : videoCost ? (
+                        <>
+                            <Zap aria-hidden />
+                            <span>
+                                {routeQuote?.estimated ? "约 " : ""}
+                                {formattedCredits}
+                            </span>
+                        </>
+                    ) : (
+                        <ArrowUp aria-hidden />
+                    )}
                 </button>
             </div>
         );
@@ -557,6 +597,7 @@ export function CanvasNodePromptPanel({
                 <span className="min-w-0 truncate px-2 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>
                     {activeReferenceCount ? `已连接 ${activeReferenceCount} 个素材` : "将使用默认模型与参数"}
                 </span>
+                {videoModeControl}
                 <ReferenceToolsPopover canAutoMention={canAutoMention} autoLinkEnabled={autoLinkEnabled} onAutoMention={() => updatePrompt(autoMentionedPrompt)} onAutoLinkEnabledChange={setAutoLinkEnabled} accent={monochromeAccent} compact />
                 {renderSubmitButton(expanded)}
             </div>
@@ -578,6 +619,7 @@ export function CanvasNodePromptPanel({
                         showConfiguredModelName
                     />
                 </div>
+                {videoModeControl}
                 <div className="canvas-node-composer-output-tools">
                     {mode === "text" ? (
                         <>
@@ -670,7 +712,7 @@ export function CanvasNodePromptPanel({
                         references={resolvedMentionReferences}
                         theme={theme}
                         onInsert={insertPromptReference}
-                        onPick={canPickReferences ? () => (expanded ? expandedPromptEditorActionsRef : promptEditorActionsRef).current?.openReferencePicker() : undefined}
+                        onPick={mode !== "video" && canPickReferences ? () => (expanded ? expandedPromptEditorActionsRef : promptEditorActionsRef).current?.openReferencePicker() : undefined}
                         onRemove={(reference) => onRemoveReference?.(node.id, reference)}
                         onReorder={onReorderReferences ? (orderedNodeIds) => onReorderReferences(node.id, orderedNodeIds) : undefined}
                         onReplaceReference={onReplaceReference ? (oldReference, sourceNodeId) => onReplaceReference(node.id, oldReference, sourceNodeId) : undefined}
@@ -696,7 +738,7 @@ export function CanvasNodePromptPanel({
                                 : "thin-scrollbar h-full w-full resize-none overflow-y-auto border-none bg-transparent py-2 text-[var(--fs-body)] leading-5 !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus:!shadow-none placeholder:text-current placeholder:opacity-35"
                         }
                         style={{ color: theme.node.text, outline: "none", boxShadow: "none", fontSize, lineHeight: 1.6 }}
-                        placeholder={selectedPresetPlaceholder || promptPlaceholder(mode, hasImageContent, hasTextContent)}
+                        placeholder={mode === "video" ? "描述你想生成的画面，输入 @ 引用素材" : selectedPresetPlaceholder || promptPlaceholder(mode, hasImageContent, hasTextContent)}
                         aria-label={`${modeDisplayName(mode)}提示词`}
                     />
                 </div>
@@ -729,7 +771,26 @@ export function CanvasNodePromptPanel({
             onClose={() => setPromptOptimizerOpen(false)}
             onApply={(nextPrompt) => updatePrompt(nextPrompt)}
         >
-            <div className="canvas-node-composer" style={composerTokens} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+            <div className="canvas-node-composer" data-generation-mode={mode} style={composerTokens} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+                {videoMode && onUploadVideoReference ? (
+                    <input
+                        ref={videoReferenceInputRef}
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={async (event) => {
+                            const file = event.currentTarget.files?.[0];
+                            event.currentTarget.value = "";
+                            if (!file) return;
+                            setUploadingReference(true);
+                            try {
+                                await onUploadVideoReference(node.id, file);
+                            } finally {
+                                setUploadingReference(false);
+                            }
+                        }}
+                    />
+                ) : null}
                 {renderComposerHeader(false)}
 
                 {renderPromptEditor(false)}
@@ -758,6 +819,7 @@ export function CanvasNodePromptPanel({
                     <div
                         ref={expandedModalRef}
                         className="relative flex min-h-0 flex-col"
+                        data-generation-mode={mode}
                         style={{ ...composerTokens, color: theme.node.text, maxHeight: `calc(100dvh - ${PROMPT_EDITOR_VIEWPORT_MARGIN}px)`, ...(expandedModalSize ? { height: expandedModalSize.height } : null) }}
                     >
                         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">

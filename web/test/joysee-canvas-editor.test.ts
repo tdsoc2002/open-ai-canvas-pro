@@ -20,8 +20,15 @@ describe("乐见真实画布编辑器组件合同", () => {
     test("精简顶栏不删除导入、搜索、专注及重命名入口", () => {
         const bar = source("pages/canvas/canvas-project-top-bar.tsx");
         for (const callback of ["onImportLibTV", "onImportTapNow", "onEnterFocusMode", "onOpenSearch", "onStartTitleEditing"]) expect(bar).toContain(callback);
-        expect(bar).toContain("<WorkspaceAccountMenu showThemeSwitch={false} />");
-        expect(source("components/layout/workspace-account-menu.tsx")).toContain("showThemeSwitch = true");
+    });
+
+    test("账户菜单里的主题切换行使用当前画布主题并复用画布外观更新", () => {
+        expect(source("pages/canvas/canvas-project-top-bar.tsx")).toContain("<WorkspaceAccountMenu themePreference={{ theme: colorTheme, onChange: onThemeChange }} />");
+        expect(source("pages/canvas/project.tsx")).toContain("applyCanvasAppearance(switchCanvasAppearanceTheme(canvasAppearance, theme))");
+        const menu = source("components/layout/workspace-account-menu.tsx");
+        expect(menu).toContain("themePreference?.theme ?? workspaceTheme");
+        expect(menu).toContain("themePreference?.onChange ?? setWorkspaceTheme");
+        expect(menu).toContain('<label className="workspace-account-menu-row">');
     });
 
     test("入口登记主题后重新套用已解析外观，专用样式不影响其他主题", () => {
