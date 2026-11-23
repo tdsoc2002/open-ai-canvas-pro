@@ -136,7 +136,7 @@ for (const component of ["picker", "composer"] as const) {
                     </MemoryRouter>,
                 ),
             );
-            expect(host.textContent).toContain("游客可见视频模型");
+            expect(host.querySelector(".canvas-model-picker-trigger-text")?.textContent).toBe("sora-2");
             expect(requests).toEqual([]);
             if (component === "composer") expect(host.querySelector('button[aria-label^="预估"]')).not.toBeNull();
             await act(async () => useUserStore.setState({ user: { id: "member", username: "member", displayName: "会员", role: "user", status: "active" } }));
@@ -145,7 +145,7 @@ for (const component of ["picker", "composer"] as const) {
             const count = requests.length;
             await act(async () => useUserStore.setState({ user: null }));
             expect(requests).toHaveLength(count);
-            expect(host.textContent).toContain("游客可见视频模型");
+            expect(host.querySelector(".canvas-model-picker-trigger-text")?.textContent).toBe("sora-2");
             if (component === "composer") expect(host.querySelector('button[aria-label^="预估"]')).not.toBeNull();
         } finally {
             await act(async () => root.unmount());

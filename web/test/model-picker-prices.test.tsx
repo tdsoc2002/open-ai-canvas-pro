@@ -4,9 +4,9 @@ import { ModelPickerOption, ModelPicker } from "../src/components/model-picker";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
 import { requestCreditCost } from "../src/lib/model-pricing";
 import type { ModelRequirements } from "../src/lib/model-selection";
-import { createModelChannel, defaultConfig, normalizeConfigSnapshot } from "../src/stores/use-config-store";
+import { createModelChannel, defaultConfig, normalizeConfigSnapshot, type ModelCapability } from "../src/stores/use-config-store";
 
-function fixture() {
+function fixture(capability: ModelCapability = "video") {
     const channel = createModelChannel({
         id: "comfy",
         name: "Comfy",
@@ -17,7 +17,7 @@ function fixture() {
                 model: "h3-multi",
                 displayName: "MiniMax H3",
                 channelLabel: "多图一致性",
-                capability: "video",
+                capability,
                 pricePolicy: "channel",
                 billingMode: "per_second",
                 unitPriceMicrocredits: 100_000,
@@ -38,6 +38,25 @@ function fixture() {
 }
 
 const requirements: ModelRequirements = { capability: "video", videoSeconds: "5", options: { vquality: "1080p" } };
+
+test("各生成类型的模型按钮默认显示选中渠道，Logo 使用 20px", () => {
+    const triggerText = (markup: string) => markup.match(/class="canvas-model-picker-trigger-text[^"]*">([^<]*)</)?.[1];
+
+    for (const capability of ["video", "image", "text", "audio"] as const) {
+        const config = fixture(capability);
+        const cost = config.channels[0].modelCosts![0];
+        const render = () => renderToStaticMarkup(<ModelPicker config={config} value={config.model} capability={capability} showConfiguredModelName showSelectedPrice={false} onChange={() => {}} />);
+
+        cost.channelLabel = "腾讯 VOD 直连";
+        const selected = render();
+        expect(selected).toMatch(/class="canvas-model-picker-trigger-icon"><(?:img|svg)[^>]* width="20" height="20"/);
+        expect(selected).toContain('title="腾讯 VOD 直连"');
+        expect(triggerText(selected)).toBe("腾讯 VOD 直连");
+
+        cost.channelLabel = "";
+        expect(triggerText(render())).toBe("h3-multi");
+    }
+});
 
 test("candidate rows show their configured prices instead of applying the previous model's specifications", () => {
     const config = fixture();

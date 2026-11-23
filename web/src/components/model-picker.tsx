@@ -112,9 +112,10 @@ export function ModelPicker({
     const compact = layout === "agent-compact";
     const currentChannel = current ? resolveModelChannel(config, current) : undefined;
     const isCurrentCustomChannel = Boolean(current && currentChannel && currentChannel.scope !== "system");
-    const currentProductName = workbenchImage && current ? optionGroups.find((group) => group.kind === "product" && group.models.some((item) => item.key === current))?.label : undefined;
-    const currentOptionLabel = currentProductName ?? (current ? pickerModelOptionLabel(config, current, showConfiguredModelName) : placeholder);
-    const triggerLabel = currentProductName ?? (current && (compact || creationVariant) ? pickerModelDisplayName(config, current, showConfiguredModelName, !compact) : currentOptionLabel);
+    const selectedProduct = current ? optionGroups.find((group) => group.kind === "product" && group.models.some((item) => item.key === current)) : undefined;
+    const selectedOptionName = selectedProduct?.models.find((item) => item.key === current)?.label;
+    const currentOptionLabel = selectedOptionName ?? (current ? pickerModelOptionLabel(config, current, showConfiguredModelName) : placeholder);
+    const triggerLabel = selectedOptionName ?? (current && (compact || creationVariant) ? pickerModelDisplayName(config, current, showConfiguredModelName) : currentOptionLabel);
 
     const updateAvailableSpace = useCallback(() => {
         const trigger = triggerRef.current;
@@ -127,7 +128,7 @@ export function ModelPicker({
     // 触发器文案拆两段：primary 是模型显示名，secondary 是「· 渠道标签 /（渠道名）」。
     // 仅 adaptiveTrigger 入口使用（其余入口仍走原来的 pickerModelDisplayName/pickerModelOptionLabel 整串）。
     // 收纳本身由 canvas-cloud-agent.css 的容器查询完成，与同排「自动/技能/默认」控件同一套写法。
-    const currentLabelParts = adaptiveTrigger && current && !currentProductName ? triggerLabelParts(config, current, creationVariant, showConfiguredModelName) : null;
+    const currentLabelParts = adaptiveTrigger && current && !selectedOptionName ? triggerLabelParts(config, current, creationVariant, showConfiguredModelName) : null;
 
     useLayoutEffect(() => {
         if (!open) return;
@@ -448,9 +449,9 @@ export function ModelPicker({
                     title={compact ? triggerLabel : currentOptionLabel}
                     onKeyDown={handleTriggerKeyDown}
                 >
-                    <span className="canvas-model-picker-label flex min-w-0 items-center gap-2">
+                    <span className="canvas-model-picker-label flex min-w-0 items-center">
                         <span className="canvas-model-picker-trigger-icon">
-                            <ModelIcon config={config} model={current} />
+                            <ModelLogo icon={current ? modelIcon(config, current) : undefined} size={20} />
                         </span>
                         <span className="canvas-model-picker-trigger-text min-w-0 flex-1 truncate">
                             {currentLabelParts ? (
@@ -689,9 +690,9 @@ function modelMenuPrice(config: AiConfig, model: string, capability?: ModelCapab
     return { kind: "fixed", value: cost.unitPriceMicrocredits / 1_000_000, unit: cost.billingMode === "per_second" ? "秒" : "次" };
 }
 
-function pickerModelDisplayName(config: AiConfig, model: string, showConfiguredModelName: boolean, includeChannel = true) {
+function pickerModelDisplayName(config: AiConfig, model: string, showConfiguredModelName: boolean) {
     const name = showConfiguredModelName ? configuredModelDisplayName(config, model) : modelDisplayName(config, model);
-    return includeChannel && isDirectSystemModel(config, model) ? `${name} · ${modelChannelLabel(config, model)}` : name;
+    return isDirectSystemModel(config, model) ? `${name} · ${modelChannelLabel(config, model)}` : name;
 }
 
 function pickerModelOptionLabel(config: AiConfig, model: string, showConfiguredModelName: boolean) {
@@ -700,15 +701,11 @@ function pickerModelOptionLabel(config: AiConfig, model: string, showConfiguredM
     return channel.scope === "system" ? pickerModelDisplayName(config, model, showConfiguredModelName) : `${displayName}（${channel.name}）`;
 }
 
-// 触发器文案两段拆分，与 pickerModelDisplayName / pickerModelOptionLabel 一一对应（default 变体
-// 直连系统模型也要带「· 渠道标签」，渠道模型带「（渠道名）」），仅把次要段拆进独立 span。
-// 展示名与模型名相同（未设置展示名）时省去第二段，避免「x · x」重复。
+// 非直连模型在窄面板中可收起次要渠道名称。
 function triggerLabelParts(config: AiConfig, model: string, creationVariant: boolean, showConfiguredModelName: boolean): { primary: string; secondary: string } {
     const displayName = showConfiguredModelName ? configuredModelDisplayName(config, model) : modelDisplayName(config, model);
     let secondary = "";
-    if (isDirectSystemModel(config, model)) {
-        secondary = modelChannelLabel(config, model);
-    } else if (!creationVariant) {
+    if (!creationVariant) {
         const channel = resolveModelChannel(config, model);
         if (channel.scope !== "system") secondary = `（${channel.name}）`;
     }

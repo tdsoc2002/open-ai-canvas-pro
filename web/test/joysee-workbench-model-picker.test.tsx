@@ -116,17 +116,18 @@ test("默认、小源与工作台复用无成功率的渠道卡和独立价目�
     try {
         useUserStore.setState({ features: { ...initialFeatures, creditsEnabled: true } });
         await render("default");
-        expect(host.querySelector("button")?.textContent).toContain("腾讯 Image 2 · 渠道 A");
+        expect(host.querySelector("button")?.textContent).toBe("渠道 A");
         await act(() => assertSharedMenu().help.click());
         expect(dom.document.querySelector('table[aria-label="画质与分辨率积分单价"]')).not.toBeNull();
         expect(changes).toEqual([]);
         await render("agent");
+        expect(host.querySelector("button")?.textContent).toBe("渠道 A");
         await act(() => assertSharedMenu().help.click());
         expect(dom.document.querySelector('table[aria-label="画质与分辨率积分单价"]')).not.toBeNull();
         expect(changes).toEqual([]);
         await render("workbench");
-        expect(host.querySelector("button")?.textContent).toBe("GPT Image 2");
-        expect(host.querySelector("button")?.getAttribute("title")).toBe("GPT Image 2");
+        expect(host.querySelector("button")?.textContent).toBe("渠道 A");
+        expect(host.querySelector("button")?.getAttribute("title")).toBe("渠道 A");
         expect(dom.document.querySelector(".canvas-model-picker-brand-rail .canvas-model-picker-brand strong")?.textContent).toBe("GPT Image 2");
         const { option, help } = assertSharedMenu();
         expect(option.textContent).toContain("渠道 A");

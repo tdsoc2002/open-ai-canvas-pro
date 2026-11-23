@@ -13108,16 +13108,19 @@
 
     .canvas-node-composer-model {
         min-width: 0;
-        max-width: min(220px, 100%);
+        max-width: 100%;
         flex: 0 1 auto;
     }
 
     .canvas-node-composer-footer .canvas-node-composer-model-trigger {
+        height: auto;
+        min-height: var(--space-8);
         border-radius: var(--button-radius);
         background: transparent;
         color: var(--cn-text);
         font-size: var(--fs-body);
         padding-inline: var(--space-1) var(--space-2);
+        padding-block: var(--space-1);
     }
 
     .canvas-node-composer-output-tools {

@@ -2856,14 +2856,6 @@
         padding: 0 8px 0 4px !important;
         font-size: var(--fs-tiny) !important;
     }
-    .drama-root .drama-model-picker .canvas-model-picker-trigger-icon {
-        background: transparent !important;
-    }
-    .drama-root .drama-model-picker.is-sm .canvas-model-picker-trigger-icon {
-        flex-basis: 20px !important;
-        width: 20px !important;
-        height: 20px !important;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
