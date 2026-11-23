@@ -1750,17 +1750,21 @@ export default function CreatePage() {
     return (
         <>
             <div className="creation-home relative flex h-full min-h-0 flex-col overflow-hidden">
-                {historySync.phase !== "synced" || historySync.backupCount ? (
-                    <p role="status" aria-live="polite" className="mx-auto px-4 py-1 text-xs text-foreground/55">
-                        {historySync.phase !== "synced" ? <span title={historySync.message}>{t(`create.historySync.${historySync.phase}`)}</span> : null}
-                        {historySync.message ? <span> · {historySync.message}</span> : null}
+                {historySync.phase === "error" || historySync.backupCount ? (
+                    <div className="mx-auto px-4 py-1 text-xs text-foreground/55">
                         {historySync.phase === "error" ? (
-                            <button type="button" className="ml-2 underline" onClick={() => void historySessionRef.current?.sync()}>
-                                {t("create.historySync.retry")}
-                            </button>
+                            <>
+                                <span role="status">
+                                    {t("create.historySync.error")}
+                                    {historySync.message ? ` · ${historySync.message}` : null}
+                                </span>
+                                <button type="button" className="ml-2 underline" onClick={() => void historySessionRef.current?.sync()}>
+                                    {t("create.historySync.retry")}
+                                </button>
+                            </>
                         ) : null}
                         <CreationHistoryConflicts key={activeConversationScope} session={historySessionRef.current} status={historySync} busy={busy} />
-                    </p>
+                    </div>
                 ) : null}
                 {conversationStorageError ? (
                     <p role="status" className="mx-auto mb-3 max-w-3xl px-4 text-xs text-foreground/55">
