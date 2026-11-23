@@ -9,6 +9,7 @@ import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { WorkspaceAccountMenu } from "@/components/layout/workspace-account-menu";
 import { WorkspaceCreditGiftMark } from "@/components/layout/workspace-credit-gift-mark";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
+import { formatCreditDisplay } from "@/lib/credit-format";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
@@ -284,7 +285,7 @@ export function CanvasTopBar({ projectHeading, viewSwitch, onOpenSearch, onImpor
                                 onClick={() => openWorkspaceWallet()}
                             >
                                 {refreshing && availableMicrocredits === null ? <LoaderCircle className="size-3.5 animate-spin opacity-60" style={{ color: theme.accent.primary }} /> : <WorkspaceCreditGiftMark className="is-compact" />}
-                                <span>{availableMicrocredits === null ? "--" : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 3 })}</span>
+                                <span>{availableMicrocredits === null ? "--" : formatCreditDisplay(availableMicrocredits)}</span>
                             </button>
                         </CanvasTopBarTooltip>
                     ) : null}

@@ -1,3 +1,5 @@
+export { formatCreditDisplay as teamCredits } from "./credit-format";
+
 export const teamKeys = {
     all: (userId: string) => ["teams", userId] as const,
     list: (userId: string) => ["teams", userId, "list"] as const,
@@ -9,10 +11,6 @@ export const teamKeys = {
 export function teamIdFromPath(pathname: string): string | undefined {
     const match = /^\/teams\/([^/]+)(?:\/|$)/.exec(pathname);
     return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-export function teamCredits(microcredits: number) {
-    return (microcredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
 }
 
 export function parseTeamCreditAmount(value: string): number | undefined {

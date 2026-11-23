@@ -97,8 +97,8 @@ test("personal overview distinguishes assigned and pooled funds, filters same-na
         await settle();
         const rows = host.querySelectorAll("li button");
         expect(rows).toHaveLength(5);
-        expect(rows[0]?.textContent).toContain("0 积分");
-        expect(rows[2]?.textContent).toContain("星河 · 小组300 积分公共待分配 70");
+        expect(rows[0]?.textContent).toContain("0.00 积分");
+        expect(rows[2]?.textContent).toContain("星河 · 小组300.00 积分公共待分配 70.00");
         await act(async () => {
             openSpaceDirectory();
         });
