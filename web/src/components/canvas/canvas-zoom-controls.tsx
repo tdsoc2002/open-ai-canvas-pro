@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { CircleDashed, Focus, Grip, HelpCircle, Map, Minus, Plus, RotateCcw, Search } from "lucide-react";
 import { subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
-import { canvasBottomRowLayout } from "@/lib/canvas/canvas-overlay-layout";
+import { canvasBottomRowLayout, canvasOverlayBounds } from "@/lib/canvas/canvas-overlay-layout";
 import { CanvasZoomReadout, useCanvasZoomPercent } from "./canvas-zoom-readout";
 import "./canvas-bottom-toolbar.css";
 import "./canvas-zoom-controls.css";
@@ -114,6 +114,31 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
         if (!container) return;
         return subscribeCanvasViewportPreview(container, (viewport) => updateScaleDisplay(viewport.k));
     }, [containerRef, updateScaleDisplay]);
+
+    useLayoutEffect(() => {
+        if (!precisionOpen) return;
+        const trigger = triggerRef.current;
+        const panel = panelRef.current;
+        const parent = panel?.offsetParent;
+        const canvas = trigger?.closest("main");
+        if (!trigger || !panel || !parent || !canvas) return;
+
+        const align = () => {
+            const canvasRect = canvas.getBoundingClientRect();
+            const { left, right } = canvasOverlayBounds(canvasRect);
+            panel.style.maxWidth = `${right - left}px`;
+            const button = trigger.getBoundingClientRect();
+            const width = panel.getBoundingClientRect().width;
+            const center = button.left - canvasRect.left + button.width / 2;
+            const panelLeft = Math.min(Math.max(center - width / 2, left), right - width);
+            panel.style.left = `${canvasRect.left + panelLeft - parent.getBoundingClientRect().left - parent.clientLeft}px`;
+        };
+
+        const observer = new ResizeObserver(align);
+        for (const element of [canvas, parent, trigger]) observer.observe(element);
+        align();
+        return () => observer.disconnect();
+    }, [precisionOpen]);
 
     useEffect(() => {
         if (!precisionOpen) return;

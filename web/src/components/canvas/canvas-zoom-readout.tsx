@@ -14,8 +14,9 @@ function ZoomDigit({ percent, place }: { percent: MotionValue<number>; place: nu
         return `translateY(-${digit + carry}em)`;
     });
     const opacity = useTransform(percent, (value) => Math.min(1, Math.max(0, value - place + 1)));
+    const width = useTransform(opacity, (value) => `${value}ch`);
     return (
-        <motion.span className="canvas-zoom-digit" style={{ opacity }}>
+        <motion.span className="canvas-zoom-digit" style={{ opacity, width }}>
             <motion.span style={{ transform: position }}>{"0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0"}</motion.span>
         </motion.span>
     );

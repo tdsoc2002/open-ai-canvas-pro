@@ -450,3 +450,54 @@ test("内嵌视图控件不启动独立工具条避让，缩放和视图命令�
         host.remove();
     }
 });
+
+test("缩放读数收起前导位，菜单对齐按钮并留在画布内", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    let buttonLeft = 230;
+    const originalRect = dom.HTMLElement.prototype.getBoundingClientRect;
+    const originalOffsetParent = Object.getOwnPropertyDescriptor(dom.HTMLElement.prototype, "offsetParent");
+    dom.HTMLElement.prototype.getBoundingClientRect = function () {
+        if (this.tagName === "MAIN") return rect(60, 0, 400, 800);
+        if (this.classList.contains("canvas-floating-dock")) return rect(80, 740, 290, 44);
+        if (this.classList.contains("canvas-view-scale")) return rect(buttonLeft, 747, 60, 30);
+        if (this.classList.contains("canvas-zoom-menu")) return rect(0, 470, 212, 260);
+        return originalRect.call(this);
+    };
+    Object.defineProperty(dom.HTMLElement.prototype, "offsetParent", {
+        configurable: true,
+        get() {
+            return this.closest(".canvas-floating-dock");
+        },
+    });
+
+    try {
+        await act(async () =>
+            root.render(
+                <main>
+                    <div className="canvas-floating-dock">
+                        <CanvasZoomControls embedded scale={0.26} onScaleChange={noop} onFitContent={noop} isMiniMapOpen={false} onToggleMiniMap={noop} onOpenShortcuts={noop} />
+                    </div>
+                </main>,
+            ),
+        );
+        const trigger = host.querySelector<HTMLButtonElement>(".canvas-view-scale")!;
+        const digits = [...trigger.querySelectorAll<HTMLElement>(".canvas-zoom-digit")];
+        expect(digits.map((digit) => digit.style.width)).toEqual(["0ch", "1ch", "1ch"]);
+        await act(async () => trigger.click());
+        const menu = host.querySelector<HTMLElement>(".canvas-zoom-menu")!;
+        expect(menu.style.left).toBe("74px");
+
+        buttonLeft = 90;
+        const observer = [...observers].find((item) => item.elements.has(trigger))!;
+        observer.callback();
+        expect(menu.style.left).toBe("-8px");
+    } finally {
+        await act(async () => root.unmount());
+        dom.HTMLElement.prototype.getBoundingClientRect = originalRect;
+        if (originalOffsetParent) Object.defineProperty(dom.HTMLElement.prototype, "offsetParent", originalOffsetParent);
+        else Reflect.deleteProperty(dom.HTMLElement.prototype, "offsetParent");
+        host.remove();
+    }
+});

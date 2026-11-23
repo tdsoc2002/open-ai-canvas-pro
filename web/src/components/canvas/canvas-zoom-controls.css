@@ -28,6 +28,11 @@
     padding: var(--space-1);
     height: 40px;
 }
+.joysee-canvas-dock-views > .canvas-view-pill {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
 .canvas-view-pill > button,
 .canvas-view-help {
     justify-content: center;
@@ -90,7 +95,6 @@
 }
 .canvas-zoom-digit {
     display: block;
-    width: 1ch;
     height: 1em;
     overflow: hidden;
 }
@@ -102,7 +106,7 @@
 .canvas-zoom-menu {
     position: absolute;
     z-index: var(--dock-z-popover);
-    inset-inline-start: 0;
+    left: 0;
     bottom: calc(100% + var(--space-2));
     width: min(212px, calc(100vw - 32px));
     max-height: 60dvh;
