@@ -122,7 +122,7 @@ function WorkspaceSidebarProfile({ collapsed, user }: { collapsed: boolean; user
             {!teamId ? <WorkspaceSidebarCheckin collapsed={collapsed} /> : null}
             <div className={cn("app-workspace-sidebar-profile-row", collapsed && "is-collapsed")}>
                 <Popover open={menuOpen} onOpenChange={setMenuOpen} trigger="click" placement="topLeft" arrow={false} rootClassName="workspace-account-popover" content={content}>
-                    <button type="button" className={cn("app-workspace-sidebar-profile", collapsed && "is-collapsed")} aria-label={t("shell.openAccountMenu")} title={profileName}>
+                    <button type="button" className={cn("app-workspace-sidebar-profile", collapsed && "is-collapsed")} aria-label={t("shell.openAccountMenu")} aria-expanded={menuOpen} title={profileName}>
                         <UserGroupAvatarRing>
                             <UserAvatar user={user} className="app-workspace-sidebar-profile-avatar" />
                         </UserGroupAvatarRing>

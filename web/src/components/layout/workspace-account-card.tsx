@@ -1,5 +1,6 @@
 import { Button } from "antd";
 import { ArrowUpRight, Gift, LogOut, RefreshCw, Settings, ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { currentLocale } from "@/i18n";
@@ -14,7 +15,7 @@ import { WorkspaceSidebarStorageMeter } from "./workspace-sidebar-storage-meter"
 import "./workspace-account-card.css";
 
 /** 同一账户卡片用于顶部和侧栏；余额与退出均复用真实服务。 */
-export function WorkspaceAccountCard({ onWallet, onNavigate }: { onWallet: () => void; onNavigate: () => void }) {
+export function WorkspaceAccountCard({ children, onWallet, onNavigate }: { children?: ReactNode; onWallet: () => void; onNavigate: () => void }) {
     const user = useUserStore((state) => state.user);
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const referralAvailable = useUserStore((state) => state.referralAvailable);
@@ -28,14 +29,16 @@ export function WorkspaceAccountCard({ onWallet, onNavigate }: { onWallet: () =>
                 <UserGroupAvatarRing>
                     <UserAvatar user={user} className="workspace-account-card-avatar" />
                 </UserGroupAvatarRing>
-                <div>
+                <div className="workspace-account-card-profile">
                     <strong className="workspace-account-card-name">
-                        <span>{user.displayName || user.username}</span>
+                        <span title={user.displayName || user.username}>{user.displayName || user.username}</span>
                         <UserGroupBadge />
                     </strong>
-                    <span>@{user.username}</span>
+                    <span className="workspace-account-card-handle" title={`@${user.username}`}>
+                        @{user.username}
+                    </span>
                 </div>
-                <em>{user.role === "admin" ? t("shell.account.admin") : t("shell.account.creator")}</em>
+                <span className="workspace-account-card-role">{user.role === "admin" ? t("shell.account.admin") : t("shell.account.creator")}</span>
             </header>
             {creditsEnabled ? (
                 <div className="workspace-account-card-wallet">
@@ -47,13 +50,13 @@ export function WorkspaceAccountCard({ onWallet, onNavigate }: { onWallet: () =>
                         <strong>{availableMicrocredits === null ? "—" : formatCreditDisplay(availableMicrocredits, currentLocale())}</strong>
                     </div>
                     {availableMicrocredits === null ? (
-                        <Button size="small" loading={refreshing} icon={<RefreshCw />} onClick={() => void refresh()}>
+                        <Button className="workspace-account-card-wallet-action" loading={refreshing} icon={<RefreshCw aria-hidden />} onClick={() => void refresh()}>
                             {t("shell.account.refreshBalance")}
                         </Button>
                     ) : (
-                        <button type="button" onClick={onWallet}>
+                        <button type="button" className="workspace-account-card-wallet-action" onClick={onWallet}>
                             {t("shell.account.topup")}
-                            <ArrowUpRight />
+                            <ArrowUpRight aria-hidden />
                         </button>
                     )}
                 </div>
@@ -61,30 +64,35 @@ export function WorkspaceAccountCard({ onWallet, onNavigate }: { onWallet: () =>
             <div className="workspace-account-card-storage">
                 <WorkspaceSidebarStorageMeter collapsed={false} onOpen={onNavigate} />
             </div>
-            <nav className="workspace-account-card-actions" aria-label={t("shell.account.actions")}>
-                <Link to="/settings?section=profile" onClick={onNavigate}>
-                    <Settings />
-                    <span>{t("shell.account.settings")}</span>
-                    <ArrowUpRight />
-                </Link>
-                {referralAvailable ? (
-                    <Link to="/referral" onClick={onNavigate}>
-                        <Gift />
-                        <span>{t("shell.account.referral")}</span>
+            <div>
+                <nav className="workspace-account-card-actions" aria-label={t("shell.account.actions")}>
+                    <Link to="/settings?section=profile" onClick={onNavigate}>
+                        <Settings />
+                        <span>{t("shell.account.settings")}</span>
                         <ArrowUpRight />
                     </Link>
-                ) : null}
-                {user.role === "admin" ? (
-                    <Link to="/admin" onClick={onNavigate}>
-                        <ShieldCheck />
-                        <span>{t("shell.account.adminConsole")}</span>
-                        <ArrowUpRight />
-                    </Link>
-                ) : null}
-                <Button danger type="text" icon={<LogOut />} loading={loggingOut} onClick={() => void handleLogout()}>
+                    {referralAvailable ? (
+                        <Link to="/referral" onClick={onNavigate}>
+                            <Gift />
+                            <span>{t("shell.account.referral")}</span>
+                            <ArrowUpRight />
+                        </Link>
+                    ) : null}
+                    {user.role === "admin" ? (
+                        <Link to="/admin" onClick={onNavigate}>
+                            <ShieldCheck />
+                            <span>{t("shell.account.adminConsole")}</span>
+                            <ArrowUpRight />
+                        </Link>
+                    ) : null}
+                </nav>
+                {children}
+            </div>
+            <div className="workspace-account-card-logout">
+                <Button danger type="text" icon={<LogOut aria-hidden />} loading={loggingOut} onClick={() => void handleLogout()}>
                     {t("shell.account.logout")}
                 </Button>
-            </nav>
+            </div>
         </section>
     );
 }

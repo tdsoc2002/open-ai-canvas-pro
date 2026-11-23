@@ -1,140 +1,158 @@
 .workspace-account-popover .ant-popover-container {
-    padding: var(--space-2);
-}
-.workspace-account-popover .workspace-topbar-account-menu {
-    width: auto;
-    min-width: 0;
+    max-height: min(36rem, calc(100dvh - var(--space-24)));
     padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 .workspace-account-card {
-    width: min(304px, calc(100vw - 48px));
+    display: grid;
+    gap: var(--space-2);
+    width: min(304px, calc(100vw - var(--space-8)));
     color: var(--user-ink);
-    padding: 12px;
+    padding: var(--space-3);
 }
 .workspace-account-card-identity {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 4px 0 16px;
+    gap: var(--space-3);
+    padding: var(--space-1) var(--space-1) var(--space-2);
 }
 .workspace-account-card-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: var(--space-10);
+    height: var(--space-10);
+    border-radius: var(--r-full);
     background: var(--user-accent-soft);
     color: var(--user-accent);
-    padding: 8px;
 }
-.workspace-account-card-identity > div {
+.workspace-account-card-avatar > svg {
+    width: var(--space-6);
+    height: var(--space-6);
+    stroke-width: 1.7;
+}
+.workspace-account-card-profile {
     flex: 1;
     min-width: 0;
 }
-.workspace-account-card-identity strong,
-.workspace-account-card-identity span {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.workspace-account-card-identity strong {
-    font-size: 14px;
-    line-height: 24px;
-}
-.workspace-account-card-identity .workspace-account-card-name {
+.workspace-account-card-name {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-1);
+    font-size: var(--fs-heading);
+    font-weight: 600;
+    line-height: var(--lh-heading);
 }
-.workspace-account-card-identity .workspace-account-card-name > span {
+.workspace-account-card-name > span,
+.workspace-account-card-handle {
+    display: block;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: inherit;
-    font-size: inherit;
 }
-.workspace-account-card-identity span {
+.workspace-account-card-handle {
+    margin-top: var(--space-1);
     color: var(--user-ink-muted);
-    font-size: 12px;
+    font-size: var(--fs-caption);
 }
-.workspace-account-card-identity em {
-    font-style: normal;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 999px;
+.workspace-account-card-role {
+    flex: none;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--r-full);
     background: var(--user-surface-muted);
     color: var(--user-ink-muted);
+    font-size: var(--fs-label);
+    font-weight: 500;
 }
 .workspace-account-card-wallet {
+    --account-wallet-accent: var(--brand, var(--user-accent));
+
     display: flex;
-    align-items: flex-end;
+    flex-wrap: wrap;
+    align-items: end;
     justify-content: space-between;
-    gap: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-3);
     border-radius: var(--user-radius-card);
-    background: var(--user-surface-muted);
+    background: color-mix(in srgb, var(--account-wallet-accent) 9%, var(--user-surface-raised));
+}
+.workspace-account-card-balance {
+    min-width: 0;
 }
 .workspace-account-card-balance > span {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
+    gap: var(--space-1);
+    font-size: var(--fs-caption);
     color: var(--user-ink-muted);
+}
+.workspace-account-card-balance > span svg {
+    width: var(--space-4);
+    height: var(--space-4);
 }
 .workspace-account-card-balance strong {
     display: block;
-    margin-top: 4px;
-    font-size: 22px;
+    margin-top: var(--space-1);
+    color: var(--account-wallet-accent);
+    font-size: var(--fs-display);
     font-weight: 600;
-    letter-spacing: -0.03em;
+    line-height: var(--lh-heading);
+    letter-spacing: var(--ls-title);
     font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
 }
-.workspace-account-card-wallet > button {
+.workspace-account-card-wallet > .workspace-account-card-wallet-action {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    color: var(--user-accent);
-    white-space: nowrap;
-    padding: 8px 0;
+    justify-content: center;
+    gap: var(--space-1);
+    min-height: var(--space-8);
+    height: auto;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--user-border);
+    border-radius: var(--r-full);
+    background: var(--user-surface-raised);
+    color: var(--account-wallet-accent);
+    font-size: var(--fs-caption);
+    font-weight: 500;
+    white-space: normal;
 }
-.workspace-account-card svg {
-    width: 17px;
-    height: 17px;
+.workspace-account-card-wallet > .workspace-account-card-wallet-action:not(:disabled):hover {
+    background: var(--user-surface-hover);
+    border-color: var(--user-border);
+    color: var(--user-ink);
+}
+.workspace-account-card-wallet-action svg,
+.workspace-account-card-storage svg,
+.workspace-account-card-actions svg,
+.workspace-account-card-logout svg,
+.workspace-account-menu-row > svg {
+    width: var(--space-4);
+    height: var(--space-4);
     flex-shrink: 0;
     stroke-width: 1.7;
 }
-.workspace-account-card-avatar svg {
-    width: 100%;
-    height: 100%;
-}
 .workspace-account-card-storage {
-    margin-bottom: var(--space-3);
+    min-width: 0;
 }
 .workspace-account-card-storage .app-workspace-sidebar-storage {
     display: block;
     width: 100%;
     margin: 0;
-    padding: var(--space-4);
-    border: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--user-border);
     border-radius: var(--user-radius-card);
-    background: var(--user-surface-muted);
+    background: var(--user-surface-raised);
     color: var(--user-ink);
-    font-size: var(--fs-label);
+    font-size: var(--fs-caption);
     text-align: left;
 }
-.workspace-account-card-storage .app-workspace-sidebar-storage:hover {
-    background: var(--user-surface-hover);
-}
-.workspace-account-card-storage .app-workspace-sidebar-storage:focus-visible,
-.workspace-account-card-storage .app-workspace-sidebar-storage button:focus-visible {
-    outline: 2px solid var(--user-accent);
-    outline-offset: 2px;
+.workspace-account-card-storage a.app-workspace-sidebar-storage:hover {
+    background: var(--user-surface-muted);
 }
 .workspace-account-card-storage .app-workspace-sidebar-storage-body {
     display: grid;
-    gap: var(--space-3);
+    gap: var(--space-2);
     min-width: 0;
 }
 .workspace-account-card-storage .app-workspace-sidebar-storage-meta,
@@ -149,7 +167,15 @@
 .workspace-account-card-storage .app-workspace-sidebar-storage-action {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-1);
+}
+.workspace-account-card-storage .app-workspace-sidebar-storage-action {
+    margin-inline-start: auto;
+    color: var(--user-ink-muted);
+    font-weight: 500;
+}
+.workspace-account-card-storage a:hover .app-workspace-sidebar-storage-action {
+    color: var(--user-accent);
 }
 .workspace-account-card-storage .app-workspace-sidebar-storage-used {
     min-width: 0;
@@ -171,7 +197,7 @@
     height: var(--space-1);
     overflow: hidden;
     border-radius: var(--r-full);
-    background: var(--border);
+    background: var(--user-border-strong);
 }
 .workspace-account-card-storage .app-workspace-sidebar-storage-track > span {
     display: block;
@@ -205,55 +231,61 @@
     color: var(--user-ink-muted);
 }
 .workspace-account-card-storage .is-error button {
-    margin-left: auto;
+    margin-inline-start: auto;
     text-decoration: underline;
     text-underline-offset: 2px;
 }
-.workspace-account-card-actions {
+.workspace-account-card-actions,
+.workspace-account-menu-footer {
     display: grid;
-    gap: 4px;
+}
+.workspace-account-card-logout {
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--user-border);
 }
 .workspace-account-card-actions > a,
-.workspace-account-card-actions > button {
+.workspace-account-card-logout > button,
+.workspace-account-menu-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-height: 40px;
+    gap: var(--space-2);
+    min-height: var(--space-10);
     height: auto;
     width: 100%;
-    padding: 8px;
+    min-width: 0;
+    padding: var(--space-1) var(--space-2);
     border: 0;
-    border-radius: 12px;
-    font-size: 13px;
-    text-align: left;
+    border-radius: var(--user-radius-control);
+    font-size: var(--fs-ui);
+    text-align: start;
     justify-content: flex-start;
-    transition:
-        background var(--user-motion),
-        transform var(--user-motion);
 }
-.workspace-account-card-actions > a {
+.workspace-account-card-actions > a,
+button.workspace-account-menu-row {
     color: var(--user-ink);
 }
-.workspace-account-card-actions > a > span {
+.workspace-account-card-actions > a > span,
+.workspace-account-menu-label {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
-.workspace-account-card-actions > a > svg:last-child {
-    color: var(--user-ink-soft);
-    width: 14px;
-}
-.workspace-account-card-actions > a:hover {
+.workspace-account-card-actions > a:hover,
+button.workspace-account-menu-row:hover {
     background: var(--user-surface-muted);
 }
-.workspace-account-card-actions > a:active {
-    transform: scale(0.97);
+.workspace-account-card-actions > a > svg:last-child,
+.workspace-account-menu-row {
+    color: var(--user-ink-muted);
 }
-.workspace-account-card-actions > a:focus-visible,
-.workspace-account-card-wallet > button:focus-visible {
+.workspace-account-menu-version {
+    max-width: 42%;
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
+    font-variant-numeric: tabular-nums;
+}
+.workspace-account-card :is(a, button):focus-visible {
     outline: 2px solid var(--user-accent);
-    outline-offset: 2px;
-}
-@media (prefers-reduced-motion: reduce) {
-    .workspace-account-card-actions > a:active {
-        transform: none;
-    }
+    outline-offset: -2px;
 }

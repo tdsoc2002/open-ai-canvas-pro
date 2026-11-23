@@ -35,35 +35,27 @@ export function WorkspaceAccountMenu({ showThemeSwitch = true }: { showThemeSwit
                 open={menuOpen}
                 onOpenChange={setMenuOpen}
                 content={
-                    <div className="workspace-topbar-account-menu">
-                        <WorkspaceAccountCard
-                            onNavigate={() => setMenuOpen(false)}
-                            onWallet={() => {
-                                setMenuOpen(false);
-                                openWorkspaceWallet();
-                            }}
-                        />
-
-                        <div className="workspace-topbar-account-section">
-                            <AppChangelogButton
-                                className="flex h-8 w-full items-center gap-2 rounded px-2 text-[var(--fs-label)] text-foreground/58 hover:bg-surface-hover hover:text-foreground [&_svg]:size-3.5"
-                                showLabel
-                                showVersion
-                                versionClassName="ml-auto text-[var(--fs-micro)] tabular-nums text-foreground/32"
-                            />
+                    <WorkspaceAccountCard
+                        onNavigate={() => setMenuOpen(false)}
+                        onWallet={() => {
+                            setMenuOpen(false);
+                            openWorkspaceWallet();
+                        }}
+                    >
+                        <div className="workspace-account-menu-footer">
+                            <AppChangelogButton className="workspace-account-menu-row" showLabel showVersion labelClassName="workspace-account-menu-label" versionClassName="workspace-account-menu-version" />
+                            {showThemeSwitch ? (
+                                <div className="workspace-account-menu-row">
+                                    {theme === "dark" ? <Moon aria-hidden /> : <Sun aria-hidden />}
+                                    <span className="workspace-account-menu-label">{t("shell.darkMode")}</span>
+                                    <Switch size="sm" checked={theme === "dark"} onChange={(checked) => setTheme(checked ? "dark" : "light")} aria-label={t("shell.darkMode")} />
+                                </div>
+                            ) : null}
                         </div>
-
-                        {showThemeSwitch ? (
-                            <div className="workspace-topbar-account-theme">
-                                {theme === "dark" ? <Moon className="size-3.5 text-foreground/45" /> : <Sun className="size-3.5 text-foreground/45" />}
-                                <span className="ml-2 flex-1 text-xs text-foreground/65">{t("shell.darkMode")}</span>
-                                <Switch size="sm" checked={theme === "dark"} onChange={(checked) => setTheme(checked ? "dark" : "light")} aria-label={t("shell.darkMode")} />
-                            </div>
-                        ) : null}
-                    </div>
+                    </WorkspaceAccountCard>
                 }
             >
-                <button type="button" className="app-workspace-topbar-icon-button app-workspace-account-trigger" aria-label={t("shell.accountMenu")} title={user.displayName || user.username}>
+                <button type="button" className="app-workspace-topbar-icon-button app-workspace-account-trigger" aria-label={t("shell.accountMenu")} aria-expanded={menuOpen} title={user.displayName || user.username}>
                     <UserGroupAvatarRing>
                         <UserAvatar user={user} className="size-6" />
                     </UserGroupAvatarRing>
