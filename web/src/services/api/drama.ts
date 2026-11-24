@@ -267,7 +267,7 @@ export type DramaEpisode = {
 
 export type DramaJob = {
     id: string;
-    kind: "bible" | "plan" | "cast_image" | "cast_extract" | "script" | "segment_prompt" | "segment_video" | "render";
+    kind: "bible" | "plan" | "cast_image" | "cast_extract" | "script" | "segment_prompt" | "segment_video" | "render" | "compose";
     status: "queued" | "running" | "succeeded" | "failed" | "canceled";
     label: string;
     error?: string;
@@ -320,6 +320,7 @@ export type DramaEpisodeDetail = {
     chapters: DramaChapterRef[];
     jobs: DramaJob[];
     scriptJob?: DramaJob;
+    composeJob?: DramaJob;
     /** 原文台词与镜头台词的逐句核对；章节被多集共用或还没有镜头时不提供。 */
     dialogueCheck?: DramaDialogueCheck;
 };
@@ -388,6 +389,7 @@ export type DramaSegmentRequest = {
     generateAudio: boolean;
     firstFrameResourceId?: string;
     firstFramePending: boolean;
+    tailFrameAsReference?: boolean;
     references: DramaSegmentReference[];
     /** 本段最多随请求发送的参考图张数（已扣除首帧并受每段上限约束）；modelMaxImages 是模型声明的图片上限。 */
     referenceCapacity: number;
@@ -471,7 +473,7 @@ export type DramaModelOption = {
     priceLabel: string;
     maxVideoSeconds?: number;
     maxAudios?: number;
-    /** 仅视频模型：支持图生视频，可用于尾帧续接；为 false 时只能并行出片。 */
+    /** 仅视频模型：能使用上一段尾帧续接。 */
     tailFrameChain?: boolean;
     /** 仅视频模型：能准确给出的作品画幅；不含作品画幅的模型不能用于该作品。 */
     videoRatios?: string[];

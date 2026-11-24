@@ -1,5 +1,5 @@
 import { Popover } from "antd";
-import { ChevronRight, CircleUserRound, History as HistoryIcon, Image as ImageIcon, Lightbulb, PanelLeftClose, PanelLeftOpen, ShoppingBag, Users, Video, Wallet, FileText } from "lucide-react";
+import { ChevronRight, ChevronsUpDown, CircleUserRound, History as HistoryIcon, Image as ImageIcon, Lightbulb, PanelLeftClose, PanelLeftOpen, ShoppingBag, Users, Video, Wallet, FileText } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
@@ -91,6 +91,7 @@ function WorkspaceSidebarProfile({ collapsed, user }: { collapsed: boolean; user
     const { t } = useTranslation();
     const userGroup = useUserStore((state) => state.userGroup);
     const profileName = user?.displayName || user?.username || t("shell.guest");
+    const profileMeta = user?.email || (user ? `@${user.username}` : "");
     const teamId = teamIdFromPath(useLocation().pathname);
 
     if (!user) {
@@ -126,9 +127,10 @@ function WorkspaceSidebarProfile({ collapsed, user }: { collapsed: boolean; user
                         {!collapsed ? (
                             <span className="app-workspace-sidebar-profile-copy">
                                 <strong>{profileName}</strong>
-                                {userGroup?.badgeStyle === "vip" || userGroup?.badgeStyle === "svip" ? <UserGroupBadge className="self-start" /> : <span>{t("shell.workbench")}</span>}
+                                {userGroup?.badgeStyle === "vip" || userGroup?.badgeStyle === "svip" ? <UserGroupBadge className="self-start" /> : <span>{profileMeta}</span>}
                             </span>
                         ) : null}
+                        {!collapsed ? <ChevronsUpDown className="app-workspace-sidebar-profile-toggle" aria-hidden /> : null}
                     </button>
                 </Popover>
             </div>

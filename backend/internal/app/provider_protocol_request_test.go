@@ -6,6 +6,28 @@ import (
 	"yingce/backend/internal/model"
 )
 
+func TestEvoLinkSeedUploadOnlyUsesOfficialChannelCredentials(t *testing.T) {
+	config := providerConfig{
+		BaseURL:   "https://api.evolink.ai/v1",
+		APIKey:    "test-api-key",
+		SecretKey: "unused-secret",
+		Headers:   []OutboundHeader{{Name: "X-Channel-Key", Value: "channel-only"}},
+	}
+	upload, err := evoLinkSeedUploadConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upload.BaseURL != "https://files-api.evolink.ai" || upload.APIKey != config.APIKey || upload.SecretKey != "" || len(upload.Headers) != 0 {
+		t.Fatal("upload must use the official file service with only the API key")
+	}
+	for _, baseURL := range []string{"https://gateway.example/v1", "http://api.evolink.ai", "https://api.evolink.ai:444"} {
+		config.BaseURL = baseURL
+		if _, err := evoLinkSeedUploadConfig(config); err == nil {
+			t.Errorf("unexpectedly allowed reference upload for %s", baseURL)
+		}
+	}
+}
+
 func TestProtocolRequestFromInputUsesConfiguredBase64ForOpenAIImage(t *testing.T) {
 	request := protocolRequestFromInput(canvasGenerationInput{
 		Mode: "image",

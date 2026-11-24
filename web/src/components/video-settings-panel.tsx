@@ -9,7 +9,7 @@ import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedan
 import { isVolcengineArkVideoProtocol } from "@/lib/model-protocols";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, videoResolutionComparisonKey, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
-import { modelCapabilityConfigFor, resolveVideoRatioValue, resolveVideoResolutionValue, videoDurationOptions, type VideoCapabilityConfig } from "@/lib/model-capabilities";
+import { modelCapabilityConfigFor, resolveVideoRatioValue, resolveVideoResolutionValue, videoDurationOptions, videoProfileForOperation, type VideoCapabilityConfig } from "@/lib/model-capabilities";
 import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 
 const sizeOptions = [
@@ -25,6 +25,7 @@ const optionGrid = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,64px),1fr))]
 const outputGrid = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,132px),1fr))] gap-2";
 
 type VideoSettingsPanelProps = {
+    operation?: string;
     config: AiConfig;
     onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoArkPrivateAssetUpload", value: string) => void;
     theme: CanvasTheme;
@@ -41,8 +42,9 @@ export function VideoSettingsPanel(props: VideoSettingsPanelProps) {
     );
 }
 
-function VideoSettingsControls({ config, showTitle = true, className = "w-[292px] space-y-3", ...props }: VideoSettingsPanelProps) {
-    const profile = modelCapabilityConfigFor(config, config.model).video!;
+function VideoSettingsControls({ config, operation, showTitle = true, className = "w-[292px] space-y-3", ...props }: VideoSettingsPanelProps) {
+    const modelProfile = modelCapabilityConfigFor(config, config.model).video!;
+    const profile = operation ? videoProfileForOperation(modelProfile, operation) : modelProfile;
     const priceTiers = modelPriceTiers(config);
     const protocol = resolveModelRequestConfig(config, config.model).interfaceType;
     const panelProps = { ...props, config, profile, priceTiers, showTitle, className };
@@ -56,7 +58,7 @@ function VideoSettingsControls({ config, showTitle = true, className = "w-[292px
     return <VideoProfileControls {...panelProps} protocol={protocol} />;
 }
 
-function VideoProfileControls({
+export function VideoProfileControls({
     profile,
     config,
     protocol,

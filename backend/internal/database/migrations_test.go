@@ -26,6 +26,47 @@ func TestCurrentSchemaVersionMatchesMigrationPlan(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyJoyseeAigcQuotaSnapshots(t *testing.T) {
+	db, err := Open(Config{Driver: "sqlite", DSN: "file:legacy-joysee-aigc-quota?mode=memory&cache=shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Where("version >= ?", 109).Delete(&schemaMigration{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Where("version = ?", 6).Delete(&yingceSchemaMigration{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	legacy := schemaMigration{Version: 109, Name: "aigc_quota_snapshots", Checksum: "sha256:aigc-quota-snapshots-v109", AppliedAt: time.Now().UTC()}
+	if err := db.Create(&legacy).Error; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := model.AigcQuotaSnapshot{ID: "quota-1", ChannelID: "vod-1", QuotaType: "video", Usage: 7, Remaining: 3}
+	if err := db.Create(&snapshot).Error; err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := MigrateSchema(db); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var upstream schemaMigration
+	if err := db.First(&upstream, "version = ?", 109).Error; err != nil || upstream.Name != "model_protocol_releases" || upstream.Checksum != "sha256:model-protocol-releases-v109" {
+		t.Fatalf("unexpected upstream migration: %+v, %v", upstream, err)
+	}
+	var moved yingceSchemaMigration
+	if err := db.First(&moved, "version = ?", 6).Error; err != nil || moved.Name != legacy.Name || moved.Checksum != legacy.Checksum || !moved.AppliedAt.Equal(legacy.AppliedAt) {
+		t.Fatalf("legacy migration not relocated: %+v, %v", moved, err)
+	}
+	var stored model.AigcQuotaSnapshot
+	if err := db.First(&stored, "id = ?", snapshot.ID).Error; err != nil || stored.Usage != snapshot.Usage || stored.Remaining != snapshot.Remaining {
+		t.Fatalf("quota snapshot changed: %+v, %v", stored, err)
+	}
+}
+
 type channelModelProtocolV58 struct {
 	ID       string `gorm:"primaryKey;size:36"`
 	Protocol string `gorm:"size:32;index"`
