@@ -565,6 +565,8 @@ test("云端删除迟到时保留新建对话及其草稿", async () => {
         await act(async () => {
             deleting = historyUI.onDelete(original.id);
         });
+        await act(async () => historyUI.onOpen(original));
+        expect(mounted.host.textContent).toContain("历史");
         await act(async () => historyUI.onNew());
         await act(async () => composer.onPromptChange("删除等待时新写的草稿"));
         remote = [];

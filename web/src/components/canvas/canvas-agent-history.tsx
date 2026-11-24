@@ -138,7 +138,14 @@ export function AgentHistory({
                                 const cloud = Boolean(cloudAgentConversationServerId(item));
                                 return (
                                     <li key={item.id} className="canvas-agent-history-item" data-current={current || undefined}>
-                                        <button type="button" className="canvas-agent-history-open" disabled={disabled} onClick={() => onOpen(item)} aria-current={current ? "page" : undefined} title={disabledReason || item.title}>
+                                        <button
+                                            type="button"
+                                            className="canvas-agent-history-open"
+                                            disabled={disabled || deletingId === item.id}
+                                            onClick={() => onOpen(item)}
+                                            aria-current={current ? "page" : undefined}
+                                            title={disabledReason || item.title}
+                                        >
                                             <span className="canvas-agent-history-headline">
                                                 <span className="canvas-agent-history-title">{highlightMatch(item.title, keyword)}</span>
                                                 {current ? <span className="canvas-agent-history-current">当前</span> : null}
@@ -167,7 +174,7 @@ export function AgentHistory({
                                                 type="text"
                                                 size="small"
                                                 shape="circle"
-                                                disabled={disabled || Boolean(deletingId && deletingId !== item.id)}
+                                                disabled={disabled || Boolean(deletingId)}
                                                 className="canvas-agent-history-delete"
                                                 icon={deletingId === item.id ? <LoaderCircle className="size-3.5 motion-safe:animate-spin" /> : <Trash2 className="size-3.5" />}
                                                 aria-label={`删除对话 ${item.title}`}

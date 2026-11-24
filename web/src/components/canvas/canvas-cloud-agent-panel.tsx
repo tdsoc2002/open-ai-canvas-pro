@@ -303,6 +303,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     const [cloudRefreshEpoch, setCloudRefreshEpoch] = useState(0);
     const [cloudOpeningId, setCloudOpeningId] = useState("");
     const [cloudDeletingId, setCloudDeletingId] = useState("");
+    const cloudDeletingRef = useRef<{ id: string } | null>(null);
     const cloudHistoryDeletionRevision = useRef(0);
     const cloudOpeningRef = useRef<string | null>(null);
     const conversationLoadControllerRef = useRef<AbortController | null>(null);
@@ -449,6 +450,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     useEffect(
         () => () => {
             currentScope.current = "";
+            cloudDeletingRef.current = null;
             conversationLoadControllerRef.current?.abort();
         },
         [],
@@ -855,6 +857,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         setCloudHistoryError(undefined);
         setCloudOpeningId("");
         setCloudDeletingId("");
+        cloudDeletingRef.current = null;
         cloudOpeningRef.current = null;
         conversationLoadControllerRef.current?.abort();
         cloudRunTransitionRef.current = null;
@@ -2042,7 +2045,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             });
     };
     const openConversation = async (conversation: CloudAgentConversation) => {
-        if (!canSwitchConversation()) return;
+        if (!canSwitchConversation() || cloudDeletingRef.current?.id === conversation.id) return;
         const id = cloudAgentConversationServerId(conversation);
         if (!id) {
             const selected = { ...conversation, localSelectedCanvasId: canvasId || "global" };
@@ -2078,22 +2081,27 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         }
     };
     const deleteConversation = async (id: string) => {
-        if (!canSwitchConversation() || cloudDeletingId) return;
+        if (!canSwitchConversation() || cloudDeletingRef.current) return;
         const target = conversations.find((item) => item.id === id);
         if (!target) return;
         const serverId = cloudAgentConversationServerId(target);
         if (serverId) {
+            const deletion = { id };
+            cloudDeletingRef.current = deletion;
             setCloudDeletingId(id);
             try {
                 await deleteAgentConversation(serverId);
-                if (!accountIsCurrent()) return;
+                if (!accountIsCurrent() || cloudDeletingRef.current !== deletion) return;
                 cloudHistoryDeletionRevision.current += 1;
                 setCloudRefreshEpoch((value) => value + 1);
             } catch (cause) {
-                if (accountIsCurrent()) setCloudHistoryError(cause instanceof Error ? cause.message : "云端对话删除失败");
+                if (accountIsCurrent() && cloudDeletingRef.current === deletion) setCloudHistoryError(cause instanceof Error ? cause.message : "云端对话删除失败");
                 return;
             } finally {
-                if (accountIsCurrent()) setCloudDeletingId("");
+                if (cloudDeletingRef.current === deletion) {
+                    cloudDeletingRef.current = null;
+                    if (accountIsCurrent()) setCloudDeletingId("");
+                }
             }
         }
         const keepConversation = (item: CloudAgentConversation) => item.id !== id;
