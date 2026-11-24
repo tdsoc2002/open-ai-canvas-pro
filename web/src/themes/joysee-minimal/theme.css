@@ -260,9 +260,8 @@
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-mode-trigger {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-    padding-inline: var(--space-3);
-    border-color: var(--joysee-home-edge) !important;
+    gap: var(--button-gap);
+    padding-inline: var(--space-2);
 }
 :root[data-skin="joysee-minimal"] .creation-mode-trigger > span {
     min-width: 0;
@@ -344,15 +343,6 @@
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-copy h2 {
         font-size: var(--fs-heading);
     }
-}
-:root[data-skin="joysee-minimal"] .creation-chat-submit-tools.is-empty {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    max-width: 100%;
-    gap: var(--space-3);
-    margin-left: auto;
 }
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-chat-submit-tools .creation-voice-trigger {
     background: transparent !important;
@@ -448,12 +438,6 @@
     :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-model-picker.canvas-composer-model-picker:is(:hover, [aria-expanded="true"]) {
         background: var(--control-selected-bg) !important;
     }
-    @media (pointer: coarse) {
-        :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-model-picker.canvas-composer-model-picker {
-            min-height: 44px !important;
-            height: auto !important;
-        }
-    }
 }
 @media (max-width: 720px) {
     :root[data-skin="joysee-minimal"] .app-user-workspace .creation-composer-stage.is-home-mode {
@@ -463,7 +447,7 @@
     :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-dock {
         padding-block: var(--space-3) !important;
     }
-    :root[data-skin="joysee-minimal"] .creation-chat-submit-tools.is-empty {
+    :root[data-skin="joysee-minimal"] .creation-launchpad .creation-chat-submit-tools {
         width: 100%;
     }
     :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-controls {

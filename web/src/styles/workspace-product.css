@@ -96,6 +96,21 @@
 .app-user-workspace .studio-collection-page.canvas-list-page > div {
     padding-top: var(--space-3);
 }
+.app-user-workspace .canvas-list-page > div:has(> .collection-content > .workspace-state[data-kind="first-use"]) {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    padding-bottom: 0;
+}
+.canvas-list-page .collection-content:has(> .workspace-state[data-kind="first-use"]) {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+}
+.canvas-list-page .collection-content > .workspace-state[data-kind="first-use"] {
+    flex: 1 0 auto;
+    grid-template-rows: 1fr auto 1fr;
+}
 .app-user-workspace .canvas-list-page .studio-band > .collection-toolbar {
     margin: 0 0 var(--space-4);
 }

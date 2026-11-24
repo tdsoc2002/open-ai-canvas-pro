@@ -590,27 +590,38 @@
 .creation-home .creation-empty-composer[hidden] {
     display: none;
 }
-.creation-submit {
-    margin-left: auto;
-    flex: 0 0 auto;
-    display: inline-flex;
-    gap: 8px;
+.creation-chat-submit-tools {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    max-width: 100%;
+    gap: var(--space-2);
+    margin-inline-start: auto;
 }
 .creation-submit-cost {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     color: var(--user-ink-muted);
-    font-size: 12px;
-    padding-inline: 8px;
+    font-size: var(--button-font-size-sm);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .creation-submit-cost svg {
-    width: 14px;
-    height: 14px;
+    width: var(--button-icon-size);
+    height: var(--button-icon-size);
+    color: var(--brand, var(--user-accent));
+    fill: currentColor;
 }
 .app-user-workspace .creation-chat-controls .creation-chat-select {
     gap: var(--button-gap);
     padding-inline: var(--space-2);
+    background: transparent !important;
+    color: var(--user-ink) !important;
+}
+.app-user-workspace .creation-chat-controls .creation-chat-select:is(:hover, [aria-expanded="true"]) {
+    background: var(--control-selected-bg) !important;
 }
 .creation-chat-select > svg:last-child,
 .creation-chat-dock .canvas-model-picker-chevron {
@@ -619,7 +630,10 @@
 .creation-chat-select[aria-expanded="true"] > svg:last-child {
     transform: rotate(180deg);
 }
-
+.creation-chat-select:focus-visible {
+    outline: var(--focus-ring-width) solid var(--control-focus-ring);
+    outline-offset: var(--control-border-width);
+}
 /* 开始创作与 composer 里的其他工具同高。
    外层 antd 文字按钮只负责点击与禁用语义，视觉全部画在 .creation-submit-action 上。 */
 @layer utilities {

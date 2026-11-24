@@ -113,18 +113,18 @@ export default function TeamsPage() {
                 okButtonProps={{ disabled: !name.trim() || !canCreateHere }}
             >
                 <label className="workspace-toolbar mb-4 block space-y-2">
-                    <span>所属空间</span>
+                    <span>上级空间</span>
                     <Select
-                        aria-label="所属空间"
+                        aria-label="上级空间"
                         className="w-full"
                         value={parentId}
                         disabled={create.isPending}
                         onChange={(parent: string) => setParams(parent ? { create: "1", parent } : { create: "1" }, { replace: true })}
-                        options={[{ value: "", label: "无上级 · 新建公司或独立团队" }, ...owned.map((company) => ({ value: company.id, label: company.name }))]}
+                        options={[{ value: "", label: "无上级" }, ...owned.map((company) => ({ value: company.id, label: company.name }))]}
                     />
                 </label>
                 <label className="workspace-toolbar block space-y-2">
-                    <span>{parentId ? "小组名称" : "公司或团队名称"}</span>
+                    <span>{parentId ? "小组名称" : "空间名称"}</span>
                     <Input
                         value={name}
                         onChange={(event) => setName(event.target.value)}
@@ -136,7 +136,7 @@ export default function TeamsPage() {
                         }}
                     />
                 </label>
-                <p className="mt-3 text-sm text-foreground/60">{parentId ? "从所属公司邀请成员加入小组。小组有独立的额度和素材库。" : "创建后可邀请平台用户加入，也可在公司下建立多个小组。"}</p>
+                <p className="mt-3 text-sm text-foreground/60">{parentId ? "可邀请公司成员，额度和素材库独立。" : "创建后可邀请成员、添加小组。"}</p>
             </AppModal>
         </TeamManagementPage>
     );
