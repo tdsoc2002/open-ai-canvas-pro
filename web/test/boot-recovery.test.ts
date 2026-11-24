@@ -11,20 +11,35 @@ describe("index.html boot recovery", () => {
         expect(html).toContain("MutationObserver");
     });
 
-    test("执行真实启动脚本：超时提供重试，React 延迟挂载后移除提示", async () => {
+    test("等待时长、真实失败和已发布新入口分别处理", async () => {
         const html = readFileSync(resolve(import.meta.dir, "../index.html"), "utf8");
         const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]).find((source) => source.includes("bootTimer"))!;
         const dom = new Window({ url: "https://canvas.example/canvas?mode=recent" });
-        const bootShell = html.match(/<section id="boot-recovery"[\s\S]*?<\/section>/)![0];
-        dom.document.body.innerHTML = '<div id="root"></div>' + bootShell;
+        dom.document.body.innerHTML = html.slice(html.indexOf('<div id="root">'), html.indexOf("<script>", html.indexOf('<div id="root">')));
         expect(dom.document.querySelectorAll("#boot-recovery .loading-clover i")).toHaveLength(4);
+        const entry = dom.document.createElement("script");
+        entry.type = "module";
+        entry.src = "/assets/index-old.js";
+        dom.document.head.append(entry);
         let timer: (() => void) | undefined;
         let destination = "";
+        let entryAsset = "index-old";
+        let versionChecks = 0;
+        const listeners = new Map<string, (event: { detail: { status?: number } }) => void>();
         try {
             runInNewContext(script, {
                 document: dom.document,
                 performance,
                 URL,
+                AbortSignal,
+                DOMParser: dom.DOMParser,
+                navigator: dom.navigator,
+                addEventListener: (name: string, listener: (event: { detail: { status?: number } }) => void) => listeners.set(name, listener),
+                removeEventListener: (name: string) => listeners.delete(name),
+                fetch: () => {
+                    versionChecks += 1;
+                    return Promise.resolve(new Response(`<script type="module" src="/assets/${entryAsset}.js"></script>`));
+                },
                 MutationObserver: dom.MutationObserver,
                 setTimeout: (callback: () => void) => {
                     timer = callback;
@@ -42,9 +57,20 @@ describe("index.html boot recovery", () => {
             });
             timer!();
             const notice = dom.document.getElementById("boot-recovery")!;
-            expect(notice.getAttribute("role")).toBe("alert");
+            expect(notice.getAttribute("role")).toBe("status");
+            expect(notice.textContent).toContain("加载较慢，仍在继续");
             const button = notice.querySelector("button")!;
-            expect(button.style.background).toBe("transparent");
+            expect(button.hidden).toBe(true);
+            listeners.get("starai:startup-load-failure")!({ detail: { status: 503 } });
+            expect(versionChecks).toBe(0);
+            expect(button.hidden).toBe(false);
+            expect(destination).toBe("");
+            entryAsset = "index-new";
+            listeners.get("starai:startup-load-failure")!({ detail: { status: 404 } });
+            await Bun.sleep(0);
+            expect(versionChecks).toBe(1);
+            expect(new URL(destination).searchParams.has("__chunk_recovery")).toBe(true);
+            destination = "";
             button.click();
             expect(new URL(destination).searchParams.get("mode")).toBe("recent");
             expect(new URL(destination).searchParams.has("__chunk_recovery")).toBe(true);
@@ -52,6 +78,7 @@ describe("index.html boot recovery", () => {
             await dom.happyDOM.whenAsyncComplete();
             expect(dom.document.getElementById("boot-recovery")).toBeNull();
             expect(timer).toBeUndefined();
+            expect(listeners.size).toBe(0);
         } finally {
             await dom.happyDOM.abort();
         }

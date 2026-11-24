@@ -36,7 +36,21 @@ export type AgentProfileView = {
 };
 
 export type AgentApprovalPreviewOperation =
-    "add_node" | "update_node" | "connect_nodes" | "arrange_nodes" | "generate_media" | "generate_media_item" | "build_board" | "create_storyboard" | "edit_storyboard" | "create_character" | "plan_step" | "adopt_drama_media" | "update_drama_shot";
+    | "add_node"
+    | "update_node"
+    | "connect_nodes"
+    | "arrange_nodes"
+    | "generate_media"
+    | "generate_media_item"
+    | "build_board"
+    | "create_storyboard"
+    | "edit_storyboard"
+    | "create_character"
+    | "plan_step"
+    | "adopt_drama_media"
+    | "update_drama_shot"
+    | "previs_scene_create"
+    | "previs_apply_patch";
 
 export type AgentApprovalPreviewItem = {
     operation: AgentApprovalPreviewOperation;
@@ -232,6 +246,10 @@ export function getAgentConversation(conversationId: string, signal?: AbortSigna
 export function listAgentConversationRuns(conversationId: string, options: { after?: string; limit?: number; signal?: AbortSignal } = {}) {
     const { signal, ...params } = options;
     return http.get<{ items: AgentRun[]; nextCursor?: string }>(`/agent/conversations/${encodeURIComponent(conversationId)}/runs`, { signal, params });
+}
+
+export function deleteAgentConversation(conversationId: string) {
+    return http.delete<{ deleted: boolean }>(`/agent/conversations/${encodeURIComponent(conversationId)}`, { timeout: 20_000 });
 }
 
 export function cancelAgentRun(runId: string) {

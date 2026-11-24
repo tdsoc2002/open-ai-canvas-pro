@@ -249,7 +249,7 @@ export function ConnectedReferenceShelf({
                                 </button>
                                 <button type="button" className="canvas-node-reference-label" aria-label={`插入 @${reference.label}`} title={`插入 @${reference.label}`} onClick={() => onInsert(reference)}>
                                     <span className="opacity-55">@</span>
-                                    <span className="truncate">{reference.label}</span>
+                                    <span className="truncate">{reference.displayLabel || reference.title || reference.label}</span>
                                 </button>
                                 {onRemove ? (
                                     <button

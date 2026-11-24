@@ -1,9 +1,10 @@
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { App, Button, Dropdown, Input } from "antd";
+import { ListSearchInput } from "@/components/ui/base/list-search-input";
 import { Tooltip } from "@/components/ui/base/tooltip";
 
-import { Check, ChevronDown, FolderInput, FolderPlus, Globe2, Heart, Info, Library, LoaderCircle, Lock, MoreHorizontal, Pencil, Plus, Search, Sparkles, Store, Trash2, UserRound } from "lucide-react";
+import { Check, ChevronDown, FolderInput, FolderPlus, Globe2, Heart, Info, Library, LoaderCircle, Lock, MoreHorizontal, Pencil, Plus, Sparkles, Store, Trash2, UserRound } from "lucide-react";
 import { useInView } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -512,14 +513,12 @@ export default function SkillsPage() {
                             </>
                         }
                     >
-                        <Input
-                            prefix={<Search aria-hidden />}
+                        <ListSearchInput
                             value={search}
-                            allowClear
                             placeholder="搜索技能或作者"
                             aria-label="搜索技能或作者"
-                            onChange={(event) => {
-                                setSearch(event.target.value);
+                            onValueChange={(value) => {
+                                setSearch(value);
                                 setPage(1);
                             }}
                         />

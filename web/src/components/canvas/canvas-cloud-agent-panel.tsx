@@ -40,6 +40,7 @@ import { useThemePack } from "@/themes/use-theme-pack";
 import { CanvasSyncPendingError, waitForCanvasSync } from "@/lib/canvas/sync-recovery";
 import {
     cancelAgentRun,
+    deleteAgentConversation,
     getAgentCapabilities,
     getAgentProfile,
     getAgentRun,
@@ -179,6 +180,7 @@ const EMPTY_IDS: string[] = [];
 const CONVERSATION_AUTOSAVE_DELAY_MS = 600;
 const CONVERSATION_AUTOSAVE_MAX_WAIT_MS = 3000;
 const EMPTY_REFERENCES: CanvasResourceReference[] = [];
+const agentSkillLookupPattern = /@(?!\[)|@\[skill:|\/|(?:^|\s)、/u;
 
 /**
  * 平台唯一的 Agent 面板，挂在用户布局上，所有页面共用同一份对话。
@@ -300,6 +302,9 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     const [cloudHistoryReady, setCloudHistoryReady] = useState(false);
     const [cloudRefreshEpoch, setCloudRefreshEpoch] = useState(0);
     const [cloudOpeningId, setCloudOpeningId] = useState("");
+    const [cloudDeletingId, setCloudDeletingId] = useState("");
+    const cloudDeletingRef = useRef<{ id: string } | null>(null);
+    const cloudHistoryDeletionRevision = useRef(0);
     const cloudOpeningRef = useRef<string | null>(null);
     const conversationLoadControllerRef = useRef<AbortController | null>(null);
     const cloudRunTransitionRef = useRef<string | null>(null);
@@ -445,6 +450,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     useEffect(
         () => () => {
             currentScope.current = "";
+            cloudDeletingRef.current = null;
             conversationLoadControllerRef.current?.abort();
         },
         [],
@@ -474,6 +480,9 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     }, [config, restoredModelResolution]);
     const thinking = useMemo(() => modelCapabilityConfigFor(config, selectedModel).text?.thinking || LEGACY_TEXT_THINKING_CONFIG, [config, selectedModel]);
     const [reasoningMode, setReasoningMode] = useAgentReasoningPreference(userId, selectedModel, thinking);
+    const browsingSkills = canUseSkills && open && (skillsOpen || view === "settings");
+    const choosingSceneSkill = canUseSkills && open && skillsOpen;
+    const needsInstalledSkills = browsingSkills || (canUseSkills && open && (selectedSkillIds.length > 0 || agentSkillLookupPattern.test(prompt)));
     const installedSkills = useMemo(() => (canUseSkills ? skills.filter((skill) => skill.isAdded) : []), [skills, canUseSkills]);
     // 消息和输入框共用的引用表：每次渲染都新建会让全部消息重新解析 Markdown。
     const conversationReferences = useMemo(() => [...references.filter((reference) => canUseSkills || reference.kind !== "skill"), ...buildSkillMentionReferences(installedSkills)], [references, installedSkills, canUseSkills]);
@@ -497,7 +506,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     useEffect(() => {
         let active = true;
         setScenePresets([]);
-        if (!skillsOpen || !userId || !canUseSkills) return;
+        if (!userId || !choosingSceneSkill) return;
         listSkillPresets()
             .then((result) => {
                 if (active) setScenePresets(result.presets || []);
@@ -508,13 +517,13 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         return () => {
             active = false;
         };
-    }, [skillsOpen, userId, canUseSkills]);
+    }, [userId, choosingSceneSkill]);
 
     // 用户自建技能也要能出现在推荐里：官方种子库与剧典走「已装」，自建走 scope=created。
     useEffect(() => {
         let active = true;
         setCreatedSkills([]);
-        if (!skillsOpen || !userId || !canUseSkills) return;
+        if (!userId || !choosingSceneSkill) return;
         listSkills({ scope: "created", pageSize: 50 })
             .then((result) => {
                 if (active) setCreatedSkills(result.skills || []);
@@ -525,7 +534,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         return () => {
             active = false;
         };
-    }, [skillsOpen, userId, canUseSkills]);
+    }, [userId, choosingSceneSkill]);
 
     // 场景分桶：把「常用 / 推荐配方 / 场景技能」收进同一个维度，一级只显示分类。
     // 常用度：自建 > 已收藏 > 已装，同级按市场热度降序。
@@ -726,12 +735,14 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     }, [skillSearch]);
 
     useEffect(() => {
+        if (!needsInstalledSkills) {
+            setSkillCatalogReady(false);
+            return;
+        }
         let active = true;
-        setSkills([]);
-        setSkillCatalogReady(!canUseSkills);
-        if (!canUseSkills) return;
         const refresh = () => {
             if (!hasSkillLibraryAccess()) return;
+            setSkillCatalogReady(false);
             void listAddedSkills()
                 .then((result) => {
                     if (!active) return;
@@ -753,7 +764,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             window.removeEventListener("canvas-skills-changed", refresh);
             window.removeEventListener("focus", refresh);
         };
-    }, [open, userId, canUseSkills]);
+    }, [userId, needsInstalledSkills]);
 
     // 本地对话会留着已删除技能的 ID，按当前技能库剔除，避免发送时整轮被拒。
     useEffect(() => {
@@ -765,7 +776,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     }, [appMessage, selectedSkillIds, skillCatalogReady, skills, canUseSkills]);
 
     useEffect(() => {
-        if (!canUseSkills || (view !== "settings" && !skillsOpen)) return;
+        if (!browsingSkills) return;
         let active = true;
         setSkillsLoading(true);
         void listSkills({
@@ -793,10 +804,10 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         return () => {
             active = false;
         };
-    }, [view, skillsOpen, debouncedSkillSearch, skillTag, curationState.curation, platformCategory, canUseSkills, userId]);
+    }, [browsingSkills, skillsOpen, debouncedSkillSearch, skillTag, curationState.curation, platformCategory, userId]);
 
     useEffect(() => {
-        if (!canUseSkills || (view !== "settings" && !skillsOpen)) return;
+        if (!browsingSkills) return;
         let active = true;
         void listSkillLibraryCategories("mine")
             .then((result) => {
@@ -808,7 +819,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         return () => {
             active = false;
         };
-    }, [skillsOpen, userId, view, canUseSkills]);
+    }, [browsingSkills, userId]);
 
     const loadMoreSkills = async () => {
         if (!hasSkillLibraryAccess()) return;
@@ -845,6 +856,8 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         setCloudHistoryReady(false);
         setCloudHistoryError(undefined);
         setCloudOpeningId("");
+        setCloudDeletingId("");
+        cloudDeletingRef.current = null;
         cloudOpeningRef.current = null;
         conversationLoadControllerRef.current?.abort();
         cloudRunTransitionRef.current = null;
@@ -953,11 +966,12 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             refreshing = true;
             if (!background) setCloudHistoryLoading(true);
             try {
+                const deletionRevision = cloudHistoryDeletionRevision.current;
                 const cache = conversationSnapshots.current;
                 const selected = cache.find((item) => item.id === cloudLiveState.current.activeConversationId);
                 const selectedId = selected ? cloudAgentConversationServerId(selected) : undefined;
                 const remote = await refreshCloudAgentConversations({ canvasId: canvasId || undefined, observedConversationIds: selectedId ? [selectedId] : [], existing: cache, scope: accountScope, signal: controller.signal });
-                if (!active || !accountIsCurrent() || cloudLiveState.current.canvasId !== canvasId) return;
+                if (!active || !accountIsCurrent() || cloudLiveState.current.canvasId !== canvasId || cloudHistoryDeletionRevision.current !== deletionRevision) return;
                 const live = cloudLiveState.current;
                 const updates = remote.filter((item) => !cache.includes(item));
                 const merged = updates.length ? mergeCloudAgentConversations(conversationSnapshots.current, updates) : conversationSnapshots.current;
@@ -984,6 +998,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                 if (
                     !active ||
                     !accountIsCurrent() ||
+                    cloudHistoryDeletionRevision.current !== deletionRevision ||
                     cloudLiveState.current.activeConversationId !== live.activeConversationId ||
                     cloudLiveState.current.prompt !== live.prompt ||
                     submissionRequestRef.current ||
@@ -1516,8 +1531,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             const effectiveModel = options?.requiresVision ? selectImageInspectionModel(config, settings.model) : settings.model;
             if (options?.requiresVision && !effectiveModel) throw new Error("当前没有配置支持图片输入的文本模型，请在模型能力设置中为一个文本模型开启图片输入后重试");
             const pending = pendingSubmission.current;
-            // 目录已读到就以技能库为准，防止刷新与发送之间带出失效 ID。
-            const usableSkillIds = hasSkillLibraryAccess() ? (skillCatalogReady ? reconcileSkillSelection(settings.skillIds, installedSkills).skillIds : settings.skillIds) : [];
+            let fixedSkillIds = hasSkillLibraryAccess() ? settings.skillIds : [];
             // An ambiguous previous POST owns its body/key until reconciled.
             // Editing model settings or prompt must not silently create a new charge.
             if (pending?.request && pending.request.prompt !== value) throw new Error("上一条请求结果待确认，请先原样重试上一条消息，再发送新要求");
@@ -1525,7 +1539,16 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                 const capabilities = await getAgentCapabilities();
                 if (!accountIsCurrent() || currentScope.current !== scope) return "skipped";
                 if (!capabilities.permissionModes.includes(settings.permissionMode)) throw new Error("当前后端不支持所选 Agent 权限，请更新后端");
-                if (usableSkillIds.length && !capabilities.skills) throw new Error("当前后端尚未接入技能库");
+                const lookupMentions = agentSkillLookupPattern.test(value);
+                let pinnedSkillIds: string[] = [];
+                if (hasSkillLibraryAccess() && (fixedSkillIds.length > 0 || lookupMentions)) {
+                    const { skills: available } = await listAddedSkills();
+                    if (!accountIsCurrent() || currentScope.current !== scope) return "skipped";
+                    fixedSkillIds = reconcileSkillSelection(fixedSkillIds, available).skillIds;
+                    const mentioned = lookupMentions ? resolveSkillMentions(value, available).map((skill) => skill.skillId) : [];
+                    pinnedSkillIds = [...new Set([...fixedSkillIds, ...mentioned])].slice(0, 16);
+                    if (pinnedSkillIds.length && !capabilities.skills) throw new Error("当前后端尚未接入技能库");
+                }
                 // 请求使用点击发送时的目标；等待同步期间切页不能改变已确认的对象。
                 if (target.canvasId) await prepareCanvasForCloudAction(target.canvasId);
                 if (!accountIsCurrent() || currentScope.current !== scope) return "skipped";
@@ -1544,7 +1567,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                     profileRevision: profile.revision,
                     model: modelOptionName(effectiveModel) || undefined,
                     ...(logicalModelId ? { logicalModelId } : requestConfig.channelId ? { channelId: requestConfig.channelId, channelModelKey: modelOptionName(effectiveModel) || undefined } : {}),
-                    pinnedSkillIds: hasSkillLibraryAccess() ? [...new Set([...usableSkillIds, ...resolveSkillMentions(value, installedSkills).map((skill) => skill.skillId)])].slice(0, 16) : [],
+                    pinnedSkillIds,
                     focusNodeIds: target.canvasId ? focus.focusNodeIds : [],
                     focusNodeOmittedCount: target.canvasId ? focus.focusNodeOmittedCount : 0,
                     permissionMode: settings.permissionMode,
@@ -1600,7 +1623,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                             run,
                             model: request.model || effectiveModel || undefined,
                             permissionMode,
-                            skillIds: usableSkillIds,
+                            skillIds: fixedSkillIds,
                             createdAt: existing?.createdAt || now,
                             updatedAt: now,
                         },
@@ -2022,7 +2045,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             });
     };
     const openConversation = async (conversation: CloudAgentConversation) => {
-        if (!canSwitchConversation()) return;
+        if (!canSwitchConversation() || cloudDeletingRef.current?.id === conversation.id) return;
         const id = cloudAgentConversationServerId(conversation);
         if (!id) {
             const selected = { ...conversation, localSelectedCanvasId: canvasId || "global" };
@@ -2057,17 +2080,41 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             if (conversationLoadControllerRef.current === controller) conversationLoadControllerRef.current = null;
         }
     };
-    const deleteConversation = (id: string) => {
-        if (!canSwitchConversation() || conversations.some((item) => item.id === id && cloudAgentConversationServerId(item))) return;
-        const next = conversations.filter((item) => item.id !== id);
-        setConversations(next);
-        if (id === activeConversationId) newConversation();
-        // 本机对话删除后，它的排队消息一并清掉。
-        void clearCloudAgentOutbox(id, accountScope).catch(() => undefined);
+    const deleteConversation = async (id: string) => {
+        if (!canSwitchConversation() || cloudDeletingRef.current) return;
+        const target = conversations.find((item) => item.id === id);
+        if (!target) return;
+        const serverId = cloudAgentConversationServerId(target);
+        if (serverId) {
+            const deletion = { id };
+            cloudDeletingRef.current = deletion;
+            setCloudDeletingId(id);
+            try {
+                await deleteAgentConversation(serverId);
+                if (!accountIsCurrent() || cloudDeletingRef.current !== deletion) return;
+                cloudHistoryDeletionRevision.current += 1;
+                setCloudRefreshEpoch((value) => value + 1);
+            } catch (cause) {
+                if (accountIsCurrent() && cloudDeletingRef.current === deletion) setCloudHistoryError(cause instanceof Error ? cause.message : "云端对话删除失败");
+                return;
+            } finally {
+                if (cloudDeletingRef.current === deletion) {
+                    cloudDeletingRef.current = null;
+                    if (accountIsCurrent()) setCloudDeletingId("");
+                }
+            }
+        }
+        const keepConversation = (item: CloudAgentConversation) => item.id !== id;
+        const next = conversationSnapshots.current.filter(keepConversation);
+        const currentId = currentScope.current;
         cancelConversationAutosave();
-        void saveCloudAgentConversations(id === activeConversationId ? null : activeConversationId, next, accountScope).catch((cause) => {
-            if (accountIsCurrent()) setCloudHistoryError(String(cause));
-        });
+        setConversations((current) => current.filter(keepConversation));
+        if (id === currentId) newConversation();
+        try {
+            await Promise.all([saveCloudAgentConversations(id === currentId ? null : currentId, next, accountScope), clearCloudAgentPendingSubmission(id, accountScope), clearCloudAgentOutbox(id, accountScope)]);
+        } catch (cause) {
+            if (accountIsCurrent()) setCloudHistoryError(cause instanceof Error ? cause.message : "对话历史保存失败");
+        }
     };
 
     // ---- 输入区：发送 / 排队 / 插话 / 保存的路由与提示 ----
@@ -2625,6 +2672,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                                         loading={cloudHistoryLoading}
                                         error={cloudHistoryError}
                                         openingId={cloudOpeningId}
+                                        deletingId={cloudDeletingId}
                                         onRefresh={() => setCloudRefreshEpoch((value) => value + 1)}
                                         onCollapse={onCollapse}
                                     />

@@ -128,12 +128,12 @@ func (s *Service) validateTeamGenerationMediaTransport(task *model.Task) error {
 	if len(input.ReferenceImages)+len(input.ReferenceVideos)+len(input.ReferenceAudios) == 0 && input.Mask == nil {
 		return nil
 	}
-	config, err := s.resolveProviderConfig(input.Config)
+	config, err := s.resolveProviderConfig(input.Config, task)
 	if err != nil {
 		return err
 	}
 	input.Config = config
-	ctx := withProtocolRegistry(context.Background(), s.protocolRegistry())
+	ctx := withProtocolRegistry(context.Background(), config.registry)
 	if err := validateReferenceTransportProtocol(ctx, input); err != nil {
 		return BadAuthRequest(err.Error())
 	}

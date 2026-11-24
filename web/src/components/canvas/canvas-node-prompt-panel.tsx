@@ -1,5 +1,5 @@
 import { mediaSettingIssues } from "@/lib/media-settings";
-import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
+import { modelCapabilityConfigFor, videoProfileForOperation } from "@/lib/model-capabilities";
 import { InputNumber } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Tooltip } from "@/components/ui/base/tooltip";
@@ -20,6 +20,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { modelQuoteDescription, modelQuoteRequest } from "@/lib/model-pricing";
 import { modelCompatibilityError, modelRequestOptions, type ModelRequirements } from "@/lib/model-selection";
 import { VIDEO_FRAME_MENTION_ISSUE, canvasVideoFrameIssue, canvasVideoOperation, canvasVideoReferenceMode, usesProjectedVideoReferences, videoReferenceOperation } from "@/lib/canvas/canvas-video-reference-mode";
+import { videoRemakeInputIssue } from "@/lib/canvas/canvas-video-regeneration";
 import { useGenerationBatchLimit, batchQuoteTotal } from "@/lib/generation-batch-limit";
 import { getGenerationCount } from "@/lib/canvas/canvas-project-generation";
 import type { ImageDimensions } from "@/lib/canvas/canvas-reference-image-size";
@@ -82,6 +83,7 @@ type CanvasNodePromptPanelProps = {
     onReplaceReference?: (nodeId: string, oldReference: CanvasResourceReference, sourceNodeId: string) => void;
     onReplaceReferenceFiles?: (nodeId: string, oldReference: CanvasResourceReference, files: File[]) => void;
     onUploadVideoReference?: (nodeId: string, file: File, frame?: CanvasVideoFrameKey) => Promise<void>;
+    onUploadRemakeImage?: () => void;
     onClose?: () => void;
     onNodeMouseDown?: (event: ReactPointerEvent, nodeId: string) => void;
     onImageSettingsOpenChange?: (open: boolean) => void;
@@ -123,6 +125,7 @@ export function CanvasNodePromptPanel({
     onReplaceReference,
     onReplaceReferenceFiles,
     onUploadVideoReference,
+    onUploadRemakeImage,
     onClose,
     onNodeMouseDown,
     onImageSettingsOpenChange,
@@ -241,7 +244,7 @@ export function CanvasNodePromptPanel({
         videoSeconds: mode === "video" ? config.videoSeconds : undefined,
     };
     const videoProfile = mode === "video" ? modelCapabilityConfigFor(config, config.model).video : undefined;
-    const singleFrame = videoProfile?.references.maxImages === 1;
+    const singleFrame = videoProfile ? videoProfileForOperation(videoProfile, "image_to_video").references.maxImages === 1 : false;
     const promptOptimizerProvider = useMemo(() => {
         if (!promptOptimizerEnabled || !promptOptimizerInstallation || !promptOptimizerPlugin.createPromptOptimizer) return null;
         return promptOptimizerPlugin.createPromptOptimizer(createPluginHostContext(promptOptimizerPlugin, promptOptimizerInstallation, globalConfig));
@@ -299,7 +302,8 @@ export function CanvasNodePromptPanel({
           )
         : "";
     const mentionIssue = showFrameSlots && mediaMentions.some((item) => !frameIds.includes(item.nodeId)) ? VIDEO_FRAME_MENTION_ISSUE : "";
-    let videoIssue = node.metadata?.videoStartFrameNodeId ? frameIssue : "";
+    const remakeIssue = videoRemakeInputIssue(node.metadata, inputSummary.imageCount + inputSummary.characterCount, inputSummary.videoDurationsMs || [], config);
+    let videoIssue = remakeIssue || (node.metadata?.videoStartFrameNodeId ? frameIssue : "");
     if (!videoIssue && !frameIssue) {
         videoIssue = mentionIssue || (videoMode && config.model ? modelCompatibilityError(config, config.model, resolvedRequirements) : "");
     }
@@ -410,9 +414,12 @@ export function CanvasNodePromptPanel({
             next,
             inputReferences.some((item) => item.kind === "image" || item.kind === "video" || item.kind === "character"),
         );
+        const nextProfile = videoProfile?.modeLimits?.[operation] && videoProfileForOperation(videoProfile, operation);
         onConfigChange(node.id, {
             videoReferenceMode: next,
+            ...(node.metadata?.videoRemake ? { videoRemake: undefined } : {}),
             videoEditOperation: operation,
+            ...(nextProfile?.ratios.length && !nextProfile.ratios.includes(config.size) ? { size: nextProfile.defaultRatio } : {}),
             videoStartFrameNodeId: next === "frames" ? videoFrameOptions[0]?.nodeId : undefined,
             videoEndFrameNodeId: next === "frames" && !singleFrame ? videoFrameOptions[1]?.nodeId : undefined,
         });
@@ -508,6 +515,7 @@ export function CanvasNodePromptPanel({
                                     open={expanded ? expandedNineGridOpen : nineGridOpen}
                                     onOpenChange={expanded ? setExpandedNineGridOpen : setNineGridOpen}
                                     icon={activeNineGridIcon}
+                                    selectedToolId={activeNineGridTool?.toolId}
                                     onSelect={(id, label, icon) => updatePromptFromCurrent((currentPrompt) => applyToolMention(currentPrompt, { id, label, type: "nine_grid" }, icon))}
                                 />
                             </>
@@ -686,7 +694,12 @@ export function CanvasNodePromptPanel({
                             />
                         </>
                     ) : mode === "video" ? (
-                        <CanvasVideoSettingsPopover config={config} buttonClassName="canvas-node-composer-settings-trigger [&>span]:min-w-0" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
+                        <CanvasVideoSettingsPopover
+                            config={config}
+                            operation={resolvedRequirements.videoOperation}
+                            buttonClassName="canvas-node-composer-settings-trigger [&>span]:min-w-0"
+                            onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))}
+                        />
                     ) : mode === "audio" ? (
                         <CanvasAudioSettingsPopover
                             config={{ ...config, audioVoiceBindings: canvasAudioVoiceBindings(node.metadata) }}
@@ -761,6 +774,12 @@ export function CanvasNodePromptPanel({
                     {videoIssue ? (
                         <span role="status" className="canvas-video-reference-issue shrink-0">
                             {videoIssue}
+                            {onUploadRemakeImage && !inputSummary.imageCount && !inputSummary.characterCount ? (
+                                <button type="button" className="ms-2 inline-flex items-center gap-1 underline" onClick={onUploadRemakeImage}>
+                                    <ImagePlus className="size-3.5" aria-hidden="true" />
+                                    上传参考图
+                                </button>
+                            ) : null}
                         </span>
                     ) : null}
                 </div>

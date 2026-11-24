@@ -54,9 +54,11 @@ test("the narrow conversation composer clears both restored and dragged launcher
     expect(restoreAgentLauncherPosition(saved, mobile, avatar)).toEqual(start);
 });
 
-test("the launcher starts above the workspace footer and keeps the saved position", () => {
+test("the default workspace anchor clears pagination without moving an editor or a manually positioned launcher", () => {
     const mobile = { width: 390, height: 850 };
-    expect(restoreAgentLauncherPosition(null, mobile, undefined, 0, false)).toEqual({ right: 20, bottom: 184 });
+    expect(restoreAgentLauncherPosition(null, viewport, undefined, 0, false).bottom).toBe(120);
+    expect(restoreAgentLauncherPosition(null, mobile, undefined, 0, false).bottom).toBe(184);
+    expect(restoreAgentLauncherPosition(null, mobile, undefined, 0, true)).toEqual(start);
     expect(restoreAgentLauncherPosition(JSON.stringify(start), mobile, undefined, 0, false)).toEqual(start);
 });
 

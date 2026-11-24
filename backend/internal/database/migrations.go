@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 109
+const CurrentSchemaVersion int64 = 110
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -39,6 +39,10 @@ const legacyModelChargePrecisionVersion int64 = 105
 const modelChargePrecisionExtensionVersion int64 = 5
 const modelChargePrecisionMigrationName = "model_charge_cent_precision"
 const modelChargePrecisionMigrationChecksum = "sha256:model-charge-cent-precision-v105"
+const legacyAigcQuotaSnapshotsVersion int64 = 109
+const aigcQuotaSnapshotsExtensionVersion int64 = 6
+const aigcQuotaSnapshotsMigrationName = "aigc_quota_snapshots"
+const aigcQuotaSnapshotsMigrationChecksum = "sha256:aigc-quota-snapshots-v109"
 
 const postgresSchemaMigrationLockID int64 = 73123910420260830
 
@@ -380,8 +384,28 @@ var schemaMigrations = []migration{
 		return tx.AutoMigrate(&model.Team{})
 	}},
 	{version: 108, name: "shared_workspace_content", checksum: "sha256:shared-workspace-content-v108", apply: migrateSharedWorkspaceContent},
-	{version: 109, name: "aigc_quota_snapshots", checksum: "sha256:aigc-quota-snapshots-v109", apply: func(tx *gorm.DB) error {
-		return tx.AutoMigrate(&model.AigcQuotaSnapshot{})
+	{version: 109, name: "model_protocol_releases", checksum: "sha256:model-protocol-releases-v109", apply: func(tx *gorm.DB) error {
+		for _, column := range []struct {
+			entity any
+			name   string
+		}{{&model.ChannelModel{}, "ProtocolRelease"}, {&model.Task{}, "ProtocolBindingJSON"}, {&model.RouteAttempt{}, "ProtocolBindingJSON"}} {
+			if !tx.Migrator().HasTable(column.entity) || tx.Migrator().HasColumn(column.entity, column.name) {
+				continue
+			}
+			if err := tx.Migrator().AddColumn(column.entity, column.name); err != nil {
+				return err
+			}
+		}
+		if !tx.Migrator().HasTable(&model.ChannelModel{}) || tx.Migrator().HasIndex(&model.ChannelModel{}, "ProtocolRelease") {
+			return nil
+		}
+		return tx.Migrator().CreateIndex(&model.ChannelModel{}, "ProtocolRelease")
+	}},
+	{version: 110, name: "cloud_agent_history_archives", checksum: "sha256:cloud-agent-history-archives-v110-20261123", apply: func(tx *gorm.DB) error {
+		if err := tx.AutoMigrate(&model.CloudAgentExecution{}, &model.CloudAgentHistoryArchive{}); err != nil {
+			return err
+		}
+		return reconcileAgentStorageUsage(tx)
 	}},
 }
 
@@ -712,6 +736,16 @@ func migratePaymentOrderChargeMethod(tx *gorm.DB) error {
 		Updates(map[string]any{"charge_amount_fen": gorm.Expr("amount_fen"), "charge_currency": gorm.Expr("currency")}).Error
 }
 
+var modelChargePrecisionExtension = migration{
+	version: modelChargePrecisionExtensionVersion, name: modelChargePrecisionMigrationName, checksum: modelChargePrecisionMigrationChecksum, apply: migrateModelChargePrecision,
+}
+
+var aigcQuotaSnapshotsExtension = migration{
+	version: aigcQuotaSnapshotsExtensionVersion, name: aigcQuotaSnapshotsMigrationName, checksum: aigcQuotaSnapshotsMigrationChecksum, apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.AigcQuotaSnapshot{})
+	},
+}
+
 var yingceSchemaMigrations = []migration{
 	{version: 1, name: "official_assets", checksum: "sha256:official-assets-v61-20261026", apply: func(tx *gorm.DB) error { return tx.AutoMigrate(&model.OfficialAsset{}, &model.OfficialAssetImport{}) }},
 	{version: 2, name: "official_asset_recommendations", checksum: "sha256:official-asset-recommendations-v62-20261027", apply: func(tx *gorm.DB) error { return tx.AutoMigrate(&model.OfficialAssetRecommendation{}) }},
@@ -719,7 +753,8 @@ var yingceSchemaMigrations = []migration{
 		return tx.AutoMigrate(&model.OfficialAssetRecommendation{}, &model.OfficialAsset{})
 	}},
 	{version: 4, name: "official_recommendation_consent", checksum: "sha256:official-recommendation-consent-v64-20261031", apply: func(tx *gorm.DB) error { return tx.AutoMigrate(&model.OfficialAssetRecommendation{}) }},
-	{version: modelChargePrecisionExtensionVersion, name: modelChargePrecisionMigrationName, checksum: modelChargePrecisionMigrationChecksum, apply: migrateModelChargePrecision},
+	modelChargePrecisionExtension,
+	aigcQuotaSnapshotsExtension,
 }
 
 func migrateModelChargePrecision(tx *gorm.DB) error {
@@ -1288,7 +1323,20 @@ func MigrateSchema(db *gorm.DB) error {
 		if err := relocateLegacyOfficialMigrations(tx); err != nil {
 			return err
 		}
-		if err := relocateLegacyModelChargePrecisionMigration(tx); err != nil {
+		if err := relocateLegacyJoyseeMigration(tx, legacyModelChargePrecisionVersion, modelChargePrecisionExtension, func() error {
+			if !tx.Migrator().HasColumn(&model.BillingOrder{}, "RoundChargeToCent") {
+				return fmt.Errorf("旧乐见积分精度字段缺失，拒绝自动转移迁移记录")
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := relocateLegacyJoyseeMigration(tx, legacyAigcQuotaSnapshotsVersion, aigcQuotaSnapshotsExtension, func() error {
+			if !tx.Migrator().HasTable(&model.AigcQuotaSnapshot{}) {
+				return fmt.Errorf("旧乐见 AIGC 额度快照表缺失，拒绝自动转移迁移记录")
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
 		if err := normalizeLegacyWorkbenchMigration(tx); err != nil {
@@ -1341,23 +1389,20 @@ func MigrateSchema(db *gorm.DB) error {
 	})
 }
 
-// 旧乐见 v105 与上游图片用量计费撞号。只转移已验证的旧记录，保留上游迁移身份；
-// 转移与后续迁移同事务，任何一步失败都会还原旧账本。
-func relocateLegacyModelChargePrecisionMigration(tx *gorm.DB) error {
+// 旧乐见 v105 和 v109 与上游撞号。转移已验证的旧记录与后续迁移在同一事务中执行。
+func relocateLegacyJoyseeMigration(tx *gorm.DB, legacyVersion int64, extension migration, verifySchema func() error) error {
 	var legacy schemaMigration
-	err := tx.First(&legacy, "version = ?", legacyModelChargePrecisionVersion).Error
+	err := tx.First(&legacy, "version = ?", legacyVersion).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("读取旧乐见积分精度迁移记录：%w", err)
+		return fmt.Errorf("读取旧乐见迁移记录 %d：%w", legacyVersion, err)
 	}
-	if legacy.Name != modelChargePrecisionMigrationName {
+	if legacy.Name != extension.name {
 		return nil
 	}
-	if err := validateMigrationRecord(legacy, migration{
-		version: legacyModelChargePrecisionVersion, name: modelChargePrecisionMigrationName, checksum: modelChargePrecisionMigrationChecksum,
-	}); err != nil {
+	if err := validateMigrationRecord(legacy, migration{version: legacyVersion, name: extension.name, checksum: extension.checksum}); err != nil {
 		return err
 	}
 	var tip int64
@@ -1365,22 +1410,22 @@ func relocateLegacyModelChargePrecisionMigration(tx *gorm.DB) error {
 		return fmt.Errorf("读取旧乐见迁移账本版本：%w", err)
 	}
 	if tip != legacy.Version {
-		return fmt.Errorf("旧乐见积分精度迁移 %d 后已有迁移记录，拒绝自动转移", legacy.Version)
+		return fmt.Errorf("旧乐见迁移 %d（%s）后已有迁移记录，拒绝自动转移", legacy.Version, legacy.Name)
 	}
-	if !tx.Migrator().HasColumn(&model.BillingOrder{}, "RoundChargeToCent") {
-		return fmt.Errorf("旧乐见积分精度字段缺失，拒绝自动转移迁移记录")
+	if err := verifySchema(); err != nil {
+		return err
 	}
 
-	moved := yingceSchemaMigration{Version: modelChargePrecisionExtensionVersion, Name: legacy.Name, Checksum: legacy.Checksum, AppliedAt: legacy.AppliedAt}
+	moved := yingceSchemaMigration{Version: extension.version, Name: legacy.Name, Checksum: legacy.Checksum, AppliedAt: legacy.AppliedAt}
 	if err := tx.Create(&moved).Error; err != nil {
-		return fmt.Errorf("记录乐见积分精度扩展迁移：%w", err)
+		return fmt.Errorf("记录乐见扩展迁移 %d：%w", extension.version, err)
 	}
 	result := tx.Where("version = ? AND name = ? AND checksum = ?", legacy.Version, legacy.Name, legacy.Checksum).Delete(&schemaMigration{})
 	if result.Error != nil {
-		return fmt.Errorf("转移旧乐见积分精度迁移记录：%w", result.Error)
+		return fmt.Errorf("转移旧乐见迁移记录 %d：%w", legacy.Version, result.Error)
 	}
 	if result.RowsAffected != 1 {
-		return fmt.Errorf("转移旧乐见积分精度迁移记录影响 %d 行，拒绝继续", result.RowsAffected)
+		return fmt.Errorf("转移旧乐见迁移记录 %d 影响 %d 行，拒绝继续", legacy.Version, result.RowsAffected)
 	}
 	return nil
 }
