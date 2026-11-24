@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -210,11 +211,18 @@ func (s *Service) ResolveLogicalModel(access *userGroupAccess, logicalModelID st
 	if match := MatchCapability(cached.ProductSpec, intent); !match.Matched {
 		return nil, modelCapabilityMismatchError(match)
 	}
-	eligible := s.eligibleLogicalRoutes(access, cached.Routes, intent, nil, cached.Model.PricePolicy == "channel")
-	if len(eligible) == 0 {
-		return nil, BadAuthRequest("当前模型暂时无法满足这组输入和参数")
+	selected, dedicated := s.groupPriceRoute(access, cached, intent)
+	if dedicated {
+		if s.logicalRouteBlocked(selected) {
+			return nil, ModelRouteUnavailable("专属单价对应的模型线路暂不可用，请稍后重试")
+		}
+	} else {
+		eligible := s.eligibleLogicalRoutes(access, cached.Routes, intent, nil, cached.Model.PricePolicy == "channel", false)
+		if len(eligible) == 0 {
+			return nil, BadAuthRequest("当前模型暂时无法满足这组输入和参数")
+		}
+		selected = weightedRoute(eligible, "")
 	}
-	selected := weightedRoute(eligible)
 	var priceTier *model.ChannelModelPriceTier
 	if cached.Model.PricePolicy == "channel" {
 		priceTier = channelModelPriceTierForIntent(selected.ChannelModel, intent, selected.CapabilitySpec)
@@ -225,21 +233,43 @@ func (s *Service) ResolveLogicalModel(access *userGroupAccess, logicalModelID st
 	return &RoutedModel{LogicalModel: cached.Model, Revision: cached.Revision, Route: selected.Route, ChannelModel: selected.ChannelModel, CapabilitySpec: selected.CapabilitySpec, PriceTier: priceTier, Defaults: cached.Defaults, Intent: intent}, nil
 }
 
-func (s *Service) eligibleLogicalRoutes(access *userGroupAccess, routes []cachedLogicalRoute, intent ModelRequestIntent, tried map[string]bool, requirePriceTier bool) []cachedLogicalRoute {
+// groupPriceRoute 先在专属价线路内选线，避免普通线路的健康变化改变首次建单价格。
+func (s *Service) groupPriceRoute(access *userGroupAccess, cached cachedLogicalModel, intent ModelRequestIntent) (cachedLogicalRoute, bool) {
+	if cached.Model.PricePolicy != "channel" || access == nil || len(access.group.fixedPrices) == 0 {
+		return cachedLogicalRoute{}, false
+	}
+	dedicated := s.eligibleLogicalRoutes(access, cached.Routes, intent, nil, true, true)
+	if len(dedicated) == 0 {
+		return cachedLogicalRoute{}, false
+	}
+	sort.Slice(dedicated, func(i, j int) bool { return dedicated[i].Route.ID < dedicated[j].Route.ID })
+	return weightedRoute(dedicated, access.userID+"\x00"+cached.Model.ID), true
+}
+
+func (s *Service) eligibleLogicalRoutes(access *userGroupAccess, routes []cachedLogicalRoute, intent ModelRequestIntent, tried map[string]bool, requirePriceTier, fixedPriceOnly bool) []cachedLogicalRoute {
 	eligible := make([]cachedLogicalRoute, 0, len(routes))
 	maxPriority := math.MinInt
 	for _, route := range routes {
-		if !route.Route.Enabled || route.Route.Weight <= 0 || tried[route.Route.ID] || s.logicalRouteBlocked(route) {
+		if !route.Route.Enabled || route.Route.Weight <= 0 || tried[route.Route.ID] {
 			continue
 		}
 		if access != nil && !access.allowsChannel(route.ChannelModel.ChannelID) {
 			continue
 		}
+		if !fixedPriceOnly && s.logicalRouteBlocked(route) {
+			continue
+		}
 		if match := MatchCapability(route.CapabilitySpec, intent); !match.Matched {
 			continue
 		}
-		if requirePriceTier && channelModelPriceTierForIntent(route.ChannelModel, intent, route.CapabilitySpec) == nil {
-			continue
+		if requirePriceTier {
+			tier := channelModelPriceTierForIntent(route.ChannelModel, intent, route.CapabilitySpec)
+			if tier == nil || access != nil && !access.canPriceChannelTier(&route.ChannelModel, tier) {
+				continue
+			}
+			if fixedPriceOnly && access.fixedChannelPrice(route.ChannelModel.ID, tier.ID) == nil {
+				continue
+			}
 		}
 		if route.Route.Priority > maxPriority {
 			eligible = eligible[:0]
@@ -297,18 +327,22 @@ func channelModelPriceTierForIntent(channelModel model.ChannelModel, intent Mode
 // channelModelHasCompatiblePriceTier is only for catalog discovery: an option
 // omitted from the intent is still a choice, while every supplied selector
 // value must be compatible with at least one active, configured tier.
-func channelModelHasCompatiblePriceTier(channelModel model.ChannelModel, intent ModelRequestIntent, specs ...CapabilitySpec) bool {
+func channelModelHasCompatiblePriceTier(access *userGroupAccess, channelModel model.ChannelModel, intent ModelRequestIntent, specs ...CapabilitySpec) bool {
+	if selected := channelModelPriceTierForIntent(channelModel, intent, specs...); selected != nil && access.canPriceChannelTier(&channelModel, selected) {
+		return true
+	}
 	requested := skuSelectorForIntent(intent)
 	parameters := imagePriceParametersForChannel(channelModel, specs...)
 	if parameters != nil {
 		requested = imagePriceSelectorForParameters(parameters, intent)
 	}
-	for _, tier := range channelModel.PriceTiers {
+	for index := range channelModel.PriceTiers {
+		tier := &channelModel.PriceTiers[index]
 		if !tier.Enabled || !tier.PriceConfigured {
 			continue
 		}
-		compatible := true
-		tierSelector := skuSelectorForTier(tier)
+		compatible, partial := true, false
+		tierSelector := skuSelectorForTier(*tier)
 		if parameters != nil {
 			tierSelector = model.DecodeSKUSelector(tier.SelectorJSON)
 			if validateImageParameterPriceSelector(parameters, tierSelector) != nil {
@@ -320,12 +354,15 @@ func channelModelHasCompatiblePriceTier(channelModel model.ChannelModel, intent 
 			if expected == "" || expected == "*" {
 				continue
 			}
-			if actual, provided := requested[key]; provided && actual != expected {
+			actual, provided := requested[key]
+			if provided && actual != expected {
 				compatible = false
 				break
 			}
+			partial = partial || !provided
 		}
-		if compatible {
+		// 未指定的选项可继续探索，已命中的规格必须按原始优先级选价。
+		if compatible && partial && access.canPriceChannelTier(&channelModel, tier) {
 			return true
 		}
 	}
@@ -550,7 +587,7 @@ func mergeIntentDefaults(options map[string]any, defaults map[string]any) map[st
 	return result
 }
 
-func weightedRoute(routes []cachedLogicalRoute) cachedLogicalRoute {
+func weightedRoute(routes []cachedLogicalRoute, stableKey string) cachedLogicalRoute {
 	if len(routes) == 1 {
 		return routes[0]
 	}
@@ -561,21 +598,27 @@ func weightedRoute(routes []cachedLogicalRoute) cachedLogicalRoute {
 	if total <= 0 {
 		return routes[0]
 	}
-	var raw [8]byte
-	if _, err := cryptorand.Read(raw[:]); err != nil {
-		return routes[0]
-	}
 	totalUnsigned := uint64(total)
-	// 丢弃不能整除 total 的低概率尾部，避免取模造成轻微权重偏差。
-	threshold := -totalUnsigned % totalUnsigned
-	randomValue := binary.LittleEndian.Uint64(raw[:])
-	for randomValue < threshold {
+	var draw uint64
+	if stableKey != "" {
+		digest := sha256.Sum256([]byte(stableKey))
+		draw = binary.LittleEndian.Uint64(digest[:])
+	} else {
+		var raw [8]byte
 		if _, err := cryptorand.Read(raw[:]); err != nil {
 			return routes[0]
 		}
-		randomValue = binary.LittleEndian.Uint64(raw[:])
+		// 丢弃不能整除 total 的低概率尾部，避免取模造成轻微权重偏差。
+		threshold := -totalUnsigned % totalUnsigned
+		draw = binary.LittleEndian.Uint64(raw[:])
+		for draw < threshold {
+			if _, err := cryptorand.Read(raw[:]); err != nil {
+				return routes[0]
+			}
+			draw = binary.LittleEndian.Uint64(raw[:])
+		}
 	}
-	pick := int64(randomValue % totalUnsigned)
+	pick := int64(draw % totalUnsigned)
 	for _, route := range routes {
 		if pick < int64(route.Route.Weight) {
 			return route

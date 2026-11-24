@@ -12,6 +12,21 @@ export type UserGroupModelOverride = {
     ratioBasisPoints: number;
     pointsPerUsdMicrocredits: number;
     pointsPerCnyMicrocredits: number;
+    fixedPrice?: UserGroupFixedPrice;
+};
+
+export type UserGroupFixedPrice = {
+    logicalModelId?: string;
+    channelModelId?: string;
+    priceTierId?: string;
+    billingMode: import("./wallet").ChannelModel["billingMode"];
+    unitPriceMicrocredits?: number;
+    inputTokenPriceMicrocredits?: number;
+    outputTokenPriceMicrocredits?: number;
+    cachedTokenPriceMicrocredits?: number;
+    cacheWriteTokenPriceMicrocredits?: number;
+    referenceVideoPriceMicrocredits?: number;
+    imagePricing?: import("./wallet").ImagePricing;
 };
 
 export type UserGroup = {

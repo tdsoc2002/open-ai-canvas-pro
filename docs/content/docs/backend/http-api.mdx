@@ -670,7 +670,7 @@ Token 报价的 `estimated` 为 `true`，`quantity` 是预留 Token 数。`inten
 
 ## 用户分组与多币种计价
 
-用户模型目录、报价、任务创建、工作台任务、短剧模型选择、云端 Agent 模型列表和系统渠道中转都按当前用户分组过滤系统渠道：分组未绑定的渠道不出现在 `GET /model-catalog` 与 `GET /models`，直接提交其 `channelId` 时报价、建任务和中转返回 `reason=model_catalog_mismatch`。管理员账号可见全部渠道。目录与报价返回的价格档单价（`unitPriceMicrocredits`、Token 单价）已按分组换算为实际扣费的微积分，含全局积分倍率、分组倍率和模型倍率；分组未配置该货币兑换比例的模型不进入目录，报价返回 `model_price_not_configured`。
+用户模型目录、报价、任务创建、工作台任务、短剧模型选择、云端 Agent 模型列表和系统渠道中转都按当前用户分组过滤系统渠道：分组未绑定的渠道不出现在 `GET /model-catalog` 与 `GET /models`，直接提交其 `channelId` 时报价、建任务和中转返回 `reason=model_catalog_mismatch`。管理员账号可见全部渠道。目录与报价返回分组实际扣费的微积分单价。有专属单价的规格直接使用该积分价，其余规格按基础价换算。缺少必要货币兑换比例的规格不展示，直接报价返回 `model_price_not_configured`。
 
 `GET /auth/session` 增加 `userGroup`：`{ code, name, badgeLabel, badgeStyle, ratioBasisPoints }`，分组配置缺失时为 `null`。用户对象增加 `userGroup`（空串表示 `default`）。
 
@@ -683,6 +683,20 @@ Token 报价的 `estimated` 为 `true`，`quantity` 是预留 Token 数。`inten
 | GET | `/api/admin/users?group=vip` | 按分组筛选用户，`group=default` 同时匹配未分组用户 |
 | PATCH | `/api/admin/users/:id` | 增加可选 `userGroup`；省略表示不修改 |
 | POST | `/api/admin/users` | 增加可选 `userGroup`，默认 `default` |
+
+`modelOverrides[]` 也接收独立的专属单价记录 `{ fixedPrice: { ... } }`。目标填写 `logicalModelId`（前台统一价模型）或 `channelModelId` 和 `priceTierId`（系统渠道规格）。`billingMode` 取目标当前计费方式。专属价和倍率规则可同时配置，匹配同一请求时采用专属价。
+
+| 计费方式 | `fixedPrice` 价格字段 |
+| --- | --- |
+| `fixed_request` / `per_second` | `unitPriceMicrocredits` |
+| `token` | `outputTokenPriceMicrocredits`。非视频还需 `inputTokenPriceMicrocredits`、`cachedTokenPriceMicrocredits`、`cacheWriteTokenPriceMicrocredits` |
+| `image_usage` | `imagePricing`。沿用模型免费输入张数和像素分档，填写输入和各档输出价格 |
+
+开启参考视频计费的按秒和视频 Token 档另需 `referenceVideoPriceMicrocredits`。所有价格字段使用微积分，0 是显式免费。专属价覆盖对应档位的文本分时和上下文售价规则，按现有数量及舍入规则计算，预留的订单保存用于结算的价格快照。跟随渠道价的前台模型按供应线路规格计价，切换线路按新线路规格重新预留。
+
+跟随渠道价的前台模型有适用专属价时，报价和首次建单在专属价线路中按优先级筛选，并按账号和模型稳定加权选线。选中的专属价线路短时熔断时返回 `model_route_unavailable`。
+
+更新分组时，原样提交的失效专属价可保留，新增和修改的价格按当前模型或规格校验。分组管理审计的 `fixedPriceChanges` 为专属价变化数组，每项的 `before` 和 `after` 记录目标与价格。一项只有 `after` 表示新增，只有 `before` 表示移除。
 
 渠道模型创建与更新增加 `priceCurrency`：`credits`（默认）/ `USD` / `CNY`。省略时更新保留原值、新建为 `credits`。货币计价时价格档售价字段表示百万分之一货币单位，例如 `unitPriceMicrocredits: 40000` 表示每次 0.04 USD；成本价仍是微积分。渠道导出文件携带 `priceCurrency`。
 

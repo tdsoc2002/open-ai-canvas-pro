@@ -384,6 +384,10 @@ func (r *Repository) SwitchTaskLogicalRoute(taskID string, expectedRouteID strin
 			updates["price_version"] = replacement.PriceVersion
 			updates["price_tier_id"] = replacement.PriceTierID
 			updates["price_tier_version"] = replacement.PriceTierVersion
+			updates["price_selector_json"] = replacement.PriceSelectorJSON
+			updates["user_group"] = replacement.UserGroup
+			updates["price_currency"] = replacement.PriceCurrency
+			updates["currency_rate_microcredits"] = replacement.CurrencyRateMicrocredits
 			updates["unit_price_microcredits"] = replacement.UnitPriceMicrocredits
 			updates["multiplier_basis_points"] = replacement.MultiplierBasisPoints
 			updates["quantity"] = replacement.Quantity

@@ -7,6 +7,7 @@ import { UserGroupBadge } from "@/components/layout/user-group-badge";
 import { createAdminUserGroup, updateAdminUserGroup, type UserGroup } from "@/services/api/user-groups";
 import { useAdminContext } from "../admin-context";
 import { Callout, Switch } from "../ui/controls";
+import { UserGroupFixedPrices } from "./user-group-fixed-prices";
 import { emptyUserGroupForm, userGroupFormValues, userGroupInput, type UserGroupFormValues } from "./user-group-form";
 
 const badgeStyleOptions = [
@@ -62,7 +63,7 @@ export function UserGroupEditor({ open, group, onClose, onSaved }: { open: boole
         }
         modal.confirm({
             title: "放弃分组修改？",
-            content: "尚未保存的分组倍率、渠道或徽章修改将丢失。",
+            content: "尚未保存的分组修改将丢失。",
             okText: "放弃修改",
             cancelText: "继续编辑",
             okButtonProps: { danger: true },
@@ -71,10 +72,14 @@ export function UserGroupEditor({ open, group, onClose, onSaved }: { open: boole
     };
 
     const save = async () => {
-        const values = await form.validateFields();
+        try {
+            await form.validateFields();
+        } catch {
+            return;
+        }
         setSaving(true);
         try {
-            const input = userGroupInput(values);
+            const input = userGroupInput(form.getFieldsValue(true));
             const result = group ? await updateAdminUserGroup(group.id, input) : await createAdminUserGroup(input);
             onSaved(result.group);
             message.success(group ? "分组已保存" : "分组已创建");
@@ -130,16 +135,16 @@ export function UserGroupEditor({ open, group, onClose, onSaved }: { open: boole
 
                 <div className="mb-2 mt-2 text-sm font-medium">计费倍率与货币兑换</div>
                 <Callout tone="info" className="mb-4">
-                    实际扣费 = 模型售价 ×（USD/CNY 计价时乘以兑换比例）× 全局积分倍率 × 分组倍率 × 模型倍率。倍率 1 表示不打折，0.8 表示 8 折。
+                    基础价按计费币种和适用倍率换算为积分。倍率 1 表示原价，0.8 表示 8 折。
                 </Callout>
                 <div className="grid gap-x-4 sm:grid-cols-3">
                     <Form.Item name="ratio" label="分组倍率" rules={[{ required: true, type: "number", min: 0.0001, max: 100, message: "0.0001 至 100" }]}>
                         <InputNumber className="w-full" min={0.0001} max={100} step={0.05} />
                     </Form.Item>
-                    <Form.Item name="pointsPerUsd" label="1 USD = 积分" rules={[{ type: "number", min: 0, max: 1_000_000 }]} extra="0 表示该分组不能使用 USD 计价模型。">
+                    <Form.Item name="pointsPerUsd" label="1 USD = 积分" rules={[{ type: "number", min: 0, max: 1_000_000 }]} extra="0 表示停用 USD 基础价。">
                         <InputNumber className="w-full" min={0} max={1_000_000} step={0.1} />
                     </Form.Item>
-                    <Form.Item name="pointsPerCny" label="1 CNY = 积分" rules={[{ type: "number", min: 0, max: 1_000_000 }]} extra="0 表示该分组不能使用 CNY 计价模型。">
+                    <Form.Item name="pointsPerCny" label="1 CNY = 积分" rules={[{ type: "number", min: 0, max: 1_000_000 }]} extra="0 表示停用 CNY 基础价。">
                         <InputNumber className="w-full" min={0} max={1_000_000} step={0.1} />
                     </Form.Item>
                 </div>
@@ -182,6 +187,7 @@ export function UserGroupEditor({ open, group, onClose, onSaved }: { open: boole
                         </div>
                     )}
                 </Form.List>
+                <UserGroupFixedPrices open={open} form={form} />
 
                 <Form.Item name="sortOrder" label="排序" className="mt-4" extra="数字越小越靠前。">
                     <InputNumber className="w-40" min={-100000} max={100000} />

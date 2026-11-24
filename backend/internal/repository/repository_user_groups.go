@@ -12,6 +12,7 @@ import (
 
 // ErrUserGroupInUse 表示分组仍有用户，不能删除。
 var ErrUserGroupInUse = errors.New("user group in use")
+var ErrUserGroupChanged = errors.New("user group changed")
 
 func (r *Repository) UserGroups() ([]model.UserGroup, error) {
 	var groups []model.UserGroup
@@ -41,47 +42,66 @@ func (r *Repository) UserGroupChannels() ([]model.UserGroupChannel, error) {
 	return rows, err
 }
 
-// SaveUserGroupWithChannels 创建或更新分组，并整体替换其渠道绑定。
-func (r *Repository) SaveUserGroupWithChannels(group *model.UserGroup, channelIDs []string, create bool) error {
+// SaveUserGroupWithChannels 同时保存分组、渠道绑定和管理审计。
+func (r *Repository) SaveUserGroupWithChannels(group *model.UserGroup, channelIDs []string, create bool, audit *model.AdminAuditEvent) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
+		previousUpdate := group.UpdatedAt
 		group.UpdatedAt = now
 		if create {
 			group.CreatedAt = now
 			if err := tx.Create(group).Error; err != nil {
 				return err
 			}
-		} else if err := tx.Save(group).Error; err != nil {
-			return err
+		} else {
+			result := tx.Model(group).Where("updated_at = ?", previousUpdate).Select("*").Updates(group)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return ErrUserGroupChanged
+			}
 		}
 		if err := tx.Where("group_id = ?", group.ID).Delete(&model.UserGroupChannel{}).Error; err != nil {
 			return err
 		}
-		if len(channelIDs) == 0 {
-			return nil
+		if len(channelIDs) != 0 {
+			rows := make([]model.UserGroupChannel, 0, len(channelIDs))
+			for _, channelID := range channelIDs {
+				rows = append(rows, model.UserGroupChannel{GroupID: group.ID, ChannelID: channelID, CreatedAt: now})
+			}
+			if err := tx.Create(&rows).Error; err != nil {
+				return err
+			}
 		}
-		rows := make([]model.UserGroupChannel, 0, len(channelIDs))
-		for _, channelID := range channelIDs {
-			rows = append(rows, model.UserGroupChannel{GroupID: group.ID, ChannelID: channelID, CreatedAt: now})
+		if audit != nil {
+			return tx.Create(audit).Error
 		}
-		return tx.Create(&rows).Error
+		return nil
 	})
 }
 
 // DeleteUserGroup 在同一事务内确认分组没有用户后删除分组和绑定；默认分组由 service 层禁止删除。
-func (r *Repository) DeleteUserGroup(id string, code string) error {
+func (r *Repository) DeleteUserGroup(group *model.UserGroup, audit *model.AdminAuditEvent) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var count int64
-		if err := tx.Model(&model.User{}).Where("user_group = ?", code).Count(&count).Error; err != nil {
+		if err := tx.Model(&model.User{}).Where("user_group = ?", group.Code).Count(&count).Error; err != nil {
 			return err
 		}
 		if count > 0 {
 			return ErrUserGroupInUse
 		}
-		if err := tx.Where("group_id = ?", id).Delete(&model.UserGroupChannel{}).Error; err != nil {
+		if err := tx.Where("group_id = ?", group.ID).Delete(&model.UserGroupChannel{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&model.UserGroup{}, "id = ?", id).Error
+		deleted := tx.Delete(&model.UserGroup{}, "id = ? AND updated_at = ?", group.ID, group.UpdatedAt)
+		if deleted.Error != nil {
+			return deleted.Error
+		}
+		if deleted.RowsAffected != 1 {
+			return ErrUserGroupChanged
+		}
+		return tx.Create(audit).Error
 	})
 }
 

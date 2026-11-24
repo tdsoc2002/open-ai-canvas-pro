@@ -44,8 +44,9 @@ type userGroupSnapshot struct {
 
 type resolvedUserGroup struct {
 	model.UserGroup
-	channels  map[string]bool
-	overrides map[string]model.UserGroupModelOverride
+	channels    map[string]bool
+	overrides   map[string]model.UserGroupModelOverride
+	fixedPrices map[groupFixedPriceTarget]*model.UserGroupFixedPrice
 }
 
 // userGroupAccess 是一次请求的分组上下文。bypassVisibility 只放开渠道可见性（管理员和内部能力探测），
@@ -134,7 +135,7 @@ func (s *Service) EnsureDefaultUserGroup() error {
 		RatioBasisPoints: 10_000, PointsPerUSD: defaultPointsPerUSDSeed, PointsPerCNY: defaultPointsPerCNYSeed,
 		AllChannels: true, ModelOverridesJSON: "[]",
 	}
-	if err := s.repo.SaveUserGroupWithChannels(group, nil, true); err != nil {
+	if err := s.repo.SaveUserGroupWithChannels(group, nil, true, nil); err != nil {
 		return err
 	}
 	s.invalidateUserGroups()
@@ -172,7 +173,14 @@ func (s *Service) userGroupSnapshot() (*userGroupSnapshot, error) {
 		}
 		resolved := &resolvedUserGroup{UserGroup: group, channels: map[string]bool{}, overrides: make(map[string]model.UserGroupModelOverride, len(overrides))}
 		for _, item := range overrides {
-			resolved.overrides[item.ModelKey] = item
+			if item.FixedPrice != nil {
+				if resolved.fixedPrices == nil {
+					resolved.fixedPrices = make(map[groupFixedPriceTarget]*model.UserGroupFixedPrice)
+				}
+				resolved.fixedPrices[fixedPriceTarget(item.FixedPrice)] = item.FixedPrice
+			} else {
+				resolved.overrides[item.ModelKey] = item
+			}
 		}
 		snapshot.byCode[group.Code] = resolved
 		byID[group.ID] = resolved
@@ -465,17 +473,18 @@ func (s *Service) CreateUserGroup(actor *model.User, req UserGroupRequest) (*Use
 		return nil, err
 	}
 	group := &model.UserGroup{ID: newID(), Code: code}
-	channelIDs, err := s.applyUserGroupRequest(group, req)
+	channelIDs, err := s.applyUserGroupRequest(group, req, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.SaveUserGroupWithChannels(group, channelIDs, true); err != nil {
+	audit, err := userGroupSaveAudit(actor, group, channelIDs, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.SaveUserGroupWithChannels(group, channelIDs, true, audit); err != nil {
 		return nil, err
 	}
 	s.invalidateUserGroups()
-	if err := s.appendAdminAudit(actor, "user_group.create", "user_group", group.ID, "创建用户分组", userGroupAuditMetadata(group, channelIDs)); err != nil {
-		return nil, err
-	}
 	return s.adminUserGroupView(actor, group.ID)
 }
 
@@ -493,17 +502,25 @@ func (s *Service) UpdateUserGroup(actor *model.User, id string, req UserGroupReq
 	if code := strings.ToLower(strings.TrimSpace(req.Code)); code != "" && code != group.Code {
 		return nil, BadAuthRequest("分组编码创建后不能修改")
 	}
-	channelIDs, err := s.applyUserGroupRequest(group, req)
+	previous, err := decodeUserGroupOverrides(group.ModelOverridesJSON)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.SaveUserGroupWithChannels(group, channelIDs, false); err != nil {
+	channelIDs, err := s.applyUserGroupRequest(group, req, previous)
+	if err != nil {
+		return nil, err
+	}
+	audit, err := userGroupSaveAudit(actor, group, channelIDs, previous, false)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.SaveUserGroupWithChannels(group, channelIDs, false, audit); err != nil {
+		if errors.Is(err, repository.ErrUserGroupChanged) {
+			return nil, NewAppError(409, "用户分组配置已更新，请刷新后重试")
+		}
 		return nil, err
 	}
 	s.invalidateUserGroups()
-	if err := s.appendAdminAudit(actor, "user_group.update", "user_group", group.ID, "更新用户分组", userGroupAuditMetadata(group, channelIDs)); err != nil {
-		return nil, err
-	}
 	return s.adminUserGroupView(actor, group.ID)
 }
 
@@ -521,14 +538,29 @@ func (s *Service) DeleteUserGroup(actor *model.User, id string) error {
 	if group.Code == model.DefaultUserGroupCode {
 		return BadAuthRequest("默认分组不能删除")
 	}
-	if err := s.repo.DeleteUserGroup(group.ID, group.Code); err != nil {
+	previous, err := decodeUserGroupOverrides(group.ModelOverridesJSON)
+	if err != nil {
+		return err
+	}
+	metadata := map[string]any{"code": group.Code}
+	if changes := fixedPriceChanges(previous, nil); len(changes) != 0 {
+		metadata["fixedPriceChanges"] = changes
+	}
+	audit, err := newAdminAuditEvent(actor, "user_group.delete", "user_group", group.ID, "删除用户分组", metadata)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.DeleteUserGroup(group, audit); err != nil {
 		if errors.Is(err, repository.ErrUserGroupInUse) {
 			return BadAuthRequest("分组下仍有用户，请先把用户调整到其他分组")
+		}
+		if errors.Is(err, repository.ErrUserGroupChanged) {
+			return NewAppError(409, "用户分组配置已更新，请刷新后重试")
 		}
 		return err
 	}
 	s.invalidateUserGroups()
-	return s.appendAdminAudit(actor, "user_group.delete", "user_group", group.ID, "删除用户分组", map[string]any{"code": group.Code})
+	return nil
 }
 
 func (s *Service) adminUserGroupView(actor *model.User, id string) (*UserGroupView, error) {
@@ -545,7 +577,7 @@ func (s *Service) adminUserGroupView(actor *model.User, id string) (*UserGroupVi
 }
 
 // applyUserGroupRequest 校验并写入可编辑字段，返回去重后的渠道绑定。
-func (s *Service) applyUserGroupRequest(group *model.UserGroup, req UserGroupRequest) ([]string, error) {
+func (s *Service) applyUserGroupRequest(group *model.UserGroup, req UserGroupRequest, previous []model.UserGroupModelOverride) ([]string, error) {
 	name := strings.TrimSpace(req.Name)
 	if name == "" || len([]rune(name)) > 80 {
 		return nil, BadAuthRequest("分组名称不能为空且不能超过 80 字")
@@ -572,7 +604,7 @@ func (s *Service) applyUserGroupRequest(group *model.UserGroup, req UserGroupReq
 	if req.PointsPerUSD < 0 || req.PointsPerUSD > maxPointsPerCurrency || req.PointsPerCNY < 0 || req.PointsPerCNY > maxPointsPerCurrency {
 		return nil, BadAuthRequest("货币兑换积分比例必须在 0 至 100 万积分之间")
 	}
-	overrides, err := normalizeUserGroupOverrides(req.ModelOverrides)
+	overrides, err := s.normalizeUserGroupOverrides(req.ModelOverrides, previous)
 	if err != nil {
 		return nil, err
 	}
@@ -607,13 +639,26 @@ func (s *Service) applyUserGroupRequest(group *model.UserGroup, req UserGroupReq
 	return channelIDs, nil
 }
 
-func normalizeUserGroupOverrides(items []model.UserGroupModelOverride) ([]model.UserGroupModelOverride, error) {
+func (s *Service) normalizeUserGroupOverrides(items, previous []model.UserGroupModelOverride) ([]model.UserGroupModelOverride, error) {
 	if len(items) > maxUserGroupOverrides {
-		return nil, BadAuthRequest("单个分组最多配置 500 个模型倍率")
+		return nil, BadAuthRequest("单个分组最多配置 500 条模型价格规则")
 	}
 	result := make([]model.UserGroupModelOverride, 0, len(items))
 	seen := make(map[string]bool, len(items))
+	fixed := make(map[groupFixedPriceTarget]bool)
 	for _, item := range items {
+		if item.FixedPrice != nil {
+			if item.RatioBasisPoints != 0 || item.PointsPerUSD != 0 || item.PointsPerCNY != 0 {
+				return nil, BadAuthRequest("专属单价规则须单独配置")
+			}
+			target := fixedPriceTarget(item.FixedPrice)
+			if fixed[target] {
+				return nil, BadAuthRequest("同一个模型价格档只能配置一条专属单价")
+			}
+			fixed[target] = true
+			result = append(result, item)
+			continue
+		}
 		key := strings.TrimPrefix(strings.TrimSpace(item.ModelKey), "models/")
 		if key == "" || len([]rune(key)) > 120 {
 			return nil, BadAuthRequest("模型倍率的模型标识不能为空且不能超过 120 字")
@@ -633,16 +678,30 @@ func normalizeUserGroupOverrides(items []model.UserGroupModelOverride) ([]model.
 		}
 		result = append(result, model.UserGroupModelOverride{ModelKey: key, RatioBasisPoints: item.RatioBasisPoints, PointsPerUSD: item.PointsPerUSD, PointsPerCNY: item.PointsPerCNY})
 	}
+	if err := s.validateFixedPriceTargets(result, previous); err != nil {
+		return nil, err
+	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ModelKey < result[j].ModelKey })
 	return result, nil
 }
 
-func userGroupAuditMetadata(group *model.UserGroup, channelIDs []string) map[string]any {
-	return map[string]any{
+func userGroupSaveAudit(actor *model.User, group *model.UserGroup, channelIDs []string, previous []model.UserGroupModelOverride, creating bool) (*model.AdminAuditEvent, error) {
+	overrides, err := decodeUserGroupOverrides(group.ModelOverridesJSON)
+	if err != nil {
+		return nil, err
+	}
+	metadata := map[string]any{
 		"code": group.Code, "ratioBasisPoints": group.RatioBasisPoints,
 		"pointsPerUsdMicrocredits": group.PointsPerUSD, "pointsPerCnyMicrocredits": group.PointsPerCNY,
 		"allChannels": group.AllChannels, "channelIds": channelIDs, "badgeStyle": group.BadgeStyle,
 	}
+	if changes := fixedPriceChanges(previous, overrides); len(changes) != 0 {
+		metadata["fixedPriceChanges"] = changes
+	}
+	if creating {
+		return newAdminAuditEvent(actor, "user_group.create", "user_group", group.ID, "创建用户分组", metadata)
+	}
+	return newAdminAuditEvent(actor, "user_group.update", "user_group", group.ID, "更新用户分组", metadata)
 }
 
 // ModelCatalogForGuest 只开放默认分组的脱敏目录，不能用作任务或报价的身份上下文。

@@ -122,7 +122,7 @@ export default function UserGroupsPage() {
             },
             {
                 key: "overrides",
-                title: "模型倍率",
+                title: "模型定价",
                 width: 100,
                 align: "center",
                 render: (_, group) => (

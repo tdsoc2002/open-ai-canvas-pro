@@ -148,16 +148,16 @@ func referenceVideoBillingEstimate(item *model.ChannelModel, capability string, 
 
 // referenceVideoPricedTier 返回带参考视频请求实际使用的价格档副本。带参考视频价格为 0 而基础价格不为 0
 // 时视为未配置，拒绝下单，避免开关开启后挂参考视频反而免费。
-func referenceVideoPricedTier(tier *model.ChannelModelPriceTier) (*model.ChannelModelPriceTier, error) {
+func referenceVideoPricedTier(tier *model.ChannelModelPriceTier, explicitlyConfigured bool) (*model.ChannelModelPriceTier, error) {
 	priced := *tier
 	switch tier.BillingMode {
 	case "per_second":
-		if tier.ReferenceVideoUnitPriceMicrocredits == 0 && tier.UnitPriceMicrocredits > 0 {
+		if !explicitlyConfigured && tier.ReferenceVideoUnitPriceMicrocredits == 0 && tier.UnitPriceMicrocredits > 0 {
 			return nil, BadAuthRequest("当前模型尚未配置带参考视频的价格，请联系管理员")
 		}
 		priced.UnitPriceMicrocredits = tier.ReferenceVideoUnitPriceMicrocredits
 	case "token":
-		if tier.ReferenceVideoOutputTokenPriceMicrocredits == 0 && tier.OutputTokenPriceMicrocredits > 0 {
+		if !explicitlyConfigured && tier.ReferenceVideoOutputTokenPriceMicrocredits == 0 && tier.OutputTokenPriceMicrocredits > 0 {
 			return nil, BadAuthRequest("当前模型尚未配置带参考视频的价格，请联系管理员")
 		}
 		priced.OutputTokenPriceMicrocredits = tier.ReferenceVideoOutputTokenPriceMicrocredits

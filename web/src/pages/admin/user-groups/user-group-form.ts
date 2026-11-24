@@ -1,5 +1,5 @@
 import { formatCreditDisplay } from "@/constant/credits";
-import type { UserGroup, UserGroupBadgeStyle, UserGroupInput } from "@/services/api/user-groups";
+import type { UserGroup, UserGroupBadgeStyle, UserGroupFixedPrice, UserGroupInput } from "@/services/api/user-groups";
 
 const MICRO = 1_000_000;
 const BPS = 10_000;
@@ -10,6 +10,24 @@ export type UserGroupOverrideFormValue = {
     ratio?: number | null;
     pointsPerUsd?: number | null;
     pointsPerCny?: number | null;
+};
+
+export type FixedPriceTerms = {
+    unitPriceMicrocredits?: number;
+    inputTokenPriceMicrocredits?: number;
+    outputTokenPriceMicrocredits?: number;
+    cachedTokenPriceMicrocredits?: number;
+    cacheWriteTokenPriceMicrocredits?: number;
+    referenceVideoPriceMicrocredits?: number;
+};
+
+export type FixedPriceFormValue = {
+    target?: string;
+    modelKey?: string;
+    price?: UserGroupFixedPrice;
+    terms?: FixedPriceTerms;
+    imageInputPrice?: number;
+    imageOutputPrices?: number[];
 };
 
 export type UserGroupFormValues = {
@@ -25,10 +43,33 @@ export type UserGroupFormValues = {
     allChannels: boolean;
     channelIds: string[];
     modelOverrides: UserGroupOverrideFormValue[];
+    fixedPrices: FixedPriceFormValue[];
 };
 
 export function emptyUserGroupForm(): UserGroupFormValues {
-    return { code: "", name: "", description: "", badgeLabel: "", badgeStyle: "none", sortOrder: 0, ratio: 1, pointsPerUsd: 7, pointsPerCny: 1, allChannels: false, channelIds: [], modelOverrides: [] };
+    return { code: "", name: "", description: "", badgeLabel: "", badgeStyle: "none", sortOrder: 0, ratio: 1, pointsPerUsd: 7, pointsPerCny: 1, allChannels: false, channelIds: [], modelOverrides: [], fixedPrices: [] };
+}
+
+export function fixedPriceTargetKey(price: UserGroupFixedPrice) {
+    return price.logicalModelId ? `logical:${price.logicalModelId}` : `channel:${price.channelModelId}:${price.priceTierId}`;
+}
+
+const fixedPriceTermKeys = ["unitPriceMicrocredits", "inputTokenPriceMicrocredits", "outputTokenPriceMicrocredits", "cachedTokenPriceMicrocredits", "cacheWriteTokenPriceMicrocredits", "referenceVideoPriceMicrocredits"] as const;
+
+function fixedPriceFormValue(modelKey: string, price: UserGroupFixedPrice): FixedPriceFormValue {
+    const terms: FixedPriceTerms = {};
+    for (const key of fixedPriceTermKeys) {
+        const value = price[key];
+        if (value !== undefined) terms[key] = value / MICRO;
+    }
+    return {
+        target: fixedPriceTargetKey(price),
+        modelKey,
+        price,
+        terms,
+        imageInputPrice: price.imagePricing && price.imagePricing.inputPriceMicrocredits / MICRO,
+        imageOutputPrices: price.imagePricing?.outputTiers.map((tier) => tier.unitPriceMicrocredits / MICRO),
+    };
 }
 
 export function userGroupFormValues(group: UserGroup): UserGroupFormValues {
@@ -44,17 +85,56 @@ export function userGroupFormValues(group: UserGroup): UserGroupFormValues {
         pointsPerCny: group.pointsPerCnyMicrocredits / MICRO,
         allChannels: group.allChannels,
         channelIds: group.channelIds,
-        modelOverrides: group.modelOverrides.map((item) => ({
-            modelKey: item.modelKey,
-            ratio: item.ratioBasisPoints ? item.ratioBasisPoints / BPS : null,
-            pointsPerUsd: item.pointsPerUsdMicrocredits ? item.pointsPerUsdMicrocredits / MICRO : null,
-            pointsPerCny: item.pointsPerCnyMicrocredits ? item.pointsPerCnyMicrocredits / MICRO : null,
-        })),
+        modelOverrides: group.modelOverrides
+            .filter((item) => !item.fixedPrice)
+            .map((item) => ({
+                modelKey: item.modelKey,
+                ratio: item.ratioBasisPoints ? item.ratioBasisPoints / BPS : null,
+                pointsPerUsd: item.pointsPerUsdMicrocredits ? item.pointsPerUsdMicrocredits / MICRO : null,
+                pointsPerCny: item.pointsPerCnyMicrocredits ? item.pointsPerCnyMicrocredits / MICRO : null,
+            })),
+        fixedPrices: group.modelOverrides.flatMap((item) => (item.fixedPrice ? [fixedPriceFormValue(item.modelKey, item.fixedPrice)] : [])),
     };
 }
 
 function toUnits(value: number | null | undefined, scale: number) {
     return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.round(value * scale) : 0;
+}
+
+function fixedPriceInput(values: FixedPriceFormValue) {
+    const price = values.price;
+    if (!price) throw new Error("请选择专属单价对应的模型或规格");
+    const terms: FixedPriceTerms = {};
+    for (const key of fixedPriceTermKeys) {
+        const value = values.terms?.[key];
+        if (typeof value === "number") terms[key] = toUnits(value, MICRO);
+    }
+    return {
+        modelKey: values.modelKey || "",
+        ratioBasisPoints: 0,
+        pointsPerUsdMicrocredits: 0,
+        pointsPerCnyMicrocredits: 0,
+        fixedPrice: {
+            logicalModelId: price.logicalModelId,
+            channelModelId: price.channelModelId,
+            priceTierId: price.priceTierId,
+            billingMode: price.billingMode,
+            ...terms,
+            imagePricing: price.imagePricing && {
+                freeInputImages: price.imagePricing.freeInputImages,
+                inputPriceMicrocredits: requiredImagePrice(values.imageInputPrice),
+                outputTiers: price.imagePricing.outputTiers.map((tier, index) => ({
+                    maxPixels: tier.maxPixels,
+                    unitPriceMicrocredits: requiredImagePrice(values.imageOutputPrices?.[index]),
+                })),
+            },
+        },
+    };
+}
+
+function requiredImagePrice(value: number | undefined) {
+    if (typeof value !== "number") throw new Error("请填写图片输入及各输出规格的专属单价");
+    return toUnits(value, MICRO);
 }
 
 export function userGroupInput(values: UserGroupFormValues): UserGroupInput {
@@ -70,14 +150,17 @@ export function userGroupInput(values: UserGroupFormValues): UserGroupInput {
         pointsPerCnyMicrocredits: toUnits(values.pointsPerCny, MICRO),
         allChannels: values.allChannels,
         channelIds: values.allChannels ? [] : values.channelIds,
-        modelOverrides: (values.modelOverrides || [])
-            .filter((item) => item?.modelKey?.trim())
-            .map((item) => ({
-                modelKey: item.modelKey.trim(),
-                ratioBasisPoints: toUnits(item.ratio, BPS),
-                pointsPerUsdMicrocredits: toUnits(item.pointsPerUsd, MICRO),
-                pointsPerCnyMicrocredits: toUnits(item.pointsPerCny, MICRO),
-            })),
+        modelOverrides: [
+            ...(values.modelOverrides || [])
+                .filter((item) => item?.modelKey?.trim())
+                .map((item) => ({
+                    modelKey: item.modelKey.trim(),
+                    ratioBasisPoints: toUnits(item.ratio, BPS),
+                    pointsPerUsdMicrocredits: toUnits(item.pointsPerUsd, MICRO),
+                    pointsPerCnyMicrocredits: toUnits(item.pointsPerCny, MICRO),
+                })),
+            ...(values.fixedPrices || []).map(fixedPriceInput),
+        ],
     };
 }
 

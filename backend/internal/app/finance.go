@@ -536,10 +536,11 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 	if err := access.requireChannel(channelModel.ChannelID); err != nil {
 		return nil, err
 	}
-	pricing, err := access.pricing(model.PriceCurrencyCredits, logicalModel.Code)
+	pricedModel, pricing, err := access.logicalGroupPrice(*logicalModel)
 	if err != nil {
 		return nil, err
 	}
+	logicalModel = &pricedModel
 	groupBPS := pricing.MultiplierBPS
 	quantity := int64(1)
 	tokenEstimate := estimateTaskBillingTokens(input, capability)
@@ -753,9 +754,16 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	if err := access.requireChannel(channelID); err != nil {
 		return nil, err
 	}
+	fixedTier, err := access.fixedChannelTierPricing(item, tier)
+	if err != nil {
+		return nil, err
+	}
 	pricedTier := tier
+	if fixedTier != nil {
+		pricedTier = fixedTier
+	}
 	if referenceBilled {
-		if pricedTier, err = referenceVideoPricedTier(tier); err != nil {
+		if pricedTier, err = referenceVideoPricedTier(pricedTier, fixedTier != nil); err != nil {
 			return nil, err
 		}
 		// 时长未知时公式按 15 秒上限预估；预估值不写进账单快照，流水只记参考视频个数。
@@ -763,7 +771,14 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 			referenceMillis = int64(math.Round(tokenEstimate.Video.ReferenceSeconds * 1000))
 		}
 	}
-	pricing, prices, err := s.groupTierPrices(access, item, pricedTier, modelKey)
+	var pricing groupPricing
+	var prices tierCreditPrices
+	if fixedTier != nil {
+		pricing = access.fixedGroupPricing()
+		prices, err = creditTierPrices(pricing, pricedTier)
+	} else {
+		pricing, prices, err = s.groupTierPrices(access, item, pricedTier, modelKey)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -772,7 +787,7 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	var imageInputs, imageOutputs int64
 	var tokenRules []model.BillingTokenPriceRule
 	if tier.BillingMode == imagebilling.Mode {
-		imagePricing, err = imagePricingSnapshot(tier.ImagePricing, pricing)
+		imagePricing, err = imagePricingSnapshot(pricedTier.ImagePricing, pricing)
 		if err == nil {
 			imageInputs, imageOutputs, err = imageBillingReservation(intents[0])
 		}
@@ -782,7 +797,7 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 		quantity = imageOutputs
 	} else if tier.BillingMode == "token" {
 		// 时段在此锁定：pricedAt 的东八区时间决定哪些规则可用，结算只再按真实输入 Token 选档。
-		tokenRules, err = tokenPriceRuleSnapshot(pricing, item.Capability, tier, pricedAt)
+		tokenRules, err = tokenPriceRuleSnapshot(pricing, item.Capability, pricedTier, pricedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -891,6 +906,11 @@ func groupTierPricesWithPolicy(policy CreditPolicy, access *userGroupAccess, ite
 		policyBPS = configured
 	}
 	pricing.MultiplierBPS = combineMultiplierBPS(policyBPS, pricing.MultiplierBPS)
+	prices, err := creditTierPrices(pricing, tier)
+	return pricing, prices, err
+}
+
+func creditTierPrices(pricing groupPricing, tier *model.ChannelModelPriceTier) (tierCreditPrices, error) {
 	var prices tierCreditPrices
 	for _, pair := range []struct {
 		source int64
@@ -904,11 +924,11 @@ func groupTierPricesWithPolicy(policy CreditPolicy, access *userGroupAccess, ite
 	} {
 		converted, convertErr := pricing.convertPrice(pair.source)
 		if convertErr != nil {
-			return groupPricing{}, tierCreditPrices{}, convertErr
+			return tierCreditPrices{}, convertErr
 		}
 		*pair.target = converted
 	}
-	return pricing, prices, nil
+	return prices, nil
 }
 
 func (s *Service) channelModelPriceTierForBilling(channelModel model.ChannelModel, priceTierID string, capability string, intents ...ModelRequestIntent) (*model.ChannelModelPriceTier, error) {

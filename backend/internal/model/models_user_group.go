@@ -50,8 +50,24 @@ type UserGroupChannel struct {
 // UserGroupModelOverride 是分组内单个模型的倍率与兑换比例；0 表示沿用分组默认值。
 // ModelKey 匹配渠道模型标识或前台模型编码。
 type UserGroupModelOverride struct {
-	ModelKey         string `json:"modelKey"`
-	RatioBasisPoints int64  `json:"ratioBasisPoints"`
-	PointsPerUSD     int64  `json:"pointsPerUsdMicrocredits"`
-	PointsPerCNY     int64  `json:"pointsPerCnyMicrocredits"`
+	ModelKey         string               `json:"modelKey"`
+	RatioBasisPoints int64                `json:"ratioBasisPoints"`
+	PointsPerUSD     int64                `json:"pointsPerUsdMicrocredits"`
+	PointsPerCNY     int64                `json:"pointsPerCnyMicrocredits"`
+	FixedPrice       *UserGroupFixedPrice `json:"fixedPrice,omitempty"`
+}
+
+// UserGroupFixedPrice 保存一个前台统一价模型或一个渠道价格档的最终积分单价。
+type UserGroupFixedPrice struct {
+	LogicalModelID string        `json:"logicalModelId,omitempty"`
+	ChannelModelID string        `json:"channelModelId,omitempty"`
+	PriceTierID    string        `json:"priceTierId,omitempty"`
+	BillingMode    string        `json:"billingMode"`
+	Unit           *int64        `json:"unitPriceMicrocredits,omitempty"`
+	Input          *int64        `json:"inputTokenPriceMicrocredits,omitempty"`
+	Output         *int64        `json:"outputTokenPriceMicrocredits,omitempty"`
+	Cached         *int64        `json:"cachedTokenPriceMicrocredits,omitempty"`
+	CacheWrite     *int64        `json:"cacheWriteTokenPriceMicrocredits,omitempty"`
+	Reference      *int64        `json:"referenceVideoPriceMicrocredits,omitempty"`
+	ImagePricing   *ImagePricing `json:"imagePricing,omitempty"`
 }

@@ -32,6 +32,7 @@ export type ModelRequestIntent = {
 };
 
 export type PublicLogicalModel = {
+    imagePricing?: import("./wallet").ImagePricing | null;
     id: string;
     code: string;
     name: string;

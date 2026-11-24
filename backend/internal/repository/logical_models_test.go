@@ -197,7 +197,8 @@ func TestSwitchTaskLogicalRouteCarriesReferenceVideoSnapshot(t *testing.T) {
 	}
 	task := model.Task{ID: "reference-task", UserID: "user", Status: model.TaskStatusRunning, RouteID: "off-route", BillingOrderID: "reference-order"}
 	order := model.BillingOrder{ID: "reference-order", TaskID: task.ID, UserID: task.UserID, Capability: "video", Status: model.BillingStatusRunning, BillingMode: "per_second",
-		UnitPriceMicrocredits: 1_000_000, Quantity: 5, AmountMicrocredits: 5_000_000, ReservedAmountMicrocredits: 5_000_000, ReferenceVideoCount: 1, ReferenceVideoMillis: 7_200}
+		UnitPriceMicrocredits: 1_000_000, Quantity: 5, AmountMicrocredits: 5_000_000, ReservedAmountMicrocredits: 5_000_000, ReferenceVideoCount: 1, ReferenceVideoMillis: 7_200,
+		UserGroup: "default", PriceCurrency: model.PriceCurrencyUSD, CurrencyRateMicrocredits: 7_000_000, PriceSelectorJSON: `{}`}
 	for _, item := range []any{&task, &order, &model.CreditAccount{UserID: "user", AvailableMicrocredits: 100_000_000, ReservedMicrocredits: 5_000_000}} {
 		if err := db.Create(item).Error; err != nil {
 			t.Fatal(err)
@@ -206,6 +207,8 @@ func TestSwitchTaskLogicalRouteCarriesReferenceVideoSnapshot(t *testing.T) {
 	replacement := order
 	replacement.UnitPriceMicrocredits, replacement.Quantity, replacement.AmountMicrocredits = 2_000_000, 13, 26_000_000
 	replacement.ReferenceVideoBilled, replacement.VideoFormulaTokens = true, 432_000
+	replacement.UserGroup, replacement.PriceCurrency, replacement.CurrencyRateMicrocredits = "vip", model.PriceCurrencyCredits, 1_000_000
+	replacement.PriceSelectorJSON = `{"vquality":"720p"}`
 	if err := repo.SwitchTaskLogicalRoute(task.ID, "off-route", "on-route", "{}", order.ID, "channel", "model", &replacement, model.BillingCostSnapshot{}); err != nil {
 		t.Fatal(err)
 	}
@@ -215,5 +218,8 @@ func TestSwitchTaskLogicalRouteCarriesReferenceVideoSnapshot(t *testing.T) {
 	}
 	if !saved.ReferenceVideoBilled || saved.ReferenceVideoCount != 1 || saved.ReferenceVideoMillis != 7_200 || saved.VideoFormulaTokens != 432_000 || saved.Quantity != 13 || saved.UnitPriceMicrocredits != 2_000_000 {
 		t.Fatalf("route switch dropped the reference video snapshot: %#v", saved)
+	}
+	if saved.UserGroup != replacement.UserGroup || saved.PriceCurrency != replacement.PriceCurrency || saved.CurrencyRateMicrocredits != replacement.CurrencyRateMicrocredits || saved.PriceSelectorJSON != replacement.PriceSelectorJSON {
+		t.Fatalf("route switch dropped the price snapshot: %#v", saved)
 	}
 }

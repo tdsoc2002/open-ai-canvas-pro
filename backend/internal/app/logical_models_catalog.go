@@ -27,7 +27,8 @@ func (s *Service) PublicLogicalModels(access *userGroupAccess, intent *ModelRequ
 	}
 	result := make([]PublicLogicalModel, 0, len(snapshot.Ordered))
 	for _, id := range snapshot.Ordered {
-		cached, visible, groupErr := s.groupLogicalModel(policy, access, snapshot.Models[id])
+		original := snapshot.Models[id]
+		cached, visible, groupErr := s.groupLogicalModel(policy, access, original)
 		if groupErr != nil || !visible {
 			continue
 		}
@@ -43,11 +44,18 @@ func (s *Service) PublicLogicalModels(access *userGroupAccess, intent *ModelRequ
 			}
 			available = false
 			if coverageValid {
-				for _, route := range cached.Routes {
-					priceCompatible := cached.Model.PricePolicy != "channel" || channelModelHasCompatiblePriceTier(route.ChannelModel, resolvedIntent, route.CapabilitySpec)
-					if route.Route.Enabled && route.Route.Weight > 0 && !s.logicalRouteBlocked(route) && MatchCapability(route.CapabilitySpec, resolvedIntent).Matched && priceCompatible {
-						available = true
-						break
+				selected, dedicated := s.groupPriceRoute(access, original, resolveModelRequestIntent(original.ProductSpec, resolvedIntent, original.Defaults))
+				if dedicated {
+					available = !s.logicalRouteBlocked(selected)
+				} else {
+					for _, route := range original.Routes {
+						if !access.allowsChannel(route.ChannelModel.ChannelID) || !route.Route.Enabled || route.Route.Weight <= 0 || s.logicalRouteBlocked(route) || !MatchCapability(route.CapabilitySpec, resolvedIntent).Matched {
+							continue
+						}
+						if cached.Model.PricePolicy != "channel" || channelModelHasCompatiblePriceTier(access, route.ChannelModel, resolvedIntent, route.CapabilitySpec) {
+							available = true
+							break
+						}
 					}
 				}
 			}
@@ -67,17 +75,25 @@ func (s *Service) groupLogicalModel(policy CreditPolicy, access *userGroupAccess
 		}
 		if cached.Model.PricePolicy == "channel" {
 			channelModel := route.ChannelModel
-			tiers := make([]model.ChannelModelPriceTier, len(channelModel.PriceTiers))
-			copy(tiers, channelModel.PriceTiers)
-			skip := false
-			for index := range tiers {
-				pricing, prices, err := groupTierPricesWithPolicy(policy, access, &channelModel, &tiers[index], channelModel.ModelKey)
-				if err != nil {
-					skip = true
-					break
+			tiers := make([]model.ChannelModelPriceTier, 0, len(channelModel.PriceTiers))
+			for _, tier := range channelModel.PriceTiers {
+				if !tier.Enabled || !tier.PriceConfigured {
+					continue
 				}
-				if tiers[index].ImagePricing != nil {
-					converted, err := imagebilling.MapPrices(tiers[index].ImagePricing, func(price int64) (int64, error) {
+				fixedTier, err := access.fixedChannelTierPricing(&channelModel, &tier)
+				if err != nil {
+					continue
+				}
+				if fixedTier != nil {
+					tiers = append(tiers, *fixedTier)
+					continue
+				}
+				pricing, prices, err := groupTierPricesWithPolicy(policy, access, &channelModel, &tier, channelModel.ModelKey)
+				if err != nil {
+					continue
+				}
+				if tier.ImagePricing != nil {
+					converted, err := imagebilling.MapPrices(tier.ImagePricing, func(price int64) (int64, error) {
 						value, err := pricing.convertPrice(price)
 						if err != nil {
 							return 0, err
@@ -87,15 +103,16 @@ func (s *Service) groupLogicalModel(policy CreditPolicy, access *userGroupAccess
 					if err != nil {
 						return cached, false, err
 					}
-					tiers[index].ImagePricing = converted
+					tier.ImagePricing = converted
 				}
-				tiers[index].UnitPriceMicrocredits = effectiveCatalogPrice(prices.Unit, pricing.MultiplierBPS)
-				tiers[index].InputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Input, pricing.MultiplierBPS)
-				tiers[index].OutputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Output, pricing.MultiplierBPS)
-				tiers[index].CachedTokenPriceMicrocredits = effectiveCatalogPrice(prices.Cached, pricing.MultiplierBPS)
-				tiers[index].CacheWriteTokenPriceMicrocredits = effectiveCatalogPrice(prices.CacheWrite, pricing.MultiplierBPS)
+				tier.UnitPriceMicrocredits = effectiveCatalogPrice(prices.Unit, pricing.MultiplierBPS)
+				tier.InputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Input, pricing.MultiplierBPS)
+				tier.OutputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Output, pricing.MultiplierBPS)
+				tier.CachedTokenPriceMicrocredits = effectiveCatalogPrice(prices.Cached, pricing.MultiplierBPS)
+				tier.CacheWriteTokenPriceMicrocredits = effectiveCatalogPrice(prices.CacheWrite, pricing.MultiplierBPS)
+				tiers = append(tiers, tier)
 			}
-			if skip {
+			if len(tiers) == 0 {
 				continue
 			}
 			channelModel.PriceTiers = tiers
@@ -108,11 +125,10 @@ func (s *Service) groupLogicalModel(policy CreditPolicy, access *userGroupAccess
 	}
 	cached.Routes = routes
 	if cached.Model.PricePolicy != "channel" {
-		pricing, err := access.pricing(model.PriceCurrencyCredits, cached.Model.Code)
+		item, pricing, err := access.logicalGroupPrice(cached.Model)
 		if err != nil {
 			return cached, false, err
 		}
-		item := cached.Model
 		if item.ImagePricing != nil {
 			converted, err := imagebilling.MapPrices(item.ImagePricing, func(price int64) (int64, error) { return effectiveCatalogPrice(price, pricing.MultiplierBPS), nil })
 			if err != nil {

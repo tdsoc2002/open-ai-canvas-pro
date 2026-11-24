@@ -251,11 +251,11 @@ func (s *Service) switchTaskToNextRoute(task *model.Task, attempts []model.Route
 	if err != nil {
 		return nil, err
 	}
-	eligible := s.eligibleLogicalRoutes(access, candidates, intent, tried, logicalModel.PricePolicy == "channel")
+	eligible := s.eligibleLogicalRoutes(access, candidates, intent, tried, logicalModel.PricePolicy == "channel", false)
 	if len(eligible) == 0 {
 		return nil, BadAuthRequest("当前模型暂时无法满足这组输入和参数")
 	}
-	selected := weightedRoute(eligible)
+	selected := weightedRoute(eligible, "")
 	var priceTier *model.ChannelModelPriceTier
 	if logicalModel.PricePolicy == "channel" {
 		priceTier = channelModelPriceTierForIntent(selected.ChannelModel, intent, selected.CapabilitySpec)

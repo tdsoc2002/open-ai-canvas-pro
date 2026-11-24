@@ -180,7 +180,11 @@ func (s *Service) publicSystemChannelCatalog(access *userGroupAccess, intent *Mo
 
 			publicModel, sanitizeErr := s.sanitizeChannelModel(&cm)
 			if sanitizeErr == nil {
+				tierCount := len(publicModel.PriceTiers)
 				sanitizeErr = s.applyGroupCatalogPricing(policy, access, &cm, &publicModel)
+				if sanitizeErr == nil && intent != nil && len(publicModel.PriceTiers) < tierCount && !channelModelHasCompatiblePriceTier(access, cm, *intent) {
+					continue
+				}
 			}
 			if sanitizeErr != nil {
 				if logging.Every("catalog-omit:"+cm.ID, 10*time.Minute) {
@@ -298,61 +302,92 @@ func (s *Service) sanitizeChannelModel(cm *model.ChannelModel) (PublicChannelMod
 }
 
 // applyGroupCatalogPricing 把公开价格档换算为当前分组实际扣费的微积分单价（含全局积分策略倍率），
-// 与 newBillingOrderWithPriceTier 使用同一换算函数。分组缺少该货币兑换比例时整模型不发布。
+// 与 newBillingOrderWithPriceTier 使用同一换算函数。专属价规格可以独立于基础价所属币种发布。
 func (s *Service) applyGroupCatalogPricing(policy CreditPolicy, access *userGroupAccess, cm *model.ChannelModel, publicModel *PublicChannelModel) error {
-	for index := range publicModel.PriceTiers {
-		tier := &publicModel.PriceTiers[index]
-		pricing, prices, err := groupTierPricesWithPolicy(policy, access, cm, &model.ChannelModelPriceTier{
-			UnitPriceMicrocredits: tier.UnitPriceMicrocredits, InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits,
-			OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits,
-			CacheWriteTokenPriceMicrocredits: tier.CacheWriteTokenPriceMicrocredits,
-		}, cm.ModelKey)
-		if err != nil {
-			return err
+	tiers := publicModel.PriceTiers[:0]
+	var priceErr error
+	for _, tier := range publicModel.PriceTiers {
+		if err := applyGroupCatalogTierPricing(policy, access, cm, &tier); err != nil {
+			priceErr = err
+			continue
 		}
-		if tier.ImagePricing != nil {
-			converted, convertErr := imagebilling.MapPrices(tier.ImagePricing, func(price int64) (int64, error) {
-				value, err := pricing.convertPrice(price)
-				if err != nil {
-					return 0, err
-				}
-				return effectiveCatalogPrice(value, pricing.MultiplierBPS), nil
-			})
-			if convertErr != nil {
-				return convertErr
-			}
-			tier.ImagePricing = converted
-		}
-		// 带参考视频价格复用同一换算：按秒价换算 Unit，Token 价换算 Output。
-		_, referencePrices, err := groupTierPricesWithPolicy(policy, access, cm, &model.ChannelModelPriceTier{
-			UnitPriceMicrocredits: tier.ReferenceVideoUnitPriceMicrocredits, OutputTokenPriceMicrocredits: tier.ReferenceVideoOutputTokenPriceMicrocredits,
-		}, cm.ModelKey)
-		if err != nil {
-			return err
-		}
-		tier.ReferenceVideoUnitPriceMicrocredits = effectiveCatalogPrice(referencePrices.Unit, pricing.MultiplierBPS)
-		tier.ReferenceVideoOutputTokenPriceMicrocredits = effectiveCatalogPrice(referencePrices.Output, pricing.MultiplierBPS)
-		tier.UnitPriceMicrocredits = effectiveCatalogPrice(prices.Unit, pricing.MultiplierBPS)
-		tier.InputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Input, pricing.MultiplierBPS)
-		tier.OutputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Output, pricing.MultiplierBPS)
-		tier.CachedTokenPriceMicrocredits = effectiveCatalogPrice(prices.Cached, pricing.MultiplierBPS)
-		tier.CacheWriteTokenPriceMicrocredits = effectiveCatalogPrice(prices.CacheWrite, pricing.MultiplierBPS)
-		for ruleIndex := range tier.TokenPriceRules {
-			rule := &tier.TokenPriceRules[ruleIndex]
-			_, rulePrices, ruleErr := groupTierPricesWithPolicy(policy, access, cm, &model.ChannelModelPriceTier{
-				InputTokenPriceMicrocredits: rule.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: rule.OutputTokenPriceMicrocredits,
-				CachedTokenPriceMicrocredits: rule.CachedTokenPriceMicrocredits, CacheWriteTokenPriceMicrocredits: rule.CacheWriteTokenPriceMicrocredits,
-			}, cm.ModelKey)
-			if ruleErr != nil {
-				return ruleErr
-			}
-			rule.InputTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.Input, pricing.MultiplierBPS)
-			rule.OutputTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.Output, pricing.MultiplierBPS)
-			rule.CachedTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.Cached, pricing.MultiplierBPS)
-			rule.CacheWriteTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.CacheWrite, pricing.MultiplierBPS)
-		}
+		tiers = append(tiers, tier)
 	}
-	publicModel.PricingMode, publicModel.DisplayPrice, publicModel.PriceLabel = computeChannelModelPriceDisplay(cm, publicModel.PriceTiers)
+	if len(tiers) == 0 && priceErr != nil {
+		return priceErr
+	}
+	publicModel.PriceTiers = tiers
+	publicModel.Available = len(tiers) > 0
+	publicModel.PricingMode, publicModel.DisplayPrice, publicModel.PriceLabel = computeChannelModelPriceDisplay(cm, tiers)
+	return nil
+}
+
+func applyGroupCatalogTierPricing(policy CreditPolicy, access *userGroupAccess, cm *model.ChannelModel, tier *PublicChannelModelPriceTier) error {
+	fixedTier, err := access.fixedChannelTierPricing(cm, &model.ChannelModelPriceTier{ID: tier.ID, BillingMode: tier.BillingMode, ImagePricing: tier.ImagePricing})
+	if err != nil {
+		return err
+	}
+	if fixedTier != nil {
+		tier.UnitPriceMicrocredits = fixedTier.UnitPriceMicrocredits
+		tier.InputTokenPriceMicrocredits = fixedTier.InputTokenPriceMicrocredits
+		tier.OutputTokenPriceMicrocredits = fixedTier.OutputTokenPriceMicrocredits
+		tier.CachedTokenPriceMicrocredits = fixedTier.CachedTokenPriceMicrocredits
+		tier.CacheWriteTokenPriceMicrocredits = fixedTier.CacheWriteTokenPriceMicrocredits
+		tier.ReferenceVideoUnitPriceMicrocredits = fixedTier.ReferenceVideoUnitPriceMicrocredits
+		tier.ReferenceVideoOutputTokenPriceMicrocredits = fixedTier.ReferenceVideoOutputTokenPriceMicrocredits
+		tier.ImagePricing = fixedTier.ImagePricing
+		tier.TokenPriceRules = nil
+		return nil
+	}
+	pricing, prices, err := groupTierPricesWithPolicy(policy, access, cm, &model.ChannelModelPriceTier{
+		UnitPriceMicrocredits: tier.UnitPriceMicrocredits, InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits,
+		OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits,
+		CacheWriteTokenPriceMicrocredits: tier.CacheWriteTokenPriceMicrocredits,
+	}, cm.ModelKey)
+	if err != nil {
+		return err
+	}
+	if tier.ImagePricing != nil {
+		converted, convertErr := imagebilling.MapPrices(tier.ImagePricing, func(price int64) (int64, error) {
+			value, err := pricing.convertPrice(price)
+			if err != nil {
+				return 0, err
+			}
+			return effectiveCatalogPrice(value, pricing.MultiplierBPS), nil
+		})
+		if convertErr != nil {
+			return convertErr
+		}
+		tier.ImagePricing = converted
+	}
+	// 带参考视频价格复用同一换算：按秒价换算 Unit，Token 价换算 Output。
+	referencePrices, err := creditTierPrices(pricing, &model.ChannelModelPriceTier{
+		UnitPriceMicrocredits: tier.ReferenceVideoUnitPriceMicrocredits, OutputTokenPriceMicrocredits: tier.ReferenceVideoOutputTokenPriceMicrocredits,
+	})
+	if err != nil {
+		return err
+	}
+	tier.ReferenceVideoUnitPriceMicrocredits = effectiveCatalogPrice(referencePrices.Unit, pricing.MultiplierBPS)
+	tier.ReferenceVideoOutputTokenPriceMicrocredits = effectiveCatalogPrice(referencePrices.Output, pricing.MultiplierBPS)
+	tier.UnitPriceMicrocredits = effectiveCatalogPrice(prices.Unit, pricing.MultiplierBPS)
+	tier.InputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Input, pricing.MultiplierBPS)
+	tier.OutputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Output, pricing.MultiplierBPS)
+	tier.CachedTokenPriceMicrocredits = effectiveCatalogPrice(prices.Cached, pricing.MultiplierBPS)
+	tier.CacheWriteTokenPriceMicrocredits = effectiveCatalogPrice(prices.CacheWrite, pricing.MultiplierBPS)
+	for ruleIndex := range tier.TokenPriceRules {
+		rule := &tier.TokenPriceRules[ruleIndex]
+		rulePrices, ruleErr := creditTierPrices(pricing, &model.ChannelModelPriceTier{
+			InputTokenPriceMicrocredits: rule.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: rule.OutputTokenPriceMicrocredits,
+			CachedTokenPriceMicrocredits: rule.CachedTokenPriceMicrocredits, CacheWriteTokenPriceMicrocredits: rule.CacheWriteTokenPriceMicrocredits,
+		})
+		if ruleErr != nil {
+			return ruleErr
+		}
+		rule.InputTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.Input, pricing.MultiplierBPS)
+		rule.OutputTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.Output, pricing.MultiplierBPS)
+		rule.CachedTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.Cached, pricing.MultiplierBPS)
+		rule.CacheWriteTokenPriceMicrocredits = effectiveCatalogPrice(rulePrices.CacheWrite, pricing.MultiplierBPS)
+	}
 	return nil
 }
 
