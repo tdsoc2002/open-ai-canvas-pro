@@ -161,7 +161,7 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 				// 上游已收单但本地没记住任务 ID：不能退回调度，否则恢复时无法找到原任务。
 				return nil, fmt.Errorf("上游已接收任务，但保存任务 ID 失败：%w", err)
 			}
-			return nil, detachedProtocolPending(taskID, stage, created.QueueAhead)
+			return nil, detachedProtocolPending(taskID, created.Status, stage, created.QueueAhead)
 		}
 	} else if detached {
 		// 恢复分离式任务：立即回查一次，未完成就再次退回调度，不在 worker 内等待。
@@ -200,7 +200,7 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 			return videoPollOutcome{}, protocolTaskFailure(ctx, state.Status, state.Message, taskID)
 		}
 		if detached {
-			return videoPollOutcome{}, detachedProtocolPending(taskID, state.Stage, state.QueueAhead)
+			return videoPollOutcome{}, detachedProtocolPending(taskID, state.Status, state.Stage, state.QueueAhead)
 		}
 		return videoPollOutcome{}, nil
 	})
@@ -355,5 +355,5 @@ func finishDeclarativeTextCreate(ctx context.Context, input canvasGenerationInpu
 		return nil, errors.New("声明式协议创建请求没有返回任务 ID")
 	}
 	// 创建已接受但正文未就绪：转入轮询等待结果。
-	return nil, detachedProtocolPending(taskID, created.Stage, created.QueueAhead)
+	return nil, detachedProtocolPending(taskID, created.Status, created.Stage, created.QueueAhead)
 }

@@ -35,22 +35,26 @@ func TestTencentVODPackageWireContract(t *testing.T) {
 		t.Fatalf("unexpected poll body: %#v", pollBody)
 	}
 	submission, err := adapter.ParseCreate(ctx, []byte(`{"Response":{"TaskId":"vod-task-1"}}`))
-	if err != nil || submission.Status != StatusPending || submission.TaskID != pollCtx.TaskID {
+	if err != nil || submission.Status != StatusPending || submission.Stage != "" || submission.TaskID != pollCtx.TaskID {
 		t.Fatalf("unexpected create response: %#v, %v", submission, err)
 	}
 	for _, tc := range []struct {
 		payload   string
 		status    Status
+		stage     string
 		hasResult bool
 	}{
-		{`{"Response":{"Error":{"Code":"AuthFailure","Message":"denied"}}}`, StatusFailed, false},
-		{`{"Response":{"AigcVideoTask":{"Status":"PROCESSING"}}}`, StatusProcessing, false},
-		{`{"Response":{"AigcVideoTask":{"Status":"FINISH","ErrCode":1001,"Message":"failed"}}}`, StatusFailed, false},
-		{`{"Response":{"AigcVideoTask":{"Status":"FINISH"}}}`, StatusFailed, false},
-		{`{"Response":{"AigcVideoTask":{"Status":"FINISH","ErrCode":0,"Output":{"FileInfos":[{"UsageType":"last_frame_url","FileUrl":"https://video.example.com/frame.jpg"},{"FileType":"jpg","FileUrl":"https://video.example.com/cover.jpg"},{"FileType":"MP4","FileUrl":"https://video.example.com/main.mp4"}]}}}}`, StatusSucceeded, true},
+		{`{"Response":{"Error":{"Code":"AuthFailure","Message":"denied"}}}`, StatusFailed, "", false},
+		{`{"Response":{"Status":"WAITING","AigcVideoTask":{"Status":"PROCESSING"}}}`, StatusPending, "上游排队中", false},
+		{`{"Response":{"Status":"WAITING"}}`, StatusPending, "上游排队中", false},
+		{`{"Response":{"Status":"PROCESSING"}}`, StatusProcessing, "", false},
+		{`{"Response":{"AigcVideoTask":{"Status":"PROCESSING"}}}`, StatusProcessing, "", false},
+		{`{"Response":{"AigcVideoTask":{"Status":"FINISH","ErrCode":1001,"Message":"failed"}}}`, StatusFailed, "", false},
+		{`{"Response":{"AigcVideoTask":{"Status":"FINISH"}}}`, StatusFailed, "", false},
+		{`{"Response":{"AigcVideoTask":{"Status":"FINISH","ErrCode":0,"Output":{"FileInfos":[{"UsageType":"last_frame_url","FileUrl":"https://video.example.com/frame.jpg"},{"FileType":"jpg","FileUrl":"https://video.example.com/cover.jpg"},{"FileType":"MP4","FileUrl":"https://video.example.com/main.mp4"}]}}}}`, StatusSucceeded, "", true},
 	} {
 		got, err := adapter.ParsePoll(ctx, pollCtx, []byte(tc.payload))
-		if err != nil || got.Status != tc.status || (got.Result != nil) != tc.hasResult {
+		if err != nil || got.Status != tc.status || got.Stage != tc.stage || (got.Result != nil) != tc.hasResult {
 			t.Fatalf("payload %s returned %#v (%v)", tc.payload, got, err)
 		}
 		if tc.hasResult && (len(got.Result.Videos) != 1 || got.Result.Videos[0].URL != "https://video.example.com/main.mp4" || !got.Result.Videos[0].Ephemeral) {

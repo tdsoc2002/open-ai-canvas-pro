@@ -68,6 +68,8 @@ export function generationTaskStatusLabel(task: GenerationTaskDisplayTarget) {
     if (generationTaskSaving(task) && task.status === "failed") return "保存未完成";
     if (generationTaskSaving(task) && (task.status === "queued" || task.status === "running")) return "保存中";
     if (isGenerationTaskSubmissionUncertain(task)) return "提交结果待确认";
+    if (task.status === "running" && upstreamQueueStage(task.stage)) return statusLabel.queued;
+    if (task.status === "running" && task.stage === "等待上游任务同步") return "同步中";
     return statusLabel[task.status];
 }
 
@@ -154,7 +156,7 @@ function upstreamQueueStage(stage?: string) {
     const value = upstreamGenerationStage(stage);
     return Boolean(value) && upstreamQueuePattern.test(value);
 }
-const preparingPhaseStages = new Set(["后端接管任务", "正在准备创作", "正在准备参考素材", "正在连接上游", "submitting"]);
+const preparingPhaseStages = new Set(["后端接管任务", "正在准备创作", "正在准备参考素材", "正在连接上游", "submitting", "等待上游任务同步"]);
 const generationKindNoun: Record<GenerationMediaKind, string> = { image: "图片", video: "视频", audio: "音频", text: "文本" };
 
 export function generationTaskPhase(task: GenerationPhaseTarget | null | undefined): GenerationPhase {
@@ -194,7 +196,7 @@ export function generationPhaseLabel(phase: GenerationPhase, kind?: GenerationMe
         case "queued":
             return upstreamGenerationStage(stage) || "排队中";
         case "preparing":
-            return "准备生成";
+            return stage === "等待上游任务同步" ? "正在同步创作进度" : "准备生成";
         case "generating":
             return upstreamGenerationStage(stage) || `正在生成${noun}`;
         case "saving": {
@@ -211,8 +213,6 @@ export function generationPhaseLabel(phase: GenerationPhase, kind?: GenerationMe
 /** 只在能给用户新信息时返回提示，其余阶段返回空串，避免每个状态都堆一行套话。 */
 export function generationPhaseHint(phase: GenerationPhase, kind?: GenerationMediaKind, stage?: string) {
     switch (phase) {
-        case "queued":
-            return "轮到后自动开始";
         case "generating":
             return kind === "video" ? "离开页面也会继续生成" : "";
         case "saving": {
@@ -233,7 +233,7 @@ export function generationTaskShowsProgress(task: GenerationTaskDisplayTarget) {
     if (upstreamQueueStage(task.stage)) return false;
     // 排队、后端接管和连接供应商都没有真实百分比。只有上游状态响应
     // 已经写回任务后才显示进度，避免所有图片/视频长期停在同一个假数值。
-    if (["queued", "等待队列调度", "后端接管任务", "正在准备参考素材", "正在连接上游", "调用生成模型", "作品创作中", "submitting", "submitted"].includes(task.stage || "")) return false;
+    if (["queued", "等待队列调度", "后端接管任务", "正在准备参考素材", "正在连接上游", "调用生成模型", "作品创作中", "submitting", "submitted", "等待上游任务同步"].includes(task.stage || "")) return false;
     return typeof task.progress === "number" && task.progress > 0;
 }
 

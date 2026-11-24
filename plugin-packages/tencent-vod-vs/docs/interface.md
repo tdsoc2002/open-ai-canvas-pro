@@ -2,6 +2,8 @@
 
 创建任务为 `POST /`，`X-TC-Action: CreateAigcVideoTask`；轮询为 `POST /`，`X-TC-Action: DescribeTaskDetail`。域名固定为 `vod.tencentcloudapi.com`，版本 `2018-07-17`，区域 `ap-guangzhou`，采用 TC3 签名。轮询使用渠道内的 `SubAppId` 与上游任务 ID，不重新创建任务。以 `FINISH` 和明确的 `ErrCode=0` 确认完成，仅提取主视频。
 
+查询任务详情的 `WAITING` 对应上游排队，`PROCESSING` 对应视频生成。创建接口仅返回任务 ID 时，等待回查确认当前阶段。
+
 宿主限制参考素材为可公网访问的受策略约束链接；支持文生视频、首帧、首尾帧和全模态参考。2.0 系列固定时长 4–15 秒；2.5 支持 4–30 秒，首帧模式须选择自适应画幅。2.0 支持 480P/720P/1080P/4K，2.0-fast/mini 支持 480P/720P，2.5 支持 480P/720P/1080P。
 
 当前产品入口只开放固定秒数，自动时长仍待接入报价及结算。该直连不包含源点动力的网关计费、跨账号素材池、编辑或续写模式。
@@ -18,7 +20,7 @@
   "apiVersion": "yingce.plugin/v2",
   "id": "tencent-vod-vs",
   "name": "腾讯云 VOD VS 直连",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "乐见画布",
   "description": "管理员配置腾讯云点播，自主直连 VS 视频生成，不经过源点动力。",
   "permissions": [
@@ -218,7 +220,25 @@
                   "when": {
                     "$eq": [
                       {
-                        "$ref": "response.Response.AigcVideoTask.Status"
+                        "$ref": "response.Response.Status"
+                      },
+                      "WAITING"
+                    ]
+                  },
+                  "then": "pending"
+                },
+                {
+                  "when": {
+                    "$eq": [
+                      {
+                        "$coalesce": [
+                          {
+                            "$ref": "response.Response.Status"
+                          },
+                          {
+                            "$ref": "response.Response.AigcVideoTask.Status"
+                          }
+                        ]
                       },
                       "PROCESSING"
                     ]
@@ -233,6 +253,19 @@
                 }
               ],
               "default": "failed"
+            }
+          },
+          "stage": {
+            "$if": {
+              "condition": {
+                "$eq": [
+                  {
+                    "$ref": "response.Response.Status"
+                  },
+                  "WAITING"
+                ]
+              },
+              "then": "上游排队中"
             }
           },
           "message": {

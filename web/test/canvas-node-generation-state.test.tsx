@@ -154,7 +154,15 @@ describe("画布节点生成中", () => {
     test("排队、提交和供应商英文阶段都翻译成用户能懂的阶段", () => {
         const queued = renderNode({ status: "loading", taskId: "task", taskStatus: "queued", taskStage: "等待队列调度", taskCreatedAt: createdAt() });
         expect(queued).toContain("排队中");
-        expect(queued).toContain("轮到后自动开始");
+        expect(queued).not.toContain("轮到后自动开始");
+
+        const waiting = renderNode({ status: "loading", taskId: "task", taskStatus: "running", taskStage: "上游排队中" }, CanvasNodeType.Video);
+        expect(waiting).toContain("上游排队中");
+        expect(waiting).not.toContain("轮到后自动开始");
+
+        const syncing = renderNode({ status: "loading", taskId: "task", taskStatus: "running", taskStage: "等待上游任务同步" }, CanvasNodeType.Video);
+        expect(syncing).toContain("正在同步创作进度");
+        expect(syncing).not.toContain("正在生成视频");
 
         const submitting = renderNode({ status: "loading", taskStage: "正在准备生成任务", taskCreatedAt: createdAt() });
         expect(submitting).toContain("正在提交");

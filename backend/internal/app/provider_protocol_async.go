@@ -122,10 +122,13 @@ func recordProtocolProviderTask(ctx context.Context, providerTaskID string) erro
 	return metadata.Service.recordWorkflowProviderRequest(ctx, providerTaskID, "accepted", &next)
 }
 
-// detachedProtocolPending 生成分离式回查的“继续等待”信号；stage 为上游给出的可读阶段，
-// queueAhead 为前面的条数（-1 表示未知），用来决定下次回查间隔。
-func detachedProtocolPending(taskID string, stage string, queueAhead int) error {
-	return providerStatePendingError{TaskID: taskID, Stage: truncateRunes(strings.TrimSpace(stage), 120), Detached: true, PollDelay: detachedPollDelay(queueAhead)}
+// detachedProtocolPending 优先保留上游阶段。收单时只有任务 ID，须等待回查确认阶段。
+func detachedProtocolPending(taskID string, status protocol.Status, stage string, queueAhead int) error {
+	fallback := "等待上游任务同步"
+	if status == protocol.StatusProcessing {
+		fallback = "上游生成中"
+	}
+	return providerStatePendingError{TaskID: taskID, Stage: truncateRunes(firstNonEmpty(stage, fallback), 120), Detached: true, PollDelay: detachedPollDelay(queueAhead)}
 }
 
 // detachedPollDelay 按排队位置拉长回查间隔：前面几百条时一两分钟内不可能轮到，

@@ -337,7 +337,7 @@ func (w *taskWorkerCoordinator) processClaimedTask(task *model.Task, globalSlot 
 				stage = "等待上游任务同步"
 				message = "上游任务状态暂未同步，将继续回查原任务"
 				if pendingErr.Detached {
-					stage = firstNonEmpty(pendingErr.Stage, "上游排队中")
+					stage = pendingErr.Stage
 					message = ""
 					if pendingErr.PollDelay > 0 {
 						delay = pendingErr.PollDelay
@@ -347,9 +347,9 @@ func (w *taskWorkerCoordinator) processClaimedTask(task *model.Task, globalSlot 
 			if deferErr := s.repo.DeferRunningTaskForProviderPoll(task.ID, task.LeaseOwner, stage, delay); deferErr != nil {
 				return deferErr
 			}
-			// 分离式回查每 15 秒一轮，逐轮写日志会淹没任务日志；只记录首次进入排队。
+			// 分离式回查每 15 秒一轮，只在首次转入后台回查时记录日志。
 			if message != "" || task.PollStage == "accepted" {
-				_ = s.log(task.UserID, task.ID, "info", firstNonEmpty(message, "上游已收单，排队期间释放执行位，按间隔回查原任务"), stage)
+				_ = s.log(task.UserID, task.ID, "info", firstNonEmpty(message, "上游已收单，释放执行位并按间隔回查原任务"), stage)
 			}
 			return nil
 		}

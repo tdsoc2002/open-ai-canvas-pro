@@ -97,6 +97,7 @@ describe("按班次出片的上游阶段", () => {
         expect(generationPhaseLabel(generationTaskPhase(boarding), "video", boarding.stage)).toBe("候车 · 前面 407 条");
         expect(generationTaskShowsProgress(boarding)).toBe(false);
         expect(generationTaskStageLabel(boarding)).toBe("候车 · 前面 407 条");
+        expect(generationTaskStatusLabel(boarding)).toBe("排队中");
     });
     test("发车后显示上游阶段并恢复百分比", () => {
         const running = { status: "running" as const, stage: "出片中", progress: 40 };
@@ -130,8 +131,15 @@ describe("画布与首页共用的生成阶段", () => {
         expect(generationPhaseLabel("generating", "video", "作品创作中")).toBe("正在生成视频");
         expect(generationPhaseLabel("generating", "video", "provider_processing")).toBe("正在生成视频");
         expect(generationPhaseLabel("saving", "image")).toBe("正在保存图片");
+        expect(generationPhaseHint("queued", "video")).toBe("");
         expect(generationPhaseHint("generating", "video")).toBe("离开页面也会继续生成");
         expect(generationPhaseHint("generating", "image")).toBe("");
         expect(generationPhaseHint("saving", "image")).toBe("作品已生成，正在存入素材库");
+    });
+
+    test("只收到上游任务编号时显示同步阶段", () => {
+        const task = { status: "running" as const, stage: "等待上游任务同步" };
+        expect(generationTaskStatusLabel(task)).toBe("同步中");
+        expect(generationPhaseLabel(generationTaskPhase(task), "video", task.stage)).toBe("正在同步创作进度");
     });
 });
