@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Input, Select, Tag } from "antd";
+import { Alert, App, Button, Input, Select } from "antd";
 import { ArrowRight, Building2, Plus, UserPlus, Users } from "lucide-react";
 import { Link, Outlet, useNavigate, useParams, useSearchParams } from "react-router";
-import { WorkspacePage, PageHeader } from "@/components/layout/workspace-page";
+import { PageHeader } from "@/components/layout/workspace-page";
 import { openTeamInvitations } from "@/components/layout/team-invitation-center";
+import { StatusBadge } from "@/components/ui/base/badges";
 import { AppModal } from "@/components/ui/product/app-modal";
+import { EmptyState } from "@/components/ui/product/empty-state";
 import { teamKeys } from "@/lib/team-query-keys";
 import { createTeam, createTeamGroup, getTeam, listTeams } from "@/services/api/teams";
 import { ApiError } from "@/services/api/request";
 import { useUserStore } from "@/stores/use-user-store";
+import { TeamManagementPage } from "./team-management-page";
 
 export function TeamQueryError({ error, retry }: { error: Error; retry: () => unknown }) {
     return <Alert type="error" showIcon title="读取失败" description={error.message} action={<Button onClick={() => void retry()}>重试</Button>} />;
@@ -41,7 +44,7 @@ export default function TeamsPage() {
         onError: (error) => message.error(error.message),
     });
     return (
-        <WorkspacePage className="*:flex *:min-h-full *:flex-col">
+        <TeamManagementPage>
             <PageHeader
                 title="公司与团队"
                 actions={
@@ -55,31 +58,30 @@ export default function TeamsPage() {
                     </>
                 }
             />
-            <div className="mt-6 flex grow flex-col">
-                {teams.isError ? <TeamQueryError error={teams.error} retry={teams.refetch} /> : null}
-                {teams.isPending ? <p role="status">正在读取团队…</p> : null}
-                {teams.data?.length === 0 ? (
-                    <div className="flex grow flex-col items-center justify-center rounded-xl border border-dashed border-border p-12 text-center">
-                        <Users className="mb-3 size-8 text-foreground/40" />
-                        <h2 className="font-semibold">还没有加入团队</h2>
-                    </div>
-                ) : null}
-                <div className="grid items-start gap-4 md:grid-cols-2">
-                    {!teams.isError &&
-                        roots.map((team) => (
-                            <section key={team.id} className="rounded-xl border border-border bg-background p-4">
+            {teams.isError ? <TeamQueryError error={teams.error} retry={teams.refetch} /> : null}
+            {teams.isPending ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                    正在读取团队…
+                </p>
+            ) : null}
+            {teams.data?.length === 0 ? <EmptyState className="rounded-xl border border-border bg-card" icon={Users} title="还没有加入团队" /> : null}
+            <div className="grid items-start gap-4 @xl:grid-cols-2">
+                {!teams.isError &&
+                    roots.map((team) => {
+                        const groups = teams.data?.filter((group) => group.parentId === team.id);
+                        return (
+                            <section key={team.id} className="min-w-0 rounded-xl border border-border bg-card p-3">
                                 <Link to={`/teams/${encodeURIComponent(team.id)}`} className="flex items-center gap-3 rounded-lg p-2 hover:bg-surface-hover">
-                                    <span className="space-directory-icon">
-                                        <Building2 aria-hidden />
+                                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-[color:var(--brand,var(--foreground))]">
+                                        <Building2 aria-hidden className="size-5" />
                                     </span>
-                                    <h2 className="min-w-0 flex-1 truncate font-semibold">{team.name}</h2>
-                                    <Tag>{team.role === "owner" ? "所有者" : "成员"}</Tag>
-                                    <ArrowRight className="size-4" aria-hidden />
+                                    <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{team.name}</h2>
+                                    <StatusBadge variant="filled" label={team.role === "owner" ? "所有者" : "成员"} />
+                                    <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                                 </Link>
-                                <ul className="ml-4 border-l border-border pl-3">
-                                    {teams.data
-                                        ?.filter((group) => group.parentId === team.id)
-                                        .map((group) => (
+                                {groups?.length ? (
+                                    <ul className="my-2 ml-7 space-y-1 border-l border-border pl-3">
+                                        {groups.map((group) => (
                                             <li key={group.id}>
                                                 <Link className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-surface-hover" to={`/teams/${encodeURIComponent(group.id)}`}>
                                                     <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -87,15 +89,16 @@ export default function TeamsPage() {
                                                 </Link>
                                             </li>
                                         ))}
-                                </ul>
+                                    </ul>
+                                ) : null}
                                 {team.role === "owner" ? (
-                                    <Button type="text" size="small" className="mt-2" icon={<Plus className="size-3.5" />} onClick={() => openCreate(team.id)}>
+                                    <Button type="text" size="small" className="mt-2" icon={<Plus aria-hidden className="size-3.5" />} onClick={() => openCreate(team.id)}>
                                         创建小组
                                     </Button>
                                 ) : null}
                             </section>
-                        ))}
-                </div>
+                        );
+                    })}
             </div>
             <AppModal
                 centered
@@ -135,7 +138,7 @@ export default function TeamsPage() {
                 </label>
                 <p className="mt-3 text-sm text-foreground/60">{parentId ? "从所属公司邀请成员加入小组。小组有独立的额度和素材库。" : "创建后可邀请平台用户加入，也可在公司下建立多个小组。"}</p>
             </AppModal>
-        </WorkspacePage>
+        </TeamManagementPage>
     );
 }
 
@@ -160,21 +163,21 @@ export function TeamWorkspacePage() {
     }, [queryClient, teamId, teamQuery.error, userId]);
     if (teamQuery.isError)
         return (
-            <WorkspacePage>
+            <TeamManagementPage>
                 <PageHeader title="团队空间无法访问" />
-                <div className="mt-5">
-                    <TeamQueryError error={teamQuery.error} retry={teamQuery.refetch} />
-                </div>
-                <Link className="mt-4 inline-block" to="/teams">
+                <TeamQueryError error={teamQuery.error} retry={teamQuery.refetch} />
+                <Link className="inline-block text-sm underline underline-offset-4" to="/teams">
                     返回我的团队
                 </Link>
-            </WorkspacePage>
+            </TeamManagementPage>
         );
     if (!teamQuery.data)
         return (
-            <WorkspacePage>
-                <p role="status">正在验证团队身份…</p>
-            </WorkspacePage>
+            <TeamManagementPage>
+                <p role="status" className="text-sm text-muted-foreground">
+                    正在验证团队身份…
+                </p>
+            </TeamManagementPage>
         );
     return <Outlet key={`${userId}:${teamId}`} context={teamQuery.data} />;
 }

@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Input, Select, Table } from "antd";
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Layers, Lock, ReceiptText, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/workspace-page";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { parseTeamCreditAmount, teamCredits, teamKeys } from "@/lib/team-query-keys";
+import { cn } from "@/lib/utils";
 import { getTeamLedger, getTeamWallet, listTeamMembers, transferTeamCredits, type TeamLedgerEntry, type TeamSummary } from "@/services/api/teams";
 import { useUserStore } from "@/stores/use-user-store";
+import { TeamManagementPage, TeamTableSection, TeamTableTabs } from "./team-management-page";
 
 const actions = { fund: "转入团队", withdraw: "转回个人", allocate: "划拨额度", reclaim: "回收额度" };
 type TransferAction = keyof typeof actions;
@@ -58,8 +60,72 @@ export function TeamWalletPane() {
         }
         return "所有者个人钱包";
     };
+    const memberQuotaTable = (
+        <TeamTableSection emptyState={wallet.isSuccess && members.isSuccess && !wallet.data.members?.length ? { title: "暂无成员额度" } : undefined}>
+            {members.isError ? <Alert className="mx-5 my-4" type="error" title={members.error.message} /> : null}
+            <Table
+                size="middle"
+                rowKey="membershipId"
+                loading={wallet.isPending || members.isPending}
+                dataSource={wallet.data?.members}
+                pagination={{ className: "px-4", pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+                scroll={{ x: 600 }}
+                locale={{ emptyText: null }}
+                columns={[
+                    {
+                        title: "成员",
+                        key: "name",
+                        render: (_, entry) => {
+                            const member = members.data?.find((item) => item.id === entry.membershipId);
+                            return <span className="font-medium">{member?.displayName || member?.username || entry.userId}</span>;
+                        },
+                    },
+                    { title: "可用", key: "available", align: "right", className: "tabular-nums", render: (_, entry) => teamCredits(entry.account.availableMicrocredits) },
+                    { title: "冻结", key: "reserved", align: "right", className: "tabular-nums", render: (_, entry) => teamCredits(entry.account.reservedMicrocredits) },
+                    {
+                        title: "操作",
+                        key: "actions",
+                        align: "right",
+                        width: 156,
+                        render: (_, entry) => (
+                            <div className="flex justify-end gap-2">
+                                <Button size="small" onClick={() => openTransfer("allocate", entry.membershipId)}>
+                                    划拨
+                                </Button>
+                                <Button size="small" onClick={() => openTransfer("reclaim", entry.membershipId)}>
+                                    回收
+                                </Button>
+                            </div>
+                        ),
+                    },
+                ]}
+            />
+        </TeamTableSection>
+    );
+    const ledgerTable = (
+        <TeamTableSection title={owner ? undefined : "我的团队流水"} className="grow" emptyState={ledger.isSuccess && !ledger.data.entries?.length ? { icon: ReceiptText, title: "暂无积分流水" } : undefined}>
+            {ledger.isError ? <Alert className="mx-5 my-4" type="error" title={ledger.error.message} /> : null}
+            <Table
+                size="middle"
+                rowKey="id"
+                loading={ledger.isPending}
+                dataSource={ledger.data?.entries}
+                pagination={{ className: "px-4", current: page, pageSize: 20, total: ledger.data?.total, onChange: setPage, hideOnSinglePage: true, showSizeChanger: false }}
+                scroll={{ x: 650 }}
+                locale={{ emptyText: null }}
+                columns={[
+                    { title: "时间", dataIndex: "createdAt", className: "whitespace-nowrap tabular-nums", render: (value: string) => new Date(value).toLocaleString() },
+                    { title: "账户", key: "account", render: (_, entry) => ledgerAccount(entry) },
+                    { title: "说明", key: "description", render: (_, entry) => (entry.type === "team_transfer" ? transferDescriptions[entry.note || ""] || "团队划转" : billingDescriptions[entry.type]) },
+                    { title: "可用变动", dataIndex: "availableDeltaMicrocredits", align: "right", className: "tabular-nums", render: (value: number) => teamCredits(value) },
+                    { title: "冻结变动", dataIndex: "reservedDeltaMicrocredits", align: "right", className: "tabular-nums", render: (value: number) => teamCredits(value) },
+                    { title: "变动后可用", dataIndex: "availableAfterMicrocredits", align: "right", className: "font-medium tabular-nums", render: (value: number) => teamCredits(value) },
+                ]}
+            />
+        </TeamTableSection>
+    );
     return (
-        <div className="space-y-5">
+        <TeamManagementPage fill>
             <PageHeader
                 title={owner ? "团队积分" : "我的团队额度"}
                 description="公共池中的积分由所有者划拨。分给你的额度只能在当前空间消费。"
@@ -79,79 +145,36 @@ export function TeamWalletPane() {
                 }
             />
             {wallet.isError ? <Alert type="error" title="额度读取失败" description={wallet.error.message} action={<Button onClick={() => void wallet.refetch()}>重试</Button>} /> : null}
-            <div className="grid gap-3 sm:grid-cols-3">
+            <dl className="grid gap-3 @2xl:grid-cols-[1.2fr_1fr_1fr]">
                 {[
-                    { label: "我的可用额度", value: account?.availableMicrocredits },
-                    { label: "公共待分配", value: wallet.data?.poolAvailableMicrocredits },
-                    { label: "我的任务冻结", value: account?.reservedMicrocredits },
-                ].map((stat) => (
-                    <div key={stat.label} className="rounded-xl border border-border bg-background p-5">
-                        <p className="text-sm text-foreground/60">{stat.label}</p>
-                        <strong className="mt-2 block text-2xl tabular-nums">
-                            {stat.value === undefined ? "—" : teamCredits(stat.value)}
-                            <span className="ml-1 text-xs font-normal">积分</span>
-                        </strong>
+                    { label: "我的可用额度", value: account?.availableMicrocredits, icon: Wallet, primary: true },
+                    { label: "公共待分配", value: wallet.data?.poolAvailableMicrocredits, icon: Layers },
+                    { label: "我的任务冻结", value: account?.reservedMicrocredits, icon: Lock },
+                ].map(({ label, value, icon: Icon, primary }) => (
+                    <div key={label} className={cn("min-w-0 rounded-xl border border-border p-4 @2xl:p-5", primary ? "bg-[color-mix(in_srgb,var(--brand,var(--foreground))_7%,var(--card))]" : "bg-card")}>
+                        <dt className="flex items-center gap-2.5 text-sm font-medium text-muted-foreground">
+                            <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", primary ? "bg-card text-[color:var(--brand,var(--foreground))]" : "bg-muted text-muted-foreground")}>
+                                <Icon aria-hidden className="size-4" />
+                            </span>
+                            {label}
+                        </dt>
+                        <dd className="mt-3 flex flex-wrap items-baseline gap-x-2">
+                            <span className="text-3xl font-semibold tracking-tight tabular-nums">{value === undefined ? "—" : teamCredits(value)}</span>
+                            <span className="text-xs text-muted-foreground">积分</span>
+                        </dd>
                     </div>
                 ))}
-            </div>
+            </dl>
             {owner ? (
-                <section className="space-y-3">
-                    <h2 className="font-semibold">成员额度</h2>
-                    {members.isError ? <Alert type="error" title={members.error.message} /> : null}
-                    <Table
-                        rowKey="membershipId"
-                        loading={wallet.isPending || members.isPending}
-                        dataSource={wallet.data?.members}
-                        pagination={false}
-                        scroll={{ x: 600 }}
-                        columns={[
-                            {
-                                title: "成员",
-                                key: "name",
-                                render: (_, entry) => {
-                                    const member = members.data?.find((item) => item.id === entry.membershipId);
-                                    return member?.displayName || member?.username || entry.userId;
-                                },
-                            },
-                            { title: "可用", key: "available", render: (_, entry) => teamCredits(entry.account.availableMicrocredits) },
-                            { title: "冻结", key: "reserved", render: (_, entry) => teamCredits(entry.account.reservedMicrocredits) },
-                            {
-                                title: "操作",
-                                key: "actions",
-                                render: (_, entry) => (
-                                    <div className="flex gap-2">
-                                        <Button size="small" onClick={() => openTransfer("allocate", entry.membershipId)}>
-                                            划拨
-                                        </Button>
-                                        <Button size="small" onClick={() => openTransfer("reclaim", entry.membershipId)}>
-                                            回收
-                                        </Button>
-                                    </div>
-                                ),
-                            },
-                        ]}
-                    />
-                </section>
-            ) : null}
-            <section className="space-y-3">
-                <h2 className="font-semibold">{owner ? "团队资金流水" : "我的团队流水"}</h2>
-                {ledger.isError ? <Alert type="error" title={ledger.error.message} /> : null}
-                <Table
-                    rowKey="id"
-                    loading={ledger.isPending}
-                    dataSource={ledger.data?.entries}
-                    pagination={{ current: page, pageSize: 20, total: ledger.data?.total, onChange: setPage, showSizeChanger: false }}
-                    scroll={{ x: 650 }}
-                    columns={[
-                        { title: "时间", dataIndex: "createdAt", render: (value: string) => new Date(value).toLocaleString() },
-                        { title: "账户", key: "account", render: (_, entry) => ledgerAccount(entry) },
-                        { title: "说明", key: "description", render: (_, entry) => (entry.type === "team_transfer" ? transferDescriptions[entry.note || ""] || "团队划转" : billingDescriptions[entry.type]) },
-                        { title: "可用变动", dataIndex: "availableDeltaMicrocredits", render: (value: number) => teamCredits(value) },
-                        { title: "冻结变动", dataIndex: "reservedDeltaMicrocredits", render: (value: number) => teamCredits(value) },
-                        { title: "变动后可用", dataIndex: "availableAfterMicrocredits", render: (value: number) => teamCredits(value) },
+                <TeamTableTabs
+                    items={[
+                        { key: "members", label: "成员额度", children: memberQuotaTable },
+                        { key: "ledger", label: "团队资金流水", children: ledgerTable },
                     ]}
                 />
-            </section>
+            ) : (
+                ledgerTable
+            )}
             <AppModal
                 centered
                 title={form ? captions[form.action] : "积分划转"}
@@ -207,6 +230,6 @@ export function TeamWalletPane() {
                     </p>
                 </div>
             </AppModal>
-        </div>
+        </TeamManagementPage>
     );
 }
