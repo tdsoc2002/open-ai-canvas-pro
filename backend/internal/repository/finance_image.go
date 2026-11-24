@@ -77,11 +77,11 @@ func settleImageBillingOrder(tx *gorm.DB, order model.BillingOrder, providerRequ
 	if err := updateBillingOrderState(tx, order, updates); err != nil {
 		return err
 	}
-	if err := tx.Create(&model.CreditLedgerEntry{ID: newRepositoryID(), UserID: order.UserID, Type: model.CreditLedgerConsume, AmountMicrocredits: -actual, ReservedDeltaMicrocredits: -reserved, AvailableAfterMicrocredits: account.AvailableMicrocredits, ReservedAfterMicrocredits: account.ReservedMicrocredits, BillingOrderID: order.ID, Model: order.Model, ChannelID: order.ChannelID, Scene: order.Scene, Note: "图片按实际输入张数及逐张输出像素结算"}).Error; err != nil {
+	if err := tx.Create(&model.CreditLedgerEntry{ID: newRepositoryID(), UserID: order.UserID, AccountID: order.BillingAccountID, TeamID: order.TeamID, MembershipID: order.MembershipID, Type: model.CreditLedgerConsume, AmountMicrocredits: -actual, ReservedDeltaMicrocredits: -reserved, AvailableAfterMicrocredits: account.AvailableMicrocredits, ReservedAfterMicrocredits: account.ReservedMicrocredits, BillingOrderID: order.ID, Model: order.Model, ChannelID: order.ChannelID, Scene: order.Scene, Note: "图片按实际输入张数及逐张输出像素结算"}).Error; err != nil {
 		return err
 	}
 	if refund > 0 {
-		return tx.Create(&model.CreditLedgerEntry{ID: newRepositoryID(), UserID: order.UserID, Type: model.CreditLedgerRefund, AmountMicrocredits: refund, AvailableDeltaMicrocredits: refund, AvailableAfterMicrocredits: account.AvailableMicrocredits, ReservedAfterMicrocredits: account.ReservedMicrocredits, BillingOrderID: order.ID, Model: order.Model, ChannelID: order.ChannelID, Scene: order.Scene, Note: "图片实际费用低于预留，差额退回"}).Error
+		return tx.Create(&model.CreditLedgerEntry{ID: newRepositoryID(), UserID: order.UserID, AccountID: order.BillingAccountID, TeamID: order.TeamID, MembershipID: order.MembershipID, Type: model.CreditLedgerRefund, AmountMicrocredits: refund, AvailableDeltaMicrocredits: refund, AvailableAfterMicrocredits: account.AvailableMicrocredits, ReservedAfterMicrocredits: account.ReservedMicrocredits, BillingOrderID: order.ID, Model: order.Model, ChannelID: order.ChannelID, Scene: order.Scene, Note: "图片实际费用低于预留，差额退回"}).Error
 	}
 	return nil
 }

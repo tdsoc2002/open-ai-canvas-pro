@@ -275,6 +275,14 @@ func (s *Service) switchTaskToNextRoute(task *model.Task, attempts []model.Route
 	if err != nil {
 		return nil, err
 	}
+	if _, team := model.TeamIDFromContentKey(task.UserID); team && task.Type != "canvas_text" {
+		candidate := *task
+		candidate.InputJSON = string(encoded)
+		candidate.RouteID, candidate.ChannelModelID = selected.Route.ID, selected.ChannelModel.ID
+		if err := s.validateTeamGenerationMediaTransport(&candidate); err != nil {
+			return nil, err
+		}
+	}
 	var replacement *model.BillingOrder
 	if logicalModel.PricePolicy == "channel" && task.BillingOrderID != "" {
 		config, _ := nextInput["config"].(map[string]any)
@@ -288,7 +296,7 @@ func (s *Service) switchTaskToNextRoute(task *model.Task, attempts []model.Route
 		if loadErr != nil {
 			return nil, loadErr
 		}
-		replacement, err = s.newBillingOrderWithPriceTierAt(current.CreatedAt, current.RoundChargeToCent, actorID, task.ID, "route-switch:"+task.ID+":"+selected.Route.ID, selected.ChannelModel.ChannelID, selected.ChannelModel.ModelKey, capability, firstNonEmpty(strings.TrimSpace(task.Operation), task.Type), requestedBillingQuantity(capability, config), s.estimateTaskBilling(actorID, nextInput, capability), strings.TrimSpace(priceTierID), intent)
+		replacement, err = s.newBillingOrderWithPriceTierAt(current.CreatedAt, current.RoundChargeToCent, actorID, task.ID, "route-switch:"+task.ID+":"+selected.Route.ID, selected.ChannelModel.ChannelID, selected.ChannelModel.ModelKey, capability, firstNonEmpty(strings.TrimSpace(task.Operation), task.Type), requestedBillingQuantity(capability, config), s.estimateTaskBilling(task.UserID, nextInput, capability), strings.TrimSpace(priceTierID), intent)
 		if err != nil {
 			return nil, err
 		}

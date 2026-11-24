@@ -158,7 +158,8 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 	if err != nil {
 		return nil, err
 	}
-	activeTasks, err := s.repo.ActiveTaskCountForUser(userID)
+	contentOwnerID := firstNonEmpty(req.contentOwnerID, userID)
+	activeTasks, err := s.repo.ActiveTaskCountForUser(contentOwnerID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,9 +170,9 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 	// 调用方已持锁时走不加锁的版本；这里不能再抢同一把 storageMu。
 	var capacityErr error
 	if req.callerHoldsStorageMu {
-		capacityErr = s.requireStoredFileCapacityWhileLocked(userID, taskType, policy)
+		capacityErr = s.requireStoredFileCapacityWhileLocked(contentOwnerID, taskType, policy)
 	} else {
-		capacityErr = s.requireStoredFileCapacityForTask(userID, taskType, policy)
+		capacityErr = s.requireStoredFileCapacityForTask(contentOwnerID, taskType, policy)
 	}
 	if capacityErr != nil {
 		return nil, capacityErr
@@ -180,7 +181,7 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 	if workbenchKind == "" {
 		workbenchKind = workbenchKindFromTaskInput(normalizedInput, taskType)
 	}
-	task := model.Task{ID: newID(), UserID: userID, TraceID: req.TraceID, RequestID: req.RequestID, ProjectID: req.ProjectID, Type: taskType, WorkbenchKind: workbenchKind, Status: model.TaskStatusQueued, Stage: "等待队列调度", Progress: 5, Prompt: prompt, Operation: req.Operation, Provider: req.Provider, Model: req.Model}
+	task := model.Task{ID: newID(), UserID: contentOwnerID, TraceID: req.TraceID, RequestID: req.RequestID, ProjectID: req.ProjectID, Type: taskType, WorkbenchKind: workbenchKind, Status: model.TaskStatusQueued, Stage: "等待队列调度", Progress: 5, Prompt: prompt, Operation: req.Operation, Provider: req.Provider, Model: req.Model}
 	if req.admission != nil {
 		task.ID = req.admission.ID
 		task.AgentRunID = req.admission.AgentRunID

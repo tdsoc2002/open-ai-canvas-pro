@@ -31,6 +31,7 @@ func RegisterTaskRoutes(r *gin.RouterGroup, svc *service.Service) {
 	registerTaskSubmissionRoutes(r, svc)
 	registerTaskReadRoutes(r, svc)
 	registerTaskTextReadRoutes(r, svc)
+	registerTaskMediaRecoveryRoute(r, svc)
 	registerPersonalTaskActions(r, svc)
 }
 
@@ -189,20 +190,7 @@ func registerTaskTextReadRoutes(r *gin.RouterGroup, svc *service.Service) {
 	})
 }
 
-func registerPersonalTaskLifecycleRoutes(r *gin.RouterGroup, svc *service.Service) {
-	r.POST("/tasks/:id/retry", func(c *gin.Context) {
-		user, err := currentUser(c, svc)
-		if err != nil {
-			failService(c, err)
-			return
-		}
-		task, err := svc.RetryTask(user.ID, c.Param("id"))
-		if err != nil {
-			fail(c, http.StatusBadRequest, err)
-			return
-		}
-		ok(c, task)
-	})
+func registerTaskMediaRecoveryRoute(r *gin.RouterGroup, svc *service.Service) {
 	r.POST("/tasks/:id/recover-media", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {
@@ -213,9 +201,30 @@ func registerPersonalTaskLifecycleRoutes(r *gin.RouterGroup, svc *service.Servic
 		if !available || !enforceRateLimit(c, "task-media-recovery:"+user.ID, policy.Request.TaskCreatePerMinute, time.Minute) {
 			return
 		}
-		task, err := svc.RecoverTaskMedia(user.ID, c.Param("id"))
+		owner, err := svc.WorkspaceContentKey(user.ID, c.Param("teamId"))
 		if err != nil {
 			failService(c, err)
+			return
+		}
+		task, err := svc.RecoverTaskMedia(owner, c.Param("id"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, task)
+	})
+}
+
+func registerPersonalTaskLifecycleRoutes(r *gin.RouterGroup, svc *service.Service) {
+	r.POST("/tasks/:id/retry", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		task, err := svc.RetryTask(user.ID, c.Param("id"))
+		if err != nil {
+			fail(c, http.StatusBadRequest, err)
 			return
 		}
 		ok(c, task)

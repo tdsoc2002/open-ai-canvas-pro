@@ -493,7 +493,7 @@ func (s *Service) taskBillingOrder(userID string, task *model.Task, input map[st
 	scene := firstNonEmpty(strings.TrimSpace(task.Operation), task.Type)
 	intent := ModelRequestIntentFromTaskInput(input, task.Type, task.Operation)
 	priceTierID, _ := config["priceTierId"].(string)
-	return s.newBillingOrderWithPriceTier(userID, task.ID, "task:"+task.ID+":"+newID(), channelID, modelKey, capability, scene, requestedBillingQuantity(capability, config), s.estimateTaskBilling(userID, input, capability), strings.TrimSpace(priceTierID), intent)
+	return s.newBillingOrderWithPriceTier(userID, task.ID, "task:"+task.ID+":"+newID(), channelID, modelKey, capability, scene, requestedBillingQuantity(capability, config), s.estimateTaskBilling(firstNonEmpty(task.UserID, userID), input, capability), strings.TrimSpace(priceTierID), intent)
 }
 
 func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, input map[string]any) (*model.BillingOrder, error) {
@@ -517,7 +517,7 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 	if logicalModel.PricePolicy == "channel" {
 		intent := ModelRequestIntentFromTaskInput(input, task.Type, task.Operation)
 		priceTierID, _ := config["priceTierId"].(string)
-		order, priceErr := s.newBillingOrderWithPriceTier(userID, task.ID, "task:"+task.ID+":"+newID(), channelModel.ChannelID, channelModel.ModelKey, capability, firstNonEmpty(strings.TrimSpace(task.Operation), task.Type), requestedBillingQuantity(capability, config), s.estimateTaskBilling(userID, input, capability), strings.TrimSpace(priceTierID), intent)
+		order, priceErr := s.newBillingOrderWithPriceTier(userID, task.ID, "task:"+task.ID+":"+newID(), channelModel.ChannelID, channelModel.ModelKey, capability, firstNonEmpty(strings.TrimSpace(task.Operation), task.Type), requestedBillingQuantity(capability, config), s.estimateTaskBilling(firstNonEmpty(task.UserID, userID), input, capability), strings.TrimSpace(priceTierID), intent)
 		if priceErr != nil {
 			return nil, priceErr
 		}

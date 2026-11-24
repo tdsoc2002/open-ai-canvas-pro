@@ -6,6 +6,8 @@ const dom = new Window({ url: `http://localhost${space ? `/teams/${space}` : ""}
 Object.assign(globalThis, { window: dom, document: dom.document, CustomEvent: dom.CustomEvent });
 const { getActiveUserScope, setActiveUserScope, scopedStorageKey } = await import("@/lib/user-scope");
 const { createGenerationTask } = await import("@/services/api/task-center");
+const { runBackendGenerationTaskBatch } = await import("@/services/api/generation-task");
+const { createModelChannel, defaultConfig, encodeChannelModel } = await import("@/stores/use-config-store");
 const { apiClient, http } = await import("@/services/api/request");
 afterAll(() => dom.happyDOM.abort());
 
@@ -46,4 +48,53 @@ test("content stays in its workspace; charging confirmation and replay use the a
         ["message-a", 500],
     ]);
     expect(paths.filter((path) => !path.startsWith(`${prefix}/`))).toBeEmpty();
+});
+
+test.skipIf(!space)("团队多图复用一次最高费用确认并逐张提交", async () => {
+    setActiveUserScope("member");
+    const paths: string[] = [];
+    const requested: { maxChargeMicrocredits: number; idempotencyKey: string; input: { mode: string; metadata: { batchIndex: number; batchCount: number } } }[] = [];
+    const messages: string[] = [];
+    dom.confirm = (message) => {
+        messages.push(message);
+        return true;
+    };
+    apiClient.defaults.adapter = async (config) => {
+        paths.push(config.url!);
+        let data: unknown = { maxChargeMicrocredits: 50_000 };
+        if (config.url?.endsWith("/tasks")) {
+            const input = JSON.parse(String(config.data));
+            requested.push(input);
+            data = { id: input.idempotencyKey, type: "canvas_image", status: "queued" };
+        }
+        return { config, status: 200, statusText: "OK", headers: {}, data: { code: 0, data } };
+    };
+    const channel = createModelChannel({ id: "system-images", scope: "system", interfaceType: "openai-images", models: ["gpt-image-1"] });
+    const model = encodeChannelModel(channel.id, "gpt-image-1");
+    const result = await runBackendGenerationTaskBatch(
+        { mode: "image", prompt: "团队图片", count: 2, config: { ...defaultConfig, channels: [channel], model, count: "1" }, metadata: { messageId: "media-message" } },
+        {
+            createId: () => "fallback",
+            createTask: createGenerationTask,
+            waitTask: async (id) => ({
+                id,
+                type: "canvas_image",
+                prompt: "团队图片",
+                status: "succeeded",
+                attempts: 1,
+                createdAt: "",
+                updatedAt: "",
+                resultJson: '{"mode":"image","images":[{"dataUrl":"https://example.test/art.png"}]}',
+            }),
+        },
+    );
+    const prefix = `/teams/${space}/workspace`;
+    expect(paths).toEqual([`${prefix}/tasks/quote`, `${prefix}/tasks`, `${prefix}/tasks`]);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain("0.1 积分");
+    expect(requested.map(({ idempotencyKey, maxChargeMicrocredits, input }) => [idempotencyKey, maxChargeMicrocredits, input.mode, input.metadata.batchIndex, input.metadata.batchCount])).toEqual([
+        ["media-message:batch:0", 50_000, "image", 0, 2],
+        ["media-message:batch:1", 50_000, "image", 1, 2],
+    ]);
+    expect(result.every((entry) => entry.status === "fulfilled")).toBe(true);
 });

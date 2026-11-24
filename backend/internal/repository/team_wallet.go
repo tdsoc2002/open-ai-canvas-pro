@@ -11,6 +11,7 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"yingce/backend/internal/imagebilling"
 	"yingce/backend/internal/model"
 )
 
@@ -279,8 +280,20 @@ func billingAccountQuery(tx *gorm.DB, order model.BillingOrder) *gorm.DB {
 	return query.Where("user_id = ?", order.UserID)
 }
 
+func SupportsTeamGenerationBilling(capability, mode string) bool {
+	switch capability {
+	case "text":
+		return mode == "fixed_request" || mode == "token"
+	case "image":
+		return mode == "fixed_request" || mode == "token" || mode == imagebilling.Mode
+	case "video":
+		return mode == "fixed_request" || mode == "token" || mode == "per_second"
+	}
+	return false
+}
+
 func validateTeamBillingReservation(tx *gorm.DB, order *model.BillingOrder) error {
-	if order.Capability != "text" || (order.BillingMode != "fixed_request" && order.BillingMode != "token") || order.Scene != "team_text" || !order.ChargeLimitSet || order.ChargeLimitMicrocredits != order.AmountMicrocredits || order.BillingAccountID != model.TeamMemberCreditAccountID(order.MembershipID) {
+	if !SupportsTeamGenerationBilling(order.Capability, order.BillingMode) || order.Scene != "team_"+order.Capability || !order.ChargeLimitSet || order.ChargeLimitMicrocredits != order.AmountMicrocredits || order.BillingAccountID != model.TeamMemberCreditAccountID(order.MembershipID) {
 		return ErrTeamWalletForbidden
 	}
 	repo := New(tx)

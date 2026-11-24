@@ -514,7 +514,15 @@ export function useEffectiveConfig() {
             .filter((channel) => channel.scope === "system")
             .map((channel) => ({
                 ...channel,
-                models: channel.models.filter((name) => channel.modelCosts?.some((cost) => cost.model === name && cost.available !== false && cost.capability === "text" && (cost.billingMode === "fixed_request" || cost.billingMode === "token"))),
+                models: channel.models.filter((name) =>
+                    channel.modelCosts?.some((cost) => {
+                        if (cost.model !== name || cost.available === false) return false;
+                        const standardBilling = cost.billingMode === "fixed_request" || cost.billingMode === "token";
+                        if (cost.capability === "image") return standardBilling || cost.billingMode === "image_usage";
+                        if (cost.capability === "video") return standardBilling || cost.billingMode === "per_second";
+                        return cost.capability === "text" && standardBilling;
+                    }),
+                ),
             }));
         return normalizeConfigSnapshot({ config: { ...config, taskWorkflowProvider: "model", channels } }).config;
     }, [config, customChannelsEnabled]);

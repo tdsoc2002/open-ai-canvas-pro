@@ -146,16 +146,27 @@ export type CreateTaskInput = {
     logicalModelId?: string;
     input?: Record<string, unknown>;
 };
-export async function createGenerationTask(input: CreateTaskInput) {
+export async function confirmTeamGenerationTaskCharge(input: CreateTaskInput, count = 1, signal?: AbortSignal) {
+    const session = captureUserSession();
+    const quote = await http.post<{ maxChargeMicrocredits: number }>("/tasks/quote", input, { signal });
+    assertCurrentUserSession(session);
+    const total = quote.maxChargeMicrocredits * count;
+    if (!Number.isSafeInteger(quote.maxChargeMicrocredits) || quote.maxChargeMicrocredits < 0 || !Number.isSafeInteger(total)) throw new Error("未取得有效的积分报价");
+    const amount = (total / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    if (!window.confirm(`本次生成将从你的团队额度中扣除最多 ${amount} 积分，继续生成？`)) throw new DOMException("已取消生成", "AbortError");
+    assertCurrentUserSession(session);
+    return quote.maxChargeMicrocredits;
+}
+
+export async function createGenerationTask(input: CreateTaskInput, confirmedTeamCharge?: number) {
     if (workspaceTeamId) {
-        if (input.type !== "canvas_text" || input.operation !== "text") throw new Error("当前空间仅开放系统模型的文本生成");
         const session = captureUserSession();
-        const quote = await http.post<{ maxChargeMicrocredits: number }>("/tasks/quote", input);
+        const maxChargeMicrocredits = confirmedTeamCharge ?? (await confirmTeamGenerationTaskCharge(input));
         assertCurrentUserSession(session);
-        if (!Number.isSafeInteger(quote.maxChargeMicrocredits) || quote.maxChargeMicrocredits < 0) throw new Error("未取得有效的积分报价");
-        if (!window.confirm(`本次生成将从你的团队额度中扣除最多 ${quote.maxChargeMicrocredits / 1_000_000} 积分，继续生成？`)) throw new DOMException("已取消生成", "AbortError");
-        const metadata = input.input?.metadata as { clientOperationId?: string; messageId?: string } | undefined;
-        input = { ...input, maxChargeMicrocredits: quote.maxChargeMicrocredits, idempotencyKey: input.idempotencyKey || metadata?.clientOperationId || metadata?.messageId || createClientUUID() };
+        const metadata = input.input?.metadata as { clientOperationId?: string; messageId?: string; batchIndex?: number } | undefined;
+        const operationId = metadata?.clientOperationId || metadata?.messageId || createClientUUID();
+        const batchSuffix = metadata?.batchIndex === undefined ? "" : `:batch:${metadata.batchIndex}`;
+        input = { ...input, maxChargeMicrocredits, idempotencyKey: input.idempotencyKey || `${operationId}${batchSuffix}` };
     }
     const ownerId = useUserStore.getState().user?.id;
     const fromWorkbench = (input.input?.metadata as { source?: string } | undefined)?.source === "workbench";

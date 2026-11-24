@@ -6,7 +6,8 @@ import { imageParameterRequest } from "@/lib/image-parameters";
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob } from "@/services/image-storage";
 import { resourceIdFromStorageKey, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
-import { createGenerationTask, waitForGenerationTask, type GenerationTask, type CreateTaskInput } from "@/services/api/task-center";
+import { confirmTeamGenerationTaskCharge, createGenerationTask, waitForGenerationTask, type GenerationTask, type CreateTaskInput } from "@/services/api/task-center";
+import { workspaceTeamId } from "@/lib/workspace-routes";
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import { grokImagePromptLimitError } from "@/lib/grok-image-prompt-limit";
 import { resolveGenerationWorkflowExecution, type GenerationWorkflowExecution } from "@/lib/generation-workflow-execution";
@@ -195,18 +196,13 @@ export async function runBackendGenerationTaskBatch(options: BackendGenerationTa
     if (options.retryContextsByBatchIndex && options.retryContextsByBatchIndex.length !== count) throw new Error("生成重试批次任务数量不匹配");
     const prepared = await prepareGenerationReferences(options);
     throwIfAborted(options.signal);
-    return Promise.allSettled(
-        Array.from({ length: count }, (_, batchIndex) =>
-            createAndWaitGenerationTask(
-                {
-                    ...options,
-                    metadata: { ...options.metadata, batchIndex, batchCount: count },
-                },
-                prepared,
-                dependencies,
-            ),
-        ),
-    );
+    const tasks = Array.from({ length: count }, (_, batchIndex) => ({
+        ...options,
+        metadata: { ...options.metadata, batchIndex, batchCount: count },
+    }));
+    const confirmedTeamCharge = workspaceTeamId ? await confirmTeamGenerationTaskCharge(backendGenerationTaskInput(tasks[0], prepared), count, options.signal) : undefined;
+    throwIfAborted(options.signal);
+    return Promise.allSettled(tasks.map((task) => createAndWaitGenerationTask(task, prepared, dependencies, confirmedTeamCharge)));
 }
 
 function generationOperation(options: BackendGenerationTaskOptions) {
@@ -254,7 +250,7 @@ async function prepareGenerationReferences({
     mask,
 }: Pick<BackendGenerationTaskOptions, "config" | "mode" | "referenceImages" | "referenceVideos" | "referenceAudios" | "mask">): Promise<PreparedGenerationReferences> {
     // asset:// 仅视频生成可用；Agent Plan Seedream 与 Seedance 共用 /api/plan/v3，不能按 BaseURL 误判。
-    const preferArkAssetUrl = mode === "video" && usesArkVideoAssetReference(config);
+    const preferArkAssetUrl = !workspaceTeamId && mode === "video" && usesArkVideoAssetReference(config);
     const requiresAudioReference = mode === "audio" && (config.audioMode === "unified_edit" || (config.audioMode !== "tts" && referenceAudios.length > 0));
     if (requiresAudioReference && referenceAudios.length === 0) throw new Error("全能配音需要连接参考音频；请检查音频是否已连接，或切换为文本朗读");
     const preparedImages = await Promise.all(referenceImages.map((image) => prepareBackendImageReference(image, preferArkAssetUrl)));
@@ -274,15 +270,15 @@ function usesArkVideoAssetReference(config: AiConfig) {
     return isArkPlanBaseUrl(config.baseUrl || "");
 }
 
-async function createAndWaitGenerationTask(options: BackendGenerationTaskOptions, prepared: PreparedGenerationReferences, dependencies: GenerationTaskDependencies) {
-    const task = await createBackendGenerationTask(options, prepared, dependencies);
+async function createAndWaitGenerationTask(options: BackendGenerationTaskOptions, prepared: PreparedGenerationReferences, dependencies: GenerationTaskDependencies, confirmedTeamCharge?: number) {
+    const task = await createBackendGenerationTask(options, prepared, dependencies, confirmedTeamCharge);
     const { signal, onTaskUpdate, onTextDelta } = options;
     const completed = await dependencies.waitTask(task.id, { signal, initialTask: task, onTaskUpdate, onTextDelta });
     return parseBackendGenerationResult(completed);
 }
 
-async function createBackendGenerationTask(options: BackendGenerationTaskOptions, prepared: PreparedGenerationReferences, dependencies: GenerationTaskDependencies) {
-    const task = await dependencies.createTask(backendGenerationTaskInput(options, prepared));
+async function createBackendGenerationTask(options: BackendGenerationTaskOptions, prepared: PreparedGenerationReferences, dependencies: GenerationTaskDependencies, confirmedTeamCharge?: number) {
+    const task = await dependencies.createTask(backendGenerationTaskInput(options, prepared), confirmedTeamCharge);
     options.onTaskUpdate?.(task);
     return task;
 }

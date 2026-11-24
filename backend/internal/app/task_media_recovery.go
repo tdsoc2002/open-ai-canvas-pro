@@ -272,7 +272,7 @@ func (s *Service) materializeTaskMedia(ctx context.Context, task *model.Task, co
 				_ = s.log(task.UserID, task.ID, "warn", "清理作品暂存文件失败", "")
 			}
 		}
-		url := resourceFileURL(resource.ID)
+		url := workspaceResourceFileURL(task.UserID, resource.ID)
 		output := map[string]interface{}{"dataUrl": url, "url": url, "resourceId": resource.ID, "storageKey": "resource:" + resource.ID, "mimeType": resource.MimeType, "bytes": resource.Size, "width": resource.Width, "height": resource.Height, "durationMs": resource.DurationMs}
 		if len(item.Reference.Metadata) > 0 {
 			output["metadata"] = item.Reference.Metadata
@@ -390,7 +390,8 @@ func (s *Service) RecoverTaskMedia(userID, id string) (*model.Task, error) {
 		if err != nil {
 			return nil, err
 		}
-		if order.UserID != task.UserID || order.TaskID != task.ID {
+		teamID, team := model.TeamIDFromContentKey(task.UserID)
+		if order.TaskID != task.ID || (team && order.TeamID != teamID) || (!team && (order.TeamID != "" || order.UserID != task.UserID)) {
 			return nil, BadAuthRequest("任务与计费订单归属不一致")
 		}
 		if order.Status == model.BillingStatusRefunded {

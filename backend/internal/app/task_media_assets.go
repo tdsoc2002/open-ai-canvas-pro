@@ -112,6 +112,13 @@ func (s *Service) registerRecoveredMediaAssets(task model.Task) error {
 	if err != nil {
 		return err
 	}
+	var creator string
+	if _, team := model.TeamIDFromContentKey(task.UserID); team {
+		creator, err = s.taskModelActor(&task)
+		if err != nil {
+			return err
+		}
+	}
 	for index, item := range checkpoint.Items {
 		registered := false
 		for _, representation := range representations {
@@ -139,7 +146,7 @@ func (s *Service) registerRecoveredMediaAssets(task model.Task) error {
 			return err
 		}
 		now := time.Now()
-		url := resourceFileURL(resource.ID)
+		url := workspaceResourceFileURL(task.UserID, resource.ID)
 		data := map[string]any{"storageKey": "resource:" + resource.ID, "mimeType": resource.MimeType, "bytes": resource.Size, "width": resource.Width, "height": resource.Height, "durationMs": resource.DurationMs}
 		if checkpoint.Mode == "image" {
 			data["dataUrl"] = url
@@ -163,7 +170,7 @@ func (s *Service) registerRecoveredMediaAssets(task model.Task) error {
 		if err := validateStructuredStorageQuotaWithPolicy(usage, "asset", true, int64(len(payload)), policy.Resource); err != nil {
 			return err
 		}
-		asset := &model.Asset{ID: assetID, UserID: task.UserID, Kind: checkpoint.Mode, Category: model.AssetCategoryMaterial, Status: model.AssetVersionStatusConfirmed, Title: title, PayloadJSON: string(payload), CreatedAt: now, UpdatedAt: now}
+		asset := &model.Asset{ID: assetID, UserID: task.UserID, CreatedBy: creator, Kind: checkpoint.Mode, Category: model.AssetCategoryMaterial, Status: model.AssetVersionStatusConfirmed, Title: title, PayloadJSON: string(payload), CreatedAt: now, UpdatedAt: now}
 		if err := s.repo.UpsertAsset(asset); err != nil {
 			return err
 		}

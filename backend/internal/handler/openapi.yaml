@@ -116,9 +116,15 @@ paths:
     parameters: [{ $ref: '#/components/parameters/TeamID' }]
     post:
       tags: [teams, tasks]
-      summary: 使用创建任务的参数估算系统文本模型的积分上限，不创建任务或冻结积分
+      summary: 报价系统文本、图片和视频任务的团队积分上限
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateTaskRequest' } } } }
       responses: { '200': { description: 'data.maxChargeMicrocredits 为按成员模型权限计算的微积分上限' } }
+  /teams/{teamId}/workspace/tasks/{id}/recover-media:
+    parameters: [{ $ref: '#/components/parameters/TeamID' }, { $ref: '#/components/parameters/TeamRecordID' }]
+    post:
+      tags: [teams, tasks]
+      summary: 恢复当前团队已生成作品的保存
+      responses: { '200': { description: 返回原任务，继续使用该任务的计费订单 } }
   /teams/{teamId}/wallet/ledger:
     parameters: [{ $ref: '#/components/parameters/TeamID' }]
     get: { tags: [teams], summary: 分页查询团队明细，普通成员仅见本人团队账, responses: { '200': { description: entries、total、page、limit } } }

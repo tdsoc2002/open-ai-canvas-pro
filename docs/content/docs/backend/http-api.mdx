@@ -21,7 +21,9 @@ description: 信封、错误码与 OpenAPI
 | 跨空间发布 | `POST /teams/:teamId/asset-publications` 接受 `assetIds`（每批最多 20 项）和 `idempotencyKey`。逐项读取 `data.results`，整批 HTTP 200 不代表全部发布成功。 |
 | 素材和媒体 | 在 `/teams/:teamId/workspace` 下使用现有 `/assets`、`/asset-folders`、`/resources` 和分片上传接口。`GET/HEAD /resources/:id/file` 逐请求鉴权，支持 `Range`。贡献者和所有者可归档；只有所有者能清理已归档且未被使用的素材。 |
 | 自由画布 | 在同一前缀下使用 `/canvas-projects`、`/:id/operations`、`/:id/sync-status`、`/:id/edit-lease` 和 `/:id/realtime`。创建和更新均使用自由画布的 operations 合同，不另设整张画布锁。 |
-| 创作和任务 | 在同一前缀下使用 `/creation-conversations`、`/tasks` 和 `GET /tasks/:id/text-events`。先 `POST /tasks/quote` 计算 `maxChargeMicrocredits`，再 `POST /tasks` 提交原参数、确认上限和 `idempotencyKey`。仅接受系统文本模型；超过确认上限返回 409，不创建订单。产物属于当前团队，订单支付方是发起成员的团队额度。 |
+| 创作和任务 | 在同一前缀下使用 `/creation-conversations`、`/tasks` 和 `GET /tasks/:id/text-events`，支持系统文本、图片和视频模型。先 `POST /tasks/quote` 计算 `maxChargeMicrocredits`，再 `POST /tasks` 提交原参数、确认上限和 `idempotencyKey`。多图拆单时确认合计，每项使用独立幂等键和单项上限。超过限额返回 409。产物属于当前团队，订单使用发起成员的团队额度。 |
+
+团队图片和视频引用使用当前团队已就绪的 `resource:<id>`。团队参考文件通过支持私有文件输入的协议交付。浏览器从团队资源路径鉴权读取作品。`POST /tasks/:id/recover-media` 可对当前团队任务重放保存检查点，沿用原任务和订单。
 
 权限、资金及引用冲突应读信封 `reason`，例如 `team_owner_required`、`team_invitation_expired`、`team_credits_insufficient` 和 `team_asset_referenced`。请求规范见 `GET /api/openapi.yaml`。
 

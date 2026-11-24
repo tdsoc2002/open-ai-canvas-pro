@@ -107,7 +107,8 @@ func (s *Service) hydrateProviderMedia(userID string, media *providerMedia, poli
 	if policy.imageOnly && policy.preferURL && resourceUsesObjectStorage(resource) {
 		return errTextModelImageLimitNeedsPixels
 	}
-	useObjectURL := policy.requireURL || (policy.preferURL && resourceUsesObjectStorage(resource))
+	_, team := model.TeamIDFromContentKey(resource.UserID)
+	useObjectURL := policy.requireURL || (policy.preferURL && !team && resourceUsesObjectStorage(resource))
 	if useObjectURL {
 		signedURL, err := s.providerResourceURL(resource, time.Time{})
 		if err != nil {

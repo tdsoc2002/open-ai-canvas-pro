@@ -95,3 +95,35 @@ func TestImageBillingUnknownUsageAndExceededAuthorizationDoNotCharge(t *testing.
 		}
 	}
 }
+
+func TestTeamImageBillingKeepsSettlementAndRefundInTeamLedger(t *testing.T) {
+	repo, db := newTeamWalletTestRepo(t)
+	seedTeamBillingOrder(t, repo, 100)
+	order := imageTestOrder()
+	order.UserID, order.TeamID, order.MembershipID, order.Scene = "member", "team", "member-1", "team_image"
+	order.BillingAccountID = model.TeamMemberCreditAccountID(order.MembershipID)
+	order.AmountMicrocredits, order.ReservedAmountMicrocredits = 400, 400
+	order.ChargeLimitSet, order.ChargeLimitMicrocredits = true, 400
+	order.ImagePricing = &model.ImagePricing{OutputTiers: []model.ImagePriceTier{{MaxPixels: 1_100_000, UnitPriceMicrocredits: 140}}}
+	if err := repo.ReserveBillingOrder(order); err != nil {
+		t.Fatal(err)
+	}
+	usage := &model.ImageBillingUsage{Source: "provider", Outputs: []model.ImageOutputUsage{{Width: 1024, Height: 1024}}}
+	if err := repo.RecordImageBillingUsage(order.ID, usage); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.SettleBillingOrder(order.ID, "provider"); err != nil {
+		t.Fatal(err)
+	}
+	requireTeamBalance(t, repo, order.BillingAccountID, 560, 100)
+	requireTeamBalance(t, repo, model.PersonalCreditAccountID("member"), 500, 0)
+	var entries []model.CreditLedgerEntry
+	if err := db.Find(&entries, "billing_order_id = ?", order.ID).Error; err != nil || len(entries) != 3 {
+		t.Fatalf("缺少冻结、扣款或退差额流水：%+v，%v", entries, err)
+	}
+	for _, entry := range entries {
+		if entry.AccountID != order.BillingAccountID || entry.TeamID != order.TeamID || entry.MembershipID != order.MembershipID {
+			t.Fatalf("流水归属错误：%+v", entry)
+		}
+	}
+}

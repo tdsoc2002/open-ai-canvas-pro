@@ -1,9 +1,21 @@
 package app
 
-import "yingce/backend/internal/assets"
+import (
+	"net/url"
+
+	"yingce/backend/internal/assets"
+	"yingce/backend/internal/model"
+)
 
 func resourceFileURL(id string) string {
 	return assets.FileURL(id)
+}
+
+func workspaceResourceFileURL(ownerID, id string) string {
+	if teamID, team := model.TeamIDFromContentKey(ownerID); team {
+		return "/api/teams/" + url.PathEscape(teamID) + "/workspace/resources/" + url.PathEscape(id) + "/file"
+	}
+	return resourceFileURL(id)
 }
 
 func isResourceFileURL(value string) bool {

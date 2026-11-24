@@ -50,6 +50,7 @@ func RegisterTeamWorkspaceRoutes(api *gin.RouterGroup, svc *service.Service) {
 	registerTaskSubmissionRoutes(workspace, svc)
 	registerTaskReadRoutes(workspace, svc)
 	registerTaskTextReadRoutes(workspace, svc)
+	registerTaskMediaRecoveryRoute(workspace, svc)
 }
 
 func registerTeamRoutes(r *gin.RouterGroup, svc *service.Service) {

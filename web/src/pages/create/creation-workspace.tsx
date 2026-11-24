@@ -20,6 +20,7 @@ import {
     Clapperboard,
     Clock3,
     Film,
+    Flame,
     FolderOpen,
     History,
     Image as ImageIcon,
@@ -45,7 +46,7 @@ import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gra
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { ModelPicker } from "@/components/model-picker";
 import { aceternityMotion } from "@/lib/aceternity-motion";
-import { CreditSymbol, requestCreditCost } from "@/constant/credits";
+import { requestCreditCost } from "@/constant/credits";
 import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";
 import { formatShotOrdinal } from "@/lib/shot-label";
 import { buildImageResolutionOptions, formatImageResolutionSize, supportsImageResolutionPresets } from "@/lib/image-resolution-tiers";
@@ -173,6 +174,7 @@ export function CreationWorkspaceToolbar({
 
 type ComposerProps = {
     variant: "empty" | "thread";
+    compact?: boolean;
     modeControl?: ReactNode;
     mode: CreationMode;
     prompt: string;
@@ -239,7 +241,7 @@ export function CreationModeMenu({ mode, onModeChange, agentActive = false, onAg
     const [open, setOpen] = useState(false);
     const agentName = useAppearanceStore(selectAgentName);
     const items = [
-        { key: "agent", label: agentName, icon: <Orbit aria-hidden="true" /> },
+        ...(!workspaceTeamId ? ([{ key: "agent", label: agentName, icon: <Orbit aria-hidden="true" /> }] as const) : []),
         { key: "image", label: "图片生成", icon: <ImageIcon aria-hidden="true" /> },
         { key: "video", label: "视频生成", icon: <Film aria-hidden="true" /> },
         { key: "text", label: "文本创作", icon: <MessageSquareText aria-hidden="true" /> },
@@ -371,9 +373,10 @@ export function CreationComposer(props: ComposerProps) {
     const showWorkingGlow = props.generationActive && !canSubmit;
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder = "输入你的镜头、画面或故事。也可以添加参考图开始创作";
+    const teamTextReferences = Boolean(workspaceTeamId && props.mode === "text");
     const imageReferencesSupported = props.imageProfile.references.maxImages > 0;
     const referencesSupported = props.mode === "image" ? imageReferencesSupported : props.mode !== "video" || props.maxReferences > 0;
-    const canAddMoreReferences = referencesSupported && props.attachments.length < props.maxReferences;
+    const canAddMoreReferences = referencesSupported && (teamTextReferences || props.attachments.length < props.maxReferences);
     const addReferenceLabel = interactionBusy ? (props.referenceReplacementBusy ? "正在替换参考图" : "生成中暂不能添加参考内容") : canAddMoreReferences ? "添加更多参考内容" : `已达到当前模型的参考内容上限（${props.maxReferences} 个）`;
     const handlePromptContentSizeChange = useCallback((naturalHeight: number) => {
         const nextHeight = clampCreationPromptHeight(naturalHeight);
@@ -485,14 +488,12 @@ export function CreationComposer(props: ComposerProps) {
         }
         return undefined;
     };
-    // 首页空态嵌在 CreationModeCard 里：外框、投影和悬停描边由卡片统一提供。指针高光也关掉，
-    // 否则高光停在页签下沿，会把选中页签和内容面切成两块。
-    const embedded = props.variant === "empty";
+    const isHome = props.variant === "empty";
     const surface = (
         <SpotlightSurface
             className={`creation-chat-composer is-${props.variant}${referenceDragOver ? " is-reference-drag-over" : ""}`}
             contentClassName="contents"
-            spotlightColor={embedded ? "transparent" : "color-mix(in srgb, var(--user-ink) 12%, transparent)"}
+            spotlightColor={isHome ? "transparent" : "color-mix(in srgb, var(--user-ink) 12%, transparent)"}
             spotlightRadius={280}
             onDragOver={(event) => {
                 if (!hasCreationReferenceDrop(event.dataTransfer)) return;
@@ -501,7 +502,7 @@ export function CreationComposer(props: ComposerProps) {
                     return;
                 }
                 event.preventDefault();
-                const allowed = !workspaceTeamId && !interactionBusy;
+                const allowed = !teamTextReferences && !interactionBusy;
                 event.dataTransfer.dropEffect = allowed ? "copy" : "none";
                 setReferenceDragOver(allowed);
             }}
@@ -514,7 +515,7 @@ export function CreationComposer(props: ComposerProps) {
                 if (event.defaultPrevented || !hasCreationReferenceDrop(event.dataTransfer)) return;
                 event.preventDefault();
                 event.stopPropagation();
-                if (workspaceTeamId || interactionBusy) return;
+                if (teamTextReferences || interactionBusy) return;
                 const drop = readCreationReferenceDrop(event.dataTransfer);
                 if (drop) props.onReferenceDrop(drop);
             }}
@@ -525,25 +526,29 @@ export function CreationComposer(props: ComposerProps) {
                 </div>
             ) : null}
             <div className="creation-chat-writing-surface">
-                {props.modeControl && referencesSupported ? (
+                {props.compact && referencesSupported ? (
                     <div className="creation-reference-entry-row" role="group" aria-label="参考内容" aria-busy={props.referenceUploadBusy}>
-                        <input
-                            ref={localReferenceInputRef}
-                            type="file"
-                            hidden
-                            multiple
-                            accept={props.mode === "text" ? "image/*,video/*,audio/*" : creationUploadAccept(props.mode)}
-                            disabled={interactionBusy || !canAddMoreReferences}
-                            onChange={(event) => {
-                                const files = Array.from(event.currentTarget.files || []);
-                                event.currentTarget.value = "";
-                                if (files.length) props.onUploadReferences(files);
-                            }}
-                        />
-                        <button type="button" className="creation-reference-entry" onClick={() => localReferenceInputRef.current?.click()} disabled={interactionBusy || !canAddMoreReferences}>
-                            {props.referenceUploadBusy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
-                            <span>{props.referenceUploadBusy ? "上传中" : "本地上传"}</span>
-                        </button>
+                        {!teamTextReferences ? (
+                            <>
+                                <input
+                                    ref={localReferenceInputRef}
+                                    type="file"
+                                    hidden
+                                    multiple
+                                    accept={props.mode === "text" ? "image/*,video/*,audio/*" : creationUploadAccept(props.mode)}
+                                    disabled={interactionBusy || !canAddMoreReferences}
+                                    onChange={(event) => {
+                                        const files = Array.from(event.currentTarget.files || []);
+                                        event.currentTarget.value = "";
+                                        if (files.length) props.onUploadReferences(files);
+                                    }}
+                                />
+                                <button type="button" className="creation-reference-entry" onClick={() => localReferenceInputRef.current?.click()} disabled={interactionBusy || !canAddMoreReferences}>
+                                    {props.referenceUploadBusy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
+                                    <span>{props.referenceUploadBusy ? "上传中" : "本地上传"}</span>
+                                </button>
+                            </>
+                        ) : null}
                         <button type="button" className="creation-reference-entry" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences}>
                             <FolderOpen aria-hidden="true" />
                             <span>素材库</span>
@@ -565,7 +570,7 @@ export function CreationComposer(props: ComposerProps) {
                             containerClassName={`creation-chat-mention-container${props.variant === "empty" ? " h-full" : ""}`}
                             className="creation-chat-mention-editor creation-scrollbar"
                             style={{ color: "var(--creation-text)" }}
-                            placeholder={props.placeholderOverride || (props.variant === "empty" ? emptyPlaceholder : placeholder)}
+                            placeholder={props.placeholderOverride || (isHome && !teamTextReferences ? emptyPlaceholder : placeholder)}
                             aria-label="创作提示词，可使用 @ 引用当前参考内容或技能；回车发送，Shift+回车换行"
                             spellCheck
                             disabled={interactionBusy}
@@ -660,7 +665,7 @@ export function CreationComposer(props: ComposerProps) {
                                             </Reorder.Item>
                                         ))}
                                         {!visibleAttachments.length && props.attachments.length ? <li className="creation-reference-filter-empty">该类型暂无参考内容</li> : null}
-                                        {referencesSupported && !props.modeControl ? (
+                                        {referencesSupported && !props.compact ? (
                                             <li className="creation-reference-add-slot">
                                                 <Tooltip title={addReferenceLabel}>
                                                     <button type="button" className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}>
@@ -692,8 +697,8 @@ export function CreationComposer(props: ComposerProps) {
             <footer className="creation-chat-dock">
                 <div className="creation-chat-controls">
                     {props.modeControl}
-                    {props.variant === "thread" && !workspaceTeamId ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
-                    {!props.modeControl && referencesSupported && !props.attachments.length ? (
+                    {props.variant === "thread" ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
+                    {!props.compact && referencesSupported && !props.attachments.length ? (
                         <Tooltip title={addReferenceLabel}>
                             <button type="button" className="creation-chat-control" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}>
                                 <Plus aria-hidden="true" />
@@ -701,7 +706,7 @@ export function CreationComposer(props: ComposerProps) {
                             </button>
                         </Tooltip>
                     ) : null}
-                    {!props.modeControl ? <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} /> : null}
+                    {!props.compact ? <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} /> : null}
                     {canOptimizePrompt ? (
                         <Tooltip title="用 AI 优化提示词">
                             <button type="button" className="creation-chat-control" onClick={() => setPromptOptimizerOpen(true)} aria-label="优化提示词" aria-expanded={promptOptimizerOpen} aria-haspopup="dialog">
@@ -745,11 +750,18 @@ export function CreationComposer(props: ComposerProps) {
                         </Tooltip>
                     ) : null}
                 </div>
-                <div className={props.modeControl ? "creation-chat-submit-tools is-empty" : "contents"}>
-                    {props.modeControl ? <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} /> : null}
+                <div className="creation-chat-submit-tools">
+                    {props.compact ? <VoiceRecordingButton className="creation-voice-trigger" disabled={interactionBusy} onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)} /> : null}
+                    {showCost ? (
+                        <span className="creation-submit-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : undefined}>
+                            <Flame aria-hidden="true" />
+                            <span>{estimatedCredits ? `约 ${formattedCredits}` : formattedCredits}</span>
+                            <span className="sr-only">积分</span>
+                        </span>
+                    ) : null}
                     <Button
                         type="text"
-                        className={`creation-submit ${showCost ? "has-cost" : ""}`}
+                        className="creation-submit"
                         disabled={interactionBusy || !canSubmit}
                         style={
                             {
@@ -762,12 +774,6 @@ export function CreationComposer(props: ComposerProps) {
                         title={!canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel}
                     >
                         {showWorkingGlow ? <WorkingGlow active color="var(--creation-text)" radius="var(--button-radius)" /> : null}
-                        {showCost ? (
-                            <span className="creation-submit-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : undefined}>
-                                <CreditSymbol />
-                                <span>{estimatedCredits ? `预估:${formattedCredits}` : formattedCredits}</span>
-                            </span>
-                        ) : null}
                         <span className="creation-submit-action" aria-hidden>
                             {showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
                             <span>{showWorkingSpinner ? "生成中" : "开始创作"}</span>
@@ -793,8 +799,8 @@ export function CreationComposer(props: ComposerProps) {
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </SpotlightSurface>
     );
-    const composer = embedded ? (
-        props.modeControl ? (
+    const composer = isHome ? (
+        props.compact ? (
             <div className="creation-composer-shell">{surface}</div>
         ) : (
             surface
@@ -836,7 +842,7 @@ const creationModeItems: { mode: CreationMode; icon: ReactNode; label: string }[
 
 type CreationModeKey = CreationMode | "agent";
 
-const homeModeOptions: { mode: CreationModeKey; icon: ReactNode; label: string }[] = workspaceTeamId ? creationModeItems.filter((item) => item.mode === "text") : [...creationModeItems, { mode: "agent", icon: <Orbit />, label: "Agent" }];
+const homeModeOptions: { mode: CreationModeKey; icon: ReactNode; label: string }[] = workspaceTeamId ? creationModeItems : [...creationModeItems, { mode: "agent", icon: <Orbit />, label: "Agent" }];
 
 const folderTabLeadingSpring = { type: "spring", stiffness: 540, damping: 42, mass: 0.6 } as const;
 const folderTabTrailingSpring = { type: "spring", stiffness: 280, damping: 32, mass: 0.8 } as const;
