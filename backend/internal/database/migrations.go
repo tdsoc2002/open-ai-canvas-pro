@@ -1264,11 +1264,19 @@ func migrateSchemaV56(tx *gorm.DB) error {
 	return nil
 }
 
+// LockPostgresSchemaMigration 将调用方的目标库操作与结构迁移串行化，锁随事务结束释放。
+func LockPostgresSchemaMigration(tx *gorm.DB) error {
+	if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", postgresSchemaMigrationLockID).Error; err != nil {
+		return fmt.Errorf("获取数据库迁移锁：%w", err)
+	}
+	return nil
+}
+
 func MigrateSchema(db *gorm.DB) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		if tx.Dialector.Name() == "postgres" {
-			if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", postgresSchemaMigrationLockID).Error; err != nil {
-				return fmt.Errorf("获取数据库迁移锁：%w", err)
+			if err := LockPostgresSchemaMigration(tx); err != nil {
+				return err
 			}
 		}
 		if err := tx.AutoMigrate(&schemaMigration{}); err != nil {

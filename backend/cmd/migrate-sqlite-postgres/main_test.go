@@ -1,39 +1,36 @@
 package main
 
 import (
-	"sync"
+	"strings"
 	"testing"
 
 	"yingce/backend/internal/database"
 	"yingce/backend/internal/model"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
 )
 
 func TestMigrationListCoversSchemaModels(t *testing.T) {
-	want := make(map[string]bool, len(database.Models()))
-	cache := &sync.Map{}
-	for _, value := range database.Models() {
-		parsed, err := schema.Parse(value, cache, schema.NamingStrategy{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		want[parsed.Table] = false
+	db, err := database.Open(database.Config{Driver: "sqlite", DataDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, migration := range migrations() {
-		if _, exists := want[migration.name]; !exists {
-			t.Fatalf("migration list contains unknown table %q", migration.name)
-		}
-		if want[migration.name] {
-			t.Fatalf("migration list contains duplicate table %q", migration.name)
-		}
-		want[migration.name] = true
+	conn, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
 	}
-	for table, covered := range want {
-		if !covered {
-			t.Errorf("migration list is missing table %q", table)
-		}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := database.MigrateSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyMigrationCoverage(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("CREATE TABLE unexpected_business_table (id INTEGER PRIMARY KEY)").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyMigrationCoverage(db); err == nil || !strings.Contains(err.Error(), "unexpected_business_table") {
+		t.Fatalf("应拒绝未登记的源库业务表，得到 %v", err)
 	}
 }
 

@@ -54,21 +54,46 @@ func main() {
 	target = target.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 
 	// PostgreSQL 的 DDL 参与事务；任一表复制或核对失败都会回滚整个新库结构。
+	var copyRows bool
+	var total int
 	if err := target.Transaction(func(tx *gorm.DB) error {
+		if err := database.LockPostgresSchemaMigration(tx); err != nil {
+			return err
+		}
+		var currentSchema string
+		if err := tx.Raw("SELECT current_schema()").Scan(&currentSchema).Error; err != nil {
+			return fmt.Errorf("读取 PostgreSQL 目标 schema：%w", err)
+		}
+		if currentSchema != "public" {
+			return fmt.Errorf("PostgreSQL 全量迁移要求当前 schema 为 public，实际为 %q", currentSchema)
+		}
+		if err := tx.Exec("SET LOCAL search_path TO public").Error; err != nil {
+			return fmt.Errorf("设置 PostgreSQL 目标 schema：%w", err)
+		}
 		tableNames, err := publicTableNames(tx)
 		if err != nil {
 			return err
 		}
-		copyRows := len(tableNames) == 0
+		copyRows = len(tableNames) == 0
 		if copyRows {
 			if err := database.MigrateSchema(tx); err != nil {
 				return fmt.Errorf("创建目标表结构：%w", err)
 			}
-		} else if err := validateTargetTableNames(tableNames); err != nil {
+			tableNames, err = publicTableNames(tx)
+			if err != nil {
+				return err
+			}
+		}
+		if err := validateMigrationTableNames("PostgreSQL public schema", tableNames); err != nil {
 			return err
 		}
+		if copyRows {
+			// 空目标库的结构迁移会预填这些表；业务数据以 SQLite 源库为准。
+			if err := tx.Exec("TRUNCATE TABLE public.mcp_server_templates, public.skill_curation_roots, public.skill_curation_settings").Error; err != nil {
+				return fmt.Errorf("清除目标库预填记录：%w", err)
+			}
+		}
 
-		total := 0
 		for _, migration := range migrations() {
 			count, err := migration.run(source, tx, copyRows)
 			if err != nil {
@@ -78,16 +103,18 @@ func main() {
 			log.Printf("已迁移并核对 %s：%d 行", migration.name, count)
 		}
 		if copyRows {
-			log.Printf("全量迁移核对完成：%d 张表，%d 行", len(migrations()), total)
-		} else {
-			log.Printf("目标库已有完整迁移结果，未重复写入：%d 张表，%d 行", len(migrations()), total)
-		}
-		if err := database.ReconcilePrefixedIDSequences(tx); err != nil {
-			return fmt.Errorf("校准可读 ID 序列：%w", err)
+			if err := database.ReconcilePrefixedIDSequences(tx); err != nil {
+				return fmt.Errorf("校准可读 ID 序列：%w", err)
+			}
 		}
 		return nil
 	}); err != nil {
 		log.Fatal(err)
+	}
+	if copyRows {
+		log.Printf("全量迁移核对完成：%d 张表，%d 行", len(migrations()), total)
+	} else {
+		log.Printf("目标库已有完整迁移结果，未重复写入：%d 张表，%d 行", len(migrations()), total)
 	}
 }
 
@@ -113,13 +140,13 @@ func publicTableNames(db *gorm.DB) ([]string, error) {
 	return names, err
 }
 
-// validateTargetTableNames compares the existing PostgreSQL schema against the
-// same business-table list used by Models() and migrations().
-// schema_migrations is created by database.MigrateSchema and is intentionally
-// not part of the row-copy list, so it is allowed as the only system table.
-func validateTargetTableNames(actual []string) error {
+// 主线与扩展迁移账本由 database.MigrateSchema 创建，业务数据复制不包含它们。
+func validateMigrationTableNames(databaseName string, actual []string) error {
 	expected := make(map[string]struct{}, len(migrations()))
 	for _, migration := range migrations() {
+		if _, exists := expected[migration.name]; exists {
+			return fmt.Errorf("迁移清单重复包含表 %s", migration.name)
+		}
 		expected[migration.name] = struct{}{}
 	}
 
@@ -135,7 +162,7 @@ func validateTargetTableNames(actual []string) error {
 	}
 	extra := make([]string, 0)
 	for name := range actualSet {
-		if name == "schema_migrations" {
+		if name == "schema_migrations" || name == "yingce_schema_migrations" {
 			continue
 		}
 		if _, ok := expected[name]; !ok {
@@ -145,7 +172,7 @@ func validateTargetTableNames(actual []string) error {
 	sort.Strings(missing)
 	sort.Strings(extra)
 	if len(missing) > 0 || len(extra) > 0 {
-		return fmt.Errorf("PostgreSQL public schema 与当前模型清单不一致，缺少表：%s，额外表：%s；拒绝覆盖或补写", strings.Join(missing, ", "), strings.Join(extra, ", "))
+		return fmt.Errorf("%s 与迁移清单不一致，缺少表：%s，额外表：%s；拒绝迁移", databaseName, strings.Join(missing, ", "), strings.Join(extra, ", "))
 	}
 	return nil
 }
@@ -159,7 +186,7 @@ func migrateTable[T any](name string) tableMigration {
 				return 0, err
 			}
 			var sourceRows []T
-			if err := source.Order(primaryKey).Find(&sourceRows).Error; err != nil {
+			if err := source.Unscoped().Order(primaryKey).Find(&sourceRows).Error; err != nil {
 				return 0, err
 			}
 			if err := validateExplicitStringLengths(source, name, sourceRows); err != nil {
@@ -172,7 +199,7 @@ func migrateTable[T any](name string) tableMigration {
 			}
 
 			var targetRows []T
-			if err := target.Order(primaryKey).Find(&targetRows).Error; err != nil {
+			if err := target.Unscoped().Order(primaryKey).Find(&targetRows).Error; err != nil {
 				return 0, err
 			}
 			if !equivalent(reflect.ValueOf(sourceRows), reflect.ValueOf(targetRows)) {
@@ -341,28 +368,17 @@ func equivalent(left reflect.Value, right reflect.Value) bool {
 }
 
 func verifyMigrationCoverage(db *gorm.DB) error {
-	expected := make(map[string]struct{}, len(database.Models()))
-	for _, value := range database.Models() {
-		statement := &gorm.Statement{DB: db}
-		if err := statement.Parse(value); err != nil {
-			return err
-		}
-		expected[statement.Schema.Table] = struct{}{}
+	names, err := db.Migrator().GetTables()
+	if err != nil {
+		return err
 	}
-	for _, migration := range migrations() {
-		if _, exists := expected[migration.name]; !exists {
-			return fmt.Errorf("迁移清单包含未知表 %s", migration.name)
+	tables := make([]string, 0, len(names))
+	for _, name := range names {
+		if !strings.HasPrefix(name, "sqlite_") {
+			tables = append(tables, name)
 		}
-		delete(expected, migration.name)
 	}
-	if len(expected) > 0 {
-		missing := make([]string, 0, len(expected))
-		for name := range expected {
-			missing = append(missing, name)
-		}
-		return fmt.Errorf("迁移清单缺少表：%s", strings.Join(missing, ", "))
-	}
-	return nil
+	return validateMigrationTableNames("SQLite 源库结构", tables)
 }
 
 func migrations() []tableMigration {
@@ -403,7 +419,7 @@ func migrations() []tableMigration {
 		migrateTable[model.ChannelModelPriceTier]("channel_model_price_tiers"),
 		migrateTable[model.ChannelCatalogSnapshot]("channel_catalog_snapshots"),
 		migrateTable[model.ChannelProtocolSelection]("channel_protocol_selections"),
-		migrateTable[model.IDSequence]("id_sequences"),
+		{name: "id_sequences", run: migrateIDSequences},
 		migrateTable[model.LogicalModel]("logical_models"),
 		migrateTable[model.LogicalModelRevision]("logical_model_revisions"),
 		migrateTable[model.LogicalModelRoute]("logical_model_routes"),
@@ -450,6 +466,11 @@ func migrations() []tableMigration {
 		migrateTable[model.SkillLibraryCategory]("skill_library_categories"),
 		migrateTable[model.SkillVersion]("skill_versions"),
 		migrateTable[model.SkillFile]("skill_files"),
+		migrateTable[model.SkillCurationSetting]("skill_curation_settings"),
+		migrateTable[model.SkillCurationRoot]("skill_curation_roots"),
+		migrateTable[model.SkillCurationCategory]("skill_curation_categories"),
+		migrateTable[model.SkillCurationAssignment]("skill_curation_assignments"),
+		migrateTable[model.SkillCurationRootAssignment]("skill_curation_root_assignments"),
 		migrateTable[model.UserSkillState]("user_skill_states"),
 		migrateTable[model.BuiltinSkillTombstone]("builtin_skill_tombstones"),
 		migrateTable[model.Resource]("resources"),
@@ -458,6 +479,9 @@ func migrations() []tableMigration {
 		migrateTable[model.ResourceOffloadJob]("resource_offload_jobs"),
 		migrateTable[model.AnnouncementImageDraft]("announcement_image_drafts"),
 		migrateTable[model.Asset]("assets"),
+		migrateTable[model.OfficialAsset]("official_assets"),
+		migrateTable[model.OfficialAssetImport]("official_asset_imports"),
+		migrateTable[model.OfficialAssetRecommendation]("official_asset_recommendations"),
 		migrateTable[model.AssetFolder]("asset_folders"),
 		migrateTable[model.ProjectAssetLink]("project_asset_links"),
 		migrateTable[model.ProjectAssetFolder]("project_asset_folders"),
