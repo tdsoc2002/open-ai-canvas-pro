@@ -53,6 +53,7 @@ const sendInputs: Array<Record<string, any>> = [];
 let sendFailure: Error | undefined;
 let capabilitiesOverride: (() => Promise<unknown>) | undefined;
 let sendOverride: (() => Promise<{ run: AgentRun }>) | undefined;
+let deleteOverride: ((id: string) => Promise<{ deleted: boolean }>) | undefined;
 // 新建画布首次保存前服务端没有这块画布：偏好要等 prepareCanvasForCloudAction 落库后才读得到。
 let draftCanvasUntilPrepared = false;
 let canvasPrepared = false;
@@ -111,6 +112,10 @@ mock.module("@/services/api/agent", () => ({
     createAgentRun: async () => {
         generated++;
         throw new Error("不应新建独立轮次");
+    },
+    deleteAgentConversation: (id: string) => {
+        if (!deleteOverride) throw new Error("测试禁止删除云端对话");
+        return deleteOverride(id);
     },
     decideAgentApproval: async () => {
         generated++;
@@ -308,6 +313,7 @@ async function mount(
     sendFailure = undefined;
     capabilitiesOverride = undefined;
     sendOverride = undefined;
+    deleteOverride = undefined;
     generated = 0;
     subscriptions.length = 0;
     refreshRequests.length = 0;
@@ -540,6 +546,36 @@ test("云端发现不能替换未提交草稿，明确新建后不会重新接�
         await persist();
         expect(local.find((item) => item.id === activeId)?.localNewCanvasId).toBe("shared-canvas");
         expect(generated).toBe(0);
+    } finally {
+        await mounted.close();
+    }
+});
+
+test("云端删除迟到时保留新建对话及其草稿", async () => {
+    const original = chat("old-conversation", makeRun("old-round", "completed"));
+    const mounted = await mount(original, [original]);
+    try {
+        const deletion = Promise.withResolvers<{ deleted: boolean }>();
+        deleteOverride = (id) => {
+            expect(id).toBe(original.serverConversationId!);
+            return deletion.promise;
+        };
+        await act(async () => header.onHistory());
+        let deleting!: Promise<void>;
+        await act(async () => {
+            deleting = historyUI.onDelete(original.id);
+        });
+        await act(async () => historyUI.onNew());
+        await act(async () => composer.onPromptChange("删除等待时新写的草稿"));
+        remote = [];
+        await act(async () => {
+            deletion.resolve({ deleted: true });
+            await deleting;
+        });
+        expect(composer.prompt).toBe("删除等待时新写的草稿");
+        await persist();
+        expect(local.some((item) => item.id === original.id)).toBe(false);
+        expect(local.find((item) => item.id === activeId)?.draft).toBe("删除等待时新写的草稿");
     } finally {
         await mounted.close();
     }

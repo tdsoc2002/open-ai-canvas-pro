@@ -91,7 +91,7 @@ func TestModelChargePrecisionAllowsZeroPriceReplacement(t *testing.T) {
 	replacement := order
 	replacement.AmountMicrocredits = 0
 	replacement.UnitPriceMicrocredits = 4_999
-	if err := repo.SwitchTaskLogicalRoute(task.ID, "original", "alternate", "{}", order.ID, "channel", "model", &replacement, model.BillingCostSnapshot{}); err != nil {
+	if err := repo.SwitchTaskLogicalRoute(task.ID, "original", "alternate", "{}", order.ID, "channel", "model", &replacement, model.BillingCostSnapshot{}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := repo.SettleBillingOrder(order.ID, "provider"); err != nil {

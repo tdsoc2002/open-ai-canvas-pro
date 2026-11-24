@@ -303,6 +303,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     const [cloudRefreshEpoch, setCloudRefreshEpoch] = useState(0);
     const [cloudOpeningId, setCloudOpeningId] = useState("");
     const [cloudDeletingId, setCloudDeletingId] = useState("");
+    const cloudHistoryDeletionRevision = useRef(0);
     const cloudOpeningRef = useRef<string | null>(null);
     const conversationLoadControllerRef = useRef<AbortController | null>(null);
     const cloudRunTransitionRef = useRef<string | null>(null);
@@ -962,11 +963,12 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             refreshing = true;
             if (!background) setCloudHistoryLoading(true);
             try {
+                const deletionRevision = cloudHistoryDeletionRevision.current;
                 const cache = conversationSnapshots.current;
                 const selected = cache.find((item) => item.id === cloudLiveState.current.activeConversationId);
                 const selectedId = selected ? cloudAgentConversationServerId(selected) : undefined;
                 const remote = await refreshCloudAgentConversations({ canvasId: canvasId || undefined, observedConversationIds: selectedId ? [selectedId] : [], existing: cache, scope: accountScope, signal: controller.signal });
-                if (!active || !accountIsCurrent() || cloudLiveState.current.canvasId !== canvasId) return;
+                if (!active || !accountIsCurrent() || cloudLiveState.current.canvasId !== canvasId || cloudHistoryDeletionRevision.current !== deletionRevision) return;
                 const live = cloudLiveState.current;
                 const updates = remote.filter((item) => !cache.includes(item));
                 const merged = updates.length ? mergeCloudAgentConversations(conversationSnapshots.current, updates) : conversationSnapshots.current;
@@ -993,6 +995,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                 if (
                     !active ||
                     !accountIsCurrent() ||
+                    cloudHistoryDeletionRevision.current !== deletionRevision ||
                     cloudLiveState.current.activeConversationId !== live.activeConversationId ||
                     cloudLiveState.current.prompt !== live.prompt ||
                     submissionRequestRef.current ||
@@ -2083,20 +2086,24 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             setCloudDeletingId(id);
             try {
                 await deleteAgentConversation(serverId);
+                if (!accountIsCurrent()) return;
+                cloudHistoryDeletionRevision.current += 1;
+                setCloudRefreshEpoch((value) => value + 1);
             } catch (cause) {
                 if (accountIsCurrent()) setCloudHistoryError(cause instanceof Error ? cause.message : "云端对话删除失败");
                 return;
             } finally {
-                setCloudDeletingId("");
+                if (accountIsCurrent()) setCloudDeletingId("");
             }
         }
-        const next = conversations.filter((item) => item.id !== id);
-        setConversations(next);
-        if (id === activeConversationId) newConversation();
-        await Promise.allSettled([clearCloudAgentPendingSubmission(id, accountScope), clearCloudAgentOutbox(id, accountScope)]);
+        const keepConversation = (item: CloudAgentConversation) => item.id !== id;
+        const next = conversationSnapshots.current.filter(keepConversation);
+        const currentId = currentScope.current;
         cancelConversationAutosave();
+        setConversations((current) => current.filter(keepConversation));
+        if (id === currentId) newConversation();
         try {
-            await saveCloudAgentConversations(id === activeConversationId ? null : activeConversationId, next, accountScope);
+            await Promise.all([saveCloudAgentConversations(id === currentId ? null : currentId, next, accountScope), clearCloudAgentPendingSubmission(id, accountScope), clearCloudAgentOutbox(id, accountScope)]);
         } catch (cause) {
             if (accountIsCurrent()) setCloudHistoryError(cause instanceof Error ? cause.message : "对话历史保存失败");
         }

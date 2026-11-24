@@ -114,12 +114,13 @@ export function readNodeGenerationSpec(node: Pick<CanvasNodeData, "type" | "meta
     // read for migration, otherwise a stale compatibility mirror can silently overwrite
     // an explicitly stored false/zero value.
     if (!stored) {
+        const rawOptions = rawStored?.options;
+        const legacyOptions = rawOptions && typeof rawOptions === "object" && !Array.isArray(rawOptions) ? (rawOptions as Record<string, unknown>) : {};
         for (const field of GENERATION_OPTION_FIELDS) {
             if (!(field.modes as readonly string[]).includes(mode)) continue;
-            const value = field.node in metadata ? metadata[field.node] : rawStored && typeof rawStored.options === "object" && !Array.isArray(rawStored.options) ? (rawStored.options as Record<string, unknown>)[field.name] : undefined;
-            if (value === undefined && !(field.node in metadata)) continue;
-            if (value === undefined || value === null || (value === "" && field.name !== "audioVoice")) delete options[field.name];
-            else options[field.name] = optionValue(value, field.kind, field.node);
+            const value = Object.hasOwn(legacyOptions, field.name) ? legacyOptions[field.name] : metadata[field.node];
+            if (value === undefined || value === null || (value === "" && field.name !== "audioVoice")) continue;
+            options[field.name] = optionValue(value, field.kind, field.node);
         }
     }
     const modelSelection =

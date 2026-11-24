@@ -56,6 +56,14 @@ test("历史节点的部分生成合同回退到当前版本，不阻断画布�
     });
 });
 
+test("历史视频草稿优先读取合同参数，空参数回退到镜像字段", () => {
+    const current = node(CanvasNodeType.Video, { seconds: "8", generationSpec: { options: { durationSeconds: 5 } } as never });
+    assert.equal(readNodeGenerationSpec(current)?.options.durationSeconds, 5);
+
+    const withoutOptions = node(CanvasNodeType.Video, { seconds: "8", generationSpec: { options: null } as never });
+    assert.deepEqual(readNodeGenerationSpec(withoutOptions)?.options, { durationSeconds: 8 });
+});
+
 test("空媒体草稿同时初始化提交提示词和编辑提示词", () => {
     const current = node(CanvasNodeType.Video, { status: "idle" });
 
