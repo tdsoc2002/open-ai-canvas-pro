@@ -61,10 +61,10 @@
                 "maxImageBytes": 31457280,
                 "maxVideos": 3,
                 "maxVideoBytes": 52428800,
-                "maxVideoDurationSeconds": 15,
+                "maxTotalVideoDurationSeconds": 15,
                 "maxAudios": 3,
                 "maxAudioBytes": 15728640,
-                "maxAudioDurationSeconds": 15
+                "maxTotalAudioDurationSeconds": 15
               },
               "duration": {
                 "selection": "range",

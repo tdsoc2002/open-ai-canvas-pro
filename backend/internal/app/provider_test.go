@@ -2793,9 +2793,13 @@ func TestRunNewAPIChannel2VideoTaskResumesOriginalProviderTaskWithoutAnotherPost
 	}))
 	defer server.Close()
 
+	profile := DefaultModelCapabilityConfigForModel(string(model.ChannelInterfaceNewAPIChannel2), "video-model")
+	profile.Video.References.MaxTotalVideoDuration = nil
 	input := canvasGenerationInput{
-		Mode:   "video",
-		Config: providerConfig{BaseURL: server.URL, APIKey: "test-key", Model: "video-model", InterfaceType: string(model.ChannelInterfaceNewAPIChannel2)},
+		Mode:            "video",
+		Prompt:          "参考两个视频",
+		Config:          providerConfig{BaseURL: server.URL, APIKey: "test-key", Model: "video-model", VideoSeconds: "6", InterfaceType: string(model.ChannelInterfaceNewAPIChannel2), CapabilityConfig: profile},
+		ReferenceVideos: []providerMedia{{DurationMs: 8000}, {DurationMs: 8000}},
 	}
 	inputJSON, err := json.Marshal(input)
 	if err != nil {
@@ -2804,9 +2808,13 @@ func TestRunNewAPIChannel2VideoTaskResumesOriginalProviderTaskWithoutAnotherPost
 	ctx := withProviderAnalytics(context.Background(), nil, model.Task{
 		ID: "task-1", Type: "canvas_video", ProviderRequestID: "existing-provider-task", InputJSON: string(inputJSON),
 	})
-	result, err := runVideoTaskForTest(ctx, input)
+	service, _ := newMediaRecoveryTestService(t)
+	if _, err := service.processCanvasGenerationTask(t.Context(), "user-1", "", "canvas_video", "", string(inputJSON)); err == nil || !strings.Contains(err.Error(), "参考视频总时长不能超过 15 秒") {
+		t.Fatalf("提交前应拦截超限参考视频，实际错误：%v", err)
+	}
+	result, err := service.processCanvasGenerationTask(ctx, "user-1", "", "canvas_video", "", string(inputJSON))
 	if err != nil {
-		t.Fatalf("runVideoTask() error = %v", err)
+		t.Fatalf("恢复上游任务回查失败：%v", err)
 	}
 	if result["video"] == nil {
 		t.Fatalf("result = %#v", result)

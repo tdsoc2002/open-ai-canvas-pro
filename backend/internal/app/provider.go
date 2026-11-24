@@ -176,7 +176,8 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 		return nil, err
 	}
 	input.Config = config
-	if config.releaseWithdrawn && resumedProviderRequestID(ctx) == "" {
+	submitting := resumedProviderRequestID(ctx) == ""
+	if config.releaseWithdrawn && submitting {
 		return nil, errors.New("原任务的插件已撤下，无法创建新的上游任务")
 	}
 	ctx = withProtocolRegistry(ctx, config.registry)
@@ -215,7 +216,7 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 			return nil, err
 		}
 		// 工作流参数由工作流字段定义校验，普通模型能力配置不能覆盖它们。
-		if resumedProviderRequestID(ctx) == "" {
+		if submitting {
 			if err := s.hydrateGenerationMedia(userID, &input, providerMediaHydrationPolicy{}); err != nil {
 				return nil, err
 			}
@@ -254,14 +255,14 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 			return nil, err
 		}
 	case "video":
-		if err := validateResolvedVideoCapability(&input); err != nil {
+		if err := validateResolvedVideoCapability(&input, submitting); err != nil {
 			return nil, err
 		}
 	}
 	if err := s.validateArkPortraitReferences(userID, &input); err != nil {
 		return nil, err
 	}
-	if resumedProviderRequestID(ctx) == "" {
+	if submitting {
 		if err := validateReferenceTransportProtocol(ctx, input); err != nil {
 			return nil, err
 		}
@@ -273,7 +274,7 @@ func (s *Service) processCanvasGenerationTask(ctx context.Context, userID string
 			return nil, err
 		}
 	}
-	if input.Mode == "video" && input.VideoCapability != nil {
+	if submitting && input.Mode == "video" && input.VideoCapability != nil {
 		if err := validateVideoTask(input.VideoCapability, input); err != nil {
 			return nil, err
 		}

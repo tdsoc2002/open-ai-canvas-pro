@@ -258,7 +258,7 @@ func TestAutoDLScreenSpecSystemSaveCatalogAndExecutionIgnoreClientOverride(t *te
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := validateResolvedVideoCapability(&execution); err != nil {
+		if err := validateResolvedVideoCapability(&execution, true); err != nil {
 			t.Fatal(err)
 		}
 		if execution.Config.VQuality != catalog.Video.DefaultResolution || execution.Config.Size != "" || !reflect.DeepEqual(execution.VideoCapability.Resolutions, catalog.Video.Resolutions) {

@@ -52,10 +52,10 @@
                 "maxImageBytes": 30000000,
                 "maxVideos": 0,
                 "maxVideoBytes": 300000000,
-                "maxVideoDurationSeconds": 30,
+                "maxTotalVideoDurationSeconds": 30,
                 "maxAudios": 0,
                 "maxAudioBytes": 0,
-                "maxAudioDurationSeconds": 0
+                "maxTotalAudioDurationSeconds": 0
               },
               "duration": {
                 "selection": "range",
@@ -322,10 +322,10 @@
                 "maxImageBytes": 30000000,
                 "maxVideos": 0,
                 "maxVideoBytes": 300000000,
-                "maxVideoDurationSeconds": 20,
+                "maxTotalVideoDurationSeconds": 20,
                 "maxAudios": 0,
                 "maxAudioBytes": 0,
-                "maxAudioDurationSeconds": 0
+                "maxTotalAudioDurationSeconds": 0
               },
               "duration": {
                 "selection": "range",

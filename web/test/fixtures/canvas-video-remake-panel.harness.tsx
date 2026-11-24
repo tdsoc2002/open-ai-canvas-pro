@@ -21,8 +21,14 @@ const { CanvasNodeType } = await import("@/types/canvas");
 afterAll(() => dom.happyDOM.abort());
 
 test("空图片位可从实际生成面板补图，补图后仍需手动提交", async () => {
-    const model = "seedance-2.0";
-    const channel = createModelChannel({ id: "panel", interfaceType: "volcengine-ark-video", models: [model], modelCosts: [{ model, capability: "video", protocol: "volcengine-ark-video", billingMode: "per_second", unitPriceMicrocredits: 1 }] });
+    const model = "doubao-seedance-2-0-260128";
+    const channel = createModelChannel({
+        id: "panel",
+        scope: "system",
+        interfaceType: "volcengine-ark-video",
+        models: [model],
+        modelCosts: [{ model, capability: "video", protocol: "volcengine-ark-video", billingMode: "per_second", unitPriceMicrocredits: 1 }],
+    });
     const config = { ...defaultConfig, channels: [channel], videoModel: encodeChannelModel(channel.id, model) };
     useConfigStore.setState({ config });
     useUserStore.setState((state) => ({ features: { ...state.features, customChannelsEnabled: true, creditsEnabled: false } }));

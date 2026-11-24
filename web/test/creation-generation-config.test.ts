@@ -1,10 +1,13 @@
 import { expect, test } from "bun:test";
-import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
+import { videoReferenceSegmentError, videoRemakeInputIssue } from "../src/lib/canvas/canvas-video-regeneration";
+import { defaultModelCapabilityConfig, modelCapabilityConfigFor } from "../src/lib/model-capabilities";
 import { modelQuoteRequest } from "../src/lib/model-pricing";
+import { modelCompatibilityError } from "../src/lib/model-selection";
+import type { CanvasNodeMetadata } from "../src/types/canvas";
 import { creationVideoConfig, creationVideoSettings } from "../src/pages/create/creation-generation-config";
 import { normalizeCreationComposerPreferences } from "../src/stores/use-creation-preferences-store";
 import { prepareBackendGenerationTask } from "../src/services/api/generation-task";
-import { defaultConfig, type AiConfig } from "../src/stores/use-config-store";
+import { createModelChannel, defaultConfig, encodeChannelModel, type AiConfig } from "../src/stores/use-config-store";
 
 function videoConfig(generateAudio: { supported: boolean; default: boolean }): AiConfig {
     const capabilityConfig = defaultModelCapabilityConfig();
@@ -30,6 +33,85 @@ function videoConfig(generateAudio: { supported: boolean; default: boolean }): A
         ],
     };
 }
+
+test("省略合计时长时保留渠道默认值，显式 0 仍可关闭", () => {
+    const config = videoConfig({ supported: false, default: false });
+    const cost = config.channels[0].modelCosts![0];
+    cost.protocol = "newapi-channel-2";
+    expect(modelCapabilityConfigFor(config, config.model).video?.references).toMatchObject({
+        maxTotalVideoDurationSeconds: 15,
+        maxTotalAudioDurationSeconds: 15,
+    });
+    cost.capabilityConfig!.video!.references.maxTotalVideoDurationSeconds = 0;
+    expect(modelCapabilityConfigFor(config, config.model).video?.references.maxTotalVideoDurationSeconds).toBe(0);
+});
+
+test("没有模型目录条目的自定义渠道也按所选协议校验参考视频", async () => {
+    const model = "doubao-seedance-2-0-260128";
+    const channel = createModelChannel({ id: "personal", scope: "user", interfaceType: "volcengine-ark-video", models: [model] });
+    const selected = encodeChannelModel(channel.id, model);
+    const config = { ...defaultConfig, model: selected, videoModel: selected, channels: [channel] };
+    const metadata: CanvasNodeMetadata = { videoReferenceMode: "all", videoRemake: true };
+    expect(videoRemakeInputIssue(metadata, 1, [3000], config)).toBe("");
+    expect(videoRemakeInputIssue(metadata, 1, [16000], config)).toContain("参考视频总时长不能超过 15 秒");
+    expect(videoReferenceSegmentError(config, 3000)).toBe("");
+    expect(modelCompatibilityError(config, selected, { capability: "video", input: { imageCount: 1, videoCount: 1, audioCount: 0, textCount: 0, characterCount: 0 } })).toBe("");
+    const prepare = (durationMs: number) =>
+        prepareBackendGenerationTask({
+            mode: "video",
+            prompt: "使用参考影片",
+            config,
+            referenceVideos: [{ id: "clip", name: "clip.mp4", type: "video/mp4", storageKey: "resource:test-clip", durationMs }],
+        });
+
+    await expect(prepare(3000)).resolves.toMatchObject({
+        input: {
+            config: { capabilityConfig: { video: { references: { maxVideos: 3, maxTotalVideoDurationSeconds: 15 } } } },
+            referenceVideos: [{ storageKey: "resource:test-clip", durationMs: 3000 }],
+        },
+    });
+    await expect(prepare(16000)).rejects.toThrow("参考视频总时长不能超过 15 秒");
+});
+
+test("视频任务在准备素材前校验参考视频段数和总时长", async () => {
+    const config = videoConfig({ supported: false, default: false });
+    const profile = config.channels[0].modelCosts![0].capabilityConfig!.video!;
+    profile.references.maxVideos = 2;
+    profile.references.maxTotalVideoDurationSeconds = 15;
+    const prepare = (durations: number[]) =>
+        prepareBackendGenerationTask({
+            mode: "video",
+            prompt: "根据参考视频生成",
+            config,
+            referenceVideos: durations.map((durationMs, index) => ({ id: String(index), name: `clip-${index}.mp4`, type: "video/mp4", url: `https://example.com/clip-${index}.mp4`, durationMs })),
+        });
+
+    await expect(prepare([7000, 8000])).resolves.toMatchObject({ input: { referenceVideos: [{ durationMs: 7000 }, { durationMs: 8000 }] } });
+    await expect(prepare([8064, 8064])).rejects.toThrow("参考视频总时长不能超过 15 秒");
+    await expect(prepare([15000])).resolves.toMatchObject({ input: { referenceVideos: [{ durationMs: 15000 }] } });
+    await expect(prepare([16021])).rejects.toThrow("参考视频总时长不能超过 15 秒");
+    await expect(prepare([3000, 3000, 3000])).rejects.toThrow("参考视频最多支持 2 段");
+    profile.references.maxTotalVideoDurationSeconds = 0;
+    await expect(prepare([8064, 8064])).resolves.toMatchObject({ input: { referenceVideos: [{ durationMs: 8064 }, { durationMs: 8064 }] } });
+});
+
+test("视频任务独立校验参考音频的段数和总时长", async () => {
+    const config = videoConfig({ supported: false, default: false });
+    const profile = config.channels[0].modelCosts![0].capabilityConfig!.video!;
+    Object.assign(profile.references, { maxVideos: 1, maxTotalVideoDurationSeconds: 15, maxAudios: 2, maxTotalAudioDurationSeconds: 15 });
+    const prepare = (durations: number[]) =>
+        prepareBackendGenerationTask({
+            mode: "video",
+            prompt: "根据参考视频和声音生成",
+            config,
+            referenceVideos: [{ id: "video", name: "video.mp4", type: "video/mp4", url: "https://example.com/video.mp4", durationMs: 15000 }],
+            referenceAudios: durations.map((durationMs, index) => ({ id: String(index), name: `audio-${index}.wav`, type: "audio/wav", url: `https://example.com/audio-${index}.wav`, durationMs })),
+        });
+
+    await expect(prepare([7000, 8000])).resolves.toMatchObject({ input: { referenceAudios: [{ durationMs: 7000 }, { durationMs: 8000 }] } });
+    await expect(prepare([8064, 8064])).rejects.toThrow("参考音频总时长不能超过 15 秒");
+    await expect(prepare([3000, 3000, 3000])).rejects.toThrow("参考音频最多支持 2 段");
+});
 
 test("创作台自动关闭不适用音轨与水印，报价、提交与重试一致省略", async () => {
     const config = videoConfig({ supported: false, default: false });

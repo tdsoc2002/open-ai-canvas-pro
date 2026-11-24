@@ -15,7 +15,7 @@ import (
 	"yingce/backend/internal/protocol"
 )
 
-func validateResolvedVideoCapability(input *canvasGenerationInput) error {
+func validateResolvedVideoCapability(input *canvasGenerationInput, submitting bool) error {
 	profile := input.Config.CapabilityConfig
 	if profile == nil && input.Config.ChannelID == "" {
 		return nil
@@ -26,6 +26,10 @@ func validateResolvedVideoCapability(input *canvasGenerationInput) error {
 	input.VideoCapability = profile.Video
 	applyAutoDLVideoScreenSpec(input, profile.Video)
 	applyFixedVideoResolution(input, profile.Video)
+	// 上游已受理的任务沿用原协议回查，新的准入规则只约束待提交的请求。
+	if !submitting {
+		return nil
+	}
 	return validateVideoTask(profile.Video, *input)
 }
 
