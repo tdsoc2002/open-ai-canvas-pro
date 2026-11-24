@@ -40,6 +40,7 @@ import { useThemePack } from "@/themes/use-theme-pack";
 import { CanvasSyncPendingError, waitForCanvasSync } from "@/lib/canvas/sync-recovery";
 import {
     cancelAgentRun,
+    deleteAgentConversation,
     getAgentCapabilities,
     getAgentProfile,
     getAgentRun,
@@ -301,6 +302,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
     const [cloudHistoryReady, setCloudHistoryReady] = useState(false);
     const [cloudRefreshEpoch, setCloudRefreshEpoch] = useState(0);
     const [cloudOpeningId, setCloudOpeningId] = useState("");
+    const [cloudDeletingId, setCloudDeletingId] = useState("");
     const cloudOpeningRef = useRef<string | null>(null);
     const conversationLoadControllerRef = useRef<AbortController | null>(null);
     const cloudRunTransitionRef = useRef<string | null>(null);
@@ -851,6 +853,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
         setCloudHistoryReady(false);
         setCloudHistoryError(undefined);
         setCloudOpeningId("");
+        setCloudDeletingId("");
         cloudOpeningRef.current = null;
         conversationLoadControllerRef.current?.abort();
         cloudRunTransitionRef.current = null;
@@ -2071,17 +2074,32 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
             if (conversationLoadControllerRef.current === controller) conversationLoadControllerRef.current = null;
         }
     };
-    const deleteConversation = (id: string) => {
-        if (!canSwitchConversation() || conversations.some((item) => item.id === id && cloudAgentConversationServerId(item))) return;
+    const deleteConversation = async (id: string) => {
+        if (!canSwitchConversation() || cloudDeletingId) return;
+        const target = conversations.find((item) => item.id === id);
+        if (!target) return;
+        const serverId = cloudAgentConversationServerId(target);
+        if (serverId) {
+            setCloudDeletingId(id);
+            try {
+                await deleteAgentConversation(serverId);
+            } catch (cause) {
+                if (accountIsCurrent()) setCloudHistoryError(cause instanceof Error ? cause.message : "云端对话删除失败");
+                return;
+            } finally {
+                setCloudDeletingId("");
+            }
+        }
         const next = conversations.filter((item) => item.id !== id);
         setConversations(next);
         if (id === activeConversationId) newConversation();
-        // 本机对话删除后，它的排队消息一并清掉。
-        void clearCloudAgentOutbox(id, accountScope).catch(() => undefined);
+        await Promise.allSettled([clearCloudAgentPendingSubmission(id, accountScope), clearCloudAgentOutbox(id, accountScope)]);
         cancelConversationAutosave();
-        void saveCloudAgentConversations(id === activeConversationId ? null : activeConversationId, next, accountScope).catch((cause) => {
-            if (accountIsCurrent()) setCloudHistoryError(String(cause));
-        });
+        try {
+            await saveCloudAgentConversations(id === activeConversationId ? null : activeConversationId, next, accountScope);
+        } catch (cause) {
+            if (accountIsCurrent()) setCloudHistoryError(cause instanceof Error ? cause.message : "对话历史保存失败");
+        }
     };
 
     // ---- 输入区：发送 / 排队 / 插话 / 保存的路由与提示 ----
@@ -2639,6 +2657,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel({ hidde
                                         loading={cloudHistoryLoading}
                                         error={cloudHistoryError}
                                         openingId={cloudOpeningId}
+                                        deletingId={cloudDeletingId}
                                         onRefresh={() => setCloudRefreshEpoch((value) => value + 1)}
                                         onCollapse={onCollapse}
                                     />
