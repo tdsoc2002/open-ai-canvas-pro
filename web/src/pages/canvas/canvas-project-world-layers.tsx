@@ -66,7 +66,7 @@ type CanvasProjectWorldLayersProps = {
     renderCanvasNodeContent: (node: CanvasNodeData) => ReactNode;
     onConnectionSelect: (connectionId: string) => void;
     onConnectionContextMenu: (event: ReactMouseEvent<SVGPathElement>, connectionId: string) => void;
-    onNodeMouseDown: (event: ReactMouseEvent, nodeId: string) => void;
+    onNodeMouseDown: (event: ReactMouseEvent, nodeId: string, onActivate?: (nodeId: string) => void) => void;
     onNodeHoverStart: (nodeId: string) => void;
     onNodeHoverEnd: (nodeId: string) => void;
     onConnectStart: (event: ReactPointerEvent, nodeId: string, handleType: "source" | "target", handleId?: string, anchorRatio?: number) => void;

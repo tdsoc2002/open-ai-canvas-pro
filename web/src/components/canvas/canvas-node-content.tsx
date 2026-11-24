@@ -55,7 +55,6 @@ export type CanvasNodeContentProps = {
     disableMediaEffects?: boolean;
     mediaActive?: boolean;
     mediaHoverPlayback?: boolean;
-    onMediaPlayRequest?: (nodeId: string) => void;
 };
 
 /** 由页面 renderNodeContent 渲染的节点；CanvasNode 的 memo 只对这些节点比较该回调。 */

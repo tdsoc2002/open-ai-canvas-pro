@@ -83,7 +83,7 @@ type CanvasNodeProps = {
     batchRecovering?: boolean;
     batchPrimary?: boolean;
     batchMotion?: { x: number; y: number; index: number };
-    onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
+    onMouseDown: (event: React.MouseEvent, nodeId: string, onActivate?: (nodeId: string) => void) => void;
     onHoverStart: (nodeId: string) => void;
     onHoverEnd: (nodeId: string) => void;
     onConnectStart: (event: React.PointerEvent, nodeId: string, handleType: "source" | "target", handleId?: string, anchorRatio?: number) => void;
@@ -190,7 +190,9 @@ export const CanvasNode = React.memo(function CanvasNode({
     const resizeMotion = useCanvasNodeResizeStyle(nodeRef, data, dragOffset);
     const handleResizePointerDown = useCanvasNodeResize(data, scale, scriptMinHeight, onResize, readOnly);
     const generationStatus = data.metadata?.status;
-    const canHoverPlay = onMediaHoverChange && data.type === CanvasNodeType.Video && Boolean(data.metadata?.content || data.metadata?.storageKey) && generationStatus !== "loading" && generationStatus !== "error";
+    const canPlayVideo =
+        isVideoNode && Boolean(hasVideoContent || data.metadata?.storageKey) && generationStatus !== "loading" && generationStatus !== "error" && !data.metadata?.fileUpload && !(renderNodeContent && canvasNodeUsesCustomContent(data, isEditingContent));
+    const canHoverPlay = onMediaHoverChange && canPlayVideo;
     const generationRevealing = useGenerationReveal(generationStatus, disableMediaEffects);
     const statusShownInContent = canvasNodeRendersStatusContent(data, { isBatchRoot, isEditingContent, hasCustomRenderer: Boolean(renderNodeContent) });
     const statusBadge = generationStatus === "success" ? (generationRevealing ? generationStatus : undefined) : (generationStatus === "loading" || generationStatus === "error") && !statusShownInContent ? generationStatus : undefined;
@@ -398,8 +400,19 @@ export const CanvasNode = React.memo(function CanvasNode({
                         disableMediaEffects={disableMediaEffects}
                         mediaActive={mediaActive}
                         mediaHoverPlayback={mediaHoverPlayback}
-                        onMediaPlayRequest={onMediaPlayRequest}
                     />
+                    {onMediaPlayRequest && canPlayVideo && !isConnecting && effectiveRenderLOD !== "shell" && (!mediaActive || mediaHoverPlayback) ? (
+                        <button
+                            type="button"
+                            className={`absolute inset-0 z-[var(--node-z-overlay)] rounded-[inherit] bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] ${dragOffset ? "cursor-grabbing" : "cursor-pointer"}`}
+                            aria-label={`播放 ${data.title || "视频"}`}
+                            onMouseDown={(event) => onMouseDown(event, data.id, onMediaPlayRequest)}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                if (event.detail === 0) onMediaPlayRequest(data.id);
+                            }}
+                        />
+                    ) : null}
                 </div>
 
                 {showChrome && data.type === CanvasNodeType.Text && data.metadata?.workflowKind !== "character" && !readOnly ? (

@@ -40,6 +40,7 @@ type DragState = {
     isDraggingNode: boolean;
     hasMoved: boolean;
     openPanelOnClick: boolean;
+    activateOnClick?: () => void;
     startX: number;
     startY: number;
     startWorld: Position;
@@ -157,15 +158,15 @@ export function useCanvasSelectionController({
     );
 
     const handleNodeMouseDown = useCallback(
-        (event: ReactMouseEvent | ReactPointerEvent, nodeId: string) => {
+        (event: ReactMouseEvent | ReactPointerEvent, nodeId: string, onActivate?: (nodeId: string) => void) => {
             event.stopPropagation();
             if (event.button !== 0) return;
             // 下拉菜单、弹层等经 React Portal 渲染，事件沿组件树冒泡到节点外壳，但 DOM 不在节点内。
             // 不能把它当成节点拖动：拖动预览会改写样式并让锚定弹层提前关闭，菜单项点击随之失效。
             if (event.target instanceof Node && event.currentTarget instanceof Node && !event.currentTarget.contains(event.target)) return;
             // 子组件的 pointerdown 停止冒泡不会阻止随后独立派发的 mousedown。
-            // 编辑、控件操作和表内滚动均不能启动节点选择/拖动，也不能暂停历史记录。
-            if (event.target instanceof Element && event.target.closest('input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [data-canvas-no-drag]')) return;
+            // 普通控件跳过节点手势。视频画面的播放由拖动流程在确认单击后触发。
+            if (!onActivate && event.target instanceof Element && event.target.closest('input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [data-canvas-no-drag]')) return;
             if (onBatchConnectionTarget?.(event, nodeId)) return;
             // Paint order is session-local UI state. Update it once at the start
             // of a real node interaction so dragging also survives deselection.
@@ -176,6 +177,7 @@ export function useCanvasSelectionController({
             const isSubtractClick = event.altKey;
             const isMultiSelectClick = !isSubtractClick && (event.shiftKey || event.metaKey || event.ctrlKey);
             const isSelectionModifier = isSubtractClick || isMultiSelectClick;
+            const activateOnClick = onActivate && !isSelectionModifier ? () => onActivate(nodeId) : undefined;
             onNodeInteractionStart(isSelectionModifier);
 
             if (isSubtractClick) nextSelected.delete(nodeId);
@@ -196,7 +198,7 @@ export function useCanvasSelectionController({
 
             const clickedNode = currentNodes.find((node) => node.id === nodeId);
             if (clickedNode?.metadata?.locked) {
-                dragRef.current = { ...EMPTY_DRAG_STATE };
+                dragRef.current = { ...EMPTY_DRAG_STATE, activateOnClick, startX: event.clientX, startY: event.clientY };
                 onNodeClick(clickedNode);
                 return;
             }
@@ -221,6 +223,7 @@ export function useCanvasSelectionController({
                 isDraggingNode: true,
                 hasMoved: false,
                 openPanelOnClick: !isMultiSelectClick,
+                activateOnClick,
                 startX: event.clientX,
                 startY: event.clientY,
                 startWorld: screenToCanvas(event.clientX, event.clientY),
@@ -247,7 +250,15 @@ export function useCanvasSelectionController({
                 cancelAnimationFrame(dragFrameRef.current);
                 dragFrameRef.current = null;
             }
-            if (!dragRef.current.isDraggingNode) return;
+            const { isDraggingNode, hasMoved, activateOnClick } = dragRef.current;
+            const shouldActivate = !hasMoved && clientX != null && clientY != null;
+            if (!isDraggingNode) {
+                if (activateOnClick) {
+                    dragRef.current = { ...EMPTY_DRAG_STATE };
+                    if (shouldActivate) activateOnClick();
+                }
+                return;
+            }
             const shouldOpenPanelOnClick = dragRef.current.openPanelOnClick;
             const wasClick = shouldOpenPanelOnClick && !dragRef.current.hasMoved && dragRef.current.draggedNodeIds.length === 1;
             const clickedNodeId = dragRef.current.draggedNodeIds[0];
@@ -288,6 +299,7 @@ export function useCanvasSelectionController({
             alignmentContextRef.current = null;
             draggedNodesRef.current = [];
             dragRef.current = { ...EMPTY_DRAG_STATE };
+            if (shouldActivate) activateOnClick?.();
             if (wasClick && clickedNodeId) {
                 const clickedNode = nodesRef.current.find((node) => node.id === clickedNodeId);
                 if (clickedNode) onNodeClick(clickedNode);
@@ -298,11 +310,12 @@ export function useCanvasSelectionController({
 
     const handleNodeDragMove = useCallback(
         (event: MouseEvent | PointerEvent) => {
+            if (!dragRef.current.isDraggingNode && !dragRef.current.activateOnClick) return;
+            if (Math.abs(event.clientX - dragRef.current.startX) > 3 || Math.abs(event.clientY - dragRef.current.startY) > 3) dragRef.current.hasMoved = true;
             if (!dragRef.current.isDraggingNode) return;
             // 拖动中缩放不能重新缩放已走过的屏幕位移；抓取点始终以画布坐标为基准。
             const world = screenToCanvas(event.clientX, event.clientY);
             pendingNodeDragRef.current = { x: world.x - dragRef.current.startWorld.x, y: world.y - dragRef.current.startWorld.y };
-            if (Math.abs(event.clientX - dragRef.current.startX) > 3 || Math.abs(event.clientY - dragRef.current.startY) > 3) dragRef.current.hasMoved = true;
             // 点击时指针常有 1~3px 抖动；未越过拖动阈值前不预览位移，否则对齐吸附会把节点
             // 临时拉偏最多 7px，松手判定为点击后又弹回原位，表现为“点一下左右抖动”。
             if (!dragRef.current.hasMoved) return;

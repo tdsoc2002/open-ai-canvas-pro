@@ -4,7 +4,6 @@
 
 import { Image as ImageIcon, ImageOff, Music2, Play, RotateCw, Video } from "lucide-react";
 import "./canvas-image-state.css";
-import "./canvas-video-preview-play.css";
 import { type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { canvasNodeVideoPreviewReference } from "@/lib/canvas/canvas-media-preview";
@@ -100,7 +99,7 @@ export function EmptyVideoContent({ theme }: { theme: CanvasTheme }) {
     );
 }
 
-export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverPlayback = false, onMediaPlayRequest }: CanvasNodeContentProps) {
+export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverPlayback = false }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const { updateMediaNode } = useCanvasNodeActions();
     const { url, loading, onError } = useVideoPlaybackUrl(node, mediaActive);
@@ -164,7 +163,7 @@ export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverP
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMediaNode, url]);
 
     if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyVideoContent theme={theme} />;
-    if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} onPlay={onMediaPlayRequest ? () => onMediaPlayRequest(node.id) : undefined} />;
+    if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -228,7 +227,7 @@ export function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     return <CanvasAudioPlayer node={node} theme={theme} />;
 }
 
-export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { onPlay?: () => void }) {
+export function InactiveVideoPreview({ node, theme }: Pick<CanvasNodeContentProps, "node" | "theme">) {
     const previewRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(previewRef);
     const sourceKey = node.metadata?.storageKey || node.metadata?.content;
@@ -313,10 +312,9 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
         };
     }, [canHydrate, node.id, node.metadata?.importSource?.provider, sourceKey, persistedPreviewSource, persistedPreviewStorageKey]);
 
-    const playButton = onPlay ? <VideoPreviewPlayButton title={node.title || "视频"} onPlay={onPlay} /> : null;
     if (showPersistedPreview || localPreviewUrl) {
         return (
-            <div ref={previewRef} className="group/video-preview relative size-full overflow-hidden rounded-[var(--node-radius)] bg-black">
+            <div ref={previewRef} className="relative size-full overflow-hidden rounded-[var(--node-radius)] bg-black">
                 {showPersistedPreview ? (
                     <CanvasVideoPreviewImage
                         node={node}
@@ -332,35 +330,13 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                 ) : (
                     <img src={localPreviewUrl} alt={`${node.title || "视频"} 静态预览`} loading="lazy" decoding="sync" draggable={false} className="pointer-events-none size-full select-none object-contain" />
                 )}
-                {playButton}
             </div>
         );
     }
     return (
-        <div ref={previewRef} className="group/video-preview relative size-full">
+        <div ref={previewRef} className="relative size-full">
             <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={hydrating ? "正在生成首帧" : !nearViewport ? "进入视口后加载首帧" : ""} theme={theme} />
-            {playButton}
         </div>
-    );
-}
-
-export function VideoPreviewPlayButton({ title, onPlay }: { title: string; onPlay: () => void }) {
-    return (
-        <button
-            type="button"
-            className="canvas-video-preview-play absolute left-3 top-3 z-[var(--node-z-overlay)] grid size-11 place-items-center rounded-full backdrop-blur"
-            style={{ color: "var(--canvas-card-media-chip-ink, var(--color-neutral-0))" }}
-            aria-label={`播放 ${title}`}
-            title="播放视频"
-            onPointerDown={(event) => event.stopPropagation()}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-                event.stopPropagation();
-                onPlay();
-            }}
-        >
-            <Play className="ml-0.5 size-5 fill-current" />
-        </button>
     );
 }
 

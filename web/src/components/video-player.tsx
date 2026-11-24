@@ -84,7 +84,7 @@ export function VideoPlayer({
     brandColor = "#f5f5f5",
     preload = "metadata",
     autoPlay = false,
-    startMuted = false,
+    startMuted,
     dataCanvasNoZoom = false,
     compactControls = false,
     hasAudio,
@@ -197,7 +197,7 @@ export function VideoPlayer({
             streamType="on-demand"
             playsInline
             autoPlay={autoPlay}
-            muted={startMuted || noAudio ? true : undefined}
+            muted={noAudio ? true : startMuted}
             load="eager"
             preload={preload}
             data-canvas-no-zoom={dataCanvasNoZoom ? "true" : undefined}

@@ -17,7 +17,10 @@ for (const [key, value] of Object.entries({
     ShadowRoot: dom.ShadowRoot,
     MutationObserver: dom.MutationObserver,
     ResizeObserver: dom.ResizeObserver,
+    IntersectionObserver: dom.IntersectionObserver,
     getComputedStyle: dom.getComputedStyle.bind(dom),
+    requestAnimationFrame: dom.requestAnimationFrame.bind(dom),
+    cancelAnimationFrame: dom.cancelAnimationFrame.bind(dom),
     IS_REACT_ACT_ENVIRONMENT: true,
 })) {
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
@@ -82,8 +85,8 @@ mock.module("@/services/project-asset-sync", () => ({
     },
 }));
 const { useCanvasUpload } = await import("@/pages/canvas/use-canvas-upload");
+const { useCanvasSelectionController } = await import("@/pages/canvas/use-canvas-selection-controller");
 const { CanvasNode } = await import("@/components/canvas/canvas-node");
-const { VideoPreviewPlayButton } = await import("@/components/canvas/canvas-node-media-content");
 const { assetPickerItemsToInsertPayloads } = await import("@/components/canvas/asset-picker-modal");
 let api: ReturnType<typeof useCanvasUpload>;
 const nodesRef = { current: [] as CanvasNodeData[] };
@@ -351,33 +354,102 @@ test("仅悬停已有视频的画面才请求播放，移开或按下鼠标时�
     expect(calls).toEqual([true, false, true, false]);
 });
 
-test("video play control keeps a media foreground in either theme and native keyboard semantics", async () => {
-    const css = document.createElement("style");
-    css.textContent = `:root { --canvas-card-media-chip-ink: #fff; } button { color: inherit; }`;
-    document.head.append(css);
-    let plays = 0;
-    let bubbles = 0;
-    for (const color of ["#111827", "#ededed"]) {
-        await act(async () =>
-            root!.render(
-                <div style={{ color }} onClick={() => bubbles++}>
-                    <VideoPreviewPlayButton title="暗视频.mp4" onPlay={() => plays++} />
-                </div>,
-            ),
+test("缩小画布后单击视频画面播放，拖动节点不播放，静音预览可用键盘切到手动播放", async () => {
+    const node: CanvasNodeData = {
+        id: "video",
+        type: CanvasNodeType.Video,
+        title: "样片",
+        position: { x: 0, y: 0 },
+        width: 320,
+        height: 180,
+        metadata: { content: "/clip.mp4" },
+    };
+    const plays: string[] = [];
+    function VideoCanvas({ mediaActive, mediaHoverPlayback }: { mediaActive: boolean; mediaHoverPlayback: boolean }) {
+        const [nodes, setNodes] = React.useState([node]);
+        const nodeList = React.useRef(nodes);
+        nodeList.current = nodes;
+        const canvas = React.useRef<HTMLDivElement>(null);
+        const viewport = React.useRef({ x: 0, y: 0, k: 0.2 });
+        const selection = React.useRef(new Set<string>());
+        const historyPaused = React.useRef(false);
+        const controller = useCanvasSelectionController({
+            containerRef: canvas,
+            nodesRef: nodeList,
+            viewportRef: viewport,
+            selectedNodeIdsRef: selection,
+            historyPausedRef: historyPaused,
+            screenToCanvas: (x, y) => ({ x: x / 0.2, y: y / 0.2 }),
+            setNodes,
+            setSelectedNodeIds: silent,
+            setSelectedConnectionId: silent,
+            cancelPendingConnectionCreate: silent,
+            onCanvasSelectionStart: silent,
+            onNodeInteractionStart: silent,
+            onNodeClick: silent,
+            onDeselect: silent,
+        });
+        return (
+            <div ref={canvas}>
+                <CanvasNode
+                    data={nodes[0]}
+                    renderLOD="preview"
+                    scale={0.2}
+                    dragOffset={controller.dragPreview ?? undefined}
+                    mediaActive={mediaActive}
+                    mediaHoverPlayback={mediaHoverPlayback}
+                    isSelected={false}
+                    isRelated={false}
+                    isFocusRelated={false}
+                    isConnectionTarget={false}
+                    showImageInfo={false}
+                    onMouseDown={controller.handleNodeMouseDown}
+                    onHoverStart={silent}
+                    onHoverEnd={silent}
+                    onConnectStart={silent}
+                    onResize={silent}
+                    onContentChange={silent}
+                    onContextMenu={silent}
+                    onMediaPlayRequest={(id) => plays.push(id)}
+                />
+            </div>
         );
-        const button = container.querySelector("button")!;
-        expect(button.type).toBe("button");
-        expect(button.tabIndex).toBe(0);
-        expect(button.getAttribute("aria-label")).toBe("播放 暗视频.mp4");
-        expect(getComputedStyle(button).color).toBe("#fff");
-        button.focus();
-        expect(document.activeElement).toBe(button);
-        // Keyboard activation of native buttons emits a click with detail=0.
-        await act(async () => button.dispatchEvent(new dom.MouseEvent("click", { bubbles: true, detail: 0 })));
     }
-    expect(plays).toBe(2);
-    expect(bubbles).toBe(0);
-    css.textContent = `:root { --color-neutral-0: #fff; } button { color: inherit; }`;
-    expect(getComputedStyle(container.querySelector("button")!).color).toBe("#fff");
-    css.remove();
+    const render = (mediaActive: boolean, mediaHoverPlayback: boolean) => act(async () => root!.render(<VideoCanvas mediaActive={mediaActive} mediaHoverPlayback={mediaHoverPlayback} />));
+    const selector = 'button[aria-label="播放 样片"]';
+    await render(false, false);
+    const button = container.querySelector<HTMLButtonElement>(selector)!;
+    expect(button.textContent).toBe("");
+    expect(container.querySelector("video")).toBeNull();
+    const mouse = (target: EventTarget, type: string, clientX: number, shiftKey = false) => target.dispatchEvent(new dom.MouseEvent(type, { bubbles: true, clientX, clientY: 12, detail: 1, shiftKey }));
+    await act(async () => {
+        mouse(button, "mousedown", 8);
+        mouse(window, "mousemove", 28);
+        mouse(button, "mouseup", 28);
+        mouse(button, "click", 28);
+    });
+    expect(plays).toEqual([]);
+    expect(container.querySelector<HTMLElement>('[data-node-id="video"]')!.style.transform).toBe("translate(100px, 0px)");
+    await act(async () => {
+        mouse(button, "mousedown", 28, true);
+        mouse(button, "mouseup", 28, true);
+        mouse(button, "click", 28, true);
+    });
+    expect(plays).toEqual([]);
+    await act(async () => mouse(button, "mousedown", 28));
+    expect(plays).toEqual([]);
+    await act(async () => {
+        mouse(button, "mouseup", 28);
+        mouse(button, "click", 28);
+    });
+    expect(plays).toEqual(["video"]);
+
+    await render(true, true);
+    expect(container.querySelector(selector) === button).toBe(true);
+    button.focus();
+    expect(document.activeElement === button).toBe(true);
+    await act(async () => button.dispatchEvent(new dom.MouseEvent("click", { bubbles: true, detail: 0 })));
+    expect(plays).toEqual(["video", "video"]);
+    await render(true, false);
+    expect(container.querySelector(selector)).toBeNull();
 });
