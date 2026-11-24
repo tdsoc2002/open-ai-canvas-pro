@@ -39,7 +39,7 @@ export function resolveAgentLauncherTogglePosition(position: AgentLauncherPositi
     };
 }
 
-export function restoreAgentLauncherPosition(raw: string | null, viewport: AgentLauncherViewport, size?: AgentLauncherViewport, bottomInset = 0): AgentLauncherPosition {
+export function restoreAgentLauncherPosition(raw: string | null, viewport: AgentLauncherViewport, size?: AgentLauncherViewport, bottomInset = 0, inCanvasEditor = true): AgentLauncherPosition {
     if (raw) {
         try {
             const value = JSON.parse(raw);
@@ -48,7 +48,8 @@ export function restoreAgentLauncherPosition(raw: string | null, viewport: Agent
             // Damaged UI preferences must not hide the launcher.
         }
     }
-    return clampAgentLauncherPosition({ right: MARGIN, bottom: MARGIN }, viewport, size, bottomInset);
+    const footerClearance = viewport.width < AGENT_LAUNCHER_COMPACT_VIEWPORT_WIDTH ? 144 : 80;
+    return clampAgentLauncherPosition({ right: MARGIN, bottom: inCanvasEditor ? MARGIN : footerClearance + AGENT_LAUNCHER_LABEL_CLEARANCE }, viewport, size, bottomInset);
 }
 
 export function moveAgentLauncher(gesture: AgentLauncherGesture, x: number, y: number, viewport: AgentLauncherViewport, size?: AgentLauncherViewport, bottomInset = 0) {

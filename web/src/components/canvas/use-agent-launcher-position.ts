@@ -7,7 +7,7 @@ const viewport = () => ({ width: window.innerWidth, height: window.innerHeight }
  * 入口的拖拽、点击与键盘移动。指针处理器（onPointer*）可以挂在入口按钮上，也可以挂在按钮内的身体热区上
  * （大形象外框不接收指针）；指针捕获落在挂处理器的元素上，因此该元素必须能被命中。
  */
-export function useAgentLauncherPosition(onOpen: (position: AgentLauncherPosition) => void, width = 76, height = 76, requiresMouseDoubleClick = false, bottomInset = 0) {
+export function useAgentLauncherPosition(onOpen: (position: AgentLauncherPosition) => void, width = 76, height = 76, requiresMouseDoubleClick = false, inCanvasEditor = true, bottomInset = 0) {
     const size = { width, height };
     const preference = useRef<string | null>(null);
     const [position, setPosition] = useState(() => {
@@ -16,7 +16,7 @@ export function useAgentLauncherPosition(onOpen: (position: AgentLauncherPositio
         } catch (error) {
             console.warn("Agent 入口位置无法读取", error);
         }
-        return restoreAgentLauncherPosition(preference.current, viewport(), size, bottomInset);
+        return restoreAgentLauncherPosition(preference.current, viewport(), size, bottomInset, inCanvasEditor);
     });
     const [dragging, setDragging] = useState(false);
     const gestureRef = useRef<(AgentLauncherGesture & { pointerId: number }) | null>(null);
@@ -34,11 +34,11 @@ export function useAgentLauncherPosition(onOpen: (position: AgentLauncherPositio
     };
 
     useEffect(() => {
-        const resize = () => setPosition((current) => (gestureRef.current ? clampAgentLauncherPosition(current, viewport(), size, bottomInset) : restoreAgentLauncherPosition(preference.current, viewport(), size, bottomInset)));
+        const resize = () => setPosition((current) => (gestureRef.current ? clampAgentLauncherPosition(current, viewport(), size, bottomInset) : restoreAgentLauncherPosition(preference.current, viewport(), size, bottomInset, inCanvasEditor)));
         resize();
         window.addEventListener("resize", resize);
         return () => window.removeEventListener("resize", resize);
-    }, [width, height, bottomInset]);
+    }, [width, height, inCanvasEditor, bottomInset]);
 
     const onPointerDown = (event: PointerEvent<HTMLElement>) => {
         event.stopPropagation();

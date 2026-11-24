@@ -13,7 +13,8 @@ import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
 import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, AGENT_LAUNCHER_LABEL_CLEARANCE, AGENT_LAUNCHER_TOGGLE_SIZE, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition, type AgentLauncherPosition } from "@/lib/canvas/agent-launcher-position";
 import { useGlobalAgentStore } from "@/stores/use-global-agent-store";
-import { useMatch } from "react-router";
+import { matchPath, useLocation } from "react-router";
+import { workspacePagePath } from "@/lib/workspace-routes";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Live2DAvatar } from "./live2d-avatar";
@@ -130,7 +131,7 @@ export const AgentLauncher = memo(function AgentLauncher({
     const avatarLoading = !collapsed && !defaultAvatar && (bundleManifestLoading || !appearanceResolved || (media && readyBundleURL !== bundleManifestURL));
     const aspectRatio = live ? 0.75 : bundleManifest ? bundleManifest.width / bundleManifest.height : defaultAvatar || bundleManifestLoading ? DEFAULT_AGENT_AVATAR.width / DEFAULT_AGENT_AVATAR.height : 1;
     const largeAvatar = live || defaultAvatar || media || bundleManifestLoading;
-    const inCanvasEditor = Boolean(useMatch("/canvas/:id"));
+    const inCanvasEditor = Boolean(matchPath("/canvas/:id", workspacePagePath(useLocation().pathname)));
     const preferredAvatarHeight = defaultAvatar ? Math.min(appearance.avatarHeight, AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT) : appearance.avatarHeight;
     // 收起后只留小圆球入口：不加载 Live2D / 动画，也不挡画布。位置以右下角为锚点，收起展开不跳位。
     const keepsAvatarSize = largeAvatar && !collapsed;
@@ -138,7 +139,7 @@ export const AgentLauncher = memo(function AgentLauncher({
     const width = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
     const showLabel = !defaultAvatar && Boolean(appearance.launcherLabel) && !collapsed;
     const bottomInset = composerInset > 0 && showLabel ? composerInset + AGENT_LAUNCHER_LABEL_CLEARANCE : composerInset;
-    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar, bottomInset);
+    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar, inCanvasEditor, bottomInset);
     const { onClick, onKeyDown, onDoubleClick, ...pointerHandlers } = handlers;
     // 大形象的外框大多是透明像素：外框不接收指针，只有身体热区可点、可拖，透明处的点击落到下面的页面。
     // 键盘聚焦与激活仍在按钮上；小圆球和默认 76px 入口整块可点。

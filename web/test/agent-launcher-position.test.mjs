@@ -54,6 +54,12 @@ test("the narrow conversation composer clears both restored and dragged launcher
     expect(restoreAgentLauncherPosition(saved, mobile, avatar)).toEqual(start);
 });
 
+test("the launcher starts above the workspace footer and keeps the saved position", () => {
+    const mobile = { width: 390, height: 850 };
+    expect(restoreAgentLauncherPosition(null, mobile, undefined, 0, false)).toEqual({ right: 20, bottom: 184 });
+    expect(restoreAgentLauncherPosition(JSON.stringify(start), mobile, undefined, 0, false)).toEqual(start);
+});
+
 test("small pointer jitter remains a click, but dragging back to the origin remains a drag", () => {
     const gesture = { start, x: 500, y: 500, dragged: false };
     expect(moveAgentLauncher(gesture, 502, 503, viewport)).toEqual({ dragged: false, position: start });
