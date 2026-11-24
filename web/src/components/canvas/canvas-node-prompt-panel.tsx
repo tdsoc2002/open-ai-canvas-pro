@@ -404,7 +404,7 @@ export function CanvasNodePromptPanel({
     };
 
     const changeVideoMode = (next: CanvasVideoReferenceMode) => {
-        if (next === "text" && hasMedia) return;
+        if (isRunning || (next === "text" && hasMedia)) return;
         if (next === videoMode && !usesProjectedVideoReferences(node)) return;
         const operation = videoReferenceOperation(
             next,
@@ -445,11 +445,11 @@ export function CanvasNodePromptPanel({
             virtual={false}
             ariaLabel={t("canvasC.videoPromptTools.mode")}
             value={videoMode}
-            disabled={Boolean(node.metadata?.locked) || isRunning}
+            disabled={Boolean(node.metadata?.locked)}
             options={[
-                { value: "text", label: t("canvasC.videoPromptTools.textMode"), disabled: hasMedia },
-                { value: "all", label: t("canvasC.videoPromptTools.allMode"), disabled: !hasMedia },
-                { value: "frames", label: t(singleFrame ? "canvasC.videoPromptTools.startFrame" : "canvasC.videoPromptTools.frameMode") },
+                { value: "text", label: t("canvasC.videoPromptTools.textMode"), disabled: isRunning ? videoMode !== "text" : hasMedia },
+                { value: "all", label: t("canvasC.videoPromptTools.allMode"), disabled: isRunning ? videoMode !== "all" : !hasMedia },
+                { value: "frames", label: t(singleFrame ? "canvasC.videoPromptTools.startFrame" : "canvasC.videoPromptTools.frameMode"), disabled: isRunning && videoMode !== "frames" },
             ]}
             onChange={changeVideoMode}
         />

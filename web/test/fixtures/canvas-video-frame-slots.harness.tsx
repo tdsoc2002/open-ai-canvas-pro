@@ -37,7 +37,7 @@ function mountPromptPanel() {
     const image: CanvasNodeData = { ...target, id: "start", type: CanvasNodeType.Image, title: "山景", metadata: { content: "/start.png" } };
     const uploadTargets: Array<CanvasVideoFrameKey | undefined> = [];
     const noop = () => {};
-    function Panel({ connected, frames }: { connected: boolean; frames: boolean }) {
+    function Panel({ connected, frames, isRunning }: { connected: boolean; frames: boolean; isRunning: boolean }) {
         const [metadata, setMetadata] = useState(target.metadata);
         const node: CanvasNodeData = { ...target, metadata: { ...metadata, videoReferenceMode: frames ? "frames" : "text" } };
         const references = connected ? buildCanvasNodeMentionReferenceMap([image, node], [{ id: "ref", fromNodeId: image.id, toNodeId: node.id }]).get(node.id) : undefined;
@@ -45,7 +45,7 @@ function mountPromptPanel() {
             <CanvasNodePromptPanel
                 projectId="video-frames"
                 node={node}
-                isRunning={false}
+                isRunning={isRunning}
                 mentionReferences={references}
                 onPromptChange={noop}
                 onConfigChange={(_nodeId, patch) => setMetadata((current) => ({ ...current, ...patch }))}
@@ -60,12 +60,12 @@ function mountPromptPanel() {
     document.body.append(container);
     const root = createRoot(container);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const render = (connected: boolean, frames = true) =>
+    const render = (connected: boolean, frames = true, isRunning = false) =>
         act(async () =>
             root.render(
                 <QueryClientProvider client={queryClient}>
                     <App>
-                        <Panel connected={connected} frames={frames} />
+                        <Panel connected={connected} frames={frames} isRunning={isRunning} />
                     </App>
                 </QueryClientProvider>,
             ),
@@ -142,6 +142,25 @@ test("连上参考图时默认全能参考并禁用文生，断开后恢复文�
         expect(textOption?.getAttribute("aria-disabled")).toBe("true");
         await render(false, false);
         expect(modeControl.textContent).toContain(textMode);
+    } finally {
+        await dispose();
+    }
+});
+
+test("生成中的文生视频可展开查看模式，其他模式不可选", async () => {
+    const { container, render, dispose } = mountPromptPanel();
+    try {
+        await render(false, false, true);
+        const control = container.querySelector(".canvas-video-reference-mode")!;
+        const input = control.querySelector('[role="combobox"]')!;
+        await act(async () => control.dispatchEvent(new dom.MouseEvent("mousedown", { bubbles: true })));
+        expect(input.getAttribute("aria-expanded")).toBe("true");
+        const options = [...document.querySelectorAll('[role="option"]')];
+        const selected = options.find((option) => option.getAttribute("aria-selected") === "true");
+        expect(selected?.textContent?.trim()).toBe(translate("canvasC.videoPromptTools.textMode"));
+        expect(selected?.getAttribute("aria-disabled")).toBe("false");
+        const alternatives = options.filter((option) => option !== selected);
+        expect(alternatives.map((option) => option.getAttribute("aria-disabled"))).toEqual(["true", "true"]);
     } finally {
         await dispose();
     }

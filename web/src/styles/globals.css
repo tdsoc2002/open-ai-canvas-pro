@@ -13291,6 +13291,7 @@
             height: var(--canvas-video-composer-control-size) !important;
             gap: var(--space-1);
             padding-inline: var(--space-1) !important;
+            color: var(--cn-text) !important;
             font-size: var(--fs-body) !important;
             line-height: var(--lh-heading);
         }
@@ -26799,6 +26800,10 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 .ant-select.app-unified-select.canvas-video-reference-mode .ant-select-content,
 .ant-select.app-unified-select.canvas-video-reference-mode .ant-select-suffix {
     margin-inline-end: 0 !important;
+}
+
+.ant-select.app-unified-select.canvas-video-reference-mode .ant-select-content {
+    color: var(--cn-text);
 }
 
 .ant-select.app-unified-select[data-input-modality="pointer"],
