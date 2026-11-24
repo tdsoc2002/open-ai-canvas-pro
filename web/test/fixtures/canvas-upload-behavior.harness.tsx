@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import type { CanvasNodeData } from "@/types/canvas";
+import type { VideoPlaybackRequest } from "@/components/video-player";
 
 const dom = new Window({ url: "http://localhost/" });
 for (const [key, value] of Object.entries({
@@ -308,7 +309,7 @@ test("library import retains long titles for every media type and uploaded text 
     expect(nodesRef.current[0].metadata?.originalFileName).toBe(title);
 });
 
-test("仅悬停已有视频的画面才请求播放，移开或按下鼠标时撤销悬停", async () => {
+test("仅悬停已有视频的画面才请求播放，鼠标移出或焦点离开时请求暂停", async () => {
     const calls: boolean[] = [];
     const node: CanvasNodeData = {
         id: "video",
@@ -345,16 +346,21 @@ test("仅悬停已有视频的画面才请求播放，移开或按下鼠标时�
     const pointer = async (type: string, pointerType: string, buttons = 0) => act(async () => cover.dispatchEvent(new dom.PointerEvent(type, { bubbles: true, pointerType, buttons })));
 
     await pointer("pointerover", "touch");
+    await pointer("pointerout", "touch");
     await pointer("pointerover", "mouse", 1);
     expect(calls).toEqual([]);
     await pointer("pointerover", "mouse");
     await pointer("pointerout", "mouse");
     await pointer("pointerover", "mouse");
     await pointer("pointerdown", "mouse", 1);
+    const child = cover.firstElementChild!;
+    await act(async () => cover.dispatchEvent(new dom.FocusEvent("focusout", { bubbles: true, relatedTarget: child })));
+    expect(calls).toEqual([true, false, true]);
+    await act(async () => cover.dispatchEvent(new dom.FocusEvent("focusout", { bubbles: true, relatedTarget: container })));
     expect(calls).toEqual([true, false, true, false]);
 });
 
-test("缩小画布后单击视频画面播放，拖动节点不播放，静音预览可用键盘切到手动播放", async () => {
+test("缩小画布后支持鼠标和键盘播放，拖动节点不播放，静音预览可用鼠标切到手动播放", async () => {
     const node: CanvasNodeData = {
         id: "video",
         type: CanvasNodeType.Video,
@@ -365,7 +371,7 @@ test("缩小画布后单击视频画面播放，拖动节点不播放，静音�
         metadata: { content: "/clip.mp4" },
     };
     const plays: string[] = [];
-    function VideoCanvas({ mediaActive, mediaHoverPlayback }: { mediaActive: boolean; mediaHoverPlayback: boolean }) {
+    function VideoCanvas({ mediaPlayback }: { mediaPlayback?: VideoPlaybackRequest }) {
         const [nodes, setNodes] = React.useState([node]);
         const nodeList = React.useRef(nodes);
         nodeList.current = nodes;
@@ -396,8 +402,7 @@ test("缩小画布后单击视频画面播放，拖动节点不播放，静音�
                     renderLOD="preview"
                     scale={0.2}
                     dragOffset={controller.dragPreview ?? undefined}
-                    mediaActive={mediaActive}
-                    mediaHoverPlayback={mediaHoverPlayback}
+                    mediaPlayback={mediaPlayback}
                     isSelected={false}
                     isRelated={false}
                     isFocusRelated={false}
@@ -415,9 +420,9 @@ test("缩小画布后单击视频画面播放，拖动节点不播放，静音�
             </div>
         );
     }
-    const render = (mediaActive: boolean, mediaHoverPlayback: boolean) => act(async () => root!.render(<VideoCanvas mediaActive={mediaActive} mediaHoverPlayback={mediaHoverPlayback} />));
+    const render = (mediaPlayback?: VideoPlaybackRequest) => act(async () => root!.render(<VideoCanvas mediaPlayback={mediaPlayback} />));
     const selector = 'button[aria-label="播放 样片"]';
-    await render(false, false);
+    await render();
     const button = container.querySelector<HTMLButtonElement>(selector)!;
     expect(button.textContent).toBe("");
     expect(container.querySelector("video")).toBeNull();
@@ -444,12 +449,18 @@ test("缩小画布后单击视频画面播放，拖动节点不播放，静音�
     });
     expect(plays).toEqual(["video"]);
 
-    await render(true, true);
-    expect(container.querySelector(selector) === button).toBe(true);
     button.focus();
     expect(document.activeElement === button).toBe(true);
     await act(async () => button.dispatchEvent(new dom.MouseEvent("click", { bubbles: true, detail: 0 })));
     expect(plays).toEqual(["video", "video"]);
-    await render(true, false);
+    expect(document.activeElement === button.parentElement).toBe(true);
+
+    await render({ paused: false, muted: true });
     expect(container.querySelector(selector)).toBeNull();
+    const playerSurface = container.querySelector(".canvas-node-shell")!.firstElementChild!;
+    await act(async () => {
+        mouse(playerSurface, "mousedown", 28);
+        mouse(playerSurface, "mouseup", 28);
+    });
+    expect(plays).toEqual(["video", "video", "video"]);
 });

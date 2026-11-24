@@ -82,8 +82,8 @@ describe("large canvas media rendering", () => {
         expect(inactivePreviewSource).toContain("onUnavailable={markPreviewUnavailable}");
         expect(inactivePreviewSource).toContain("currentPreview?.src !== persistedPreviewSource");
         expect(canvasNodeContentSource).toContain("<InactiveVideoPreview node={node} theme={theme} />");
-        expect(canvasNodeContentSource).toContain("useVideoPlaybackUrl(node, mediaActive)");
-        expect(canvasNodeContentSource).toMatch(/autoPlay\s+startMuted=\{mediaHoverPlayback\}\s+preload="metadata"/);
+        expect(canvasNodeContentSource).toContain("useVideoPlaybackUrl(node, Boolean(mediaPlayback))");
+        expect(canvasNodeContentSource).toMatch(/playbackRequest=\{mediaPlayback\}\s+preload="metadata"/);
         expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(storageKey, fallback)");
         expect(canvasNodeContentSource).toContain("refreshResource(resourceId)");
         expect(canvasNodeContentSource).toContain('getResourceAccess(storageKey, "display", "playback", "", { forceRefresh: true })');
@@ -220,7 +220,7 @@ describe("video canvas controls", () => {
     test("uses the muted icon state only when a video is known to have no audio", () => {
         expect(videoPlayerSource).toContain("hasAudio?: boolean");
         expect(videoPlayerSource).toContain("mediaPlayerRef.current?.el");
-        expect(videoPlayerSource).toContain("muted={noAudio ? true : startMuted}");
+        expect(videoPlayerSource).toContain("muted={noAudio ? true : (playbackRequest?.muted ?? startMuted)}");
         expect(videoPlayerSource).toContain('data-no-audio={noAudio ? "true" : undefined}');
         expect(videoPlayerSource).toContain("VolumeLow: defaultLayoutIcons.MuteButton.Mute");
         expect(videoPlayerSource).toContain("VolumeHigh: defaultLayoutIcons.MuteButton.Mute");

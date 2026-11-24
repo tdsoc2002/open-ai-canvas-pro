@@ -9,6 +9,7 @@ import "@vidstack/react/player/styles/default/layouts/video.css";
 import "./video-player.css";
 
 type MediaPlayerProps = ComponentProps<typeof MediaPlayer>;
+export type VideoPlaybackRequest = { paused: boolean; muted: boolean };
 
 type VideoPlayerProps = {
     src: string;
@@ -19,6 +20,7 @@ type VideoPlayerProps = {
     preload?: MediaPlayerProps["preload"];
     autoPlay?: boolean;
     startMuted?: boolean;
+    playbackRequest?: VideoPlaybackRequest;
     dataCanvasNoZoom?: boolean;
     compactControls?: boolean;
     /** Explicitly marks videos known to have an audio track (or not). */
@@ -72,6 +74,11 @@ const zhCNTranslations = {
 
 const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm", "video/3gp", "video/ogg", "video/avi", "video/mpeg", "video/object"]);
 
+function applyPlaybackRequest(player: MediaPlayerInstance, { paused }: VideoPlaybackRequest) {
+    if (paused) player.remoteControl.pause();
+    else player.remoteControl.play();
+}
+
 /**
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
@@ -85,6 +92,7 @@ export function VideoPlayer({
     preload = "metadata",
     autoPlay = false,
     startMuted,
+    playbackRequest,
     dataCanvasNoZoom = false,
     compactControls = false,
     hasAudio,
@@ -125,6 +133,13 @@ export function VideoPlayer({
         autoPlayAttemptedRef.current = false;
         audioProbeGenerationRef.current += 1;
     }, [src]);
+
+    useEffect(() => {
+        const player = mediaPlayerRef.current;
+        if (!playbackRequest || !player?.state.canPlay) return;
+        autoPlayAttemptedRef.current = true;
+        applyPlaybackRequest(player, playbackRequest);
+    }, [playbackRequest]);
 
     useEffect(() => {
         const player = mediaPlayerRef.current?.el;
@@ -179,7 +194,10 @@ export function VideoPlayer({
         // `canplay` may fire again after buffering or seeking. Only the first
         // event may satisfy the activation autoplay intent; later events must
         // not override a user pause.
-        if (autoPlay && !autoPlayAttemptedRef.current) {
+        if (playbackRequest && !autoPlayAttemptedRef.current) {
+            autoPlayAttemptedRef.current = true;
+            applyPlaybackRequest(event.target, playbackRequest);
+        } else if (autoPlay && !autoPlayAttemptedRef.current) {
             autoPlayAttemptedRef.current = true;
             void event.target.play().catch(() => undefined);
         }
@@ -197,7 +215,7 @@ export function VideoPlayer({
             streamType="on-demand"
             playsInline
             autoPlay={autoPlay}
-            muted={noAudio ? true : startMuted}
+            muted={noAudio ? true : (playbackRequest?.muted ?? startMuted)}
             load="eager"
             preload={preload}
             data-canvas-no-zoom={dataCanvasNoZoom ? "true" : undefined}

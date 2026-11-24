@@ -99,10 +99,10 @@ export function EmptyVideoContent({ theme }: { theme: CanvasTheme }) {
     );
 }
 
-export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverPlayback = false }: CanvasNodeContentProps) {
+export function VideoNodeContent({ node, theme, mediaPlayback }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const { updateMediaNode } = useCanvasNodeActions();
-    const { url, loading, onError } = useVideoPlaybackUrl(node, mediaActive);
+    const { url, loading, onError } = useVideoPlaybackUrl(node, Boolean(mediaPlayback));
     const preview = canvasNodeVideoPreviewReference(node);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
     const subtitleStyle = node.metadata?.subtitleStyle || createDefaultSubtitleStyle();
@@ -163,7 +163,7 @@ export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverP
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMediaNode, url]);
 
     if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyVideoContent theme={theme} />;
-    if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} />;
+    if (!mediaPlayback) return <InactiveVideoPreview node={node} theme={theme} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -194,8 +194,7 @@ export function VideoNodeContent({ node, theme, mediaActive = false, mediaHoverP
                         mimeType={node.metadata?.mimeType}
                         title={node.title || "视频"}
                         hasAudio={inferVideoHasAudio(node.metadata)}
-                        autoPlay
-                        startMuted={mediaHoverPlayback}
+                        playbackRequest={mediaPlayback}
                         preload="metadata"
                         brandColor={theme.accent.primary}
                         className="h-full w-full rounded-[var(--node-radius)] bg-black"

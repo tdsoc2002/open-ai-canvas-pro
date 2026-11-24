@@ -7,6 +7,7 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { canvasConnectionPath, CanvasConnectionBeam, ConnectionPath } from "@/components/canvas/canvas-connections";
 import { CanvasFrameNode } from "@/components/canvas/canvas-frame-node";
 import { CanvasNode } from "@/components/canvas/canvas-node";
+import type { VideoPlaybackRequest } from "@/components/video-player";
 import { useCanvasVisualNode } from "@/components/canvas/canvas-node-resize-motion";
 import type { CanvasConnectionApproach } from "@/lib/canvas/canvas-connection-tilt";
 import type { CanvasBatchConnectionPreview } from "@/lib/canvas/canvas-batch-connection";
@@ -95,25 +96,47 @@ const EMPTY_CANVAS_NODES: CanvasNodeData[] = [];
 
 export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(props: CanvasProjectWorldLayersProps) {
     const { viewportScale } = props;
-    const [activeMedia, setActiveMedia] = useState<{ nodeId: string; hover: boolean } | null>(null);
+    const [activeMedia, setActiveMedia] = useState<(VideoPlaybackRequest & { nodeId: string }) | null>(null);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-    const handleMediaHoverChange = useCallback((nodeId: string, hovering: boolean) => {
+    const pauseMedia = useCallback((nodeId?: string) => {
         clearTimeout(hoverTimer.current);
-        if (!hovering) {
-            setActiveMedia((current) => (current?.nodeId === nodeId && current.hover ? null : current));
-            return;
-        }
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.querySelector("html.no-motion, body.no-motion")) return;
-        hoverTimer.current = setTimeout(() => {
-            setActiveMedia((current) => (current?.nodeId === nodeId ? current : { nodeId, hover: true }));
-        }, 350);
+        setActiveMedia((current) => (current && (!nodeId || current.nodeId === nodeId) ? { ...current, paused: true } : current));
     }, []);
+    const handleMediaHoverChange = useCallback(
+        (nodeId: string, hovering: boolean) => {
+            if (!hovering) {
+                pauseMedia(nodeId);
+                return;
+            }
+            clearTimeout(hoverTimer.current);
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.querySelector("html.no-motion, body.no-motion")) return;
+            hoverTimer.current = setTimeout(() => {
+                setActiveMedia((current) => (current?.nodeId === nodeId && !current.paused ? current : { nodeId, paused: false, muted: true }));
+            }, 350);
+        },
+        [pauseMedia],
+    );
     const handleMediaPlayRequest = useCallback((nodeId: string) => {
         clearTimeout(hoverTimer.current);
-        setActiveMedia({ nodeId, hover: false });
+        setActiveMedia({ nodeId, paused: false, muted: false });
     }, []);
     useEffect(() => () => clearTimeout(hoverTimer.current), []);
     const activeMediaNodeId = activeMedia?.nodeId;
+    useEffect(() => {
+        const handlePointerDown = (event: PointerEvent) => {
+            clearTimeout(hoverTimer.current);
+            if (!activeMediaNodeId) return;
+            const targetNode = event.target instanceof Element ? event.target.closest("[data-node-id]") : null;
+            if (targetNode?.getAttribute("data-node-id") !== activeMediaNodeId) pauseMedia();
+        };
+        const handleWindowBlur = () => pauseMedia();
+        window.addEventListener("pointerdown", handlePointerDown, true);
+        window.addEventListener("blur", handleWindowBlur);
+        return () => {
+            window.removeEventListener("pointerdown", handlePointerDown, true);
+            window.removeEventListener("blur", handleWindowBlur);
+        };
+    }, [activeMediaNodeId, pauseMedia]);
     useEffect(() => {
         if (activeMediaNodeId && !props.nodeById.has(activeMediaNodeId)) setActiveMedia(null);
     }, [activeMediaNodeId, props.nodeById]);
@@ -215,8 +238,7 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         dragOffset={props.dragPreview?.nodeIds.has(node.id) ? props.dragPreview : undefined}
                         scale={viewportScale}
                         isSelected={props.selectedNodeIds.has(node.id)}
-                        mediaActive={activeMediaNodeId === node.id}
-                        mediaHoverPlayback={activeMediaNodeId === node.id && activeMedia?.hover === true}
+                        mediaPlayback={activeMedia?.nodeId === node.id ? activeMedia : undefined}
                         onMediaPlayRequest={handleMediaPlayRequest}
                         onMediaHoverChange={handleMediaHoverChange}
                         isRelated={props.relatedNodeIds.has(node.id)}

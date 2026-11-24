@@ -33,6 +33,7 @@ import { useAssetStore } from "@/stores/use-asset-store";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasImageLayerControls } from "./canvas-image-layer-controls";
+import type { VideoPlaybackRequest } from "@/components/video-player";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import type { CanvasNodeRenderLOD } from "@/lib/canvas/canvas-node-lod";
@@ -60,8 +61,7 @@ type CanvasNodeProps = {
     dragOffset?: Position;
     scale: number;
     isSelected: boolean;
-    mediaActive?: boolean;
-    mediaHoverPlayback?: boolean;
+    mediaPlayback?: VideoPlaybackRequest;
     isRelated: boolean;
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
@@ -111,8 +111,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     dragOffset,
     scale,
     isSelected,
-    mediaActive = false,
-    mediaHoverPlayback = false,
+    mediaPlayback,
     isRelated,
     isFocusRelated,
     isConnectionTarget,
@@ -178,6 +177,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const showStatusTrack = Boolean(visibleResourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || showStorageBadge || showVersionBadge || dramaStale);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const showConnectionRails = !isConnecting && (hovered || isSelected || isFocusRelated);
+    const mediaActive = Boolean(mediaPlayback);
     const effectiveRenderLOD: CanvasNodeRenderLOD = renderLOD === "full" || hovered || isEditingContent || isEditingTitle || mediaActive ? "full" : renderLOD;
     const showChrome = effectiveRenderLOD === "full";
     const nodeState = isFocusRelated ? "focus" : isConnectionTarget ? "target" : isSelected ? "selected" : isRelated && !isBatchChild ? "related" : "idle";
@@ -321,8 +321,20 @@ export const CanvasNode = React.memo(function CanvasNode({
                           }
                         : undefined
                 }
-                onPointerLeave={canHoverPlay ? () => onMediaHoverChange(data.id, false) : undefined}
-                onPointerDown={canHoverPlay ? () => onMediaHoverChange(data.id, false) : undefined}
+                onPointerLeave={
+                    canHoverPlay
+                        ? (event) => {
+                              if (event.pointerType !== "touch" && !event.currentTarget.contains(document.fullscreenElement)) onMediaHoverChange(data.id, false);
+                          }
+                        : undefined
+                }
+                onBlur={
+                    canHoverPlay
+                        ? (event) => {
+                              if (!event.currentTarget.contains(event.relatedTarget)) onMediaHoverChange(data.id, false);
+                          }
+                        : undefined
+                }
                 onMouseDown={(event) => onMouseDown(event, data.id)}
                 onDoubleClick={(event) => {
                     if (isBatchRoot) {
@@ -357,6 +369,8 @@ export const CanvasNode = React.memo(function CanvasNode({
             >
                 <div
                     className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${isBatchRoot || data.type === CanvasNodeType.Script || data.type === CanvasNodeType.BatchTable || isComposerNode ? "overflow-visible" : "overflow-hidden"}`}
+                    tabIndex={canPlayVideo ? -1 : undefined}
+                    onMouseDown={mediaActive && canPlayVideo && !isConnecting && onMediaPlayRequest ? (event) => onMouseDown(event, data.id, onMediaPlayRequest) : undefined}
                     style={
                         {
                             background: hasImageContent || hasVideoContent || hasAudioContent ? "transparent" : theme.node.fill,
@@ -398,10 +412,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onOpenTaskDetails={onOpenTaskDetails}
                         onToggleBatch={() => onToggleBatch?.(data.id)}
                         disableMediaEffects={disableMediaEffects}
-                        mediaActive={mediaActive}
-                        mediaHoverPlayback={mediaHoverPlayback}
+                        mediaPlayback={mediaPlayback}
                     />
-                    {onMediaPlayRequest && canPlayVideo && !isConnecting && effectiveRenderLOD !== "shell" && (!mediaActive || mediaHoverPlayback) ? (
+                    {onMediaPlayRequest && canPlayVideo && !isConnecting && effectiveRenderLOD !== "shell" && !mediaActive ? (
                         <button
                             type="button"
                             className={`absolute inset-0 z-[var(--node-z-overlay)] rounded-[inherit] bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] ${dragOffset ? "cursor-grabbing" : "cursor-pointer"}`}
@@ -409,7 +422,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                             onMouseDown={(event) => onMouseDown(event, data.id, onMediaPlayRequest)}
                             onClick={(event) => {
                                 event.stopPropagation();
-                                if (event.detail === 0) onMediaPlayRequest(data.id);
+                                if (event.detail !== 0) return;
+                                event.currentTarget.parentElement?.focus({ preventScroll: true });
+                                onMediaPlayRequest(data.id);
                             }}
                         />
                     ) : null}
@@ -518,8 +533,7 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.dragOffset?.y === next.dragOffset?.y &&
         previous.scale === next.scale &&
         previous.isSelected === next.isSelected &&
-        previous.mediaActive === next.mediaActive &&
-        previous.mediaHoverPlayback === next.mediaHoverPlayback &&
+        previous.mediaPlayback === next.mediaPlayback &&
         previous.isRelated === next.isRelated &&
         previous.isFocusRelated === next.isFocusRelated &&
         previous.isConnectionTarget === next.isConnectionTarget &&

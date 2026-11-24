@@ -130,7 +130,7 @@ describe("produced model badge", () => {
                 }}
                 scale={1}
                 isSelected={false}
-                mediaActive={mediaActive}
+                mediaPlayback={mediaActive ? { paused: true, muted: false } : undefined}
                 isRelated={false}
                 isFocusRelated={false}
                 isConnectionTarget={false}

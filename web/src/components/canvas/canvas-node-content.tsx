@@ -3,6 +3,7 @@ import { BookOpenCheck, FileText, Image as ImageIcon, Music2, Pencil, Video } fr
 
 import type { CanvasNodeRenderLOD } from "@/lib/canvas/canvas-node-lod";
 import { CachedResourceImage } from "@/components/cached-resource-image";
+import type { VideoPlaybackRequest } from "@/components/video-player";
 import { canvasRichTextHTML } from "@/lib/canvas/canvas-rich-text";
 import { isMarkdownText } from "@/lib/canvas/canvas-text-format";
 import { canvasTextFontSize } from "@/lib/canvas/canvas-text-scale";
@@ -53,8 +54,7 @@ export type CanvasNodeContentProps = {
     onOpenTaskDetails?: (node: CanvasNodeData) => void;
     onToggleBatch?: () => void;
     disableMediaEffects?: boolean;
-    mediaActive?: boolean;
-    mediaHoverPlayback?: boolean;
+    mediaPlayback?: VideoPlaybackRequest;
 };
 
 /** 由页面 renderNodeContent 渲染的节点；CanvasNode 的 memo 只对这些节点比较该回调。 */
