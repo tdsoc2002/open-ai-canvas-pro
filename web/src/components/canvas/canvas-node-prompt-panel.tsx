@@ -308,7 +308,8 @@ export function CanvasNodePromptPanel({
         videoIssue = mentionIssue || (videoMode && config.model ? modelCompatibilityError(config, config.model, resolvedRequirements) : "");
     }
     const isSubmitDisabled = Boolean(settingsError || frameIssue || videoIssue || !prompt.trim() || isRunning);
-    const uploadReference = videoMode ? onUploadVideoReference : undefined;
+    const showRemakeUpload = Boolean(videoIssue && onUploadRemakeImage && !inputSummary.imageCount && !inputSummary.characterCount);
+    const uploadReference = videoMode && !showRemakeUpload ? onUploadVideoReference : undefined;
     const videoReferenceDisabled = Boolean(node.metadata?.locked) || isRunning || uploadingReference;
     const canExpandPrompt = mode === "image" || mode === "video";
     const canOptimizePrompt = Boolean(promptOptimizerProvider) && canExpandPrompt;
@@ -774,7 +775,7 @@ export function CanvasNodePromptPanel({
                     {videoIssue ? (
                         <span role="status" className="canvas-video-reference-issue shrink-0">
                             {videoIssue}
-                            {onUploadRemakeImage && !inputSummary.imageCount && !inputSummary.characterCount ? (
+                            {showRemakeUpload ? (
                                 <button type="button" className="ms-2 inline-flex items-center gap-1 underline" onClick={onUploadRemakeImage}>
                                     <ImagePlus className="size-3.5" aria-hidden="true" />
                                     上传参考图

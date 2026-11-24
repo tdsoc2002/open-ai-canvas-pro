@@ -149,7 +149,7 @@ describe("workspace route loading", () => {
     test("shares the clover between boot, full-screen, and workspace route loading", () => {
         const html = source("../index.html");
         const css = source("../src/styles/globals.css");
-        const fullScreen = renderToStaticMarkup(createElement(FullScreenLoader, { label: "正在恢复" }));
+        const fullScreen = renderToStaticMarkup(createElement(FullScreenLoader, { label: "正在恢复", detail: "准备当前页面" }));
         const workspaceRoute = renderToStaticMarkup(createElement(WorkspaceRouteLoader, { label: "正在打开页面" }));
 
         expect(html).toContain('class="loading-clover" aria-hidden="true"');
@@ -158,8 +158,11 @@ describe("workspace route loading", () => {
         expect(fullScreen).toContain('class="page-loader full-screen-loader"');
         expect(workspaceRoute).toContain('class="page-loader workspace-route-loader"');
         for (const markup of [fullScreen, workspaceRoute]) {
+            expect(markup).toContain('role="status"');
             expect(markup).toContain('<span class="loading-clover" aria-hidden="true"><i></i><i></i><i></i><i></i></span>');
         }
+        expect(fullScreen).toContain("准备当前页面");
+        expect(workspaceRoute).toContain('aria-label="正在打开页面"');
         expect(css).toContain(".page-loader > .loading-clover");
         expect(css).not.toContain("@keyframes loading-signal-sweep");
     });
