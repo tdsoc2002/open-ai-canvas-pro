@@ -14,6 +14,7 @@ function environment(user: unknown = null) {
     const events: unknown[] = [];
     const scope = {
         workspaceTeamId: undefined,
+        teamTextReferences: false,
         useUserStore: { getState: () => ({ user }) },
         setLibraryOpen: (open: boolean) => events.push(["library", open]),
         openAuth: (options: unknown) => events.push(["auth", options]),

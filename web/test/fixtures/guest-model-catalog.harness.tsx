@@ -139,7 +139,7 @@ for (const component of ["picker", "composer"] as const) {
                     </MemoryRouter>,
                 ),
             );
-            expect(host.querySelector(".canvas-model-picker-trigger-text")?.textContent).toBe("sora-2");
+            expect(host.querySelector(".canvas-model-picker-trigger-text")?.textContent).toBe("游客可见视频模型");
             expect(requests).toEqual([]);
             if (component === "composer") expect(host.querySelector('button[aria-label^="预估"]')).not.toBeNull();
             await act(async () => useUserStore.setState({ user: { id: "member", username: "member", displayName: "会员", role: "user", status: "active" } }));
@@ -148,7 +148,7 @@ for (const component of ["picker", "composer"] as const) {
             const count = requests.length;
             await act(async () => useUserStore.setState({ user: null }));
             expect(requests).toHaveLength(count);
-            expect(host.querySelector(".canvas-model-picker-trigger-text")?.textContent).toBe("sora-2");
+            expect(host.querySelector(".canvas-model-picker-trigger-text")?.textContent).toBe("游客可见视频模型");
             if (component === "composer") expect(host.querySelector('button[aria-label^="预估"]')).not.toBeNull();
         } finally {
             await act(async () => root.unmount());
@@ -163,6 +163,9 @@ test("Seedance 渠道用当前生成参数和参考视频时长报价", async ()
     const queryClient = new QueryClient();
     const seedance = "doubao-seedance-2-5-260628";
     const protocol = "volcengine-ark-seedance-25";
+    const seedanceProfile = defaultModelCapabilityConfig(protocol, seedance);
+    seedanceProfile.video!.resolutions = ["480p", "720p"];
+    seedanceProfile.video!.generateAudio.supported = true;
     const seedanceChannel = createModelChannel({
         id: "seedance-catalog",
         scope: "system",
@@ -173,7 +176,7 @@ test("Seedance 渠道用当前生成参数和参考视频时长报价", async ()
                 protocol,
                 displayName: "Seedance 2.5",
                 capability: "video",
-                capabilityConfig: defaultModelCapabilityConfig(protocol, seedance),
+                capabilityConfig: seedanceProfile,
                 billingMode: "token",
                 unitPriceMicrocredits: 0,
                 inputTokenPriceMicrocredits: 0,
@@ -190,7 +193,7 @@ test("Seedance 渠道用当前生成参数和参考视频时长报价", async ()
         const body = JSON.parse(request.data) as (typeof requests)[number];
         requests.push(body);
         const withReference = Boolean(body.intent.inputs?.video);
-        const quote = { billingMode: "token", estimated: true, amountMicrocredits: withReference ? 8_500_000 : 2_250_000 };
+        const quote = { billingMode: "token", estimated: true, amountMicrocredits: withReference ? 8_500_000 : 2_250_000, videoUnitPriceMicrocredits: withReference ? 1_060_000 : 450_000 };
         return { config: request, status: 200, statusText: "OK", headers: {}, data: { code: 0, data: { quote } } };
     };
     const { user, features } = useUserStore.getState();
@@ -206,31 +209,40 @@ test("Seedance 渠道用当前生成参数和参考视频时长报价", async ()
                 </QueryClientProvider>,
             ),
         );
-    const tariff = () => document.querySelector(".canvas-model-picker-option-price .model-picker-tariff")?.textContent;
+    const tariffs = () => Array.from(document.querySelectorAll(".canvas-model-picker-option-price .model-picker-tariff"), (node) => node.textContent);
     const input = { textCount: 1, imageCount: 0, videoCount: 0, audioCount: 0, characterCount: 0 };
     try {
         await render({ input, options: { size: "16:9", vquality: "480p", videoSeconds: 5, videoGenerateAudio: false } });
         await act(() => host.querySelector("button")!.click());
         const seedanceGroup = [...document.querySelectorAll<HTMLButtonElement>(".canvas-model-picker-brand")].find((button) => button.textContent?.includes("Seedance 2.5"))!;
         await act(() => seedanceGroup.click());
-        expect(tariff()).toContain("/M Token");
+        expect(tariffs()[0]).toContain("/M Token");
         expect(requests).toHaveLength(0);
 
         await act(() => useUserStore.setState({ user: { id: "member", username: "member", displayName: "会员", role: "user", status: "active" } }));
         await act(async () => void (await Bun.sleep(20)));
-        expect(tariff()).toBe("预估 2.25 积分");
-        expect(requests).toHaveLength(1);
-        expect(requests[0]).toMatchObject({ channelId: seedanceChannel.id, modelKey: seedance, intent: { operation: "text_to_video", options: { size: "16:9", vquality: "480p", videoSeconds: 5, videoGenerateAudio: false } } });
+        expect(tariffs()).toEqual(["480P 0.45/秒", "720P 0.45/秒"]);
+        expect(requests).toHaveLength(2);
+        expect(requests.find(({ intent }) => intent.options?.vquality === "480p")).toMatchObject({
+            channelId: seedanceChannel.id,
+            modelKey: seedance,
+            intent: { operation: "text_to_video", options: { size: "16:9", videoSeconds: 5, videoGenerateAudio: false } },
+        });
 
         await render({ input: { ...input, videoCount: 1, videoDurationsMs: [3000] }, options: { size: "9:16", vquality: "720p", videoSeconds: 8, videoGenerateAudio: true } });
         await act(async () => void (await Bun.sleep(20)));
-        expect(tariff()).toBe("预估 8.50 积分");
-        expect(requests).toHaveLength(2);
-        expect(requests[1].intent).toMatchObject({ operation: "reference_to_video", inputs: { video: 1 }, referenceVideoDurationsMs: [3000], options: { size: "9:16", vquality: "720p", videoSeconds: 8, videoGenerateAudio: true } });
+        expect(tariffs()).toEqual(["480P 1.06/秒", "720P 1.06/秒"]);
+        expect(requests).toHaveLength(4);
+        expect(requests.find(({ intent }) => intent.operation === "reference_to_video" && intent.options?.vquality === "720p")?.intent).toMatchObject({
+            operation: "reference_to_video",
+            inputs: { video: 1 },
+            referenceVideoDurationsMs: [3000],
+            options: { size: "9:16", videoSeconds: 8, videoGenerateAudio: true },
+        });
 
         await act(() => useUserStore.setState({ user: null }));
-        expect(tariff()).toContain("/M Token");
-        expect(requests).toHaveLength(2);
+        expect(tariffs()[0]).toContain("/M Token");
+        expect(requests).toHaveLength(4);
     } finally {
         await act(() => root.unmount());
         queryClient.clear();
