@@ -161,7 +161,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [titleDraft, setTitleDraft] = useState(data.title);
     const { download: downloadNode, duplicate: duplicateNode, deleteNode, openMediaVersions, dramaStaleNodeIds, refreshFromDrama } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
-    const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
+    const isVideoNode = data.type === CanvasNodeType.Video;
+    const hasVideoContent = isVideoNode && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content || data.metadata?.storageKey);
     const mediaDimensionLabel = formatMediaDimensionLabel(data, hasImageContent || hasVideoContent);
     const isComposerNode = data.type === CanvasNodeType.Config;
@@ -172,8 +173,9 @@ export const CanvasNode = React.memo(function CanvasNode({
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
     const showVersionBadge = !readOnly && Boolean(openMediaVersions) && hasMediaVersionHistory(data);
     const dramaStale = !readOnly && Boolean(dramaStaleNodeIds?.has(data.id));
-    const visibleResourceLabel = data.type === CanvasNodeType.Image || data.type === CanvasNodeType.Text ? undefined : resourceLabel;
-    const showStatusTrack = Boolean(visibleResourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly) || showVersionBadge || dramaStale);
+    const visibleResourceLabel = isVideoNode || data.type === CanvasNodeType.Image || data.type === CanvasNodeType.Text ? undefined : resourceLabel;
+    const showStorageBadge = !readOnly && (hasImageContent || hasAudioContent);
+    const showStatusTrack = Boolean(visibleResourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || showStorageBadge || showVersionBadge || dramaStale);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const showConnectionRails = !isConnecting && (hovered || isSelected || isFocusRelated);
     const effectiveRenderLOD: CanvasNodeRenderLOD = renderLOD === "full" || hovered || isEditingContent || isEditingTitle || mediaActive ? "full" : renderLOD;
@@ -426,7 +428,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     <div className="absolute right-3 top-3 z-[var(--node-z-overlay)] flex min-w-0 items-center justify-end gap-1 max-w-[calc(100%-24px)]">
                         {visibleResourceLabel ? <ResourceLabelBadge reference={visibleResourceLabel} theme={theme} /> : null}
                         {data.type === CanvasNodeType.Image && hasImageContent && data.metadata?.assetId ? <ArkCertificationBadge assetId={data.metadata.assetId} storageKey={data.metadata.storageKey} /> : null}
-                        {hasMediaContent && !readOnly ? <ResourceStorageBadge storageKey={data.metadata?.storageKey} active={isActive} theme={theme} /> : null}
+                        {showStorageBadge ? <ResourceStorageBadge storageKey={data.metadata?.storageKey} active={isActive} theme={theme} /> : null}
                         {isBatchRoot ? <BatchToggleBadge count={batchCount} expanded={batchExpanded} theme={theme} onToggle={() => onToggleBatch?.(data.id)} /> : null}
                         {data.metadata?.imageLayerGroup && !readOnly ? <CanvasImageLayerControls node={data} /> : null}
                         {isBatchChild && !data.metadata?.imageLayer && !data.metadata?.layerExtraction && !readOnly ? (
