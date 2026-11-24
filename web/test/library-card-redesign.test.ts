@@ -82,7 +82,7 @@ describe("skills library", () => {
         expect(page).toContain('ariaLabel={isLibraryScope ? "我的技能分类" : "技能分类"}');
         expect(page).toContain("管理分类");
         expect(page).toContain("按行业推荐");
-        expect(page).toContain('className="skills-results"');
+        expect(page).toMatch(/<section className="(?:[^"]+ )?skills-results(?: [^"]+)?"/);
         expect(page).not.toContain("SegmentedControl");
         expect(page).not.toContain("SkillCurationBrowser");
         expect(page).not.toContain("skills-tabs");

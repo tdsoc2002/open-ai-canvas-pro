@@ -883,8 +883,8 @@ export default function AssetsPage() {
                     </CollectionToolbar>
                 </div>
 
-                <div className="collection-content assets-collection-content">
-                    <section className="min-w-0">
+                <div className="collection-content assets-collection-content workspace-pagination-flow">
+                    <section className="min-w-0 workspace-pagination-flow">
                         {viewMode === "trash" ? (
                             <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-600 dark:text-amber-300">
                                 <div className="flex items-center gap-2">

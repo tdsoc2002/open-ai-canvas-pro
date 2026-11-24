@@ -377,7 +377,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
     };
 
     return (
-        <section ref={sectionRef} id="creation-inspirations" className="inspiration-hall" aria-labelledby="inspiration-hall-title">
+        <section ref={sectionRef} id="creation-inspirations" className="inspiration-hall workspace-pagination-flow" aria-labelledby="inspiration-hall-title">
             <h1 id="inspiration-hall-title" className="sr-only">
                 灵感大厅
             </h1>
@@ -490,7 +490,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                 </div>
             ) : null}
 
-            <div className="inspiration-hall-results">
+            <div className="inspiration-hall-results workspace-pagination-flow">
                 {!shouldLoadCatalog ? (
                     <div className="inspiration-hall-deferred" aria-hidden="true" />
                 ) : loadError ? (

@@ -596,7 +596,7 @@ export default function TasksPage() {
                     </div>
                 </div>
 
-                <div className="collection-content task-center-content">
+                <div className="collection-content workspace-pagination-flow">
                     {loading && !tasks.length ? (
                         <TaskCenterSkeleton viewMode={viewMode} label={t("library.tasks.page.loading")} />
                     ) : visibleTasks.length ? (

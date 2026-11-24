@@ -43,6 +43,30 @@
 .collection-content {
     min-width: 0;
 }
+
+@media (min-width: 768px) {
+    .app-user-workspace main.app-user-content.app-workspace-scroll > div:has(.app-pagination-bar) {
+        padding-bottom: var(--space-6);
+    }
+
+    .app-user-workspace .app-workspace-scroll > div:has(.workspace-pagination-flow > .app-pagination-bar) {
+        display: flex;
+        min-height: 100%;
+        flex-direction: column;
+    }
+
+    .app-user-workspace .app-workspace-scroll .workspace-pagination-flow:has(.app-pagination-bar) {
+        display: flex;
+        flex: 1 0 auto;
+        flex-direction: column;
+    }
+
+    .app-user-workspace .app-workspace-scroll .workspace-pagination-flow > .app-pagination-bar {
+        margin-top: auto;
+        padding-block: var(--space-6) 0;
+    }
+}
+
 .collection-selection-bar {
     display: flex;
     flex-wrap: wrap;

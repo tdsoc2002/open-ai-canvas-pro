@@ -586,7 +586,7 @@ export default function SkillsPage() {
                     </CollectionToolbar>
                 </header>
 
-                <section className="skills-results" aria-labelledby="skills-results-title">
+                <section className="skills-results workspace-pagination-flow" aria-labelledby="skills-results-title">
                     <h2 id="skills-results-title" className="sr-only">
                         {viewLabel}
                         {!loading && !loadError ? `（${total} 个技能）` : null}

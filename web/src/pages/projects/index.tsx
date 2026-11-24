@@ -115,7 +115,7 @@ export default function DramaListPage() {
 
     return (
         <WorkspacePage className="studio-collection-page drama-library">
-            <div className="drama-root" {...dragProps}>
+            <div className="drama-root workspace-pagination-flow" {...dragProps}>
                 <div className="studio-band">
                     <PageHeader title="短剧" meta={<span className="app-projects-header-meta">{total} 部</span>} actions={total ? actions : undefined} />
                     {total ? (
