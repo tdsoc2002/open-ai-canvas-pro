@@ -47,7 +47,7 @@
                 top: 50%;
                 transform: translate(-50%, -50%);
             }
-            /* 启动占位与 FullScreenLoader 共用，入口脚本加载前也能显示。 */
+            /* 启动占位与 React 的 LoadingClover 共用，入口脚本加载前也能显示。 */
             .loading-clover {
                 display: grid;
                 width: 32px;
@@ -59,6 +59,7 @@
                 border-radius: 72% 72% 14% 72%;
                 background: currentColor;
                 animation: loading-clover-pulse 1200ms linear calc(var(--clover-offset, 0ms) - var(--loader-clock, 0ms)) infinite;
+                animation-play-state: var(--loading-clover-play-state, running);
             }
             .loading-clover > i:nth-child(2) {
                 --clover-offset: -900ms;
@@ -86,6 +87,9 @@
                 .loading-clover > i {
                     animation: none;
                 }
+            }
+            .no-motion .loading-clover > i {
+                animation: none;
             }
         </style>
         <script>

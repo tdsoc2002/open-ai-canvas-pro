@@ -1,17 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Video } from "lucide-react";
 
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { resolveVideoMediaUrl } from "@/services/file-storage";
 
 /** Prefer an existing cover; only decode a video frame for visible rows without one. */
-export function CanvasWorkspaceVideoThumbnail({ cover, coverStorageKey, videoStorageKey, videoUrl }: { cover?: string; coverStorageKey?: string; videoStorageKey?: string; videoUrl?: string }) {
-    const fallback = <VideoFrame storageKey={videoStorageKey} url={videoUrl} />;
+export function CanvasWorkspaceVideoThumbnail({
+    cover,
+    coverStorageKey,
+    videoStorageKey,
+    videoUrl,
+    placeholder = <Video className="size-4 text-muted-foreground" />,
+}: {
+    cover?: string;
+    coverStorageKey?: string;
+    videoStorageKey?: string;
+    videoUrl?: string;
+    placeholder?: ReactNode;
+}) {
+    const fallback = <VideoFrame storageKey={videoStorageKey} url={videoUrl} placeholder={placeholder} />;
     if (!cover && !coverStorageKey) return fallback;
-    return <CachedResourceImage src={cover} storageKey={coverStorageKey} variant="thumbnail" alt="" className="h-full w-full object-cover" loadingFallback={<Video className="size-4 text-muted-foreground" />} fallback={fallback} />;
+    return <CachedResourceImage src={cover} storageKey={coverStorageKey} variant="thumbnail" alt="" className="h-full w-full object-cover" loadingFallback={placeholder} fallback={fallback} />;
 }
 
-function VideoFrame({ storageKey, url }: { storageKey?: string; url?: string }) {
+function VideoFrame({ storageKey, url, placeholder }: { storageKey?: string; url?: string; placeholder: ReactNode }) {
     const target = useRef<HTMLSpanElement>(null);
     const [visible, setVisible] = useState(false);
     const [src, setSrc] = useState("");
@@ -62,7 +74,7 @@ function VideoFrame({ storageKey, url }: { storageKey?: string; url?: string }) 
                     onError={() => setFailed(true)}
                 />
             ) : (
-                <Video className="size-4 text-muted-foreground" />
+                placeholder
             )}
         </span>
     );

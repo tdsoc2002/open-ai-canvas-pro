@@ -14157,15 +14157,11 @@
     }
 
     /* —— 画布节点生成状态（canvas-node-status-content.tsx）——
-       生成中：柔光呼吸 + 斜向光带 + 媒体类型指示 + 排队/生成/保存三段进度；失败：按下一步动作分类。
+       生成中：四叶草、阶段提示与静态背景；失败：按下一步动作分类。
        颜色取画布主题（组件内联 --canvas-gen-*），强调色取 --status-loading，跟随皮肤。 */
     .canvas-gen-state {
         --canvas-gen-accent: var(--status-loading);
         --canvas-gen-tone: var(--canvas-gen-accent);
-        --gen-steps-ink: var(--canvas-gen-ink);
-        --gen-steps-muted: var(--canvas-gen-muted);
-        --gen-steps-track: var(--canvas-gen-track);
-        --gen-steps-accent: var(--canvas-gen-accent);
         position: relative;
         z-index: 0;
         isolation: isolate;
@@ -14203,7 +14199,7 @@
         pointer-events: none;
     }
     /* 柔光保持静态，不再叠加整块尺寸的呼吸与斜向光带动画：每个生成中节点原本有 5 个动画合成层，
-       多节点同时生成时平移缩放掉帧；动感由进度环和三段进度条承担。 */
+       多节点同时生成时平移缩放掉帧；动感由四叶草承担。 */
     .canvas-gen-state::before {
         background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--canvas-gen-tone) 14%, transparent), transparent 58%);
         opacity: 0.8;
@@ -14221,40 +14217,34 @@
         display: none;
     }
 
+    .canvas-gen-backdrop {
+        position: absolute;
+        z-index: -1;
+        inset: 0;
+        opacity: 0.28;
+        filter: blur(var(--glass-blur));
+        pointer-events: none;
+    }
+
     .canvas-gen-indicator {
-        position: relative;
         display: grid;
         width: 44px;
         height: 44px;
         flex: 0 0 auto;
         place-items: center;
-        border-radius: var(--r-full);
-        background: color-mix(in srgb, var(--canvas-gen-surface) 82%, transparent);
-        box-shadow: inset 0 0 0 1.5px var(--canvas-gen-track);
-        color: var(--canvas-gen-muted);
+        color: var(--canvas-gen-accent);
     }
     .canvas-gen-indicator > svg {
-        position: relative;
         width: 18px;
         height: 18px;
     }
     .canvas-gen-state.is-failure .canvas-gen-indicator,
     .canvas-gen-state[data-phase="uncertain"] .canvas-gen-indicator {
+        border-radius: var(--r-full);
         background: color-mix(in srgb, var(--canvas-gen-tone) 10%, var(--canvas-gen-surface));
         box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--canvas-gen-tone) 36%, transparent);
         color: var(--canvas-gen-tone);
     }
-    /* 彗尾弧线：沿环转动，配合 animate-spin 在减少动态效果下仍保持转动（加载指示例外）。 */
-    .canvas-gen-ring {
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        background: conic-gradient(from 0deg, transparent 0deg 64deg, var(--canvas-gen-accent) 300deg, transparent 300deg);
-        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
-        mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
-        animation-duration: 1.2s;
-    }
-
     .canvas-gen-copy {
         display: flex;
         min-width: 0;
@@ -14309,10 +14299,6 @@
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 3;
     }
-    .canvas-gen-steps {
-        width: min(188px, 100%);
-    }
-
     .canvas-gen-actions {
         display: flex;
         max-width: 100%;
@@ -14390,20 +14376,18 @@
         outline-offset: 2px;
     }
 
-    /* 节点尺寸不同，信息按优先级逐级收起：先收提示，再收步骤文字与详情，最后只留指示器与标题。 */
+    /* 节点尺寸减小时依次收起提示、详情和次要信息。 */
     @container (max-height: 230px) {
         .canvas-gen-hint {
             display: none;
         }
     }
     @container (max-height: 190px) {
-        .canvas-gen-steps .generation-phase-steps-label,
         .canvas-gen-detail {
             display: none;
         }
     }
     @container (max-height: 140px) {
-        .canvas-gen-steps,
         .canvas-gen-meta,
         .canvas-gen-reason,
         .canvas-gen-diagnostic {
@@ -14425,8 +14409,7 @@
     }
     @container (max-width: 160px) {
         .canvas-gen-hint,
-        .canvas-gen-detail,
-        .canvas-gen-steps .generation-phase-steps-label {
+        .canvas-gen-detail {
             display: none;
         }
         .canvas-gen-action {
@@ -14670,6 +14653,9 @@
         }
     }
 
+    [data-canvas-viewport-interacting="true"] .canvas-gen-indicator {
+        --loading-clover-play-state: paused;
+    }
     [data-canvas-viewport-interacting="true"] .canvas-gen-state::before,
     [data-canvas-viewport-interacting="true"] .canvas-gen-state::after,
     [data-canvas-viewport-interacting="true"] .generation-phase-steps-fill,

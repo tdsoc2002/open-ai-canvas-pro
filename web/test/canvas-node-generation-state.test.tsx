@@ -4,8 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 
 import { CanvasNode } from "../src/components/canvas/canvas-node";
+import { applyGenerationTaskResultToNodes } from "../src/lib/canvas/canvas-generation-task-sync";
 import type { CanvasNodeRenderLOD } from "../src/lib/canvas/canvas-node-lod";
-import { canvasNodeCanResyncTask } from "../src/lib/canvas/canvas-task-state";
+import { generationTaskMetadata } from "../src/lib/canvas/canvas-project-generation";
+import { canvasNodeCanResyncTask, canvasTaskBindingStatus } from "../src/lib/canvas/canvas-task-state";
 import { subscribeTaskTicker } from "../src/lib/canvas/task-ticker";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
 
@@ -61,6 +63,66 @@ test("视频节点缩小时沿用未生成空态，并保留已有视频封面",
 });
 
 describe("画布节点生成中", () => {
+    test("视频节点准备生成时显示四叶草、阶段和耗时", () => {
+        const markup = renderNode({ status: "loading", taskId: "task", taskStatus: "running", taskStage: "正在准备参考素材", taskCreatedAt: createdAt() }, CanvasNodeType.Video);
+        expect(markup).toContain('<span class="loading-clover" aria-hidden="true"><i></i><i></i><i></i><i></i></span>');
+        expect(markup).not.toContain("canvas-gen-ring");
+        expect(markup).toContain("准备生成");
+        expect(markup).toContain("已用时");
+        expect(markup).not.toContain("generation-phase-steps");
+        expect(markup).not.toContain("查看详情");
+        expect(markup).not.toContain("canvas-gen-backdrop");
+    });
+
+    test("视频重生成持续显示虚化旧封面，直到新视频与完成状态一起写入", async () => {
+        const task = {
+            id: "new-task",
+            type: "canvas_video",
+            status: "succeeded" as const,
+            prompt: "新提示词",
+            attempts: 1,
+            createdAt: createdAt(),
+            updatedAt: "",
+            previewKind: "video" as const,
+            previewPosterUrl: "/new.jpg",
+            resultJson: JSON.stringify({ video: { dataUrl: "/new.mp4" } }),
+        };
+        const regenerating: CanvasNodeData = {
+            id: "node",
+            type: CanvasNodeType.Video,
+            title: "镜头",
+            position: { x: 0, y: 0 },
+            width: 640,
+            height: 360,
+            metadata: { status: "loading", taskId: task.id, taskStatus: "running", content: "/old.mp4", previewContent: "/old.jpg" },
+        };
+        const observed = { ...regenerating, metadata: { ...regenerating.metadata, ...generationTaskMetadata(task), status: canvasTaskBindingStatus(regenerating, task) } };
+        expect(observed.metadata.status).toBe("loading");
+        for (const lod of ["full", "preview"] as const) {
+            const markup = renderNode(observed.metadata, CanvasNodeType.Video, undefined, lod);
+            expect(markup).toContain('<div class="canvas-gen-backdrop" aria-hidden="true"><img alt=""');
+            expect(markup).toContain("正在载入视频");
+            expect(markup).not.toContain("<video");
+        }
+
+        const {
+            nodes: [committed],
+        } = await applyGenerationTaskResultToNodes([observed], task, observed.id);
+        expect(committed.metadata).toMatchObject({ status: "success", content: "/new.mp4", previewContent: "/new.jpg" });
+        expect(canvasTaskBindingStatus(committed, task)).toBe("success");
+        const markup = renderNode(committed.metadata, CanvasNodeType.Video);
+        expect(markup).toContain('alt="去掉水印 静态预览"');
+        expect(markup).not.toContain("canvas-gen-backdrop");
+        expect(markup).not.toContain("loading-clover");
+    });
+
+    test("提交结果待确认时显示警告图标", () => {
+        const markup = renderNode({ status: "loading", taskId: "task", taskStatus: "running", taskStage: "submission_unknown" }, CanvasNodeType.Video);
+        expect(markup).toContain("提交结果待确认");
+        expect(markup).toContain("lucide-triangle-alert");
+        expect(markup).not.toContain("loading-clover");
+    });
+
     test("分镜自定义标题栏已有任务状态时不叠加外层徽章，缺少渲染器时仍显示通用状态", () => {
         for (const status of ["loading", "error"] as const) {
             const markup = renderNode({ status }, CanvasNodeType.Script, () => <div>分镜脚本任务状态</div>);
@@ -78,9 +140,7 @@ describe("画布节点生成中", () => {
         expect(markup).not.toContain("生成中");
         expect(markup).not.toContain("canvas-node-status-chip");
         expect(markup).toContain("已用时 1分");
-        expect(markup).toContain("查看详情");
-        // 保存是三段进度的最后一段：排队与生成已完成。
-        expect(markup).toMatch(/data-state="done"[\s\S]*data-state="done"[\s\S]*data-state="active"/);
+        expect(markup).not.toContain("查看详情");
     });
 
     test("保存失败后自动重试时如实显示，不再显示成正常保存", () => {
@@ -117,7 +177,6 @@ describe("画布节点生成中", () => {
         expect(markup).toContain("正在生成视频");
         expect(markup).toContain("42%");
         expect(markup).toContain("离开页面也会继续生成");
-        expect(markup).toContain('data-determinate="true"');
     });
 });
 

@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { translate } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
+import { LoadingClover } from "./loading-clover";
 
 type PageLoaderProps = {
     label: string;
@@ -41,12 +42,7 @@ function PageLoader({ fullScreen = false, label, detail, className }: PageLoader
             className={cn("page-loader", fullScreen && "full-screen-loader", className)}
             style={clock}
         >
-            <span className="loading-clover" aria-hidden="true">
-                <i />
-                <i />
-                <i />
-                <i />
-            </span>
+            <LoadingClover />
             <div className="page-loader-copy">
                 <strong>{label}</strong>
                 {detail ? <span>{detail}</span> : null}

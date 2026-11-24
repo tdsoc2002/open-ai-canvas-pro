@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { FullScreenLoader, WorkspaceRouteLoader } from "../src/components/ui/aceternity/full-screen-loader";
 
 function source(path: string) {
     return readFileSync(resolve(import.meta.dir, path), "utf8");
@@ -141,15 +144,18 @@ describe("workspace route loading", () => {
 
     test("shares the clover between boot, full-screen, and workspace route loading", () => {
         const html = source("../index.html");
-        const loader = source("../src/components/ui/aceternity/full-screen-loader.tsx");
         const css = source("../src/styles/globals.css");
+        const fullScreen = renderToStaticMarkup(createElement(FullScreenLoader, { label: "正在恢复" }));
+        const workspaceRoute = renderToStaticMarkup(createElement(WorkspaceRouteLoader, { label: "正在打开页面" }));
 
         expect(html).toContain('class="loading-clover" aria-hidden="true"');
         expect(html).toContain("@keyframes loading-clover-pulse");
         expect(html).toContain("@media (prefers-reduced-motion: reduce)");
-        expect(loader).toContain("<PageLoader fullScreen");
-        expect(loader).toContain('<PageLoader label={label} className={cn("workspace-route-loader"');
-        expect(loader).toContain('className="loading-clover" aria-hidden="true"');
+        expect(fullScreen).toContain('class="page-loader full-screen-loader"');
+        expect(workspaceRoute).toContain('class="page-loader workspace-route-loader"');
+        for (const markup of [fullScreen, workspaceRoute]) {
+            expect(markup).toContain('<span class="loading-clover" aria-hidden="true"><i></i><i></i><i></i><i></i></span>');
+        }
         expect(css).toContain(".page-loader > .loading-clover");
         expect(css).not.toContain("@keyframes loading-signal-sweep");
     });

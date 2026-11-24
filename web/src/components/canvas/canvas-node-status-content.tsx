@@ -1,26 +1,19 @@
-// 画布节点的运行状态内容：生成中（阶段、耗时、三段进度）、失败（重新获取 / 重新保存 / 重新生成）与未知节点兜底。
+// 画布节点的运行状态内容：生成中（阶段、耗时）、失败（重新获取 / 重新保存 / 重新生成）与未知节点兜底。
 
 import { type GenerationTask } from "@/services/api/task-center";
-import {
-    generationPhaseHint,
-    generationPhaseLabel,
-    generationPhaseStep,
-    generationTaskPhase,
-    generationTaskSavingState,
-    generationTaskShowsProgress,
-    isGenerationTaskSubmissionUncertain,
-    type GenerationMediaKind,
-    type GenerationPhase,
-} from "@/lib/generation-task-display";
-import { AlertCircle, AlertTriangle, AudioLines, CloudOff, FileText, Film, Image as ImageIcon, RefreshCw, RotateCcw, ShieldAlert, Type, type LucideIcon } from "lucide-react";
+import { generationPhaseHint, generationPhaseLabel, generationTaskPhase, generationTaskSavingState, generationTaskShowsProgress, isGenerationTaskSubmissionUncertain, type GenerationMediaKind, type GenerationPhase } from "@/lib/generation-task-display";
+import { AlertCircle, AlertTriangle, CloudOff, FileText, RefreshCw, RotateCcw, ShieldAlert, type LucideIcon } from "lucide-react";
 import { type CSSProperties, type MouseEvent } from "react";
 import { useTaskElapsed } from "@/hooks/use-task-elapsed";
+import { canvasNodeVideoPreviewReference } from "@/lib/canvas/canvas-media-preview";
 import { canvasNodeCanResyncTask } from "@/lib/canvas/canvas-task-state";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
-import { GenerationPhaseSteps } from "@/components/ai/generation-phase-steps";
+import { buildLibTVVideoSourceUrl } from "@/lib/canvas/libtv-import";
+import { LoadingClover } from "@/components/ui/aceternity/loading-clover";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
+import { CanvasWorkspaceVideoThumbnail } from "./canvas-workspace-video-thumbnail";
 
 function canvasNodeGenerationKind(type: CanvasNodeData["type"]): GenerationMediaKind {
     if (type === CanvasNodeType.Video) return "video";
@@ -29,14 +22,11 @@ function canvasNodeGenerationKind(type: CanvasNodeData["type"]): GenerationMedia
     return "text";
 }
 
-const generationKindIcon: Record<GenerationMediaKind, LucideIcon> = { image: ImageIcon, video: Film, audio: AudioLines, text: Type };
-
 // 画布主题是随画布明暗切换的 JS 对象，这里转成局部 CSS 变量；样式统一写在 globals.css 的 .canvas-gen-*。
 function canvasGenerationStateStyle(theme: CanvasTheme): CSSProperties {
     return {
         "--canvas-gen-ink": theme.node.text,
         "--canvas-gen-muted": theme.node.muted,
-        "--canvas-gen-track": theme.node.stroke,
         "--canvas-gen-surface": theme.node.fill,
         "--canvas-gen-primary": theme.accent.primary,
         "--canvas-gen-on-primary": theme.accent.onPrimary,
@@ -69,7 +59,7 @@ function TaskDetailButton({ node, onOpenTaskDetails }: Pick<CanvasNodeContentPro
     );
 }
 
-export function LoadingContent({ node, theme, onOpenTaskDetails }: Pick<CanvasNodeContentProps, "node" | "theme" | "onOpenTaskDetails">) {
+export function LoadingContent({ node, theme }: Pick<CanvasNodeContentProps, "node" | "theme">) {
     const metadata = node.metadata;
     const taskId = metadata?.taskId;
     const displayTask = {
@@ -82,8 +72,9 @@ export function LoadingContent({ node, theme, onOpenTaskDetails }: Pick<CanvasNo
     // 还没拿到任务 ID 时一律视为“提交中”，不展示前端占位用的阶段字符串。
     const phase: GenerationPhase = taskId ? generationTaskPhase(displayTask) : "submitting";
     const kind = canvasNodeGenerationKind(node.type);
-    const Icon = generationKindIcon[kind];
     const uncertain = phase === "uncertain";
+    const hasPreviousVideo = node.type === CanvasNodeType.Video && Boolean(metadata?.content || metadata?.storageKey);
+    const previousCover = hasPreviousVideo ? canvasNodeVideoPreviewReference(node) : null;
     const title = workflow ? (workflow.stage === "planning" ? "正在规划拆层" : `正在拆层 · 共 ${workflow.total} 张`) : metadata?.experimentalLayerPlan?.progress || generationPhaseLabel(phase, kind, metadata?.taskStage);
     const progress = taskId && generationTaskShowsProgress(displayTask) && typeof metadata?.taskProgress === "number" ? Math.max(0, Math.min(100, Math.round(metadata.taskProgress))) : null;
     const startedAt = workflow?.startedAt || metadata?.taskCreatedAt;
@@ -94,15 +85,19 @@ export function LoadingContent({ node, theme, onOpenTaskDetails }: Pick<CanvasNo
     const meta = uncertain ? "" : [progress !== null ? `${progress}%` : "", startedAt ? `已用时 ${elapsed}` : ""].filter(Boolean).join(" · ");
     return (
         <div className="canvas-gen-state" data-phase={phase} data-saving={phase === "saving" ? generationTaskSavingState(metadata?.taskStage) : undefined} style={canvasGenerationStateStyle(theme)}>
+            {hasPreviousVideo ? (
+                <div className="canvas-gen-backdrop" aria-hidden="true">
+                    <CanvasWorkspaceVideoThumbnail
+                        cover={previousCover?.src}
+                        coverStorageKey={previousCover?.storageKey}
+                        videoStorageKey={metadata?.storageKey}
+                        videoUrl={metadata?.content ? buildLibTVVideoSourceUrl(metadata.content) : undefined}
+                        placeholder={null}
+                    />
+                </div>
+            ) : null}
             <span className="canvas-gen-indicator" aria-hidden="true">
-                {uncertain ? (
-                    <AlertTriangle />
-                ) : (
-                    <>
-                        <span className="canvas-gen-ring animate-spin" />
-                        <Icon />
-                    </>
-                )}
+                {uncertain ? <AlertTriangle /> : <LoadingClover />}
             </span>
             <span className="canvas-gen-copy">
                 {/* 只有阶段标题进入读屏播报；每秒变化的耗时不放进 live region。 */}
@@ -118,8 +113,6 @@ export function LoadingContent({ node, theme, onOpenTaskDetails }: Pick<CanvasNo
                     <span className="canvas-gen-hint">{hint}</span>
                 ) : null}
             </span>
-            {!uncertain && !workflow ? <GenerationPhaseSteps className="canvas-gen-steps" step={generationPhaseStep(phase)} progress={progress} /> : null}
-            <TaskDetailButton node={node} onOpenTaskDetails={onOpenTaskDetails} />
         </div>
     );
 }
