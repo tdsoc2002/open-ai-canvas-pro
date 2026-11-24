@@ -398,6 +398,7 @@ func migrations() []tableMigration {
 		migrateTable[model.SMSRecord]("sms_records"),
 		migrateTable[model.ChannelWebsite]("channel_websites"),
 		migrateTable[model.ModelChannel]("model_channels"),
+		migrateTable[model.AigcQuotaSnapshot]("aigc_quota_snapshots"),
 		migrateTable[model.ChannelModel]("channel_models"),
 		migrateTable[model.ChannelModelPriceTier]("channel_model_price_tiers"),
 		migrateTable[model.ChannelCatalogSnapshot]("channel_catalog_snapshots"),
