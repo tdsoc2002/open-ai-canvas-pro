@@ -144,6 +144,12 @@
     transform: translateY(-50%) rotate(-26deg);
 }
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-composer-stage.is-home-mode {
+    --joysee-home-inline-padding: var(--space-5);
+    --joysee-home-reference-height: var(--space-7);
+    --joysee-home-writing-height: calc(var(--joysee-prompt-height) + var(--joysee-home-reference-height) + var(--space-3) + var(--space-8));
+    --joysee-home-dock-control-height: var(--user-control-height);
+    --joysee-home-dock-height: var(--space-16);
+    --joysee-home-panel-height: calc(var(--joysee-home-writing-height) + var(--joysee-home-dock-height));
     display: block;
     margin-bottom: 0;
     padding: 0;
@@ -168,9 +174,9 @@
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-writing-surface {
     display: flex !important;
     flex-direction: column;
-    min-height: calc(var(--joysee-prompt-height) + var(--space-12)) !important;
+    min-height: var(--joysee-home-writing-height) !important;
     gap: var(--space-3) !important;
-    padding: var(--space-4) var(--space-8) !important;
+    padding: var(--space-4) var(--joysee-home-inline-padding) !important;
 }
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-mention-editor,
 :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-editor textarea {
@@ -188,7 +194,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
-    min-height: var(--space-7);
+    min-height: var(--joysee-home-reference-height);
     padding: 0 var(--space-3);
     border: var(--control-border-width) solid var(--border);
     border-radius: var(--button-radius);
@@ -217,9 +223,9 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    min-height: var(--space-16) !important;
+    min-height: var(--joysee-home-dock-height) !important;
     gap: var(--space-3);
-    padding: var(--space-2) var(--space-6) var(--space-2) var(--space-8) !important;
+    padding: var(--space-2) var(--joysee-home-inline-padding) !important;
     border-top: 0 !important;
     background: transparent !important;
 }
@@ -271,15 +277,12 @@
 :root[data-skin="joysee-minimal"] .creation-mode-trigger[aria-expanded="true"] > svg:last-child {
     transform: rotate(180deg);
 }
-:root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-agent-shell {
-    max-width: 980px;
-    margin-inline: auto;
-}
 :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-entry {
+    min-height: var(--joysee-home-panel-height);
     grid-template-columns: minmax(0, 1fr) minmax(0, 34%);
     grid-template-areas: "mode storyboard" "copy storyboard" "actions storyboard";
     gap: var(--space-3) var(--space-6);
-    padding: var(--space-6) var(--space-8);
+    padding: var(--space-6) var(--joysee-home-inline-padding);
 }
 :root[data-skin="joysee-minimal"] .creation-agent-mode-control {
     grid-area: mode;
@@ -320,13 +323,15 @@
     grid-area: storyboard;
     width: 100%;
     height: auto;
+    max-height: calc(var(--joysee-home-panel-height) - 2 * var(--space-6));
+    object-fit: contain;
     pointer-events: none;
 }
 @container (max-width: 620px) {
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-entry {
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "mode" "copy" "actions";
-        padding: var(--space-5);
+        padding-block: var(--space-5);
     }
     :root[data-skin="joysee-minimal"] .creation-agent-storyboard {
         display: none;
@@ -334,7 +339,7 @@
 }
 @container (max-width: 480px) {
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-entry {
-        padding: var(--space-4);
+        padding-block: var(--space-4);
     }
     :root[data-skin="joysee-minimal"] .creation-agent-shell .creation-agent-copy h2 {
         font-size: var(--fs-heading);
@@ -451,11 +456,12 @@
     }
 }
 @media (max-width: 720px) {
-    :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-writing-surface {
-        padding: var(--space-4) !important;
+    :root[data-skin="joysee-minimal"] .app-user-workspace .creation-composer-stage.is-home-mode {
+        --joysee-home-inline-padding: var(--space-3);
+        --joysee-home-dock-height: calc(2 * var(--joysee-home-dock-control-height) + 3 * var(--space-3));
     }
     :root[data-skin="joysee-minimal"] .app-user-workspace .creation-launchpad .creation-chat-dock {
-        padding: var(--space-3) !important;
+        padding-block: var(--space-3) !important;
     }
     :root[data-skin="joysee-minimal"] .creation-chat-submit-tools.is-empty {
         width: 100%;
@@ -471,6 +477,9 @@
     }
 }
 @media (max-width: 480px) {
+    :root[data-skin="joysee-minimal"] .app-user-workspace .creation-composer-stage.is-home-mode {
+        --joysee-home-dock-height: calc(3 * var(--joysee-home-dock-control-height) + 3 * var(--space-3) + var(--space-1));
+    }
     :root[data-skin="joysee-minimal"] .app-user-workspace .creation-start-heading h1 {
         font-size: var(--fs-section);
     }
@@ -480,8 +489,11 @@
     }
 }
 @media (pointer: coarse) {
+    :root[data-skin="joysee-minimal"] .app-user-workspace .creation-composer-stage.is-home-mode {
+        --joysee-home-reference-height: var(--joysee-hit-target);
+        --joysee-home-dock-control-height: var(--joysee-hit-target);
+    }
     :root[data-skin="joysee-minimal"] .creation-reference-entry {
-        min-height: 44px !important;
         height: auto !important;
     }
 }

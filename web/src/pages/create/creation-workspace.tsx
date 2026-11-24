@@ -50,8 +50,7 @@ import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";
 import { formatShotOrdinal } from "@/lib/shot-label";
 import { buildImageResolutionOptions, formatImageResolutionSize, supportsImageResolutionPresets } from "@/lib/image-resolution-tiers";
 import { videoDurationOptions, type ImageCapabilityConfig, type VideoCapabilityConfig } from "@/lib/model-capabilities";
-import { preserveVideoSettings as normalizeVideoValue } from "@/lib/media-settings";
-import { mediaSettingIssues } from "@/lib/media-settings";
+import { mediaSettingIssues, preserveImageSettings, preserveVideoSettings as normalizeVideoValue } from "@/lib/media-settings";
 import { MediaSettingsNotice } from "@/components/media-settings-notice";
 import { mergedImageCapabilityConfig, type ModelRequirements } from "@/lib/model-selection";
 import { imageQualityLabel } from "@/lib/image-quality";
@@ -393,7 +392,7 @@ export function CreationComposer(props: ComposerProps) {
         [props.attachments],
     );
     const visibleAttachments = useMemo(() => (referenceFilter === "all" ? props.attachments : props.attachments.filter((attachment) => creationAttachmentKind(attachment) === referenceFilter)), [props.attachments, referenceFilter]);
-    const imageSettingsSupported = props.imageProfile.size.parameter !== "none" || props.imageProfile.quality.supported || imageBatchLimit > 1;
+    const imageSettingsSupported = props.imageProfile.size.parameter !== "none" || props.imageProfile.resolution.supported || props.imageProfile.quality.supported || imageBatchLimit > 1;
     const updateTrackScrollState = useCallback(() => {
         const track = attachmentTrackRef.current;
         if (!track) return;
@@ -923,9 +922,14 @@ function GenerationSettingsMenu(props: ComposerProps) {
     const imageMode = props.mode === "image";
     const activeQualityOptions = props.imageProfile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: imageQualityLabel(value), description: "模型支持的质量/分辨率" });
     const qualityLabel = activeQualityOptions.find((item) => item.value === props.quality)?.label || qualityOptions.find((item) => item.value === props.quality)?.label || props.quality || "自动";
+    const imageSettings = { ...props.config, model: props.model, size: props.ratio, quality: props.quality, imageResolution: props.imageResolution, imageParameters: props.imageParameters, count: props.count };
+    const declaredImageSettings = imageMode && props.imageProfile.parameters ? preserveImageSettings(props.imageProfile, imageSettings) : undefined;
+    const imageSize = declaredImageSettings?.size ?? props.ratio;
+    const imageResolution = declaredImageSettings?.imageResolution ?? props.imageResolution;
+    const imageResolutionSupported = props.imageProfile.resolution.supported;
     // 尺寸/比例/分辨率选项取同显示名分组内全部模型的并集，路由模型只决定发送参数。
     const mergedProfile = mergedImageCapabilityConfig(props.config, props.model || props.config.imageModel);
-    const usesImageResolutionPicker = props.mode === "image" && supportsImageResolutionPresets(mergedProfile.size);
+    const usesImageResolutionPicker = imageMode && !imageResolutionSupported && supportsImageResolutionPresets(mergedProfile.size);
     const imageResolutionOptions = usesImageResolutionPicker ? buildImageResolutionOptions(mergedProfile.size.values) : [];
     const ratios = props.videoProfile.ratios;
     const referenceImageSize = props.mode === "image" && mergedProfile.size.allowCustom ? props.referenceImageSize : undefined;
@@ -939,9 +943,10 @@ function GenerationSettingsMenu(props: ComposerProps) {
     };
     const videoResolutionSupported = props.mode === "video" && resolutions.length > 0;
     const imageSummary = [
-        ...(mergedProfile.size.parameter !== "none" ? [referenceImageSizeSelected ? referenceImageSizeLabel : usesImageResolutionPicker ? formatImageResolutionSize(props.ratio, imageResolutionOptions) : props.ratio] : []),
+        ...(mergedProfile.size.parameter !== "none" && imageSize ? [referenceImageSizeSelected ? referenceImageSizeLabel : formatImageResolutionSize(imageSize, imageResolutionOptions)] : []),
+        ...(imageResolutionSupported ? [!imageResolution || imageResolution.toLowerCase() === "auto" ? "自动分辨率" : imageResolution.toUpperCase()] : []),
         ...(props.imageProfile.quality.supported ? [qualityLabel] : []),
-        ...(imageBatchLimit > 1 ? [props.count] : []),
+        ...(imageBatchLimit > 1 ? [`${props.count} 张`] : []),
     ].join(" · ");
     const videoRatioSupported = props.mode === "video" && ratios.length > 0;
     const summary = props.mode === "video" ? [...(videoRatioSupported ? [props.ratio] : []), ...(videoResolutionSupported ? [videoResolutionLabel(props.videoQuality)] : [])].join(" · ") : imageSummary;
@@ -951,7 +956,7 @@ function GenerationSettingsMenu(props: ComposerProps) {
                 <ImageParameterFields
                     profile={props.imageProfile}
                     countLimit={imageBatchLimit}
-                    config={{ ...props.config, model: props.model, size: props.ratio, quality: props.quality, imageResolution: props.imageResolution, imageParameters: props.imageParameters, count: props.count }}
+                    config={imageSettings}
                     onChange={(key, value) => {
                         const setters = {
                             size: props.setRatio,
