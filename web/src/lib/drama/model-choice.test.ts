@@ -18,6 +18,11 @@ test("resolution tiers keep 720p and 768p apart and dedupe case aliases", () => 
     assert.deepEqual(tiers, ["720P", "768p"]);
 });
 
+test("resolution tiers put directional values alongside the same numeric tier", () => {
+    const tiers = dramaVideoResolutionTiers([videoOption(["4k", "768p竖"]), videoOption(["480p横", "768P横", "720p"])], "1080p");
+    assert.deepEqual(tiers, ["480p横", "720p", "768p竖", "768P横", "1080p", "4k"]);
+});
+
 test("a model value is matched by tier, not by original casing", () => {
     assert.equal(dramaVideoResolutionValue(videoOption(["480P", "720P"]), "720p"), "720P");
     assert.equal(dramaVideoResolutionValue(videoOption(["480P", "720P"]), "768p"), "");

@@ -6,6 +6,8 @@ import { FileAudio, FileImage, Film, Grip, Play, RotateCcw, Square, Upload, PenL
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { generationErrorMessage } from "@/lib/generation-error";
+import { workflowVideoFieldMatches } from "@/lib/model-capabilities-workflow";
+import { compareVideoResolutions } from "@/lib/video-generation-options";
 import { resourceFileUrl, resourceIdFromStorageKey } from "@/services/api/resources";
 import { runBackendGenerationTask, type BackendGenerationResult } from "@/services/api/generation-task";
 import { useConfigStore, type AiConfig, type RunningHubCapability, type WorkflowFieldMapping } from "@/stores/use-config-store";
@@ -245,7 +247,7 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
                             {parameterFields.length ? (
                                 parameterFields.map((field) => {
                                     const key = testFieldKey(field);
-                                    return <WorkflowParameter key={key} field={field} value={fieldValues[key]} onChange={(value) => setFieldValues((current) => ({ ...current, [key]: value }))} />;
+                                    return <WorkflowParameter key={key} field={field} capability={capability} value={fieldValues[key]} onChange={(value) => setFieldValues((current) => ({ ...current, [key]: value }))} />;
                                 })
                             ) : (
                                 <span className="workflow-test-empty-text">此工作流没有额外动态参数</span>
@@ -349,7 +351,9 @@ function MediaPicker({ kind, limit, files, maskIndex, onChange }: { kind: MediaK
     );
 }
 
-function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMapping; value: unknown; onChange: (value: unknown) => void }) {
+function WorkflowParameter({ field, capability, value, onChange }: { field: WorkflowFieldMapping; capability: RunningHubCapability; value: unknown; onChange: (value: unknown) => void }) {
+    const choices = field.options;
+    const options = capability === "video" && workflowVideoFieldMatches(field, "vquality") ? choices?.toSorted((left, right) => compareVideoResolutions(String(left), String(right))) : choices;
     const label = field.label || field.fieldName;
     const type = String(field.fieldType || "").toUpperCase();
     if (field.randomEnabled && !field.source)
@@ -372,8 +376,8 @@ function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMap
                     {field.nodeId}.{field.fieldName}
                 </small>
             </span>
-            {Array.isArray(field.options) && field.options.length ? (
-                <Select showSearch value={value} options={field.options.map((option) => ({ label: String(option), value: option }))} onChange={onChange} />
+            {Array.isArray(options) && options.length ? (
+                <Select showSearch value={value} options={options.map((option) => ({ label: String(option), value: option }))} onChange={onChange} />
             ) : type === "BOOLEAN" || typeof value === "boolean" ? (
                 <Switch checked={value === true || value === "true"} onChange={onChange} />
             ) : type === "NUMBER" || typeof value === "number" ? (

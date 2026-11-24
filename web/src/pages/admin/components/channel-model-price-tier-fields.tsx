@@ -11,6 +11,7 @@ import { priceCurrencyUnit } from "@/services/api/user-groups";
 import { Select } from "@/components/ui/base/select";
 import { ImageParameterInput } from "@/components/image-parameter-fields";
 import { imageResolutionTiers } from "@/lib/image-size-presets";
+import { compareVideoResolutions } from "@/lib/video-generation-options";
 // 价格档分辨率按后端保存口径（2k→1440p、4k→2160p）取值，已存档位才能正确回显。
 import { normalizeTierResolution } from "@/lib/model-pricing";
 
@@ -46,7 +47,7 @@ export function PriceTierFields({
     const staleTierUpstream = matchMode === "default" && tierUpstream && modelUpstream && tierUpstream !== modelUpstream ? tierUpstream : "";
     const video = capabilityConfig?.video;
     const image = capabilityConfig?.image;
-    const resolutionOptions = Array.from(new Set([...(video?.resolutions || []), ...(protocol === "autodl-comfyui" ? video?.fixedScreenSpec?.resolutions || [] : [])]));
+    const resolutionOptions = Array.from(new Set([...(video?.resolutions || []), ...(protocol === "autodl-comfyui" ? video?.fixedScreenSpec?.resolutions || [] : [])])).sort(compareVideoResolutions);
     const tokenEnabled = modelProtocolSupportsTokenBilling(capability, protocol);
     const isVideo = capability === "video";
     const isAudio = capability === "audio";

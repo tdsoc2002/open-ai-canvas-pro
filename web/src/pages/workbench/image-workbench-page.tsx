@@ -21,6 +21,7 @@ import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import { preserveImageSettings as normalizeImageValue, preserveVideoSettings as normalizeVideoValue, mediaSettingIssues } from "@/lib/media-settings";
 import { MediaSettingsNotice } from "@/components/media-settings-notice";
 import { modelQuoteRequest, requestCreditCost } from "@/lib/model-pricing";
+import { compareVideoResolutions } from "@/lib/video-generation-options";
 import { creationVideoConfig } from "@/pages/create/creation-generation-config";
 import { resolveBrowserMediaDownloadHref, startBrowserDownload } from "@/services/browser-download";
 import { prepareBackendGenerationTask } from "@/services/api/generation-task";
@@ -1461,7 +1462,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                     <ChoiceChips
                         label="分辨率"
                         value={videoQuality}
-                        options={videoProfile.resolutions.map((value) => ({ value: value.replace(/p$/i, ""), label: value }))}
+                        options={videoProfile.resolutions.toSorted(compareVideoResolutions).map((value) => ({ value: value.replace(/p$/i, ""), label: value }))}
                         onChange={(value) => {
                             setVideoQuality(value);
                             rememberVideoSettings({ videoQuality: value });

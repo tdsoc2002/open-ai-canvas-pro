@@ -78,7 +78,7 @@ try {
         capability.video!.duration = { selection: "enum", values: [5, 10], default: 5 };
         capability.video!.ratios = ["16:9"];
         capability.video!.defaultRatio = "16:9";
-        capability.video!.resolutions = ["720p"];
+        capability.video!.resolutions = ["1080p", "480p", "720p"];
         capability.video!.defaultResolution = "720p";
         capability.video!.generateAudio = { supported: supportedAudio, default: false };
         capability.video!.watermark = { supported: false, default: false };
@@ -114,6 +114,13 @@ try {
             assert.ok(setPrompt);
             assert.ok(submit);
             assert.deepEqual(Array.from(host.querySelectorAll(".wb-field-label"), (element) => element.textContent).slice(0, 3), ["分辨率", "宽高比", "时长"]);
+            const resolutionGroup = host.querySelector('[role="radiogroup"][aria-label="分辨率"]');
+            assert.ok(resolutionGroup);
+            assert.deepEqual(
+                Array.from(resolutionGroup.querySelectorAll('[role="radio"]'), (option) => option.textContent),
+                ["480p", "720p", "1080p"],
+            );
+            assert.equal(resolutionGroup.querySelector('[aria-checked="true"]')?.textContent, "720p");
             await act(async () => setPrompt!("测试提示词"));
             await act(async () => submit!());
             const request = requests.pop();

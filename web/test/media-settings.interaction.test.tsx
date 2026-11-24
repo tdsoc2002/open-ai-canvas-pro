@@ -228,7 +228,7 @@ test("真实视频设置面板自动适配时长与分辨率，不发送不支�
         duration: { selection: "enum", values: [5, 10], default: 5 },
         ratios: ["16:9", "9:16"],
         defaultRatio: "16:9",
-        resolutions: ["720p", "1440p"],
+        resolutions: ["4k", "1440p", "1080p", "480p", "720p"],
         defaultResolution: "720p",
         generateAudio: { supported: false, default: false },
         watermark: { supported: false, default: false },
@@ -251,12 +251,17 @@ test("真实视频设置面板自动适配时长与分辨率，不发送不支�
         );
     try {
         await act(async () => render());
+        const resolutionButtons = () => [...host.querySelectorAll('[role="group"]')].find((group) => group.firstElementChild?.textContent === "分辨率")!.querySelectorAll("button");
+        const resolutionLabels = () => Array.from(resolutionButtons(), (button) => button.textContent);
+        expect(resolutionLabels()).toEqual(["480P", "720P", "1080P", "2K", "4K"]);
         expect(host.querySelector('[role="alert"]')).toBeNull();
         expect(mediaSettingIssues(config, "video")).toEqual([]);
         expect(host.querySelector('button[role="switch"][aria-label="生成声音"]')).toBeNull();
         expect(host.querySelector('button[role="switch"][aria-label="添加水印"]')).toBeNull();
         expect(host.textContent).not.toContain("输出");
         expect(backendProviderConfig(config, "video")).toMatchObject({ size: "9:16", videoSeconds: "5", vquality: "720p", videoGenerateAudio: undefined });
+        await act(async () => resolutionButtons()[4].click());
+        expect(config.vquality).toBe("4k");
         config = { ...config, vquality: "auto" };
         await act(async () => render());
         expect(host.querySelector('[role="alert"]')).toBeNull();
@@ -268,6 +273,7 @@ test("真实视频设置面板自动适配时长与分辨率，不发送不支�
         const seedanceModel = "seedance-2.0";
         config = { ...config, model: encodeChannelModel("video", seedanceModel), channels: [{ ...channel, models: [seedanceModel], modelCosts: [{ ...channel.modelCosts![0], model: seedanceModel }] }] };
         await act(async () => render());
+        expect(resolutionLabels()).toEqual(["480P", "720P", "1080P", "1440P", "4K"]);
         const seedanceResolution = [...host.querySelectorAll("button")].find((button) => button.textContent === "720P")!;
         expect(seedanceResolution).toBeDefined();
         expect(seedanceResolution.getAttribute("aria-pressed")).toBe("false");

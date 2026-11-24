@@ -8,6 +8,7 @@ import type { CapabilityImageSize, CapabilitySpec, OptionConstraint } from "@/se
 import type { ChannelModel } from "@/services/api/wallet";
 import { STANDARD_IMAGE_SIZE_VALUES } from "@/lib/model-capabilities";
 import { imageSizePresets } from "@/lib/image-size-presets";
+import { compareVideoResolutions } from "@/lib/video-generation-options";
 import { Select } from "@/components/ui/base/select";
 import { ImageParameterInput } from "@/components/image-parameter-fields";
 import { imageParameterConstraints, imageParametersForSpec, type ImageParameter } from "@/lib/image-parameters";
@@ -403,6 +404,7 @@ export function DefaultOptionsEditor({ spec, value, onChange }: { spec?: Capabil
                             <ConstraintValueInput
                                 field={spec?.imageParameters?.find((p) => p.name === definition.name)}
                                 constraint={constraint}
+                                sortResolutions={definition.name === "vquality"}
                                 value={selected}
                                 allowClear
                                 onChange={(next) => {
@@ -471,6 +473,7 @@ export function CapabilityRequestEditor({
                                     <ConstraintValueInput
                                         field={spec.imageParameters?.find((p) => p.name === definition.name)}
                                         constraint={constraint}
+                                        sortResolutions={definition.name === "vquality"}
                                         value={options[definition.name] as Scalar | undefined}
                                         allowClear
                                         onChange={(next) => {
@@ -546,6 +549,7 @@ function CapabilityBlock({ title, children }: { title: string; children: ReactNo
 }
 
 function OptionRuleEditor({ definition, source, value, onChange }: { definition: { name: string; label: string; unit?: string }; source: OptionConstraint; value?: OptionConstraint; onChange: (value?: OptionConstraint) => void }) {
+    const choices = definition.name === "vquality" ? source.values?.toSorted((left, right) => compareVideoResolutions(String(left), String(right))) : source.values;
     return (
         <div className="grid grid-cols-12 items-center gap-2 py-3 first:pt-0 last:pb-0">
             <div className="col-span-12 sm:col-span-5">
@@ -556,13 +560,13 @@ function OptionRuleEditor({ definition, source, value, onChange }: { definition:
                 <Switch size="sm" checked={Boolean(value)} onChange={(enabled) => onChange(enabled ? source : undefined)} />
             </div>
             <div className="col-span-12 sm:col-span-6">
-                {source.values ? (
+                {choices ? (
                     <Select
                         className="w-full"
                         mode="multiple"
                         disabled={!value}
                         value={(value?.values || []).map(scalarKey)}
-                        options={source.values.map((item) => ({ value: scalarKey(item), label: scalarLabel(item) }))}
+                        options={choices.map((item) => ({ value: scalarKey(item), label: scalarLabel(item) }))}
                         onChange={(keys) => onChange({ values: keys.map((key) => normalizeScalar(source.values!.find((item) => scalarKey(item) === key)) as Scalar) })}
                     />
                 ) : (
@@ -607,15 +611,30 @@ function OptionRuleEditor({ definition, source, value, onChange }: { definition:
     );
 }
 
-function ConstraintValueInput({ constraint, field, value, allowClear, onChange }: { constraint: OptionConstraint; field?: ImageParameter; value?: Scalar; allowClear?: boolean; onChange: (value?: Scalar) => void }) {
+function ConstraintValueInput({
+    constraint,
+    field,
+    value,
+    allowClear,
+    sortResolutions,
+    onChange,
+}: {
+    constraint: OptionConstraint;
+    field?: ImageParameter;
+    value?: Scalar;
+    allowClear?: boolean;
+    sortResolutions?: boolean;
+    onChange: (value?: Scalar) => void;
+}) {
     if (field) return <ImageParameterInput field={field} value={value} onChange={onChange} />;
-    if (constraint.values) {
+    const choices = sortResolutions ? constraint.values?.toSorted((left, right) => compareVideoResolutions(String(left), String(right))) : constraint.values;
+    if (choices) {
         return (
             <Select
                 className="w-full"
                 allowClear={allowClear}
                 value={value === undefined ? undefined : scalarKey(value)}
-                options={constraint.values.map((item) => ({ value: scalarKey(item), label: scalarLabel(item) }))}
+                options={choices.map((item) => ({ value: scalarKey(item), label: scalarLabel(item) }))}
                 onChange={(key) => onChange(key === undefined ? undefined : (normalizeScalar(constraint.values!.find((item) => scalarKey(item) === key)) as Scalar))}
             />
         );

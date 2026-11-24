@@ -8,7 +8,7 @@ import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceRatio } from "@/lib/seedance-video";
 import { isVolcengineArkVideoProtocol } from "@/lib/model-protocols";
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, videoResolutionComparisonKey, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
+import { compareVideoResolutions, formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, videoResolutionComparisonKey, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
 import { modelCapabilityConfigFor, resolveVideoRatioValue, resolveVideoResolutionValue, videoDurationOptions, type VideoCapabilityConfig } from "@/lib/model-capabilities";
 import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 
@@ -72,7 +72,7 @@ function VideoProfileControls({
     priceTiers?: ReturnType<typeof modelPriceTiers>;
 }) {
     const { seconds, resolution, ratio } = preserveVideoSettings(profile, { seconds: config.videoSeconds, resolution: config.vquality, ratio: config.size }, protocol);
-    const configuredResolutions = profile.resolutions.map((value) => ({ value, label: formatVideoResolutionLabel(value) }));
+    const configuredResolutions = profile.resolutions.toSorted(compareVideoResolutions).map((value) => ({ value, label: formatVideoResolutionLabel(value) }));
     return (
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
@@ -128,7 +128,7 @@ function SeedanceVideoSettingsPanel({ config, profile, priceTiers, onConfigChang
                 {showTitle ? <div className="text-sm font-semibold">视频设置</div> : null}
                 <SettingGroup title="分辨率">
                     <div className={optionGrid}>
-                        {profile.resolutions.map((value) => {
+                        {profile.resolutions.toSorted(compareVideoResolutions).map((value) => {
                             const item = { value, label: value.toUpperCase() };
                             const disabled = (item.value === "1080p" && isSeedanceFastModel(model)) || !hasPriceTierForVideoSelection(priceTiers, item.value, duration);
                             return (

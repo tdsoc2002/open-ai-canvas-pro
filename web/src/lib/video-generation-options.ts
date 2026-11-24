@@ -28,6 +28,14 @@ export function normalizeVideoResolutionValue(value: string | number | undefined
     return normalizeVideoResolution(value) || "720";
 }
 
+function videoResolutionSortTier(value: string | number) {
+    return Number(normalizeVideoResolution(value).match(/^(\d+)(?:p|$)/i)?.[1]) || Number.MAX_SAFE_INTEGER;
+}
+
+export function compareVideoResolutions(left: string | number, right: string | number) {
+    return videoResolutionSortTier(left) - videoResolutionSortTier(right);
+}
+
 export function isVideoResolutionMatch(selected: string | undefined, target: string | undefined) {
     const s = String(selected || "").trim().toLowerCase().replace(/p$/i, "");
     const t = String(target || "").trim().toLowerCase().replace(/p$/i, "");

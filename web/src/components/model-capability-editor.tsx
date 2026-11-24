@@ -35,7 +35,7 @@ import type { ModelProtocol, ModelProtocolWorkflow } from "@/lib/model-protocols
 import { ImageParameterSchemaEditor, ImageParameterSizeEditor } from "@/components/image-parameter-fields";
 import { updateImageParameterSchema, resolveImageParameters, type ImageParameter } from "@/lib/image-parameters";
 import { cleanVideoScreenSpecValues, findProtocolWorkflow, resolveWorkflowVideoScreenSpec, updateWorkflowVideoScreenSpec } from "@/lib/video-screen-specs";
-import { VIDEO_RESOLUTION_CAPABILITY_OPTIONS } from "@/lib/video-generation-options";
+import { compareVideoResolutions, VIDEO_RESOLUTION_CAPABILITY_OPTIONS } from "@/lib/video-generation-options";
 import { Select } from "@/components/ui/base/select";
 
 const ratioOptions = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
@@ -85,7 +85,8 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
     const updateReferences = (patch: Partial<VideoCapabilityConfig["references"]>) => update({ references: { ...profile.references, ...patch } });
     const updateDuration = (patch: Partial<VideoCapabilityConfig["duration"]>) => update({ duration: { ...profile.duration, ...patch } });
     const durationValues = (profile.duration.values || []).join(",");
-    const resolutionOptions = Array.from(new Set([...VIDEO_RESOLUTION_CAPABILITY_OPTIONS, ...profile.resolutions]));
+    const resolutionOptions = Array.from(new Set([...VIDEO_RESOLUTION_CAPABILITY_OPTIONS, ...profile.resolutions])).sort(compareVideoResolutions);
+    const defaultResolutionOptions = profile.resolutions.toSorted(compareVideoResolutions).map((item) => ({ label: item.toUpperCase(), value: item }));
     const autoDLSpecFields = <AutoDLScreenSpecFields profile={profile} workflow={workflow} disabled={disabled} onChange={(video) => onChange?.({ version: 1, video })} />;
     // 视频处理模型（画质增强等）：帧率策略与源视频时长上限；生成模型不显示。
     const processing = profile.processing;
@@ -256,13 +257,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                     />
                                 </Field>
                                 <Field label="默认分辨率">
-                                    <Select
-                                        className="w-full"
-                                        disabled={disabled}
-                                        value={profile.defaultResolution}
-                                        options={profile.resolutions.map((item) => ({ label: item.toUpperCase(), value: item }))}
-                                        onChange={(defaultResolution) => update({ defaultResolution })}
-                                    />
+                                    <Select className="w-full" disabled={disabled} value={profile.defaultResolution} options={defaultResolutionOptions} onChange={(defaultResolution) => update({ defaultResolution })} />
                                 </Field>
                             </div>
                         )}
@@ -377,13 +372,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 />
                             </Field>
                             <Field label="默认分辨率">
-                                <Select
-                                    className="w-full"
-                                    disabled={disabled}
-                                    value={profile.defaultResolution}
-                                    options={profile.resolutions.map((item) => ({ label: item.toUpperCase(), value: item }))}
-                                    onChange={(defaultResolution) => update({ defaultResolution })}
-                                />
+                                <Select className="w-full" disabled={disabled} value={profile.defaultResolution} options={defaultResolutionOptions} onChange={(defaultResolution) => update({ defaultResolution })} />
                             </Field>
                         </div>
                     )}
@@ -1000,7 +989,7 @@ function AutoDLScreenSpecFields({ profile, workflow, disabled, onChange }: { pro
         return <p className="text-[var(--fs-label)] text-foreground/60">未读取到 AutoDL 插件的分辨率预设，请刷新页面重新加载协议目录；仍出现时请更新 AutoDL 插件到 2.4.0 及以上。</p>;
     }
     // 预设来自插件；管理员可输入上游工作流支持的其他分辨率标签。
-    const options = cleanVideoScreenSpecValues([...profile.fixedScreenSpec.resolutions, ...profile.resolutions]);
+    const options = cleanVideoScreenSpecValues([...profile.fixedScreenSpec.resolutions, ...profile.resolutions]).sort(compareVideoResolutions);
     return (
         <div className="admin-capability-spec-grid">
             <Field label="输出分辨率">
@@ -1026,7 +1015,7 @@ function AutoDLScreenSpecFields({ profile, workflow, disabled, onChange }: { pro
                     className="w-full"
                     disabled={disabled}
                     value={profile.defaultResolution || undefined}
-                    options={profile.resolutions.map((item) => ({ label: item, value: item }))}
+                    options={profile.resolutions.toSorted(compareVideoResolutions).map((item) => ({ label: item, value: item }))}
                     onChange={(defaultResolution: string) => onChange(updateWorkflowVideoScreenSpec(profile, workflow, { defaultResolution }))}
                 />
             </Field>

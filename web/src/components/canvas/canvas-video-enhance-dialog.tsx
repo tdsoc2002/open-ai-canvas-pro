@@ -7,6 +7,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { videoEnhanceProfile, videoEnhanceQuoteRequest, videoEnhanceResolutionShortEdge, videoEnhanceSourceError, type VideoEnhanceBitrateLevel, type VideoEnhanceParams } from "@/lib/canvas/canvas-video-enhance";
 import { listVideoProcessingModels } from "@/lib/canvas/canvas-video-processing";
 import { modelQuoteDescription } from "@/lib/model-pricing";
+import { compareVideoResolutions } from "@/lib/video-generation-options";
 import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-models";
 import { modelDisplayName, type AiConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -135,7 +136,7 @@ function EnhanceEditor({ node, config, onClose, onConfirm }: Props) {
                         </OptionRow>
                     ) : null}
                     <OptionRow label="目标分辨率">
-                        <SegmentedControl ariaLabel="目标分辨率" block value={resolution} onChange={setResolution} options={resolutionOptions} />
+                        <SegmentedControl ariaLabel="目标分辨率" block value={resolution} onChange={setResolution} options={resolutionOptions.toSorted((left, right) => compareVideoResolutions(left.value, right.value))} />
                     </OptionRow>
                     <OptionRow label="输出帧率">
                         {userSelectFps ? (

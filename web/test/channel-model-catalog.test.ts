@@ -439,7 +439,13 @@ describe("public channel model catalog", () => {
         await createVideoGenerationTask(config, "synthetic prompt");
 
         expect(html).toContain("768P竖 · 16:9 · 8s");
-        expect(panelHtml).toMatch(/aria-pressed="true"[^>]*><span[^>]*>768P竖<\/span><\/button>/);
+        const resolutions = Array.from(panelHtml.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*><span[^>]*>(\d+P[横竖])<\/span><\/button>/g), ([, pressed, label]) => [label, pressed]);
+        expect(resolutions).toEqual([
+            ["480P竖", "false"],
+            ["480P横", "false"],
+            ["768P竖", "true"],
+            ["768P横", "false"],
+        ]);
         expect(body.resolution_name).toBe("768p竖");
     });
 });

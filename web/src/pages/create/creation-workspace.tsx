@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 
 import { WorkingGlow } from "@/components/ai/working-indicator";
-import { formatVideoResolutionLabel as videoResolutionLabel } from "@/lib/video-generation-options";
+import { compareVideoResolutions, formatVideoResolutionLabel as videoResolutionLabel } from "@/lib/video-generation-options";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { VoiceRecordingButton } from "@/components/conversation/voice-recording-button";
 import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
@@ -936,7 +936,7 @@ function GenerationSettingsMenu(props: ComposerProps) {
     const referenceImageSizeValue = referenceImageSize ? String(referenceImageSize.width) + "x" + String(referenceImageSize.height) : "";
     const referenceImageSizeLabel = referenceImageSize ? String(referenceImageSize.width) + " × " + String(referenceImageSize.height) : "";
     const referenceImageSizeSelected = Boolean(referenceImageSizeValue && props.ratio === referenceImageSizeValue);
-    const resolutions = props.mode === "video" ? props.videoProfile.resolutions.map((value) => ({ value: value.replace(/p$/i, ""), label: videoResolutionLabel(value) })) : resolutionOptions;
+    const resolutions = props.mode === "video" ? props.videoProfile.resolutions.toSorted(compareVideoResolutions).map((value) => ({ value: value.replace(/p$/i, ""), label: videoResolutionLabel(value) })) : resolutionOptions;
     const selectReferenceImageSize = () => {
         if (!referenceImageSizeValue) return;
         props.setRatio(referenceImageSizeValue);

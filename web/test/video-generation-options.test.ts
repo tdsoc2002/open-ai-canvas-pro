@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
-import { formatVideoResolutionLabel, normalizeVideoResolution, videoDimensionsForRatioAndResolution, videoResolutionComparisonKey, VIDEO_RESOLUTION_CAPABILITY_OPTIONS, VIDEO_RESOLUTION_OPTIONS } from "../src/lib/video-generation-options";
+import {
+    compareVideoResolutions,
+    formatVideoResolutionLabel,
+    normalizeVideoResolution,
+    videoDimensionsForRatioAndResolution,
+    videoResolutionComparisonKey,
+    VIDEO_RESOLUTION_CAPABILITY_OPTIONS,
+    VIDEO_RESOLUTION_OPTIONS,
+} from "../src/lib/video-generation-options";
 
 describe("video generation resolution options", () => {
     test("统一档位包含 1440P 与 4K，并识别常见别名", () => {
@@ -18,6 +26,12 @@ describe("video generation resolution options", () => {
         expect(normalizeVideoResolution("HD_Portrait")).toBe("HD_Portrait");
         expect(videoResolutionComparisonKey("768P竖")).toBe("768p竖");
         expect(formatVideoResolutionLabel("768p竖")).toBe("768P竖");
+    });
+
+    test("不同模型的分辨率共用数字档位排序，保留原始值和同档相对顺序", () => {
+        const resolutions = ["HD_上游", "4K", "768p横", "1080P", "480p竖", "2k", "720", "768P竖", "HD_自定义"] as const;
+        expect(resolutions.toSorted(compareVideoResolutions)).toEqual(["480p竖", "720", "768p横", "768P竖", "1080P", "2k", "4K", "HD_上游", "HD_自定义"]);
+        expect(resolutions[0]).toBe("HD_上游");
     });
 
     test("根据当前比例和分辨率推导视频尺寸", () => {

@@ -18,7 +18,8 @@ import {
     type RunningHubWorkflowKind,
 } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { normalizeVideoDuration, normalizeVideoResolution } from "@/lib/video-generation-options";
+import { compareVideoResolutions, normalizeVideoDuration, normalizeVideoResolution } from "@/lib/video-generation-options";
+import { workflowVideoFieldMatches } from "@/lib/model-capabilities-workflow";
 import { tack2aiAudioNodeParameters } from "@/lib/audio-generation";
 import {
     defaultModelCapabilityConfig,
@@ -452,7 +453,11 @@ export function WorkflowParameterControls({
                       const randomEnabled = typeof values[randomKey] === "boolean" ? values[randomKey] === true : field.randomEnabled === true;
                       const rawFieldType = String(field.fieldType || "").toUpperCase();
                       const fieldType = ["FLOAT", "INT", "INTEGER"].includes(rawFieldType) ? "NUMBER" : rawFieldType;
-                      const options = workflowFieldChoiceValues(field);
+                      const choices = workflowFieldChoiceValues(field);
+                      const options =
+                          node.metadata?.generationMode === "video" && workflowVideoFieldMatches(field, "vquality")
+                              ? choices.toSorted((left, right) => compareVideoResolutions(workflowParameterOptionValue(left), workflowParameterOptionValue(right)))
+                              : choices;
                       const selectOptions = options.length ? options : fieldType === "SELECT" && value !== "" ? [value] : [];
                       const ratioOptions = workflowFieldIsRatioChoices(field, selectOptions);
                       const bounds = workflowFieldNumberBounds(field);
