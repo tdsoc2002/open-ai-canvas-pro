@@ -501,9 +501,10 @@ export default function TasksPage() {
                                 </button>
                             ))}
                         </nav>
-                        <div className="history-gallery-actions">
+                        <CollectionToolbar label={t("library.tasks.page.title")}>
                             <Select<TaskStatusFilter>
                                 ariaLabel={t("library.tasks.detail.status")}
+                                className="history-status-select"
                                 value={statusFilter}
                                 onChange={(value) => {
                                     setStatusFilter(value);
@@ -534,7 +535,7 @@ export default function TasksPage() {
                             <Button type="text" icon={<Plus />} onClick={() => setCreateOpen(true)}>
                                 {t("library.tasks.page.newTask")}
                             </Button>
-                        </div>
+                        </CollectionToolbar>
                     </header>
                     <div id={filtersId} hidden={!filtersOpen}>
                         <CollectionToolbar
@@ -550,11 +551,10 @@ export default function TasksPage() {
                                     ) : null}
                                     <SegmentedControl<TaskViewMode>
                                         ariaLabel={t("library.tasks.page.viewMode")}
-                                        size="sm"
                                         value={viewMode}
                                         options={[
-                                            { value: "list", icon: <List className="size-3.5" />, title: t("library.tasks.page.listView") },
-                                            { value: "grid", icon: <LayoutGrid className="size-3.5" />, title: t("library.tasks.page.gridView") },
+                                            { value: "list", icon: <List />, title: t("library.tasks.page.listView") },
+                                            { value: "grid", icon: <LayoutGrid />, title: t("library.tasks.page.gridView") },
                                         ]}
                                         onChange={changeViewMode}
                                     />

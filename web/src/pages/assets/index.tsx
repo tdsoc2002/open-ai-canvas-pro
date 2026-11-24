@@ -822,7 +822,7 @@ export default function AssetsPage() {
                                     value={gridDensity}
                                     className="assets-density-select"
                                     appearance="soft"
-                                    prefix={<LayoutGrid aria-hidden className="size-3.5" />}
+                                    prefix={<LayoutGrid aria-hidden />}
                                     options={assetGridDensityOptions}
                                     onChange={(value) => setGridDensity(parseAssetGridDensity(value))}
                                 />

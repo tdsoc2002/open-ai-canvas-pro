@@ -37,7 +37,7 @@ export function PageHeader({ title, description, meta, actions, navigation }: { 
                     </div>
                 </div>
             )}
-            {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+            {actions ? <div className="workspace-toolbar flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
         </header>
     );
 }

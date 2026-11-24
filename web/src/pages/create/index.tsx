@@ -13,6 +13,7 @@ import { PersonalSpaceCreditOverview } from "@/components/layout/team-space-dire
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { useGenerationBatchLimit } from "@/lib/generation-batch-limit";
 import { isGenerationCostUncertainError } from "@/lib/canvas/canvas-generation-batch";
+import { reserveAgentLauncherSpace } from "@/components/canvas/reserve-agent-launcher-space";
 import { imageParameterRequest } from "@/lib/image-parameters";
 import { creationResultAssetIds } from "@/lib/canvas/canvas-asset-handoff";
 import { getActiveUserScope } from "@/lib/user-scope";
@@ -1948,7 +1949,7 @@ export default function CreatePage() {
                                 </div>
                             </section>
                         </main>
-                        <section className="creation-thread-composer">
+                        <section ref={reserveAgentLauncherSpace} className="creation-thread-composer">
                             <CreationComposer {...composerProps} variant="thread" />
                         </section>
                     </div>

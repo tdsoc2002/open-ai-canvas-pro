@@ -12,7 +12,8 @@ import type { Asset } from "@/stores/use-asset-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
-import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { CollectionGrid, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { CollectionToolbar } from "@/components/layout/collection-toolbar";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
 import "./eagle.css";
 
@@ -195,8 +196,7 @@ export default function EagleLibraryPage() {
                             </div>
                         }
                     />
-                    <ListToolbar
-                        className="library-toolbar"
+                    <CollectionToolbar
                         active={Boolean(keyword)}
                         onReset={() => {
                             setKeyword("");
@@ -221,7 +221,7 @@ export default function EagleLibraryPage() {
                             }}
                             onPressEnter={() => void load()}
                         />
-                    </ListToolbar>
+                    </CollectionToolbar>
                 </div>
 
                 {error ? (

@@ -805,17 +805,20 @@
 }
 
 /* 规格 */
-.wb-composer .creation-model-picker.canvas-composer-model-picker {
+:is(.wb-composer, .wb-footer) .creation-model-picker.canvas-composer-model-picker {
     width: 100%;
     min-width: 0;
-    height: 44px;
+    height: var(--user-control-height);
+    min-height: var(--user-control-height);
     border: 0;
-    border-radius: var(--r-lg);
+    border-radius: var(--user-radius-button);
     background: var(--wb-muted);
     color: var(--wb-ink);
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
     box-shadow: none;
 }
-.wb-composer .creation-model-picker.canvas-composer-model-picker:is(:hover, [aria-expanded="true"]) {
+:is(.wb-composer, .wb-footer) .creation-model-picker.canvas-composer-model-picker:is(:hover, [aria-expanded="true"]) {
     background: var(--wb-hover);
 }
 /* 共享尺寸选择器沿用自己的结构，这里只把它的表面 token 对齐到面板。 */
@@ -1078,12 +1081,6 @@
 .wb-footer-actions .wb-submit.ant-btn {
     min-width: var(--space-20);
 }
-.wb-submit.ant-btn > svg {
-    width: var(--button-icon-size);
-    height: var(--button-icon-size);
-    stroke-width: var(--button-icon-stroke);
-}
-
 /* ---------- 作品画廊 ---------- */
 .wb-gallery {
     display: flex;

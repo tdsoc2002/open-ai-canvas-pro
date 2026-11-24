@@ -106,7 +106,7 @@ export function CreationWorkspaceToolbar({
     }, [railOpen]);
     const mount = useWorkspaceTopBarMount();
     const toolbar = (
-        <header className="creation-thread-toolbar">
+        <header className="creation-thread-toolbar workspace-toolbar">
             <div className="creation-toolbar-shots" ref={railRef}>
                 <button type="button" className="creation-rail-trigger" aria-expanded={railOpen} aria-haspopup="listbox" onClick={() => setRailOpen((open) => !open)}>
                     <Clapperboard />
@@ -155,18 +155,14 @@ export function CreationWorkspaceToolbar({
                 ) : null}
             </div>
             <div className="creation-toolbar-actions">
-                <Button size="small" loading={openingCanvas} onClick={onContinueCanvas}>
+                <Button loading={openingCanvas} onClick={onContinueCanvas}>
                     画布中继续
                 </Button>
                 <Tooltip title="新建创作">
-                    <button type="button" aria-label="新建创作" className="creation-toolbar-action" onClick={onNewConversation}>
-                        <Plus />
-                    </button>
+                    <Button type="text" aria-label="新建创作" icon={<Plus />} onClick={onNewConversation} />
                 </Tooltip>
                 <Tooltip title="历史对话">
-                    <button type="button" aria-label="查看历史对话" className="creation-toolbar-action" onClick={onOpenHistory}>
-                        <History />
-                    </button>
+                    <Button type="text" aria-label="查看历史对话" icon={<History />} onClick={onOpenHistory} />
                 </Tooltip>
             </div>
         </header>
@@ -1073,10 +1069,10 @@ function GenerationSettingsMenu(props: ComposerProps) {
             }}
             content={panel}
         >
-            <button type="button" className="creation-chat-control" aria-label={`生成设置：${summary}`} aria-expanded={open}>
-                <SlidersHorizontal />
+            <button type="button" className="creation-chat-control creation-chat-select" aria-label={`生成设置：${summary}`} aria-expanded={open}>
+                <SlidersHorizontal aria-hidden="true" />
                 <span>{summary}</span>
-                <ChevronDown className={open ? "is-open" : ""} />
+                <ChevronDown aria-hidden="true" />
             </button>
         </Popover>
     );
@@ -1166,10 +1162,10 @@ function DurationMenu({ profile, seconds, onChange, protocol }: { profile: Video
                 </div>
             }
         >
-            <button type="button" className="creation-chat-control is-duration" aria-label={`视频时长：${value}秒`}>
-                <Clock3 />
+            <button type="button" className="creation-chat-control creation-chat-select is-duration" aria-label={`视频时长：${value}秒`} aria-expanded={open}>
+                <Clock3 aria-hidden="true" />
                 <span>{value}s</span>
-                <ChevronDown className={open ? "is-open" : ""} />
+                <ChevronDown aria-hidden="true" />
             </button>
         </Popover>
     );

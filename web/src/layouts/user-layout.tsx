@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import { ConfigProvider } from "antd";
+import { ChevronDown } from "lucide-react";
 
 import { AppWorkspaceShell } from "@/components/layout/app-top-nav";
 import { useAgentPanelDock } from "@/components/canvas/use-agent-panel-dock";
@@ -96,7 +97,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     return (
         <ConfigProvider
             theme={productWorkspace ? workspaceTheme : undefined}
-            select={productWorkspace ? { classNames: { popup: { root: "workspace-quiet-popup" } } } : undefined}
+            select={productWorkspace ? { suffixIcon: <ChevronDown aria-hidden />, classNames: { popup: { root: "workspace-quiet-popup" } } } : undefined}
             dropdown={productWorkspace ? { classNames: { root: "workspace-quiet-popup" } } : undefined}
             popover={productWorkspace ? { classNames: { root: "workspace-quiet-popup" } } : undefined}
         >

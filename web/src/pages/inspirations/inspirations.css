@@ -44,8 +44,8 @@
     padding-inline: var(--space-2);
     border-radius: var(--user-radius-button);
     color: var(--user-ink-muted);
-    font-size: var(--fs-body);
-    font-weight: 500;
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
     white-space: nowrap;
 }
 
@@ -55,7 +55,6 @@
 
 .inspiration-hall-directions > button[aria-pressed="true"] {
     color: var(--user-ink);
-    font-weight: 600;
 }
 
 .inspiration-hall-directions > button[aria-pressed="true"]::after {
@@ -90,40 +89,16 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* 搜索框与内容库工具栏同一套外观：34px、9px 圆角、透明底 + 1px 细线。 */
 .inspiration-hall-search.ant-input-affix-wrapper {
     width: min(100%, calc(var(--space-16) * 4));
     flex: 0 0 auto;
-    height: var(--user-control-height);
     min-width: 0;
-    background: transparent;
-    border: 1px solid var(--user-border);
-    border-radius: var(--user-radius-button);
-    color: var(--user-ink);
-    font-size: var(--fs-caption);
-    box-shadow: none;
-}
-.inspiration-hall-search.ant-input-affix-wrapper:hover {
-    border-color: var(--user-border-strong);
 }
 
 .inspiration-hall-search .ant-input-prefix {
     color: var(--user-ink-soft);
 }
-.inspiration-hall-search .ant-input-prefix svg {
-    width: var(--user-button-icon-size);
-    height: var(--user-button-icon-size);
-}
-.inspiration-hall-search.ant-input-affix-wrapper:focus-within {
-    border-color: var(--user-border-strong);
-    background: var(--user-surface);
-    outline: var(--stroke-2) solid var(--control-focus-ring);
-    outline-offset: var(--space-half);
-}
-
 .inspiration-hall-filter-toggle > svg:last-child {
-    width: var(--space-3);
-    height: var(--space-3);
     margin-left: calc(-1 * var(--space-half));
     color: var(--user-ink-soft);
     transition: transform var(--user-motion);

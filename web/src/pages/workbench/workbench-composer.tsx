@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUp, Check, ChevronDown, ChevronUp, Clapperboard, Folde
 import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 
 import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
+import { reserveAgentLauncherSpace } from "@/components/canvas/reserve-agent-launcher-space";
 import { cn } from "@/lib/utils";
 import type { WorkbenchKind, WorkbenchPromptPreset, WorkbenchReferenceSlot, WorkbenchTool } from "@/services/api/workbench";
 import { JoyseeCreditMark } from "@/themes/joysee-minimal/marks";
@@ -602,8 +603,7 @@ export function ComposerFooter({
 }) {
     const label = kind === "image" || compactSubmit ? "提交" : count > 1 ? `生成 ${count} 条` : "生成视频";
     const button = (
-        <Button className="wb-submit" type="primary" size="large" loading={busy} disabled={Boolean(disabledReason)} onClick={onSubmit}>
-            <ArrowUp />
+        <Button className="wb-submit" type="primary" icon={<ArrowUp />} loading={busy} disabled={Boolean(disabledReason)} onClick={onSubmit}>
             <span>{label}</span>
         </Button>
     );
@@ -620,7 +620,7 @@ export function ComposerFooter({
         </>
     );
     return (
-        <footer className="wb-footer">
+        <footer ref={reserveAgentLauncherSpace} className="wb-footer workspace-toolbar">
             {model ? (
                 <>
                     <div className="wb-footer-model">{model}</div>

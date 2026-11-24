@@ -1,5 +1,5 @@
 import { Button, ConfigProvider } from "antd";
-import { RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useThemePack } from "@/themes/use-theme-pack";
@@ -23,7 +23,7 @@ export function CollectionToolbar({ children, trailing, active, onReset, label }
                 if (!event.currentTarget.contains(event.relatedTarget)) setInputModality("keyboard");
             }}
         >
-            <ConfigProvider componentSize={compact ? "small" : undefined} select={{ variant: "filled", classNames: { popup: { root: "workspace-quiet-popup" } } }}>
+            <ConfigProvider select={{ variant: "filled", suffixIcon: <ChevronDown aria-hidden />, classNames: { popup: { root: "workspace-quiet-popup" } } }}>
                 <div className="collection-toolbar-controls">{children}</div>
                 {(active && onReset) || trailing ? (
                     <div className="collection-toolbar-actions">

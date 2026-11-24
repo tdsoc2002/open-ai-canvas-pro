@@ -30,8 +30,8 @@
     padding-inline: var(--space-3);
     border-radius: var(--user-radius-button);
     color: var(--user-ink-muted);
-    font-size: var(--fs-ui);
-    font-weight: 500;
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
     white-space: nowrap;
 }
 
@@ -39,6 +39,7 @@
     width: var(--user-button-icon-size);
     height: var(--user-button-icon-size);
     flex: 0 0 auto;
+    stroke-width: var(--user-button-icon-stroke);
 }
 
 .skills-scope-tab:hover {
@@ -66,7 +67,8 @@
 
 .app-user-workspace .skills-library-header .collection-toolbar {
     min-width: 0;
-    flex: 1 1 680px;
+    flex: 1 1 768px;
+    align-items: flex-start;
     gap: var(--space-2);
     margin: 0;
 }

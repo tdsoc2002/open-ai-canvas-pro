@@ -210,7 +210,8 @@ describe("乐见极简主题合同", () => {
         expect(selectors.length).toBeGreaterThan(10);
         expect(css).toContain("prefers-reduced-motion: reduce");
         expect(css).toContain("--joysee-control-height: var(--button-height-lg)");
-        expect(css).toContain("--joysee-control-height-sm: 32px");
+        expect(css).toContain("--button-height-sm: 32px");
+        expect(css).toContain("--joysee-hit-target: 44px");
         expect(css).not.toMatch(/var\(--control-height(?:-sm)?\)/);
         expect(css).toContain("animation: none");
         expect(css).not.toMatch(/outline\s*:\s*(?:none|0)/);

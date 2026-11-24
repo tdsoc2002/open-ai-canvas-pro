@@ -11,7 +11,8 @@ import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentPanelTitle,
 import { type CSSProperties, type ReactNode, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
-import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, AGENT_LAUNCHER_TOGGLE_SIZE, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition, type AgentLauncherPosition } from "@/lib/canvas/agent-launcher-position";
+import { AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT, AGENT_LAUNCHER_LABEL_CLEARANCE, AGENT_LAUNCHER_TOGGLE_SIZE, resolveAgentLauncherAvatarHeight, resolveAgentLauncherTogglePosition, type AgentLauncherPosition } from "@/lib/canvas/agent-launcher-position";
+import { useGlobalAgentStore } from "@/stores/use-global-agent-store";
 import { useMatch } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -112,6 +113,7 @@ export const AgentLauncher = memo(function AgentLauncher({
         return () => window.removeEventListener("resize", resize);
     }, []);
     const [collapsed, setCollapsed] = useState(readAgentLauncherCollapsed);
+    const composerInset = useGlobalAgentStore((state) => state.launcherBottomInset);
     const toggleCollapsed = () => {
         const next = !collapsed;
         setCollapsed(next);
@@ -134,7 +136,9 @@ export const AgentLauncher = memo(function AgentLauncher({
     const keepsAvatarSize = largeAvatar && !collapsed;
     const height = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? resolveAgentLauncherAvatarHeight(preferredAvatarHeight, aspectRatio, viewport, inCanvasEditor) : 76;
     const width = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
-    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar);
+    const showLabel = !defaultAvatar && Boolean(appearance.launcherLabel) && !collapsed;
+    const bottomInset = composerInset > 0 && showLabel ? composerInset + AGENT_LAUNCHER_LABEL_CLEARANCE : composerInset;
+    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, defaultAvatar, bottomInset);
     const { onClick, onKeyDown, onDoubleClick, ...pointerHandlers } = handlers;
     // 大形象的外框大多是透明像素：外框不接收指针，只有身体热区可点、可拖，透明处的点击落到下面的页面。
     // 键盘聚焦与激活仍在按钮上；小圆球和默认 76px 入口整块可点。
@@ -212,7 +216,7 @@ export const AgentLauncher = memo(function AgentLauncher({
                         <span aria-hidden="true">正在唤醒…</span>
                         <span className="sr-only">正在加载助手形象</span>
                     </span>
-                ) : !defaultAvatar && appearance.launcherLabel && !collapsed ? (
+                ) : showLabel ? (
                     <span className="canvas-agent-launcher-label">{appearance.launcherLabel}</span>
                 ) : null}
                 {live && live2DError ? (

@@ -37,7 +37,14 @@
     width: auto;
     height: var(--user-control-height, 34px);
     padding-inline: var(--space-3);
-    font-size: var(--fs-body);
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
+}
+
+.assets-type-filter .assets-filter-item svg {
+    width: var(--user-button-icon-size);
+    height: var(--user-button-icon-size);
+    stroke-width: var(--user-button-icon-stroke);
 }
 
 .assets-type-filter .assets-filter-item .assets-filter-count {
@@ -74,6 +81,10 @@
 
 .assets-folder-trigger {
     max-width: min(100%, 168px);
+}
+
+.assets-folder-trigger > .lucide-chevron-down {
+    color: var(--user-ink-soft);
 }
 
 .assets-folder-trigger-label {

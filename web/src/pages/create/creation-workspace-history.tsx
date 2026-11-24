@@ -138,7 +138,7 @@ export function CreationHistoryDrawer({
             }
         >
             <div className="creation-history-content">
-                <div className="creation-history-toolbar">
+                <div className="creation-history-toolbar workspace-toolbar">
                     <Input
                         className="creation-history-search"
                         prefix={<Search aria-hidden="true" />}

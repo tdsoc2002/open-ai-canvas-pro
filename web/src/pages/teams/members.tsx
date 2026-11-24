@@ -53,7 +53,7 @@ export function TeamMembersPane() {
                 description="成员共享团队内容，个人账号与个人积分保持独立。"
                 actions={
                     owner ? (
-                        <Button type="primary" icon={<UserPlus className="size-4" />} onClick={() => setOpen(true)}>
+                        <Button type="primary" icon={<UserPlus aria-hidden />} onClick={() => setOpen(true)}>
                             邀请成员
                         </Button>
                     ) : (

@@ -12,6 +12,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control/segment
 import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
 import { AppModal } from "@/components/ui/product/app-modal/app-modal";
 import { normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { AGENT_LAUNCHER_COMPACT_VIEWPORT_WIDTH } from "@/lib/canvas/agent-launcher-position";
 import { audioUploadTitleFromFileName } from "@/lib/audio-upload-title";
 import { createClientUUID } from "@/lib/client-id";
 import { imageQualityLabel } from "@/lib/image-quality";
@@ -154,6 +155,16 @@ function mergeTaskUpdate(previous: GenerationTask | undefined, next: GenerationT
 
 export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const studioLayout = useThemePack()?.workspaceStyle === "joysee";
+    const narrowViewportQuery = `(width < ${AGENT_LAUNCHER_COMPACT_VIEWPORT_WIDTH}px)`;
+    const [narrowViewport, setNarrowViewport] = useState(() => typeof window !== "undefined" && window.matchMedia(narrowViewportQuery).matches);
+    useEffect(() => {
+        const media = window.matchMedia(narrowViewportQuery);
+        const update = () => setNarrowViewport(media.matches);
+        update();
+        media.addEventListener("change", update);
+        return () => media.removeEventListener("change", update);
+    }, [narrowViewportQuery]);
+    const modelInFooter = studioLayout || kind === "image" || narrowViewport;
     const { message, modal } = App.useApp();
     const navigate = useNavigate();
     const config = useEffectiveConfig();
@@ -1608,7 +1619,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             <ComposerFooter
                 kind={kind}
                 count={requestedCount}
-                model={studioLayout || kind === "image" ? modelContent : undefined}
+                model={modelInFooter ? modelContent : undefined}
                 estimate={estimateDisplay}
                 roundEstimateUp={studioLayout}
                 compactSubmit={studioLayout}
@@ -1714,7 +1725,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                             {sceneContent}
                             {referenceContent}
                             {promptContent}
-                            {kind === "video" ? (
+                            {kind === "video" && !modelInFooter ? (
                                 <ComposerSection title="模型与规格">
                                     {modelContent}
                                     {specContent}

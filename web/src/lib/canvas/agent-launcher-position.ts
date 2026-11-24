@@ -6,6 +6,7 @@ export const AGENT_LAUNCHER_POSITION_KEY = "canvas:agent-launcher-position:v1";
 export const AGENT_LAUNCHER_SIZE = 76;
 export const AGENT_LAUNCHER_TOGGLE_SIZE = 22;
 const MARGIN = 20; // Includes the label below the orb.
+export const AGENT_LAUNCHER_LABEL_CLEARANCE = 40;
 /** 画布编辑器以外的页面和窄屏上，大形象会压住页面右下角的按钮，高度封顶到这个值。 */
 export const AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT = 120;
 export const AGENT_LAUNCHER_COMPACT_VIEWPORT_WIDTH = 768;
@@ -16,13 +17,13 @@ export function resolveAgentLauncherAvatarHeight(preferred: number, aspectRatio:
     return Math.max(40, Math.min(preferred, viewport.height - 60, (viewport.width - 40) / aspectRatio, compact ? AGENT_LAUNCHER_COMPACT_AVATAR_HEIGHT : Infinity));
 }
 
-export function clampAgentLauncherPosition(position: AgentLauncherPosition, viewport: AgentLauncherViewport, size = { width: AGENT_LAUNCHER_SIZE, height: AGENT_LAUNCHER_SIZE }): AgentLauncherPosition {
-    const clamp = (value: number, extent: number, dimension: number) => {
+export function clampAgentLauncherPosition(position: AgentLauncherPosition, viewport: AgentLauncherViewport, size = { width: AGENT_LAUNCHER_SIZE, height: AGENT_LAUNCHER_SIZE }, bottomInset = 0): AgentLauncherPosition {
+    const clamp = (value: number, extent: number, dimension: number, inset = 0) => {
         const available = Math.max(0, extent - dimension);
         const margin = Math.min(MARGIN, available / 2);
-        return Math.min(Math.max(value, margin), available - margin);
+        return Math.min(Math.max(value, margin + inset), available - margin);
     };
-    return { right: clamp(position.right, viewport.width, size.width), bottom: clamp(position.bottom, viewport.height, size.height) };
+    return { right: clamp(position.right, viewport.width, size.width), bottom: clamp(position.bottom, viewport.height, size.height, bottomInset) };
 }
 
 /** 优先把收起按钮放在头像左侧，靠边时换到右侧或上下方。 */
@@ -38,24 +39,24 @@ export function resolveAgentLauncherTogglePosition(position: AgentLauncherPositi
     };
 }
 
-export function restoreAgentLauncherPosition(raw: string | null, viewport: AgentLauncherViewport, size?: AgentLauncherViewport): AgentLauncherPosition {
+export function restoreAgentLauncherPosition(raw: string | null, viewport: AgentLauncherViewport, size?: AgentLauncherViewport, bottomInset = 0): AgentLauncherPosition {
     if (raw) {
         try {
             const value = JSON.parse(raw);
-            if (value && Number.isFinite(value.right) && Number.isFinite(value.bottom)) return clampAgentLauncherPosition(value, viewport, size);
+            if (value && Number.isFinite(value.right) && Number.isFinite(value.bottom)) return clampAgentLauncherPosition(value, viewport, size, bottomInset);
         } catch {
             // Damaged UI preferences must not hide the launcher.
         }
     }
-    return clampAgentLauncherPosition({ right: MARGIN, bottom: MARGIN }, viewport, size);
+    return clampAgentLauncherPosition({ right: MARGIN, bottom: MARGIN }, viewport, size, bottomInset);
 }
 
-export function moveAgentLauncher(gesture: AgentLauncherGesture, x: number, y: number, viewport: AgentLauncherViewport, size?: AgentLauncherViewport) {
+export function moveAgentLauncher(gesture: AgentLauncherGesture, x: number, y: number, viewport: AgentLauncherViewport, size?: AgentLauncherViewport, bottomInset = 0) {
     const dx = x - gesture.x;
     const dy = y - gesture.y;
     const dragged = gesture.dragged || Math.hypot(dx, dy) >= 6;
     return {
         dragged,
-        position: clampAgentLauncherPosition(dragged ? { right: gesture.start.right - dx, bottom: gesture.start.bottom - dy } : gesture.start, viewport, size),
+        position: clampAgentLauncherPosition(dragged ? { right: gesture.start.right - dx, bottom: gesture.start.bottom - dy } : gesture.start, viewport, size, bottomInset),
     };
 }

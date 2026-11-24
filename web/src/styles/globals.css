@@ -21796,50 +21796,22 @@ html.dark .ai-message-codeblock-pre .shiki span {
     align-items: center;
     gap: var(--space-1);
 }
-.creation-toolbar-action {
-    display: inline-flex;
-    min-height: var(--space-8);
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    border: 1px solid transparent;
-    border-radius: var(--r-md);
-    background: transparent;
-    color: var(--creation-muted);
-    padding: 0 var(--space-2);
-    cursor: pointer;
-    transition:
-        background-color var(--motion-state) ease,
-        color var(--motion-state) ease;
-}
-.creation-toolbar-action:hover {
-    background: var(--creation-surface-hover);
-    color: var(--creation-text);
-}
-.creation-toolbar-action:focus-visible {
-    outline: 2px solid var(--creation-accent);
-    outline-offset: 1px;
-}
-.creation-toolbar-action svg {
-    width: var(--space-4);
-    height: var(--space-4);
-}
 .creation-toolbar-shots {
     position: relative;
     display: inline-flex;
 }
 .creation-rail-trigger {
     display: inline-flex;
-    min-height: var(--space-8);
+    height: var(--user-control-height);
     align-items: center;
     gap: var(--space-1);
     border: 1px solid transparent;
-    border-radius: var(--r-md);
+    border-radius: var(--user-radius-button);
     background: transparent;
     color: var(--creation-muted);
     padding: 0 var(--space-2);
-    font-size: var(--fs-caption);
-    font-weight: 500;
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
     cursor: pointer;
     transition:
         background-color var(--motion-state) ease,
@@ -21855,8 +21827,9 @@ html.dark .ai-message-codeblock-pre .shiki span {
     outline-offset: 1px;
 }
 .creation-rail-trigger svg {
-    width: var(--space-4);
-    height: var(--space-4);
+    width: var(--user-button-icon-size);
+    height: var(--user-button-icon-size);
+    stroke-width: var(--user-button-icon-stroke);
 }
 .creation-rail-count {
     display: inline-flex;
@@ -26139,13 +26112,13 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     border-top: 0 !important;
     background: transparent !important;
 }
-/* composer 里的模型、参数、参考内容等触发器是统一的 34px 浅底按钮：8px 圆角、不画边，
+/* composer 里的模型、参数、参考内容等触发器使用工具栏档位，
    悬停只加深表面，不再浮起投影或做成胶囊（docs/ui-design-system.md §3.0）。 */
 .app-user-workspace .creation-chat-controls {
     gap: 8px !important;
 }
 .app-user-workspace .creation-chat-control {
-    min-height: var(--button-height) !important;
+    min-height: var(--user-control-height) !important;
     border-radius: var(--button-radius) !important;
     background: var(--button-tonal-bg) !important;
     color: var(--button-ghost-fg) !important;
@@ -26153,6 +26126,16 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     transition:
         background-color var(--button-motion),
         color var(--button-motion) !important;
+}
+.app-user-workspace .creation-chat-dock .creation-chat-control {
+    height: var(--user-control-height) !important;
+    font-size: var(--user-button-font-size);
+}
+.app-user-workspace .creation-chat-dock .creation-chat-control > svg {
+    width: var(--user-button-icon-size);
+    height: var(--user-button-icon-size);
+    flex-shrink: 0;
+    stroke-width: var(--user-button-icon-stroke);
 }
 .app-user-workspace .creation-chat-control:hover,
 .app-user-workspace .creation-chat-control[aria-expanded="true"] {
@@ -26178,10 +26161,7 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
     border-top: 0 !important;
 }
 .app-user-workspace .creation-launchpad .creation-chat-controls .creation-chat-control {
-    min-height: var(--button-height) !important;
-    height: var(--button-height) !important;
     padding-inline: 10px 12px;
-    font-size: var(--button-font-size-sm);
     border: 0 !important;
 }
 .app-user-workspace .creation-launchpad .creation-reference-add-button {
@@ -26410,15 +26390,6 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap {
 .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock {
     min-height: 44px !important;
     padding: 4px 8px 8px !important;
-}
-.app-user-workspace .creation-chat-composer.is-thread .creation-chat-control {
-    min-height: var(--button-height-sm) !important;
-    height: var(--button-height-sm) !important;
-}
-.app-user-workspace .creation-home .creation-chat-composer.is-thread .creation-submit.ant-btn .creation-submit-action,
-.app-product-workspace .creation-home .creation-chat-composer.is-thread .creation-submit.ant-btn .creation-submit-action {
-    height: var(--button-height-sm);
-    padding: 0 12px 0 10px;
 }
 .app-user-workspace .creation-home .creation-user-message {
     width: min(676px, 82%);

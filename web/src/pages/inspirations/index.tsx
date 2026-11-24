@@ -381,7 +381,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
             <h1 id="inspiration-hall-title" className="sr-only">
                 灵感大厅
             </h1>
-            <header className="inspiration-hall-toolbar">
+            <header className="inspiration-hall-toolbar workspace-toolbar">
                 <div className="inspiration-hall-directions" role="group" aria-label="按创作方向筛选灵感">
                     {INSPIRATION_HALL_CATEGORIES.map(({ value, label }) => (
                         <button
@@ -402,7 +402,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                 <div className="inspiration-hall-actions">
                     <Button
                         disabled={!hydrated}
-                        icon={<Plus className="size-4" />}
+                        icon={<Plus />}
                         onClick={() => {
                             setEditing(null);
                             setEditorOpen(true);
@@ -424,15 +424,15 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                             },
                         }}
                     >
-                        <Button type="text" icon={<MoreHorizontal className="size-4" />} aria-label="更多灵感管理操作" title="更多操作" />
+                        <Button type="text" icon={<MoreHorizontal />} aria-label="更多灵感管理操作" title="更多操作" />
                     </Dropdown>
                 </div>
             </header>
 
-            <div className="inspiration-hall-secondary-toolbar">
+            <div className="inspiration-hall-secondary-toolbar workspace-toolbar">
                 <h2>{INSPIRATION_HALL_CATEGORIES.find(({ value }) => value === hallFilter)?.label}</h2>
                 <SegmentedControl options={modeOptions} value={modeFilter} onChange={(value) => setModeFilter(value as ModeFilter)} ariaLabel="按创作类型筛选灵感" className="inspiration-hall-modes" />
-                <Button type="text" icon={<SlidersHorizontal className="size-4" />} aria-expanded={filtersOpen} aria-controls="inspiration-hall-filters" onClick={() => setFiltersOpen((open) => !open)} className="inspiration-hall-filter-toggle">
+                <Button type="text" icon={<SlidersHorizontal />} aria-expanded={filtersOpen} aria-controls="inspiration-hall-filters" onClick={() => setFiltersOpen((open) => !open)} className="inspiration-hall-filter-toggle">
                     更多筛选{advancedFilterCount ? ` · ${advancedFilterCount}` : ""}
                     <ChevronDown className={filtersOpen ? "is-open" : undefined} aria-hidden="true" />
                 </Button>
@@ -442,7 +442,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
             </div>
 
             {filtersOpen ? (
-                <div id="inspiration-hall-filters" className="inspiration-hall-filters" role="group" aria-label="灵感进阶筛选">
+                <div id="inspiration-hall-filters" className="inspiration-hall-filters workspace-toolbar" role="group" aria-label="灵感进阶筛选">
                     <div className="inspiration-hall-field">
                         <span>浏览范围</span>
                         <Select options={VIEW_OPTIONS} value={view} onChange={(value) => setView(value as ViewFilter)} ariaLabel="按全部、收藏或隐藏状态筛选灵感" />
@@ -483,7 +483,7 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                         <Select options={SORT_OPTIONS} value={sort} onChange={(value) => setSort(value as SortKey)} ariaLabel="灵感排序" />
                     </div>
                     {hasFilters ? (
-                        <Button type="text" icon={<RotateCcw className="size-4" />} onClick={resetFilters} className="inspiration-hall-reset">
+                        <Button type="text" icon={<RotateCcw />} onClick={resetFilters} className="inspiration-hall-reset">
                             重置筛选
                         </Button>
                     ) : null}

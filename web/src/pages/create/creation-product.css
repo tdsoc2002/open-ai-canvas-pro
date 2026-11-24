@@ -608,12 +608,24 @@
     width: 14px;
     height: 14px;
 }
-/* 开始创作：与 composer 里其他控件同高（34px）的统一主按钮，墨色实底 + 内高光，不做胶囊、扫光或加粗。
+.app-user-workspace .creation-chat-controls .creation-chat-select {
+    gap: var(--button-gap);
+    padding-inline: var(--space-2);
+}
+.creation-chat-select > svg:last-child,
+.creation-chat-dock .canvas-model-picker-chevron {
+    color: var(--user-ink-muted);
+}
+.creation-chat-select[aria-expanded="true"] > svg:last-child {
+    transform: rotate(180deg);
+}
+
+/* 开始创作与 composer 里的其他工具同高。
    外层 antd 文字按钮只负责点击与禁用语义，视觉全部画在 .creation-submit-action 上。 */
 @layer utilities {
     .app-product-workspace .creation-home .creation-submit.ant-btn {
         height: auto;
-        min-height: var(--button-height);
+        min-height: var(--user-control-height);
         padding: 0;
         border: 0;
         background: transparent !important;
@@ -629,7 +641,7 @@
         flex: 0 0 auto;
         gap: var(--button-gap);
         width: auto;
-        height: var(--button-height);
+        height: var(--user-control-height);
         padding: 0 14px 0 12px;
         border-radius: var(--button-radius);
         background: var(--button-primary-bg);
@@ -800,11 +812,11 @@
         width: 100%;
     }
 }
-/* 语音输入与 composer 其他控件同为 34px 浅底按钮（同 8px 圆角），只在悬停时加深表面。 */
+/* 语音输入沿用 composer 的浅底控件样式。 */
 .app-user-workspace .creation-voice-trigger.ant-btn {
-    width: var(--button-height) !important;
-    min-width: var(--button-height) !important;
-    height: var(--button-height) !important;
+    width: var(--user-control-height) !important;
+    min-width: var(--user-control-height) !important;
+    height: var(--user-control-height) !important;
     border-radius: var(--button-radius) !important;
     background: var(--button-tonal-bg) !important;
     color: var(--button-ghost-fg) !important;

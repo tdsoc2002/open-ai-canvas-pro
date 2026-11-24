@@ -4,7 +4,6 @@ import { lazy, Suspense, useEffect, useState } from "react";
 
 import { Mic } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 const VoiceRecordingInline = lazy(() => import("./voice-recording-inline").then((module) => ({ default: module.VoiceRecordingInline })));
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -33,11 +32,11 @@ export function VoiceRecordingButton({ onTranscribed, disabled, className }: Voi
             <Tooltip title="实时对话">
                 <Button
                     type="text"
-                    shape="circle"
-                    className={cn("!h-8 !w-8 !min-w-8", className)}
+                    shape={className ? "default" : "circle"}
+                    className={className ?? "!h-8 !w-8 !min-w-8"}
                     disabled={disabled}
                     style={className ? undefined : { color: theme.node.muted }}
-                    icon={<Mic className="size-4" />}
+                    icon={<Mic size={16} />}
                     onClick={() => setOpen(true)}
                     aria-label="实时对话"
                 />

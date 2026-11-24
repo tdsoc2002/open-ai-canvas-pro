@@ -47,6 +47,7 @@ type GlobalAgentStore = {
     canvas: AgentCanvasContext | null;
     page: { context: AgentPageContext; label: string } | null;
     prefillRequest: AgentPrefillRequest | null;
+    launcherBottomInset: number;
     /** 本机 UI 偏好：在画布里是否停靠到右侧，以及停靠宽度。账号切换不影响。 */
     dock: AgentPanelDockPreference;
     openAgent: () => void;
@@ -124,6 +125,7 @@ export const useGlobalAgentStore = create<GlobalAgentStore>()((set, get) => ({
     canvas: null,
     page: null,
     prefillRequest: null,
+    launcherBottomInset: 0,
     dock: readDockPreference(),
     openAgent: () => set({ open: true }),
     closeAgent: () => set({ open: false }),

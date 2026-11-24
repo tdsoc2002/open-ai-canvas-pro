@@ -42,6 +42,18 @@ test("launcher stays within all four edges and clamps after a viewport shrink", 
     expect(clampAgentLauncherPosition(start, { width: 90, height: 90 })).toEqual({ right: 7, bottom: 7 });
 });
 
+test("the narrow conversation composer clears both restored and dragged launchers", () => {
+    const mobile = { width: 390, height: 850 };
+    const avatar = { width: 96, height: 120 };
+    const saved = JSON.stringify(start);
+    const inset = 280;
+    const cleared = { right: 20, bottom: 300 };
+    expect(restoreAgentLauncherPosition(saved, mobile, avatar, inset)).toEqual(cleared);
+    expect(restoreAgentLauncherPosition(null, mobile, avatar, inset)).toEqual(cleared);
+    expect(moveAgentLauncher({ start: cleared, x: 300, y: 450, dragged: true }, 300, 650, mobile, avatar, inset).position).toEqual(cleared);
+    expect(restoreAgentLauncherPosition(saved, mobile, avatar)).toEqual(start);
+});
+
 test("small pointer jitter remains a click, but dragging back to the origin remains a drag", () => {
     const gesture = { start, x: 500, y: 500, dragged: false };
     expect(moveAgentLauncher(gesture, 502, 503, viewport)).toEqual({ dragged: false, position: start });

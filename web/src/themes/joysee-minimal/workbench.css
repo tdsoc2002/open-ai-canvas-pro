@@ -252,9 +252,6 @@
     height: var(--space-5);
 }
 :root[data-skin="joysee-minimal"] .wb-studio-dock .wb-submit {
-    min-height: var(--button-height);
-    height: var(--button-height);
-    border-radius: var(--button-radius);
     box-shadow: none;
 }
 :root[data-skin="joysee-minimal"] .wb-studio-results {
@@ -367,9 +364,9 @@
         width: 100% !important;
         max-width: 100%;
         min-width: 0;
-        height: var(--button-height) !important;
+        height: var(--user-control-height) !important;
         border: var(--control-border-width) solid var(--border) !important;
-        border-radius: var(--input-radius) !important;
+        border-radius: var(--user-radius-button) !important;
         background: transparent !important;
         color: var(--foreground) !important;
         box-shadow: none !important;

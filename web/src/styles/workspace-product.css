@@ -40,6 +40,19 @@
     width: 280px;
     max-width: 100%;
 }
+/* 页面工具栏复用内容库的控件档位，布局由页面决定。 */
+:is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) :is(.ant-btn, .ant-input-affix-wrapper, .ant-select-single),
+:is(.app-product-workspace, .app-product-overlays) .workspace-toolbar input.ant-input:not(.ant-input-affix-wrapper > *) {
+    height: var(--user-control-height);
+    min-height: var(--user-control-height);
+    border-radius: var(--user-radius-button);
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
+}
+:is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) .ant-select-single {
+    min-width: 0;
+    padding-inline: var(--button-padding-x);
+}
 .collection-content {
     min-width: 0;
 }
@@ -644,26 +657,37 @@
         height: 14px;
     }
 
-    /* 内容库工具栏：搜索框、选择器与按钮同高同圆角，统一为透明底 + 1px 细线。 */
-    .app-user-workspace .collection-toolbar .ant-input-affix-wrapper,
-    .app-user-workspace .collection-toolbar .ant-select {
-        height: var(--user-control-height);
-        border: 1px solid var(--user-border) !important;
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) :is(.ant-input-affix-wrapper, .ant-select, input.ant-input:not(.ant-input-affix-wrapper > *)) {
+        border: var(--control-border-width) solid var(--button-secondary-border) !important;
         border-radius: var(--user-radius-button) !important;
         background: transparent !important;
         box-shadow: none !important;
     }
-    .app-user-workspace .collection-toolbar :is(.ant-input-affix-wrapper, .ant-select):not(.ant-select-disabled):hover {
-        border-color: var(--user-border-strong) !important;
+    :is(.app-product-workspace, .app-product-overlays)
+        :is(.collection-toolbar, .workspace-toolbar)
+        :is(.ant-input-affix-wrapper, .ant-select, input.ant-input:not(.ant-input-affix-wrapper > *)):not(.ant-select-disabled, .ant-input-affix-wrapper-disabled, :disabled):hover {
+        border-color: var(--button-secondary-hover-border) !important;
     }
-    .app-user-workspace .collection-toolbar .ant-input-affix-wrapper:focus-within {
-        border-color: var(--user-border-strong) !important;
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) :is(.ant-input-affix-wrapper, input.ant-input:not(.ant-input-affix-wrapper > *)):focus-within {
+        border-color: var(--button-secondary-hover-border) !important;
         background: var(--user-surface) !important;
     }
-    .app-user-workspace .collection-toolbar .ant-input-affix-wrapper svg {
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) .ant-btn-icon-only {
+        width: var(--user-control-height);
+    }
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) :is(.ant-input-prefix, .ant-select-prefix, .ant-select-suffix, .ant-btn-icon, .ant-btn) > svg.lucide {
         width: var(--user-button-icon-size);
         height: var(--user-button-icon-size);
-        color: var(--user-ink-soft);
+        flex-shrink: 0;
+        stroke-width: var(--user-button-icon-stroke);
+    }
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) .ant-select-single :is(.ant-select-content, .ant-select-selection-item, .ant-select-placeholder) {
+        padding-inline-start: 0 !important;
+        font-weight: inherit;
+    }
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) .ant-select-single .ant-select-suffix {
+        margin-inline-end: 0 !important;
+        color: var(--user-ink-soft) !important;
     }
 
     /* Select 的只读 input 在鼠标点击后也可能匹配 :focus-visible；
@@ -671,11 +695,12 @@
     .app-user-workspace .collection-toolbar .ant-select {
         outline: none !important;
     }
-    .app-user-workspace .collection-toolbar .ant-select:not(.ant-select-disabled):is(.ant-select-focused, .ant-select-open) {
-        border-color: var(--user-border-strong) !important;
+    :is(.app-product-workspace, .app-product-overlays) :is(.collection-toolbar, .workspace-toolbar) .ant-select:not(.ant-select-disabled):is(.ant-select-focused, .ant-select-open) {
+        border-color: var(--button-secondary-hover-border) !important;
         background: var(--user-surface-muted) !important;
     }
-    .app-user-workspace .collection-toolbar[data-input-modality="keyboard"] .ant-select:not(.ant-select-disabled):focus-within {
+    .app-user-workspace .collection-toolbar[data-input-modality="keyboard"] .ant-select:not(.ant-select-disabled):focus-within,
+    :root:not([data-pointer-focus]) :is(.app-product-workspace, .app-product-overlays) .workspace-toolbar :is(.ant-select:not(.ant-select-disabled), .ant-input-affix-wrapper, input.ant-input:not(.ant-input-affix-wrapper > *)):focus-within {
         outline: 1px solid var(--control-focus-ring) !important;
         outline-offset: 2px;
     }
@@ -2062,7 +2087,7 @@
 }
 /* 内容库分段筛选：创作历史状态栏与视图、灵感类型共用同一组几何。
    轨道 34px（紧凑 28px）+ 3px 内衬，选中块为卡片表面，计数为弱化等宽数字。 */
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented {
     width: fit-content;
     max-width: 100%;
     height: var(--user-control-height);
@@ -2071,22 +2096,22 @@
     background: var(--user-surface-muted);
     padding: 4px;
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented.is-sm {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented.is-sm {
     height: var(--user-control-height-sm);
     padding: 2px;
     border-radius: var(--user-radius-button-sm);
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented-thumb {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented-thumb {
     inset-block: 4px;
     border-radius: 4px;
     background: var(--user-surface);
     box-shadow: none;
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented.is-sm .app-segmented-thumb {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented.is-sm .app-segmented-thumb {
     inset-block: 2px;
     border-radius: 4px;
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented-item {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented-item {
     min-height: 0;
     gap: 8px;
     border-radius: 8px;
@@ -2098,21 +2123,25 @@
         color var(--product-state) var(--product-ease),
         background var(--product-state) var(--product-ease);
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented.is-sm .app-segmented-item {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented.is-sm .app-segmented-item {
     padding-inline: 8px;
     border-radius: 4px;
     font-size: var(--fs-caption);
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented-item svg {
-    width: 14px;
-    height: 14px;
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented-item svg {
+    width: var(--user-button-icon-size);
+    height: var(--user-button-icon-size);
     stroke-width: var(--user-button-icon-stroke);
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented-item:not(:disabled):hover {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented.is-sm .app-segmented-item svg {
+    width: var(--button-icon-size-sm);
+    height: var(--button-icon-size-sm);
+}
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented-item:not(:disabled):hover {
     background: transparent;
     color: var(--user-ink);
 }
-.app-product-workspace :is(.collection-toolbar, .inspiration-hall-toolbar, .task-center-statusbar) .app-segmented-item[aria-checked="true"] {
+.app-product-workspace :is(.collection-toolbar, .workspace-toolbar, .task-center-statusbar) .app-segmented-item[aria-checked="true"] {
     background: transparent;
     color: var(--user-ink);
     box-shadow: none;
@@ -2237,35 +2266,36 @@
 .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-tabs {
     display: grid;
     width: max-content;
-    height: 32px;
+    height: var(--user-control-height);
     flex: 0 0 auto;
     grid-template-columns: repeat(3, auto);
     margin: 0;
     padding: 2px;
-    border-radius: 999px;
+    border-radius: var(--user-radius-button);
     background: var(--user-surface-muted);
     transform: none;
 }
 .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-button {
-    height: 28px;
-    min-height: 28px;
+    height: 100%;
+    min-height: 0;
     flex-direction: row;
     gap: 4px;
     padding: 0 8px;
-    font-size: 11px;
-    font-weight: 600;
-    border-radius: 999px;
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
+    border-radius: var(--user-radius-button-sm);
     white-space: nowrap;
 }
 .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-button svg {
-    width: 13px;
-    height: 13px;
+    width: var(--user-button-icon-size);
+    height: var(--user-button-icon-size);
+    stroke-width: var(--user-button-icon-stroke);
 }
 .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-indicator {
     inset: 0;
     width: auto;
     height: auto;
-    border-radius: 999px;
+    border-radius: var(--user-radius-button-sm);
 }
 .app-user-workspace .creation-composer-stage {
     display: flex;
@@ -2331,15 +2361,6 @@
         width: 40px;
         height: 40px;
         flex-basis: 40px;
-    }
-    .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-tabs {
-        height: 30px;
-    }
-    .app-user-workspace .creation-chat-composer.is-thread .creation-chat-dock .creation-mode-button {
-        height: 26px;
-        min-height: 26px;
-        padding: 0 8px;
-        font-size: 11px;
     }
 }
 

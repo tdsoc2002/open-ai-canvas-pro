@@ -46,10 +46,10 @@ export default function TeamsPage() {
                 title="公司与团队"
                 actions={
                     <>
-                        <Button icon={<UserPlus className="size-4" />} onClick={openTeamInvitations}>
+                        <Button icon={<UserPlus aria-hidden />} onClick={openTeamInvitations}>
                             团队邀请
                         </Button>
-                        <Button type="primary" icon={<Plus className="size-4" />} onClick={() => openCreate()}>
+                        <Button type="primary" icon={<Plus aria-hidden />} onClick={() => openCreate()}>
                             创建空间
                         </Button>
                     </>
@@ -109,7 +109,7 @@ export default function TeamsPage() {
                 okText="创建"
                 okButtonProps={{ disabled: !name.trim() || !canCreateHere }}
             >
-                <label className="mb-4 block space-y-2">
+                <label className="workspace-toolbar mb-4 block space-y-2">
                     <span>所属空间</span>
                     <Select
                         aria-label="所属空间"
@@ -120,7 +120,7 @@ export default function TeamsPage() {
                         options={[{ value: "", label: "无上级 · 新建公司或独立团队" }, ...owned.map((company) => ({ value: company.id, label: company.name }))]}
                     />
                 </label>
-                <label className="block space-y-2">
+                <label className="workspace-toolbar block space-y-2">
                     <span>{parentId ? "小组名称" : "公司或团队名称"}</span>
                     <Input
                         value={name}

@@ -885,31 +885,33 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
         transition: none !important;
     }
 }
-/* composer 里的模型选择与旁边的参数、参考内容是同一种 34px 浅底按钮（8px 圆角、无边、悬停不浮起）。 */
 .app-user-workspace .creation-chat-composer .creation-model-picker.canvas-composer-model-picker {
-    min-height: var(--button-height) !important;
+    min-height: var(--user-control-height) !important;
+    height: var(--user-control-height) !important;
+    width: auto !important;
+    max-width: min(232px, 60cqw);
+    padding-inline: var(--space-2);
+    gap: var(--button-gap);
+    border: 0 !important;
     border-radius: var(--button-radius) !important;
-    background: var(--button-tonal-bg) !important;
-    color: var(--button-ghost-fg) !important;
+    background: transparent !important;
+    color: var(--user-ink) !important;
+    font-size: var(--user-button-font-size);
+    font-weight: var(--button-font-weight);
     transition:
         background-color var(--button-motion),
         color var(--button-motion) !important;
 }
 .app-user-workspace .creation-chat-composer .creation-model-picker.canvas-composer-model-picker:hover,
 .app-user-workspace .creation-chat-composer .creation-model-picker.canvas-composer-model-picker[aria-expanded="true"] {
-    background: var(--button-tonal-hover-bg) !important;
-    color: var(--button-ghost-hover-fg) !important;
+    background: var(--control-selected-bg) !important;
     box-shadow: none;
 }
-.app-user-workspace .creation-launchpad .creation-model-picker.canvas-composer-model-picker {
-    min-height: var(--button-height) !important;
-    height: var(--button-height) !important;
-    padding-inline: 10px 12px;
-    font-size: var(--button-font-size-sm);
-    border: 0 !important;
-}
-.app-user-workspace .creation-launchpad .creation-model-picker.canvas-composer-model-picker {
-    width: min(232px, 60cqw) !important;
+:is(.creation-chat-dock, .wb-composer, .wb-footer) .creation-model-picker .canvas-model-picker-chevron {
+    width: var(--user-button-icon-size);
+    height: var(--user-button-icon-size);
+    flex-basis: var(--user-button-icon-size);
+    stroke-width: var(--user-button-icon-stroke);
 }
 /* 模型与渠道共用菜单高度约束，长列表在各自区域滚动。 */
 .app-user-workspace .creation-model-picker-menu .canvas-model-picker-subheading {
@@ -925,10 +927,6 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     color: var(--user-ink-soft);
     font-size: 11px;
     font-weight: 500;
-}
-.app-user-workspace .creation-chat-composer.is-thread .creation-model-picker.canvas-composer-model-picker {
-    min-height: 32px !important;
-    height: 32px !important;
 }
 .creation-model-picker-surface .canvas-model-picker-subheading {
     display: flex;

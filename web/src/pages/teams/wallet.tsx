@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Input, Select, Table } from "antd";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/workspace-page";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { parseTeamCreditAmount, teamCredits, teamKeys } from "@/lib/team-query-keys";
@@ -65,8 +66,10 @@ export function TeamWalletPane() {
                 actions={
                     owner ? (
                         <>
-                            <Button onClick={() => openTransfer("withdraw")}>{captions.withdraw}</Button>
-                            <Button type="primary" onClick={() => openTransfer("fund")}>
+                            <Button icon={<ArrowUpRight aria-hidden />} onClick={() => openTransfer("withdraw")}>
+                                {captions.withdraw}
+                            </Button>
+                            <Button type="primary" icon={<ArrowDownLeft aria-hidden />} onClick={() => openTransfer("fund")}>
                                 {captions.fund}
                             </Button>
                         </>
@@ -161,11 +164,12 @@ export function TeamWalletPane() {
                 confirmLoading={transfer.isPending}
                 okButtonProps={{ disabled: parsedAmount === undefined }}
             >
-                <div className="space-y-4">
+                <div className="workspace-toolbar space-y-4">
                     {form?.action === "allocate" || form?.action === "reclaim" ? (
                         <label className="block space-y-2">
                             <span>团队成员</span>
                             <Select
+                                aria-label="团队成员"
                                 className="w-full"
                                 value={form.membershipId}
                                 disabled={transfer.isPending}

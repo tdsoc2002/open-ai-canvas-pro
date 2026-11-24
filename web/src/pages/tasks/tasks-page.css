@@ -83,7 +83,6 @@
 
 /* ---- 画廊页头 ---- */
 .history-gallery-header,
-.history-gallery-actions,
 .history-kind-tabs {
     display: flex;
     align-items: center;
@@ -97,9 +96,13 @@
     margin-bottom: var(--space-3);
 }
 
-.history-gallery-actions {
-    flex-wrap: wrap;
-    min-width: 0;
+.app-user-workspace .task-center-page .history-gallery-header > .collection-toolbar {
+    max-width: 100%;
+    margin: 0;
+}
+
+.history-status-select {
+    width: 128px;
 }
 
 .history-kind-tabs {
@@ -118,10 +121,11 @@
     min-height: var(--user-control-height);
     padding: var(--space-1) var(--space-3);
     border: 0;
-    border-radius: var(--r-full);
+    border-radius: var(--user-radius-button);
     background: transparent;
     color: var(--user-ink-muted);
-    font-size: var(--fs-ui);
+    font-size: var(--user-button-font-size);
+    font-weight: var(--user-button-font-weight);
     cursor: pointer;
 }
 

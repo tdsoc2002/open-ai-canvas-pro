@@ -413,9 +413,8 @@ export function WorkbenchGallery({
                         {totals.generating ? ` · ${totals.generating} ${unit}处理中` : ""}
                     </span>
                 </div>
-                <div className="wb-gallery-tools">
+                <div className="wb-gallery-tools workspace-toolbar">
                     <SegmentedControl<GalleryFilter>
-                        size="sm"
                         ariaLabel="按状态筛选"
                         value={filter}
                         onChange={onFilterChange}
@@ -426,11 +425,9 @@ export function WorkbenchGallery({
                             { value: "failed", label: totals.failedBatches ? `失败 ${totals.failedBatches}` : "失败" },
                         ]}
                     />
-                    <Input className="wb-gallery-search" size="small" allowClear prefix={<Search className="size-3.5" />} placeholder="搜索提示词或场景" aria-label="搜索作品" value={query} onChange={(event) => onQueryChange(event.target.value)} />
+                    <Input className="wb-gallery-search" allowClear prefix={<Search aria-hidden />} placeholder="搜索提示词或场景" aria-label="搜索作品" value={query} onChange={(event) => onQueryChange(event.target.value)} />
                     <Tooltip title="刷新">
-                        <button type="button" className="wb-icon-button" data-icon-only aria-label="刷新作品列表" onClick={onRefresh}>
-                            <RefreshCw />
-                        </button>
+                        <Button type="text" aria-label="刷新作品列表" icon={<RefreshCw />} onClick={onRefresh} />
                     </Tooltip>
                 </div>
             </header>
