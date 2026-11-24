@@ -72,7 +72,11 @@ func TestCreditCostSnapshotPersistsWithoutChangingSalesOrPublicResponses(t *test
 		t.Fatal(err)
 	}
 	public := publicChannel(channel, false, []model.ChannelModel{*saved})
-	for _, value := range []any{saved, saved.PriceTiers, order, catalog, public, quoteFromOrder("", order, tokenBillingEstimate{})} {
+	quote, err := quoteFromOrder("", order, tokenBillingEstimate{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []any{saved, saved.PriceTiers, order, catalog, public, quote} {
 		encoded, err := json.Marshal(value)
 		if err != nil {
 			t.Fatal(err)

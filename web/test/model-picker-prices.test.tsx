@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ModelPickerOption, ModelPicker } from "../src/components/model-picker";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
-import { requestCreditCost } from "../src/lib/model-pricing";
+import { modelQuoteRequest, requestCreditCost } from "../src/lib/model-pricing";
 import type { ModelRequirements } from "../src/lib/model-selection";
 import { createModelChannel, defaultConfig, normalizeConfigSnapshot, type ModelCapability } from "../src/stores/use-config-store";
 
@@ -66,8 +67,41 @@ test("各生成类型的模型按钮默认显示选中渠道，Logo 使用 20px"
 test("candidate rows show their configured prices instead of applying the previous model's specifications", () => {
     const config = fixture();
     const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
-    expect(markup).toContain("<strong>0.10-0.20</strong> 积分/秒");
+    expect(markup).toContain("480P <strong>0.10</strong>");
+    expect(markup).toContain('720P <strong>0.20</strong><span class="model-picker-tariff-unit"> 积分/秒</span>');
     expect(markup).not.toContain("当前规格无报价");
+});
+
+test("Seedance menu shows the unit rate for each supported resolution with the same reference inputs", () => {
+    const config = fixture();
+    const cost = config.channels[0].modelCosts![0];
+    cost.displayName = "Seedance 2.0 Fast";
+    cost.capabilityConfig = defaultModelCapabilityConfig("tencent-vod-vs", "2.0-fast");
+    cost.capabilityConfig.video!.resolutions = ["720P", "480P", "720p"];
+    const selected = { capability: "video", input: { videoCount: 1, videoDurationsMs: [8064] }, options: { vquality: "720p", videoSeconds: "15", size: "16:9" } } satisfies ModelRequirements;
+    const request = modelQuoteRequest(config, config.model, "video", selected)!;
+    expect(request.intent.referenceVideoDurationsMs).toEqual([8064]);
+    const client = new QueryClient({ defaultOptions: { queries: { refetchOnMount: false } } });
+    for (const [vquality, amountMicrocredits, videoUnitPriceMicrocredits] of [
+        ["480p", 5_610_000, 211_376],
+        ["720p", 12_060_000, 475_200],
+    ] as const) {
+        const variant = { ...request, intent: { ...request.intent, options: { ...request.intent.options, vquality } } };
+        client.setQueryData(["model-picker-quote", "quote-user", variant], { quote: { amountMicrocredits, videoUnitPriceMicrocredits, estimated: true, billingMode: "token" } });
+    }
+    const markup = renderToStaticMarkup(
+        <QueryClientProvider client={client}>
+            <ModelPickerOption config={config} model={config.model} capability="video" showPrice quoteUserId="quote-user" requirements={selected} owner="test-picker" onSelect={() => {}} />
+        </QueryClientProvider>,
+    );
+    const firstQuote = '<span>480P <strong>0.21</strong><span class="model-picker-tariff-unit">/秒</span></span>';
+    const secondQuote = '<span>720P <strong>0.48</strong><span class="model-picker-tariff-unit">/秒</span></span>';
+    expect(markup).toContain(firstQuote);
+    expect(markup).toContain(secondQuote);
+    expect(markup.split(secondQuote)).toHaveLength(2);
+    expect(markup.indexOf(firstQuote)).toBeLessThan(markup.indexOf(secondQuote));
+    expect(markup).toContain('title="0.21 积分/秒"');
+    expect(markup).not.toContain("12.06");
 });
 
 test("video Token badges use compact units while retaining exact rates and full pricing descriptions", () => {
@@ -98,14 +132,14 @@ test("video Token badges use compact units while retaining exact rates and full 
         const visibleText = markup.replace(/<[^>]*>/g, "");
         expect(visibleText).toContain(expected);
         expect(visibleText).not.toContain("百万视频 Token");
-        expect(visibleText).toContain("参考视频另计费");
+        expect(visibleText).not.toContain("参考视频另计费");
         expect(markup).toContain('title="系统规格价格：');
         expect(markup).toContain("积分/百万视频 Token");
         expect(markup).toContain("优先按有效上游用量结算");
     }
 });
 
-test("model rows distinguish paid and free reference video pricing", () => {
+test("model rows omit reference video billing labels while keeping prices and reference limits", () => {
     for (const billed of [true, false]) {
         const config = fixture();
         const cost = config.channels[0].modelCosts![0];
@@ -114,9 +148,11 @@ test("model rows distinguish paid and free reference video pricing", () => {
         cost.capabilityConfig.video!.references.maxVideos = 3;
         for (const tier of cost.logicalPriceTiers!) tier.referenceVideoUnitPriceMicrocredits = billed ? 2_000_000 : 0;
         const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
-        expect(markup).toContain(billed ? "参考视频另计费" : "参考视频不计费");
-        expect(markup).not.toContain(billed ? "参考视频不计费" : "参考视频另计费");
-        expect(markup.replace(/<[^>]*>/g, "")).toContain("0.10-0.20 积分/秒");
+        expect(markup).not.toContain("参考视频另计费");
+        expect(markup).not.toContain("参考视频不计费");
+        expect(markup).toContain("model-picker-tariff-help");
+        expect(markup).toContain("480P <strong>0.10</strong>");
+        expect(markup).toContain("720P <strong>0.20</strong>");
         expect(markup).toContain("视×3");
     }
 });
@@ -161,7 +197,8 @@ test("model rows preserve multiple promotional labels and colors without alterin
     const markup = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" showPrice owner="test-picker" onSelect={() => {}} />);
     expect(markup).toContain('data-color="purple">限时特价');
     expect(markup).toContain('data-color="gold">官方1折');
-    expect(markup).toContain("<strong>0.10-0.20</strong> 积分/秒");
+    expect(markup).toContain("480P <strong>0.10</strong>");
+    expect(markup).toContain("720P <strong>0.20</strong>");
     config.channels[0].modelCosts![0].tags = [];
     const withoutTags = renderToStaticMarkup(<ModelPickerOption config={config} model={config.model} capability="video" owner="test-picker" onSelect={() => {}} />);
     expect(withoutTags).not.toContain("限时特价");

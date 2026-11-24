@@ -18,6 +18,8 @@ type LogicalModelQuote struct {
 	AmountMicrocredits int64               `json:"amountMicrocredits"`
 	Estimated          bool                `json:"estimated"`
 	VideoTokenEstimate *VideoTokenEstimate `json:"videoTokenEstimate,omitempty"`
+	// VideoUnitPriceMicrocredits is the video price per billable second, before reservation margin.
+	VideoUnitPriceMicrocredits *int64 `json:"videoUnitPriceMicrocredits,omitempty"`
 	// ReferenceVideo 仅在视频请求挂了参考视频时返回。
 	ReferenceVideo *QuoteReferenceVideo `json:"referenceVideo,omitempty"`
 }
@@ -60,7 +62,7 @@ func (s *Service) QuoteChannelModel(userID string, req ChannelModelQuoteRequest)
 	if err != nil {
 		return nil, err
 	}
-	return quoteFromOrder("", order, estimate), nil
+	return quoteFromOrder("", order, estimate)
 }
 
 func validateQuoteIntent(intent ModelRequestIntent) error {
@@ -127,7 +129,7 @@ func quoteReferenceVideo(order *model.BillingOrder, estimate tokenBillingEstimat
 	return detail
 }
 
-func quoteFromOrder(logicalModelID string, order *model.BillingOrder, estimate tokenBillingEstimate) *LogicalModelQuote {
+func quoteFromOrder(logicalModelID string, order *model.BillingOrder, estimate tokenBillingEstimate) (*LogicalModelQuote, error) {
 	quote := &LogicalModelQuote{LogicalModelID: logicalModelID, BillingMode: order.BillingMode, Quantity: order.Quantity, AmountMicrocredits: order.AmountMicrocredits, Estimated: order.BillingMode == "token"}
 	if order.BillingMode == "image_usage" {
 		quote.Estimated = true
@@ -144,7 +146,41 @@ func quoteFromOrder(logicalModelID string, order *model.BillingOrder, estimate t
 	if quote.ReferenceVideo != nil && quote.ReferenceVideo.Estimated {
 		quote.Estimated = true
 	}
-	return quote
+	if order.Capability == "video" {
+		outputPrice := order.OutputTokenPriceMicrocredits
+		if quote.VideoTokenEstimate != nil {
+			prices, _, err := order.TokenPrices(estimate.InputTokens)
+			if err != nil {
+				return nil, err
+			}
+			outputPrice = prices.Output
+		}
+		if err := quote.setVideoUnitPrice(order.UnitPriceMicrocredits, outputPrice, order.MultiplierBasisPoints); err != nil {
+			return nil, err
+		}
+	}
+	return quote, nil
+}
+
+func (q *LogicalModelQuote) setVideoUnitPrice(secondPrice, outputTokenPrice, multiplierBPS int64) error {
+	var amount int64
+	var err error
+	switch q.BillingMode {
+	case "per_second":
+		amount, err = creditAmount(secondPrice, 1, multiplierBPS)
+	case "token":
+		video := q.VideoTokenEstimate
+		// Apply the video Token formula to one billable second, without the reservation margin.
+		tokens := (video.OutputWidth*video.OutputHeight*video.FramesPerSecond + 1023) / 1024
+		amount, err = kernel.TokenBillingAmount(multiplierBPS, kernel.TokenBillingTerm{Tokens: tokens, PriceMicrocredits: outputTokenPrice})
+	default:
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	q.VideoUnitPriceMicrocredits = &amount
+	return nil
 }
 
 func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent ModelRequestIntent) (*LogicalModelQuote, error) {
@@ -187,7 +223,7 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 		if billingErr != nil {
 			return nil, billingErr
 		}
-		return quoteFromOrder(routed.LogicalModel.ID, order, tokenEstimate), nil
+		return quoteFromOrder(routed.LogicalModel.ID, order, tokenEstimate)
 	}
 
 	if routed.LogicalModel.PricePolicy != "unified" {
@@ -256,6 +292,11 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 	}
 	if quote.Estimated && capability == "video" {
 		quote.VideoTokenEstimate = tokenEstimate.Video
+	}
+	if capability == "video" {
+		if err := quote.setVideoUnitPrice(item.UnitPriceMicrocredits, item.OutputPriceMicrocredits, groupBPS); err != nil {
+			return nil, err
+		}
 	}
 	return quote, nil
 }

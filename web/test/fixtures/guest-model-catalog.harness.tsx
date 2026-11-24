@@ -1,6 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
 import { Window } from "happy-dom";
 import type { ComponentProps } from "react";
+import type { ModelRequirements } from "../../src/lib/model-selection";
+import type { ModelRequestIntent } from "../../src/services/api/logical-models";
 
 const dom = new Window({ url: "http://localhost/" });
 Object.defineProperty(dom.Element.prototype, "animate", { configurable: true, value: undefined });
@@ -51,6 +53,7 @@ const channel = createModelChannel({
             modelKey: "sora-2",
             channelId: "guest-catalog",
             displayName: "游客可见视频模型",
+            channelLabel: "游客可见视频模型",
             capability: "video",
             protocol: "openai-video",
             capabilityConfig: profile,
@@ -154,3 +157,85 @@ for (const component of ["picker", "composer"] as const) {
         }
     });
 }
+
+test("Seedance 渠道用当前生成参数和参考视频时长报价", async () => {
+    const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
+    const queryClient = new QueryClient();
+    const seedance = "doubao-seedance-2-5-260628";
+    const protocol = "volcengine-ark-seedance-25";
+    const seedanceChannel = createModelChannel({
+        id: "seedance-catalog",
+        scope: "system",
+        models: [seedance],
+        modelCosts: [
+            {
+                model: seedance,
+                protocol,
+                displayName: "Seedance 2.5",
+                capability: "video",
+                capabilityConfig: defaultModelCapabilityConfig(protocol, seedance),
+                billingMode: "token",
+                unitPriceMicrocredits: 0,
+                inputTokenPriceMicrocredits: 0,
+                outputTokenPriceMicrocredits: 32_000_000,
+                cachedTokenPriceMicrocredits: 0,
+            },
+        ],
+    });
+    const pickerConfig = normalizeConfigSnapshot({ config: { ...config, channels: [channel, seedanceChannel] } }).config;
+    const originalAdapter = apiClient.defaults.adapter;
+    const requests: Array<{ channelId: string; modelKey: string; intent: ModelRequestIntent }> = [];
+    apiClient.defaults.adapter = async (request) => {
+        expect(request.url).toBe("/model-catalog/quote");
+        const body = JSON.parse(request.data) as (typeof requests)[number];
+        requests.push(body);
+        const withReference = Boolean(body.intent.inputs?.video);
+        const quote = { billingMode: "token", estimated: true, amountMicrocredits: withReference ? 8_500_000 : 2_250_000 };
+        return { config: request, status: 200, statusText: "OK", headers: {}, data: { code: 0, data: { quote } } };
+    };
+    const { user, features } = useUserStore.getState();
+    useUserStore.setState({ user: null, features: { ...features, creditsEnabled: true } });
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const render = (requirements: ModelRequirements) =>
+        act(() =>
+            root.render(
+                <QueryClientProvider client={queryClient}>
+                    <ModelPicker config={pickerConfig} value={model} capability="video" onChange={noop} requirements={requirements} showSelectedPrice={false} showOptionPrices catalogSource="provided" />
+                </QueryClientProvider>,
+            ),
+        );
+    const tariff = () => document.querySelector(".canvas-model-picker-option-price .model-picker-tariff")?.textContent;
+    const input = { textCount: 1, imageCount: 0, videoCount: 0, audioCount: 0, characterCount: 0 };
+    try {
+        await render({ input, options: { size: "16:9", vquality: "480p", videoSeconds: 5, videoGenerateAudio: false } });
+        await act(() => host.querySelector("button")!.click());
+        const seedanceGroup = [...document.querySelectorAll<HTMLButtonElement>(".canvas-model-picker-brand")].find((button) => button.textContent?.includes("Seedance 2.5"))!;
+        await act(() => seedanceGroup.click());
+        expect(tariff()).toContain("/M Token");
+        expect(requests).toHaveLength(0);
+
+        await act(() => useUserStore.setState({ user: { id: "member", username: "member", displayName: "会员", role: "user", status: "active" } }));
+        await act(async () => void (await Bun.sleep(20)));
+        expect(tariff()).toBe("预估 2.25 积分");
+        expect(requests).toHaveLength(1);
+        expect(requests[0]).toMatchObject({ channelId: seedanceChannel.id, modelKey: seedance, intent: { operation: "text_to_video", options: { size: "16:9", vquality: "480p", videoSeconds: 5, videoGenerateAudio: false } } });
+
+        await render({ input: { ...input, videoCount: 1, videoDurationsMs: [3000] }, options: { size: "9:16", vquality: "720p", videoSeconds: 8, videoGenerateAudio: true } });
+        await act(async () => void (await Bun.sleep(20)));
+        expect(tariff()).toBe("预估 8.50 积分");
+        expect(requests).toHaveLength(2);
+        expect(requests[1].intent).toMatchObject({ operation: "reference_to_video", inputs: { video: 1 }, referenceVideoDurationsMs: [3000], options: { size: "9:16", vquality: "720p", videoSeconds: 8, videoGenerateAudio: true } });
+
+        await act(() => useUserStore.setState({ user: null }));
+        expect(tariff()).toContain("/M Token");
+        expect(requests).toHaveLength(2);
+    } finally {
+        await act(() => root.unmount());
+        queryClient.clear();
+        useUserStore.setState({ user, features });
+        apiClient.defaults.adapter = originalAdapter;
+        host.remove();
+    }
+});

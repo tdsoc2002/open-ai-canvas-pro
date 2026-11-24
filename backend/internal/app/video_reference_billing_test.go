@@ -38,7 +38,11 @@ func TestVideoTokenReferenceBillingEnabledUsesReferencePrice(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 不挂参考视频仍用原价。
-	assertVideoTokenQuote(t, videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 0), 1_900_000)
+	withoutReference := videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 0)
+	assertVideoTokenQuote(t, withoutReference, 1_900_000)
+	if withoutReference.VideoUnitPriceMicrocredits == nil || *withoutReference.VideoUnitPriceMicrocredits != 345_600 {
+		t.Fatalf("unexpected video unit price: %#v", withoutReference)
+	}
 
 	// 挂参考视频：沿用含参考视频的公式（报价未知时长按 15 秒预估），乘以带参考视频的 Token 单价。
 	quote := videoReferenceQuote(t, svc, channel.ID, channelModel.ModelKey, 1)
@@ -47,6 +51,9 @@ func TestVideoTokenReferenceBillingEnabledUsesReferencePrice(t *testing.T) {
 	}
 	if quote.Quantity != 475_200 || quote.AmountMicrocredits != 15_210_000 {
 		t.Fatalf("reference quote = %#v, want 475200 tokens and 15210000 microcredits", quote)
+	}
+	if quote.VideoUnitPriceMicrocredits == nil || *quote.VideoUnitPriceMicrocredits != 691_200 {
+		t.Fatalf("unexpected reference video unit price: %#v", quote)
 	}
 	assertVideoQuoteHasNoFinancialWrites(t, db)
 }
@@ -170,6 +177,9 @@ func TestPerSecondReferenceQuoteUsesDeclaredDurationsAndBreakdown(t *testing.T) 
 	want := QuoteReferenceVideo{Count: 2, Billed: true, GeneratedSeconds: 5, ReferenceSeconds: 7.5, BilledSeconds: 8}
 	if quote.ReferenceVideo == nil || *quote.ReferenceVideo != want || quote.Quantity != 13 || quote.AmountMicrocredits != 26_000_000 || quote.Estimated {
 		t.Fatalf("quote = %#v reference = %#v", quote, quote.ReferenceVideo)
+	}
+	if quote.VideoUnitPriceMicrocredits == nil || *quote.VideoUnitPriceMicrocredits != 2_000_000 {
+		t.Fatalf("unexpected per-second reference video price: %#v", quote)
 	}
 
 	intent.ReferenceVideoDurationsMs = nil

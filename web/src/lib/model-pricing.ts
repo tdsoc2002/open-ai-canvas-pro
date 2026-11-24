@@ -1,6 +1,6 @@
 import { modelRequestOptions, resolveVideoOperation, type ModelRequirements } from "@/lib/model-selection";
 import { mediaSettingIssues, resolvedMediaConfig } from "@/lib/media-settings";
-import { videoResolutionComparisonKey } from "@/lib/video-generation-options";
+import { compareVideoResolutions, videoResolutionComparisonKey } from "@/lib/video-generation-options";
 import { imagePriceSelector, normalizeImagePriceSelector } from "@/lib/image-pricing";
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import { formatCreditDisplay, formatCreditPoints } from "@/lib/credit-format";
@@ -80,6 +80,29 @@ export function priceTierSummaryLabel(tiers: ModelPriceTier[], capability?: Mode
             .filter(Boolean)
             .join(" · ") || "未配置"
     );
+}
+
+export function videoPriceTierSummaryLabel(tiers: ModelPriceTier[]) {
+    const perSecondByResolution = new Map<string, ModelPriceTier[]>();
+    const otherTiers: ModelPriceTier[] = [];
+    for (const tier of tiers) {
+        if (tier.billingMode !== "per_second") {
+            otherTiers.push(tier);
+            continue;
+        }
+        const resolution = normalizeTierResolution(tier.selector?.vquality ?? tier.resolution);
+        const group = perSecondByResolution.get(resolution);
+        if (group) group.push(tier);
+        else perSecondByResolution.set(resolution, [tier]);
+    }
+    const unrestricted = perSecondByResolution.get("*");
+    perSecondByResolution.delete("*");
+    if (!perSecondByResolution.size) return priceTierSummaryLabel(tiers, "video", true);
+
+    const labels = [...perSecondByResolution].sort(([a], [b]) => compareVideoResolutions(a, b)).map(([resolution, group]) => `${resolution.toUpperCase()} ${priceTierSummaryLabel(group, "video", true)}`);
+    if (unrestricted) labels.push(`未限定分辨率 ${priceTierSummaryLabel(unrestricted, "video", true)}`);
+    if (otherTiers.length) labels.push(priceTierSummaryLabel(otherTiers, "video", true));
+    return labels.join(" · ");
 }
 
 const WEEKDAY_LABELS = ["", "一", "二", "三", "四", "五", "六", "日"];
@@ -186,15 +209,6 @@ function referenceVideoQuoteDurations(input: ModelRequirements["input"]) {
     const durations = input?.videoDurationsMs;
     if (!input?.videoCount || durations?.length !== input.videoCount) return undefined;
     return durations.every((value) => Number.isSafeInteger(value) && value > 0 && value <= 3_600_000) ? durations : undefined;
-}
-
-type ReferenceVideoBillingCost = { capability?: ModelCapability; referenceVideoBilling?: boolean; logicalPriceTiers?: ModelPriceTier[] };
-
-/** 视频模型的参考视频计费标签。 */
-export function referenceVideoBillingLabel(cost: ReferenceVideoBillingCost | undefined) {
-    if (!cost || cost.capability !== "video") return "";
-    const billed = cost.referenceVideoBilling === true && (cost.logicalPriceTiers || []).some((tier) => (tier.referenceVideoUnitPriceMicrocredits || 0) > 0 || (tier.referenceVideoOutputTokenPriceMicrocredits || 0) > 0);
-    return billed ? "参考视频另计费" : "参考视频不计费";
 }
 
 function formatSeconds(value: number) {

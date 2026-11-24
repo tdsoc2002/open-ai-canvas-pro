@@ -143,6 +143,8 @@ export type LogicalModelQuote = {
     quantity: number;
     amountMicrocredits: number;
     estimated: boolean;
+    /** 视频每计费秒的单价，未包含预留余量。 */
+    videoUnitPriceMicrocredits?: number;
     videoTokenEstimate?: {
         formulaTokens: number;
         reservedTokens: number;

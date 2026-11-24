@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test";
 import { Window } from "happy-dom";
+import { renderToStaticMarkup } from "react-dom/server";
+import { defaultModelCapabilityConfig } from "@/lib/model-capabilities";
 import type { ModelPriceTier } from "@/lib/model-pricing";
 
 test("默认、小源与工作台复用无成功率的渠道卡和独立价目入口", async () => {
@@ -159,5 +161,48 @@ test("默认、小源与工作台复用无成功率的渠道卡和独立价目�
             if (descriptor) Object.defineProperty(globalThis, key, descriptor);
             else Reflect.deleteProperty(globalThis, key);
         }
+    }
+});
+
+test("视频渠道卡按分辨率显示每秒积分，参考视频计费规则不占用渠道卡", async () => {
+    const { ModelPickerOption } = await import("@/components/model-picker");
+    const { createModelChannel, defaultConfig, encodeChannelModel } = await import("@/stores/use-config-store");
+    const model = "wan3.0-video";
+    const tier = (resolution: string, unitPriceMicrocredits: number, selector: ModelPriceTier["selector"] = {}): ModelPriceTier => ({
+        selector,
+        resolution,
+        videoSeconds: 0,
+        billingMode: "per_second",
+        unitPriceMicrocredits,
+        inputTokenPriceMicrocredits: 0,
+        outputTokenPriceMicrocredits: 0,
+        cachedTokenPriceMicrocredits: 0,
+        referenceVideoUnitPriceMicrocredits: unitPriceMicrocredits * 2,
+    });
+    const dom = new Window();
+    const root = dom.document.createElement("div");
+    for (const referenceVideoBilling of [false, true]) {
+        const channel = createModelChannel({
+            id: "video-test",
+            scope: "system",
+            models: [model],
+            modelCosts: [
+                {
+                    model,
+                    capability: "video",
+                    capabilityConfig: defaultModelCapabilityConfig("dashscope-wan3-video", model),
+                    pricePolicy: "channel",
+                    billingMode: "per_second",
+                    unitPriceMicrocredits: 170_000,
+                    logicalPriceTiers: [tier("1080p", 650_000), tier("720", 340_000), tier("*", 170_000, { vquality: "480p" }), tier("*", 420_000, { vquality: "720P", videoSeconds: "10" })],
+                    referenceVideoBilling,
+                },
+            ],
+        });
+        root.innerHTML = renderToStaticMarkup(<ModelPickerOption config={{ ...defaultConfig, channels: [channel] }} model={encodeChannelModel(channel.id, model)} capability="video" showPrice owner="video-test" onSelect={() => {}} />);
+        const rows = [...root.querySelectorAll(".model-picker-tariff[data-shared-unit] > .model-picker-tariff-row")];
+        expect(rows.map((row) => [...row.children].map((item) => item.textContent))).toEqual([["480P 0.17", "720P 0.34-0.42"], ["1080P 0.65 积分/秒"]]);
+        expect(root.querySelector(".canvas-model-picker-option-meta")?.textContent).not.toMatch(/参考视频(?:另计费|不计费)/);
+        expect(root.querySelector(".model-picker-tariff-help")).not.toBeNull();
     }
 });

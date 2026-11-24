@@ -5986,6 +5986,11 @@ components:
             maxOutputImages: {type: integer, format: int64, minimum: 1, maximum: 128}
         videoTokenEstimate:
           $ref: "#/components/schemas/VideoTokenEstimate"
+        videoUnitPriceMicrocredits:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 按秒或视频 Token 计费时每计费秒的微积分单价，不含预留余量
         referenceVideo:
           $ref: "#/components/schemas/QuoteReferenceVideo"
     QuoteReferenceVideo:

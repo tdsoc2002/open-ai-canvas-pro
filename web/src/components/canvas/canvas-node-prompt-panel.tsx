@@ -582,7 +582,7 @@ export function CanvasNodePromptPanel({
                     <span className="canvas-node-generate-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : costLabel}>
                         {mode === "video" ? <WorkspaceCreditGiftMark className="is-compact" /> : <CreditSymbol />}
                         <span>
-                            {routeQuote?.estimated ? "约 " : ""}
+                            {mode !== "video" && routeQuote?.estimated ? "约 " : ""}
                             {formattedCredits}
                             <span className={mode === "video" ? "sr-only" : undefined}> 积分</span>
                         </span>

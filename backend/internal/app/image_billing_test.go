@@ -48,7 +48,10 @@ func TestImageBillingQuoteAndOrderShareSnapshot(t *testing.T) {
 	if order.AmountMicrocredits != 380_000 || order.ImageInputImages != 3 || order.ImageMaxOutputImages != 1 || order.ImagePricing == nil {
 		t.Fatalf("order=%#v", order)
 	}
-	quote := quoteFromOrder("", order, tokenBillingEstimate{})
+	quote, err := quoteFromOrder("", order, tokenBillingEstimate{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if quote.AmountMicrocredits != order.AmountMicrocredits || !quote.Estimated || quote.ImageUsage.InputImages != 3 {
 		t.Fatalf("quote=%#v", quote)
 	}
@@ -104,7 +107,11 @@ func TestImageBillingSeedream55InputAndLayerReservation(t *testing.T) {
 	if _, _, err := imageBillingReservation(ModelRequestIntent{Capability: "image", Inputs: map[string]int{"image": 2}, Options: map[string]any{"layerDecomposition": true}}); err == nil {
 		t.Fatal("multiple layer inputs accepted")
 	}
-	encoded, err := json.Marshal(quoteFromOrder("", &model.BillingOrder{BillingMode: "image_usage", ImageInputImages: 1, ImageMaxOutputImages: 10}, tokenBillingEstimate{}))
+	quote, err := quoteFromOrder("", &model.BillingOrder{BillingMode: "image_usage", ImageInputImages: 1, ImageMaxOutputImages: 10}, tokenBillingEstimate{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(quote)
 	if err != nil || len(encoded) == 0 {
 		t.Fatal(err)
 	}
