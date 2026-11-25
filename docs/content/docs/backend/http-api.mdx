@@ -59,6 +59,10 @@ description: 信封、错误码与 OpenAPI
 
 启用后，公开 `GET /auth/settings` 返回 `turnstileEnabled: true` 和用于浏览器渲染组件的 `turnstileSiteKey`。登录页和注册页先通过 Cloudflare Turnstile 获取一次性令牌，并把令牌作为 `turnstileToken` 提交给密码登录、验证码登录、普通注册或微信注册补全接口。服务端固定调用 Cloudflare 的 Siteverify 地址校验令牌，并把客户端 IP 一并提交；未提交、过期、无效、网络失败或响应格式异常都拒绝登录/注册。首次创建管理员账号也受此校验保护。关闭机器人保护时保持原有登录和注册流程，令牌字段可省略。
 
+## 游客侧栏
+
+`GET /public/workspace-navigation` 无需登录，返回当前站点的六个布尔值：`shortDramaEnabled`、`taskCenterEnabled`、`teamsEnabled`、`imageWorkbenchEnabled`、`videoWorkbenchEnabled`、`ecommerceEnabled`。响应禁用缓存。这些字段用于展示入口，受保护页面和业务接口仍校验登录状态与权限。
+
 ## 官方素材扩展
 
 用户浏览和详情使用 `/api/official-assets`，画布通过 `/api/official-assets/:id/reference` 获取引用；管理员管理使用 `/api/admin/official-assets`，发布、下架为对应资源的 PATCH 操作。推荐提交、详情和审核由官方素材推荐路由提供，保留登录及管理员鉴权。角色引用不自动创建个人素材副本。

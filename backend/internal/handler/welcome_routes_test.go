@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestWelcomeAvailabilityPublicRoute(t *testing.T) {
+func TestWelcomeAndWorkspaceNavigationPublicRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
@@ -32,15 +33,12 @@ func TestWelcomeAvailabilityPublicRoute(t *testing.T) {
 	}
 	router := gin.New()
 	RegisterFeatureAvailabilityRoutes(router.Group("/api"), service.New(repository.New(db), t.TempDir()))
-	for _, enabled := range []bool{true, false, true} {
-		payload, _ := json.Marshal(map[string]bool{"welcomeEnabled": enabled})
-		if err := db.Save(&model.SystemSetting{Key: "feature_availability", ValueJSON: string(payload)}).Error; err != nil {
-			t.Fatal(err)
-		}
+	readPublic := func(path string, want map[string]bool) {
+		t.Helper()
 		response := httptest.NewRecorder()
-		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/public/welcome", nil))
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
 		if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" {
-			t.Fatalf("unexpected public response: %d %s", response.Code, response.Body.String())
+			t.Fatalf("%s: unexpected public response: %d %s", path, response.Code, response.Body.String())
 		}
 		var body struct {
 			Code int             `json:"code"`
@@ -49,8 +47,32 @@ func TestWelcomeAvailabilityPublicRoute(t *testing.T) {
 		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)
 		}
-		if body.Code != 0 || len(body.Data) != 1 || body.Data["welcomeEnabled"] != enabled {
-			t.Fatalf("unexpected public payload: %s", response.Body.String())
+		if body.Code != 0 || !maps.Equal(body.Data, want) {
+			t.Fatalf("%s: unexpected public payload: %s", path, response.Body.String())
 		}
+	}
+	for _, enabled := range []bool{true, false, true} {
+		navigation := map[string]bool{
+			"shortDramaEnabled": !enabled, "taskCenterEnabled": !enabled,
+			"teamsEnabled": enabled, "imageWorkbenchEnabled": enabled,
+			"videoWorkbenchEnabled": enabled, "ecommerceEnabled": enabled,
+		}
+		config := maps.Clone(navigation)
+		config["welcomeEnabled"] = enabled
+		config["creditsEnabled"] = !enabled
+		payload, err := json.Marshal(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Save(&model.SystemSetting{Key: "feature_availability", ValueJSON: string(payload), UpdatedBy: "admin-test-id"}).Error; err != nil {
+			t.Fatal(err)
+		}
+		readPublic("/api/public/welcome", map[string]bool{"welcomeEnabled": enabled})
+		readPublic("/api/public/workspace-navigation", navigation)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/features", nil))
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("authenticated features returned %d to a guest", response.Code)
 	}
 }

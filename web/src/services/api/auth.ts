@@ -530,6 +530,12 @@ export function getFeatureAvailability() {
     return http.get<{ features: FeatureAvailability }>("/features");
 }
 
+export type WorkspaceNavigationFeatures = Pick<FeatureAvailability, "shortDramaEnabled" | "taskCenterEnabled" | "teamsEnabled" | "imageWorkbenchEnabled" | "videoWorkbenchEnabled" | "ecommerceEnabled">;
+
+export function getPublicWorkspaceNavigation(signal?: AbortSignal) {
+    return http.get<WorkspaceNavigationFeatures>("/public/workspace-navigation", { session: "public", signal });
+}
+
 export function getAdminFeatureAvailability() {
     return http.get<{ features: FeatureAvailability }>("/admin/settings/features");
 }

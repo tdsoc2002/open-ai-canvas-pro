@@ -10,8 +10,9 @@ import { WorkspaceSidebarNav } from "@/components/layout/workspace-sidebar-nav";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { JOYSEE_MINIMAL_SKIN } from "@/themes/joysee-minimal/skin";
+import type { WorkspaceNavigationFeatures } from "@/services/api/auth";
 
-function renderSidebar(path: string, collapsed: boolean, generationEnabled: boolean, joysee = true, signedIn = false) {
+function renderSidebar(path: string, collapsed: boolean, generationEnabled: boolean, joysee = true, signedIn = false, publicNavigation?: WorkspaceNavigationFeatures | null) {
     const initialState = useUserStore.getInitialState();
     const { features, hydrated, user } = initialState;
     const initialAppearance = useAppearanceStore.getInitialState();
@@ -34,6 +35,8 @@ function renderSidebar(path: string, collapsed: boolean, generationEnabled: bool
         Object.defineProperty(globalThis, name, { configurable: true, value });
     }
     const queryClient = new QueryClient();
+    const cachedFeatures = publicNavigation === undefined ? initialState.features : publicNavigation;
+    if (cachedFeatures) queryClient.setQueryData(["public", "workspace-navigation"], cachedFeatures);
     try {
         const { document } = dom;
         document.body.innerHTML = renderToStaticMarkup(
@@ -107,6 +110,31 @@ test("游客侧栏在展开和收起时都不显示底部账户入口", () => {
     for (const collapsed of [false, true]) {
         const document = renderSidebar("/", collapsed, false);
         expect(document.querySelectorAll(".app-workspace-sidebar-footer")).toHaveLength(0);
-        expect(document.querySelector('[data-nav-id="skills"]')).toBeNull();
+        expect(document.querySelector('[data-nav-id="skills"]')?.getAttribute("href")).toBe("/skills");
     }
+});
+
+test("游客侧栏使用本站公开开关，登录后仍使用会话开关", () => {
+    const navigation: WorkspaceNavigationFeatures = {
+        shortDramaEnabled: false,
+        taskCenterEnabled: true,
+        teamsEnabled: true,
+        imageWorkbenchEnabled: true,
+        videoWorkbenchEnabled: true,
+        ecommerceEnabled: true,
+    };
+    for (const signedIn of [false, true]) {
+        const document = renderSidebar("/", false, false, true, signedIn, navigation);
+        for (const id of ["teams", "toolbox-image", "toolbox-video", "ecommerce"]) {
+            expect(Boolean(document.querySelector(`[data-nav-id="${id}"]`))).toBe(!signedIn);
+        }
+        expect(Boolean(document.querySelector('[data-nav-id="projects"]'))).toBe(signedIn);
+        expect(document.querySelector('[data-nav-id="tasks"]')?.getAttribute("href")).toBe("/tasks");
+    }
+});
+
+test("游客侧栏等待开关时仅显示固定入口", () => {
+    const document = renderSidebar("/", false, true, true, false, null);
+    const links = [...document.querySelectorAll("a[data-nav-id]")].map((item) => item.getAttribute("data-nav-id"));
+    expect(links).toEqual(["home", "canvas", "assets", "inspirations", "skills"]);
 });

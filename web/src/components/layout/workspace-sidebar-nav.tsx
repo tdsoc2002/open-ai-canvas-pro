@@ -1,4 +1,5 @@
 import { Popover } from "antd";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, ChevronsUpDown, CircleUserRound, History as HistoryIcon, Image as ImageIcon, Lightbulb, PanelLeftClose, PanelLeftOpen, ShoppingBag, Users, Video, Wallet, FileText } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
@@ -19,7 +20,8 @@ import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-
 import { useWorkspaceLogout } from "@/hooks/use-workspace-logout";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
-import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
+import { getPublicWorkspaceNavigation, type WorkspaceNavigationFeatures } from "@/services/api/auth";
+import { useUserStore } from "@/stores/use-user-store";
 import { useSkillLibraryAccess } from "@/lib/skill-access";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useTaskHistoryUnreadStore } from "@/stores/use-task-history-unread-store";
@@ -53,34 +55,34 @@ function toolItem(slug: NavigationToolSlug, to: string, t: TFunction): Workspace
     return { id: slug, title: tool ? t(tool.labelKey) : slug, icon: tool?.icon, to };
 }
 
-function buildNav(features: FeatureAvailability, t: TFunction, historyUnread: boolean, joysee: boolean, canUseSkills: boolean): WorkspaceNavGroup[] {
+function buildNav(features: WorkspaceNavigationFeatures | undefined, t: TFunction, historyUnread: boolean, joysee: boolean, showSkills: boolean): WorkspaceNavGroup[] {
     const assets = { ...toolItem("assets", "/assets", t), title: t("nav.sidebar.assets") };
     const canvas = { ...toolItem("canvas", "/canvas", t), title: t(joysee ? "nav.sidebar.canvasLibrary" : "nav.sidebar.canvas") };
-    const projects = features.shortDramaEnabled ? [{ ...toolItem("projects", "/projects", t), title: t("nav.sidebar.projects") }] : [];
+    const projects = features?.shortDramaEnabled ? [{ ...toolItem("projects", "/projects", t), title: t("nav.sidebar.projects") }] : [];
     const skills = { ...toolItem("skills", "/skills", t), title: t("nav.sidebar.skills") };
     const inspirations = { id: "inspirations", title: t(joysee ? "nav.sidebar.inspirationLibrary" : "nav.sidebar.inspirations"), icon: Lightbulb, to: "/inspirations" };
-    const tasks = features.taskCenterEnabled ? [{ id: "tasks", title: t(joysee ? "nav.sidebar.generationHistory" : "nav.sidebar.history"), icon: HistoryIcon, to: "/tasks", unread: historyUnread }] : [];
+    const tasks = features?.taskCenterEnabled ? [{ id: "tasks", title: t(joysee ? "nav.sidebar.generationHistory" : "nav.sidebar.history"), icon: HistoryIcon, to: "/tasks", unread: historyUnread }] : [];
     const groups: WorkspaceNavGroup[] = [
         {
             heading: t("nav.sections.create"),
             items: [
                 { ...toolItem("create", "/", t), id: "home", title: t(joysee ? "nav.sidebar.creationWorkbench" : "nav.sidebar.home") },
                 ...(joysee ? [canvas, ...projects] : [assets, canvas, ...projects]),
-                ...(features.teamsEnabled ? [{ id: "teams", title: "公司与团队", icon: Users, to: "/teams" }] : []),
-                ...(features.ecommerceEnabled ? [{ id: "ecommerce", title: t("nav.sidebar.ecommerce"), icon: ShoppingBag, to: "/ecommerce" }] : []),
+                ...(features?.teamsEnabled ? [{ id: "teams", title: "公司与团队", icon: Users, to: "/teams" }] : []),
+                ...(features?.ecommerceEnabled ? [{ id: "ecommerce", title: t("nav.sidebar.ecommerce"), icon: ShoppingBag, to: "/ecommerce" }] : []),
             ],
         },
         {
             heading: t(joysee ? "nav.sidebar.headingGenerate" : "nav.sidebar.headingGeneration"),
             items: [
-                ...(features.imageWorkbenchEnabled ? [{ id: "toolbox-image", title: t("nav.sidebar.toolboxImage"), icon: ImageIcon, to: "/toolbox/image" }] : []),
-                ...(features.videoWorkbenchEnabled ? [{ id: "toolbox-video", title: t("nav.sidebar.toolboxVideo"), icon: Video, to: "/toolbox/video" }] : []),
-                ...(!joysee && canUseSkills ? [skills] : []),
+                ...(features?.imageWorkbenchEnabled ? [{ id: "toolbox-image", title: t("nav.sidebar.toolboxImage"), icon: ImageIcon, to: "/toolbox/image" }] : []),
+                ...(features?.videoWorkbenchEnabled ? [{ id: "toolbox-video", title: t("nav.sidebar.toolboxVideo"), icon: Video, to: "/toolbox/video" }] : []),
+                ...(!joysee && showSkills ? [skills] : []),
                 ...tasks,
                 ...(joysee ? [] : [inspirations]),
             ],
         },
-        ...(joysee ? [{ heading: t("nav.sidebar.headingResources"), items: [assets, inspirations, ...(canUseSkills ? [skills] : [])] }] : []),
+        ...(joysee ? [{ heading: t("nav.sidebar.headingResources"), items: [assets, inspirations, ...(showSkills ? [skills] : [])] }] : []),
     ];
 
     return groups.filter(({ items }) => items.length > 0);
@@ -332,12 +334,19 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
     const [searchParams] = useSearchParams();
     const features = useUserStore((state) => state.features);
     const user = useUserStore((state) => state.user);
+    const guestNavigation = useQuery({
+        queryKey: ["public", "workspace-navigation"],
+        queryFn: ({ signal }) => getPublicWorkspaceNavigation(signal),
+        enabled: !user,
+    });
+    const guestFeatures = guestNavigation.data ?? (guestNavigation.isError ? features : undefined);
+    const navigationFeatures = user ? features : guestFeatures;
     const historyUnread = useTaskHistoryUnreadStore((state) => Boolean(user && state.byUser[user.id]?.length));
     const { handleLogout } = useWorkspaceLogout();
     const { t, i18n } = useTranslation();
     const joysee = useThemePack()?.workspaceStyle === "joysee";
-    const canUseSkills = useSkillLibraryAccess();
-    const personalNav = useMemo(() => buildNav(features, t, historyUnread, joysee, canUseSkills), [features, t, i18n.language, historyUnread, joysee, canUseSkills]);
+    const showSkills = useSkillLibraryAccess() || !user;
+    const personalNav = useMemo(() => buildNav(navigationFeatures, t, historyUnread, joysee, showSkills), [navigationFeatures, t, i18n.language, historyUnread, joysee, showSkills]);
     const teamId = features.teamsEnabled ? teamIdFromPath(pathname) : undefined;
     const base = teamId ? `/teams/${encodeURIComponent(teamId)}` : "";
     const groups: WorkspaceNavGroup[] = teamId

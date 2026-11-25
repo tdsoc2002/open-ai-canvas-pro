@@ -92,6 +92,12 @@ describe("team publication and identity boundaries", () => {
         expect(requests[0]).toEqual({ path: "/teams/team%2Fa/members/membership%2Fc/allocate", body: { amountMicrocredits: 1200000, idempotencyKey: "transfer" } });
     });
 
+    test("公共侧栏开关读取不受首次进入的团队路径影响", () => {
+        expect(workspaceApiPath("/public/workspace-navigation", "team/a")).toBe("/public/workspace-navigation");
+        expect(() => workspaceApiPath("/public/workspace-navigation", "team/a", "post")).toThrow();
+        expect(() => workspaceApiPath("/public/workspace-navigation/other", "team/a")).toThrow();
+    });
+
     test("removing one workspace cache keeps other teams and users intact", () => {
         const client = new QueryClient();
         const a = [...teamKeys.space("alice", "a"), "assets"];

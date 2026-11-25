@@ -2405,6 +2405,16 @@ paths:
           description: 信封 data 仅包含 multilingualEnabled 布尔值，默认 false；Cache-Control 为 no-store
         "500":
           description: 配置读取失败
+  /public/workspace-navigation:
+    get:
+      tags: [meta]
+      security: []
+      summary: 读取游客侧栏的功能开放状态
+      responses:
+        "200":
+          description: 信封 data 返回 shortDramaEnabled、taskCenterEnabled、teamsEnabled、imageWorkbenchEnabled、videoWorkbenchEnabled、ecommerceEnabled 六个布尔值，Cache-Control 为 no-store
+        "500":
+          description: 配置读取失败
   /public/inspirations/feed:
     get:
       tags: [inspirations]
