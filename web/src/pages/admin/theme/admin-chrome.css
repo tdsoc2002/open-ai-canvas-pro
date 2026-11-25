@@ -579,6 +579,47 @@
     overflow: auto;
 }
 
+.admin-table-scroll:has(> .ant-table-wrapper > .ant-spin > .ant-spin-container > .ant-table-empty) {
+    display: flex;
+    flex-direction: column;
+}
+
+:is([data-admin-root], .admin-table-scroll) .ant-table-wrapper:has(> .ant-spin > .ant-spin-container > .ant-table-empty) {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    min-width: 0;
+
+    & :is(.ant-spin, .ant-spin-container, .ant-table-empty, .ant-table-container) {
+        display: flex;
+        flex: 1 0 auto;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    & .ant-table-container > :is(.ant-table-content, .ant-table-body) {
+        flex: 1 0 auto;
+        min-width: 0;
+    }
+
+    /* 固定列阴影默认越过底线，空表铺满时会多出纵向滚动条。 */
+    & .ant-table-container::before,
+    & .ant-table-container::after {
+        bottom: 0;
+    }
+
+    & :is(.ant-table-content, .ant-table-body) > table,
+    & .ant-table-placeholder {
+        height: 100%;
+    }
+
+    & .ant-table-placeholder > td {
+        /* 空态使用 AntD 的横向吸附容器，不能由单元格截断。 */
+        overflow: visible;
+        vertical-align: middle;
+    }
+}
+
 [data-admin-root] .admin-table-surface .ant-table-thead > tr > th {
     height: var(--admin-head-h);
     padding: 0 12px !important;

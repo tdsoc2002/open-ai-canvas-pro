@@ -29,6 +29,7 @@ export default function TeamsPage() {
     const parentId = params.get("parent") || "";
     const roots = teams.data?.filter((team) => !team.parentId) || [];
     const owned = roots.filter((team) => team.role === "owner");
+    const empty = teams.isSuccess && teams.data.length === 0;
     const canCreateHere = !parentId || owned.some((team) => team.id === parentId);
     const [name, setName] = useState("");
     const openCreate = (parent?: string) => {
@@ -44,7 +45,7 @@ export default function TeamsPage() {
         onError: (error) => message.error(error.message),
     });
     return (
-        <TeamManagementPage>
+        <TeamManagementPage fill={empty}>
             <PageHeader
                 title="公司与团队"
                 actions={
@@ -64,42 +65,45 @@ export default function TeamsPage() {
                     正在读取团队…
                 </p>
             ) : null}
-            {teams.data?.length === 0 ? <EmptyState className="rounded-xl border border-border bg-card" icon={Users} title="还没有加入团队" /> : null}
-            <div className="grid items-start gap-4 @xl:grid-cols-2">
-                {!teams.isError &&
-                    roots.map((team) => {
-                        const groups = teams.data?.filter((group) => group.parentId === team.id);
-                        return (
-                            <section key={team.id} className="min-w-0 rounded-xl border border-border bg-card p-3">
-                                <Link to={`/teams/${encodeURIComponent(team.id)}`} className="flex items-center gap-3 rounded-lg p-2 hover:bg-surface-hover">
-                                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-[color:var(--brand,var(--foreground))]">
-                                        <Building2 aria-hidden className="size-5" />
-                                    </span>
-                                    <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{team.name}</h2>
-                                    <StatusBadge variant="filled" label={team.role === "owner" ? "所有者" : "成员"} />
-                                    <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                                </Link>
-                                {groups?.length ? (
-                                    <ul className="my-2 ml-7 space-y-1 border-l border-border pl-3">
-                                        {groups.map((group) => (
-                                            <li key={group.id}>
-                                                <Link className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-surface-hover" to={`/teams/${encodeURIComponent(group.id)}`}>
-                                                    <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                                                    <span className="truncate">{group.name}</span>
-                                                </Link>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : null}
-                                {team.role === "owner" ? (
-                                    <Button type="text" size="small" className="mt-2" icon={<Plus aria-hidden className="size-3.5" />} onClick={() => openCreate(team.id)}>
-                                        创建小组
-                                    </Button>
-                                ) : null}
-                            </section>
-                        );
-                    })}
-            </div>
+            {empty ? (
+                <EmptyState className="grow rounded-xl border border-border bg-card" icon={Users} title="还没有加入团队" />
+            ) : (
+                <div className="grid items-start gap-4 @xl:grid-cols-2">
+                    {!teams.isError &&
+                        roots.map((team) => {
+                            const groups = teams.data?.filter((group) => group.parentId === team.id);
+                            return (
+                                <section key={team.id} className="min-w-0 rounded-xl border border-border bg-card p-3">
+                                    <Link to={`/teams/${encodeURIComponent(team.id)}`} className="flex items-center gap-3 rounded-lg p-2 hover:bg-surface-hover">
+                                        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-[color:var(--brand,var(--foreground))]">
+                                            <Building2 aria-hidden className="size-5" />
+                                        </span>
+                                        <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{team.name}</h2>
+                                        <StatusBadge variant="filled" label={team.role === "owner" ? "所有者" : "成员"} />
+                                        <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                                    </Link>
+                                    {groups?.length ? (
+                                        <ul className="my-2 ml-7 space-y-1 border-l border-border pl-3">
+                                            {groups.map((group) => (
+                                                <li key={group.id}>
+                                                    <Link className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-surface-hover" to={`/teams/${encodeURIComponent(group.id)}`}>
+                                                        <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                                                        <span className="truncate">{group.name}</span>
+                                                    </Link>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : null}
+                                    {team.role === "owner" ? (
+                                        <Button type="text" size="small" className="mt-2" icon={<Plus aria-hidden className="size-3.5" />} onClick={() => openCreate(team.id)}>
+                                            创建小组
+                                        </Button>
+                                    ) : null}
+                                </section>
+                            );
+                        })}
+                </div>
+            )}
             <AppModal
                 centered
                 title={parentId ? "创建小组" : "创建空间"}

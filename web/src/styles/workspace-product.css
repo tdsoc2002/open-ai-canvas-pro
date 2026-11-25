@@ -57,6 +57,26 @@
     min-width: 0;
 }
 
+.app-user-workspace :is(.task-center-page, .inspirations-page) > div:has(.workspace-pagination-flow > .workspace-state:is([data-kind="first-use"], [data-kind="no-results"])) {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+}
+
+:is(.task-center-page, .inspirations-page) .workspace-pagination-flow:has(.workspace-state:is([data-kind="first-use"], [data-kind="no-results"])) {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+}
+
+:is(.task-center-page, .inspirations-page) .workspace-pagination-flow > .workspace-state:is([data-kind="first-use"], [data-kind="no-results"]) {
+    flex: 1 0 auto;
+}
+
+.inspiration-hall-results > .workspace-state:is([data-kind="first-use"], [data-kind="no-results"]) {
+    grid-template-rows: 1fr auto 1fr;
+}
+
 @media (min-width: 768px) {
     .app-user-workspace main.app-user-content.app-workspace-scroll > div:has(.app-pagination-bar) {
         padding-bottom: var(--space-6);

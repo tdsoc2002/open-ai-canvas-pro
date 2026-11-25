@@ -19,6 +19,10 @@
     background: var(--admin-surface);
 }
 
+.admin-channel-detail > .admin-empty {
+    flex: 1;
+}
+
 .admin-channel-sidebar-header {
     display: flex;
     flex: none;
@@ -34,6 +38,10 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 8px;
+}
+
+.admin-channel-list:has(> .admin-empty) {
+    display: grid;
 }
 
 .admin-channel-categories {
@@ -209,7 +217,9 @@
 }
 
 .admin-channel-key-groups {
+    display: flex;
     flex: 1;
+    flex-direction: column;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -217,6 +227,9 @@
 }
 
 .admin-channel-key-group {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
     min-width: 0;
     padding-block: 12px;
     background: var(--admin-surface);
@@ -292,7 +305,6 @@
 }
 
 .admin-channel-key-group .admin-channel-model-manager {
-    flex: none;
     padding: 0;
 }
 

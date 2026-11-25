@@ -1,11 +1,16 @@
 /* 知识与技能页（/admin/ecommerce/library）：标签内容头 + 概况数字。 */
+[data-admin-root] :is(.eal-page, .eal-panel, .eal-panel > .ant-tabs),
+[data-admin-root] .eal-panel > .ant-tabs :is(.ant-tabs-body-holder, .ant-tabs-body, .ant-tabs-content-active, .ant-tabs-content-active > .eal-stack) {
+    display: flex;
+    min-width: 0;
+    flex: 1 0 auto;
+    flex-direction: column;
+}
 [data-admin-root] .eal-page {
     padding: 16px 0 32px;
 }
 [data-admin-root] .eal-panel {
-    display: grid;
     gap: 16px;
-    min-width: 0;
 }
 [data-admin-root] .eal-panel-head {
     display: flex;
