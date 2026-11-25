@@ -16,8 +16,7 @@ const { buildVideoRemakeDraft } = await import("@/lib/canvas/canvas-video-remake
 const { buildCanvasNodeMentionReferenceMap } = await import("@/lib/canvas/canvas-resource-references");
 const { createModelChannel, defaultConfig, encodeChannelModel, useConfigStore } = await import("@/stores/use-config-store");
 const { useUserStore } = await import("@/stores/use-user-store");
-const { useAppearanceStore } = await import("@/stores/use-appearance-store");
-const { joyseeMinimalTheme } = await import("@/themes/joysee-minimal");
+await import("@/themes/load");
 const quoteApi = await import("@/services/api/logical-models");
 const { CanvasNodeType } = await import("@/types/canvas");
 
@@ -87,8 +86,6 @@ test("空图片位可从实际生成面板补图，补图后仍需手动提交",
         expect(submit.disabled).toBe(true);
         await act(async () => useUserStore.setState((state) => ({ features: { ...state.features, creditsEnabled: true } })));
         const cost = submit.previousElementSibling;
-        expect(cost?.querySelector(".app-workspace-credit-gift.is-compact svg")).toBeTruthy();
-        await act(async () => useAppearanceStore.setState((state) => ({ appearance: { ...state.appearance, activeSkin: joyseeMinimalTheme.skin } })));
         expect(cost?.querySelector(".joysee-credit-mark.is-compact svg")).toBeTruthy();
         expect(cost?.textContent).toBe("16.39 积分");
         expect(cost?.getAttribute("title")).toContain("预计消耗 16.39 积分");

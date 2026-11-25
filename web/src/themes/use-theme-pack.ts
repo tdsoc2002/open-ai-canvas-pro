@@ -2,7 +2,7 @@ import { useEffectiveSkin } from "@/stores/use-appearance-preferences-store";
 
 import { themePackFor } from "./registry";
 
-/** 个人选定的主题优先，否则使用站点主题。 */
+/** 从站点皮肤读取主题包的界面组件与预设。 */
 export function useThemePack() {
     return themePackFor(useEffectiveSkin().id);
 }
