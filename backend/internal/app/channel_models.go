@@ -47,8 +47,9 @@ const maxAdminChannelModelBatchDeleteCount = 100
 // ChannelModelPriceTierRequest 是系统渠道内某个规格的上游 SKU 与结算价格。
 // Resolution="*"、VideoSeconds=0 分别表示任意分辨率和任意时长。
 type ChannelModelPriceTierRequest struct {
-	ImagePricing *model.ImagePricing     `json:"imagePricing,omitempty"`
-	CostPricing  model.CreditCostPricing `json:"costPricing"`
+	MinimaxH3IRPriceMicrocredits *int64                  `json:"minimaxH3IRPriceMicrocredits,omitempty"`
+	ImagePricing                 *model.ImagePricing     `json:"imagePricing,omitempty"`
+	CostPricing                  model.CreditCostPricing `json:"costPricing"`
 	// Selector 是 SKU 的规范匹配条件。支持 operation、quality、size、vquality、videoSeconds、imageCount、videoGenerateAudio；
 	// operation 可区分文生/图生/视频生，避免同一分辨率下错误复用价格。
 	Selector                         map[string]string `json:"selector"`
@@ -243,6 +244,12 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	if previousProviderModelKey != "" && providerModelKey != previousProviderModelKey {
 		for index := range tiers {
 			if channelProviderModelKey(tiers[index].ProviderModelKey, item.Protocol) == previousProviderModelKey {
+				if err := validateMinimaxH3PriceTier(protocol, tiers[index].BillingMode, providerModelKey, tiers[index].Resolution); err != nil {
+					return nil, err
+				}
+				if tiers[index].MinimaxH3IRPriceMicrocredits != nil && !supportsMinimaxH3IRModel(protocol, providerModelKey) {
+					return nil, BadAuthRequest("新的上游型号不支持 Context-IR，请先清空 IR 每次售价")
+				}
 				tiers[index].ProviderModelKey = providerModelKey
 			}
 		}

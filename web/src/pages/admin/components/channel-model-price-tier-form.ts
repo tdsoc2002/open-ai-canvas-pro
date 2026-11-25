@@ -117,6 +117,7 @@ export type PriceTierFormValues = {
     providerModelKey?: string;
     billingMode: ChannelModel["billingMode"];
     unitPrice: number | null;
+    minimaxH3IRPrice: number | null;
     inputTokenPrice: number | null;
     outputTokenPrice: number | null;
     cachedTokenPrice: number | null;
@@ -156,6 +157,7 @@ export function defaultPriceTier(matchMode: PriceTierMatchMode = "default"): Pri
         providerModelKey: "",
         billingMode: "fixed_request",
         unitPrice: 0,
+        minimaxH3IRPrice: null,
         inputTokenPrice: 0,
         outputTokenPrice: 0,
         cachedTokenPrice: 0,
@@ -208,6 +210,7 @@ export function priceTierToForm(tier: ChannelModelPriceTier, image?: ImageCapabi
         providerModelKey: tier.providerModelKey || "",
         billingMode: tier.billingMode,
         unitPrice: salePrice(tier.unitPriceMicrocredits),
+        minimaxH3IRPrice: tier.minimaxH3IRPriceMicrocredits == null ? null : tier.minimaxH3IRPriceMicrocredits / 1_000_000,
         inputTokenPrice: salePrice(tier.inputTokenPriceMicrocredits),
         outputTokenPrice: salePrice(tier.outputTokenPriceMicrocredits),
         cachedTokenPrice: salePrice(tier.cachedTokenPriceMicrocredits),
@@ -301,6 +304,7 @@ export function priceTierPayloadFromForm(capability: ModelCapabilityChoice, tier
         providerModelKey: tier.providerModelKey?.trim() || upstreamModel,
         billingMode: tier.billingMode,
         unitPriceMicrocredits: Math.round((tier.unitPrice || 0) * 1_000_000),
+        minimaxH3IRPriceMicrocredits: capability === "video" && tier.minimaxH3IRPrice != null ? Math.round(tier.minimaxH3IRPrice * 1_000_000) : undefined,
         inputTokenPriceMicrocredits: videoTokens ? 0 : Math.round((tier.inputTokenPrice || 0) * 1_000_000),
         outputTokenPriceMicrocredits: Math.round((tier.outputTokenPrice || 0) * 1_000_000),
         cachedTokenPriceMicrocredits: videoTokens ? 0 : Math.round((tier.cachedTokenPrice || 0) * 1_000_000),
@@ -327,6 +331,18 @@ export function priceTierPayloadFromForm(capability: ModelCapabilityChoice, tier
 export function priceTierAmountsComplete(capability: ModelCapabilityChoice | undefined, tier: PriceTierFormValues, referenceVideoBilling = false) {
     if (tier.billingMode === "image_usage") return capability === "image" && validImagePricingForm(tier.imagePricing);
     const prices = tier.billingMode !== "token" ? [tier.unitPrice] : capability === "video" ? [tier.outputTokenPrice] : [tier.inputTokenPrice, tier.outputTokenPrice, tier.cachedTokenPrice, tier.cacheWriteTokenPrice];
-    if (capability === "video" && referenceVideoBilling && tier.billingMode !== "fixed_request") prices.push(tier.billingMode === "token" ? tier.referenceVideoOutputTokenPrice : tier.referenceVideoUnitPrice);
+    if (capability === "video" && referenceVideoBilling && (tier.billingMode === "per_second" || tier.billingMode === "token")) prices.push(tier.billingMode === "token" ? tier.referenceVideoOutputTokenPrice : tier.referenceVideoUnitPrice);
     return prices.every((price) => typeof price === "number" && Number.isFinite(price) && price >= 0 && price <= 1_000_000);
+}
+
+export function minimaxH3OutputReferenceRate(providerModel: string, resolution: string | undefined) {
+    const rates: Record<string, Record<string, number>> = {
+        "minimax-h3": { "768p": 0.5, "1440p": 0.8 },
+        "minimax-h3-highspeed": { "480p": 0.26, "768p": 0.4 },
+        "minimax-h3-lite": { "480p": 0.16, "768p": 0.26 },
+        "minimax-h3-max": { "480p": 0.33, "768p": 0.5 },
+        "minimax h3": { "480p": 0.05, "768p": 0.08, "1080p": 0.11, "1440p": 0.13 },
+    };
+    const quality = resolution?.trim().toLowerCase();
+    return rates[providerModel.trim().toLowerCase()]?.[quality === "2k" ? "1440p" : quality || ""];
 }

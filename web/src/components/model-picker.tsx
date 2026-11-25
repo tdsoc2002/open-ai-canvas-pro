@@ -751,6 +751,7 @@ function modelMenuPrice(config: AiConfig, model: string, capability?: ModelCapab
         return channelTierPriceSummary(label, tiers, capability);
     }
     if (cost.billingMode === "image_usage") return { kind: "estimate", label: "按图片输入张数及实际输出像素计费" };
+    if (cost.billingMode === "minimax_h3") return { kind: "estimate", label: "按 H3 视频与输入素材用量计费" };
     if (cost.billingMode === "token") {
         const rate = cost.outputTokenPriceMicrocredits;
         return capability === "video" && typeof rate === "number" && Number.isFinite(rate) && rate >= 0

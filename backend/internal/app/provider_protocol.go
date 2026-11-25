@@ -114,8 +114,24 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 		if input.Mode == "text" {
 			return finishDeclarativeTextCreate(ctx, input, adapter, request, spec, policy)
 		}
+		nativeIR := input.Config.minimaxH3IR
+		if isTack2AIH3(adapter.Metadata().ID, request.Model) && input.Config.ChannelID != "" {
+			if err := applyTack2AIH3VideoContract(&spec, request, input.Config.minimaxH3IR); err != nil {
+				return nil, err
+			}
+			nativeIR = false
+		}
+		if nativeIR {
+			request.Prompt, err = enhanceMinimaxH3Prompt(ctx, input.Config, adapter, request, spec, policy)
+			if err != nil {
+				return nil, err
+			}
+		}
 		created, err = submitProtocolMediaTask(ctx, input, adapter, request, spec)
 		if err != nil {
+			if nativeIR && safeRouteRejection(err) {
+				return nil, routeDispatchUncertainError{fmt.Sprintf("Context-IR 已完成，提交视频失败：%s", err)}
+			}
 			return nil, err
 		}
 		taskID = created.TaskID

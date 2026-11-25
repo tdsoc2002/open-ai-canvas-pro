@@ -60,7 +60,7 @@ export type PublicLogicalModelPriceTier = {
     selector: Record<string, string>;
     resolution: string;
     videoSeconds: number;
-    billingMode: "fixed_request" | "per_second" | "token" | "image_usage";
+    billingMode: import("./wallet").ChannelModel["billingMode"];
     unitPriceMicrocredits: number;
     inputTokenPriceMicrocredits: number;
     outputTokenPriceMicrocredits: number;
@@ -138,8 +138,10 @@ export type RouteSimulationResult = {
 
 export type LogicalModelQuote = {
     imageUsage?: { inputImages: number; maxOutputImages: number };
+    videoInputImages?: { count: number; billable: number };
+    minimaxH3IRChargeMicrocredits?: number;
     logicalModelId: string;
-    billingMode: PublicLogicalModel["billingMode"];
+    billingMode: PublicLogicalModel["billingMode"] | "minimax_h3";
     quantity: number;
     amountMicrocredits: number;
     estimated: boolean;
@@ -234,7 +236,7 @@ export type PublicChannelModelPriceTier = {
     selector?: Record<string, string>;
     resolution: string;
     videoSeconds: number;
-    billingMode: string;
+    billingMode: import("./wallet").ChannelModel["billingMode"];
     unitPriceMicrocredits: number;
     inputTokenPriceMicrocredits: number;
     outputTokenPriceMicrocredits: number;

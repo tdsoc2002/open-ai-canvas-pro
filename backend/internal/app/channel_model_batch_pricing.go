@@ -115,7 +115,8 @@ func batchTierRequest(tier model.ChannelModelPriceTier) ChannelModelPriceTierReq
 	return ChannelModelPriceTierRequest{
 		ImagePricing: tier.ImagePricing,
 		CostPricing:  tier.CostPricing, Selector: tier.Selector, Resolution: tier.Resolution, VideoSeconds: tier.VideoSeconds,
-		ProviderModelKey: tier.ProviderModelKey, BillingMode: tier.BillingMode,
+		MinimaxH3IRPriceMicrocredits: tier.MinimaxH3IRPriceMicrocredits,
+		ProviderModelKey:             tier.ProviderModelKey, BillingMode: tier.BillingMode,
 		UnitPriceMicrocredits: tier.UnitPriceMicrocredits, InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits,
 		OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits,
 		CacheWriteTokenPriceMicrocredits: tier.CacheWriteTokenPriceMicrocredits,
@@ -150,6 +151,13 @@ func validateBatchFinalPrices(item model.ChannelModel, config *ModelCapabilityCo
 		}
 		if err := validateChannelModelTierPricing(item.Capability, item.Protocol, tier.BillingMode, input); err != nil {
 			return err
+		}
+		providerModel := firstNonEmpty(tier.ProviderModelKey, item.ProviderModelKey, item.ModelKey)
+		if err := validateMinimaxH3PriceTier(item.Protocol, tier.BillingMode, providerModel, tier.Resolution); err != nil {
+			return err
+		}
+		if tier.MinimaxH3IRPriceMicrocredits != nil && !supportsMinimaxH3IRModel(item.Protocol, providerModel) {
+			return BadAuthRequest("Context-IR 计价需要 MiniMax-H3 标准版或源点动力的 minimax h3")
 		}
 		if _, err := normalizeTokenPriceRules(item.Capability, tier.BillingMode, tier.TokenPriceRulesEnabled, tier.TokenPriceRules); err != nil {
 			return err

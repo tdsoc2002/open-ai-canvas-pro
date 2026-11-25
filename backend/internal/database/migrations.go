@@ -755,6 +755,35 @@ var yingceSchemaMigrations = []migration{
 	{version: 4, name: "official_recommendation_consent", checksum: "sha256:official-recommendation-consent-v64-20261031", apply: func(tx *gorm.DB) error { return tx.AutoMigrate(&model.OfficialAssetRecommendation{}) }},
 	modelChargePrecisionExtension,
 	aigcQuotaSnapshotsExtension,
+	{version: 7, name: "minimax_h3_billing", checksum: "sha256:minimax-h3-billing-extension-v7", apply: migrateMinimaxH3Billing},
+	{version: 8, name: "minimax_h3_ir_price", checksum: "sha256:minimax-h3-ir-price-extension-v8", apply: func(tx *gorm.DB) error {
+		for _, column := range []struct {
+			entity any
+			field  string
+		}{
+			{&model.ChannelModelPriceTier{}, "MinimaxH3IRPriceMicrocredits"},
+			{&model.BillingOrder{}, "MinimaxH3IRChargeMicrocredits"},
+		} {
+			if tx.Migrator().HasTable(column.entity) && !tx.Migrator().HasColumn(column.entity, column.field) {
+				if err := tx.Migrator().AddColumn(column.entity, column.field); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}},
+}
+
+func migrateMinimaxH3Billing(tx *gorm.DB) error {
+	order := &model.BillingOrder{}
+	for _, field := range []string{"VideoBillableImages", "CostMinimaxH3Microcredits"} {
+		if !tx.Migrator().HasColumn(order, field) {
+			if err := tx.Migrator().AddColumn(order, field); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func migrateModelChargePrecision(tx *gorm.DB) error {

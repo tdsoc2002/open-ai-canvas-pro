@@ -235,7 +235,14 @@ export function validateChannelModelPrices(values: Pick<ChannelModelFormValues, 
         const fail = (text: string) => {
             throw new Error(`价格档 ${index + 1}：${text}`);
         };
-        if (!["fixed_request", "per_second", "token", "image_usage"].includes(tier.billingMode)) fail("请选择计费方式");
+        if (!["fixed_request", "per_second", "token", "image_usage", "minimax_h3"].includes(tier.billingMode)) fail("请选择计费方式");
+        if (tier.billingMode === "minimax_h3" && (capability !== "video" || tier.matchMode !== "advanced" || !tier.resolution || tier.resolution === "*")) fail("MiniMax H3 计费需要选择具体的视频分辨率");
+        if (capability === "video" && tier.minimaxH3IRPrice != null) {
+            const native = protocol === "minimax-video" && tier.billingMode === "minimax_h3";
+            const gateway = protocol === "tack2ai-video" && (tier.billingMode === "fixed_request" || tier.billingMode === "per_second" || tier.billingMode === "minimax_h3");
+            if (!native && !gateway) fail("Context-IR 计价适用于 MiniMax H3 计费档或源点动力视频的按次、按秒价格档");
+            if (typeof tier.minimaxH3IRPrice !== "number" || !Number.isFinite(tier.minimaxH3IRPrice) || tier.minimaxH3IRPrice < 0 || tier.minimaxH3IRPrice > 1_000_000) fail("Context-IR 每次售价必须是 0 到 1000000 之间的有效数值");
+        }
         if (tier.billingMode === "image_usage" && (capability !== "image" || !validImagePricingForm(tier.imagePricing))) fail("请配置完整有效的图片用量价格");
         if (tier.billingMode === "image_usage" && tier.costConfigured && !validImagePricingForm(tier.costImagePricing)) fail("请配置完整有效的图片用量成本价");
         if (tier.billingMode === "per_second" && capability !== "video" && capability !== "audio") fail("按秒计费仅支持视频或音频，请重新选择计费方式并核对价格");

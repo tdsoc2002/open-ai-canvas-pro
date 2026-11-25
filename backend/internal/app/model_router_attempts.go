@@ -311,6 +311,9 @@ func (s *Service) switchTaskToNextRoute(task *model.Task, attempts []model.Route
 		if err != nil {
 			return nil, err
 		}
+		if err := validateMinimaxH3IRBillingBinding(binding, replacement); err != nil {
+			return nil, err
+		}
 		replacement.Model = logicalModel.Code
 	}
 	previousRouteID := task.RouteID
@@ -320,7 +323,13 @@ func (s *Service) switchTaskToNextRoute(task *model.Task, attempts []model.Route
 	} else if task.BillingOrderID != "" {
 		config, _ := nextInput["config"].(map[string]any)
 		capability := selected.ChannelModel.Capability
-		snapshotCreditCost(&costOrder, channelModelPriceTierForIntent(selected.ChannelModel, intent, selected.CapabilitySpec), requestedBillingQuantity(capability, config), estimateTaskBillingTokens(nextInput, capability))
+		tier := channelModelPriceTierForIntent(selected.ChannelModel, intent, selected.CapabilitySpec)
+		seconds := requestedBillingQuantity(capability, config)
+		estimate := s.estimateTaskBilling(task.UserID, nextInput, capability)
+		snapshotCreditCost(&costOrder, tier, seconds, estimate)
+		if err := snapshotMinimaxH3Cost(&costOrder, tier, seconds, intent, estimate.ReferenceVideos); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.repo.SwitchTaskLogicalRoute(task.ID, previousRouteID, selected.Route.ID, string(encoded), task.BillingOrderID, selected.ChannelModel.ChannelID, selected.ChannelModel.ID, replacement, costOrder.BillingCostSnapshot, binding); err != nil {
 		if errors.Is(err, repository.ErrInsufficientCredits) {
@@ -483,10 +492,14 @@ func (s *Service) resolveArchivedTaskRoute(task *model.Task, intent ModelRequest
 	if match := MatchCapability(capabilitySpec, intent); !match.Matched {
 		return nil, BadAuthRequest("历史任务原供应线路不再支持这些参数：" + strings.Join(match.Reasons, "；"))
 	}
-	if logicalModel.PricePolicy == "channel" && !channelModel.PriceConfigured {
-		return nil, BadAuthRequest("历史任务原模型价格配置已失效，无法重试")
+	var tier *model.ChannelModelPriceTier
+	if logicalModel.PricePolicy == "channel" {
+		tier = channelModelPriceTierForIntent(*channelModel, intent, capabilitySpec)
+		if tier == nil {
+			return nil, BadAuthRequest("历史任务原模型价格配置已失效，无法重试")
+		}
 	}
-	return &RoutedModel{LogicalModel: *logicalModel, Revision: *revision, Route: *route, ChannelModel: *channelModel, CapabilitySpec: capabilitySpec, Defaults: defaults, Intent: intent}, nil
+	return &RoutedModel{LogicalModel: *logicalModel, Revision: *revision, Route: *route, ChannelModel: *channelModel, CapabilitySpec: capabilitySpec, PriceTier: tier, Defaults: defaults, Intent: intent}, nil
 }
 
 func (s *Service) finishTaskRouteAttempt(attempt *model.RouteAttempt, task *model.Task, taskErr error) {

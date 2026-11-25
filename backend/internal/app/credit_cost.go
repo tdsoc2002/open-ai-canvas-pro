@@ -61,12 +61,18 @@ func billingCreditCost(order model.BillingOrder) (*int64, error) {
 	if !order.CostPricing.Configured || order.Status != model.BillingStatusSettled {
 		return nil, nil
 	}
+	if order.MinimaxH3IRChargeMicrocredits != nil {
+		// 价档成本只覆盖视频；供应商的 IR 成本尚未纳入合计。
+		return nil, nil
+	}
 	cost := order.CostPricing
 	var amount int64
 	var err error
 	switch order.CostBillingMode {
 	case imagebilling.Mode:
 		amount, err = imagebilling.Amount(cost.ImagePricing, order.ImageUsage, 10_000)
+	case model.BillingModeMinimaxH3:
+		amount = order.CostMinimaxH3Microcredits
 	case "fixed_request", "per_second":
 		amount, err = creditAmount(cost.UnitPriceMicrocredits, order.CostQuantity, 10_000)
 	case "token":

@@ -4,7 +4,7 @@ import type { ModelCapabilityConfig } from "@/lib/model-capabilities";
 import { modelProtocolSupportsTokenBilling, type ModelProtocol } from "@/lib/model-protocols";
 import type { ModelCapabilityChoice as EditableCapability } from "@/components/model-protocol-picker";
 import type { ChannelModelFormValues as FormValues } from "./channel-model-editor-form";
-import { normalizeUpstreamModelKey, priceTierAmountsComplete } from "./channel-model-price-tier-form";
+import { minimaxH3OutputReferenceRate, normalizeUpstreamModelKey, priceTierAmountsComplete } from "./channel-model-price-tier-form";
 import { CreditCostFields } from "./credit-cost-fields";
 import { ImageUsagePriceFields } from "./image-usage-price-fields";
 import { priceCurrencyUnit } from "@/services/api/user-groups";
@@ -37,7 +37,8 @@ export function PriceTierFields({
     onRemove: () => void;
 }) {
     const billingMode = Form.useWatch(["priceTiers", index, "billingMode"], form) || "fixed_request";
-    const priceUnit = priceCurrencyUnit(Form.useWatch("priceCurrency", form));
+    const currency = Form.useWatch("priceCurrency", form);
+    const priceUnit = priceCurrencyUnit(currency);
     const matchMode = Form.useWatch(["priceTiers", index, "matchMode"], form) || "default";
     const priceConfigured = Form.useWatch(["priceTiers", index, "priceConfigured"], form) !== false;
     const tierEnabled = Form.useWatch(["priceTiers", index, "enabled"], form) !== false;
@@ -57,6 +58,10 @@ export function PriceTierFields({
     const referenceVideoBilling = isVideo && referenceVideoBillingValue === true;
     const referenceVideoPriced = referenceVideoBilling && (billingMode === "per_second" || billingMode === "token");
     const watchedTier = Form.useWatch(["priceTiers", index], form);
+    const h3Model = tierUpstream || modelUpstream;
+    const gatewayH3 = protocol === "tack2ai-video" && h3Model === "minimax h3";
+    const h3Rate = h3Model === "minimax h3" && !gatewayH3 ? undefined : minimaxH3OutputReferenceRate(h3Model, matchMode === "advanced" ? watchedTier?.resolution : undefined);
+    const h3IRSupported = (protocol === "minimax-video" && h3Model.toLowerCase() === "minimax-h3" && billingMode === "minimax_h3") || (gatewayH3 && (billingMode === "per_second" || billingMode === "fixed_request" || billingMode === "minimax_h3"));
     const amountsComplete = Boolean(watchedTier && priceTierAmountsComplete(capability, watchedTier, referenceVideoBilling));
     const requirePrice = priceConfigured || tierEnabled;
     return (
@@ -182,6 +187,7 @@ export function PriceTierFields({
                                         { label: "按次", value: "fixed_request" },
                                         ...(isImage ? [{ label: "图片用量", value: "image_usage" }] : []),
                                         { label: "按秒", value: "per_second", disabled: !isDurationPriced },
+                                        ...(isVideo && (h3Rate !== undefined || billingMode === "minimax_h3") ? [{ label: "MiniMax H3", value: "minimax_h3" }] : []),
                                         { label: isVideo ? "视频 Token" : "Token", value: "token", disabled: !tokenEnabled },
                                     ]}
                                 />
@@ -219,13 +225,39 @@ export function PriceTierFields({
                                 <Form.Item
                                     className="admin-price-tier-unit-price mb-0"
                                     name={[index, "unitPrice"]}
-                                    label={billingMode === "per_second" ? `每秒售价（${priceUnit}）` : `每次售价（${priceUnit}）`}
+                                    label={billingMode === "minimax_h3" ? `输出视频每秒售价（${priceUnit}）` : billingMode === "per_second" ? `每秒售价（${priceUnit}）` : `每次售价（${priceUnit}）`}
                                     rules={[{ required: requirePrice, message: "请输入售价" }]}
                                 >
                                     <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.1} />
                                 </Form.Item>
                             )}
                         </div>
+                        {billingMode === "minimax_h3" ? (
+                            <div className="admin-price-tier-helper" role="note">
+                                <span>{h3Rate === undefined ? "请选择 H3 上游型号支持的具体分辨率。" : `每次任务前 ${h3Model.toLowerCase() === "minimax-h3-max" ? 2 : 5} 张输入图免费。超额图片和输入视频按费率比例随输出单价计费。`}</span>
+                                {currency === "CNY" && h3Rate !== undefined ? (
+                                    <Button
+                                        size="small"
+                                        onClick={() => {
+                                            onDirty();
+                                            form.setFieldValue(["priceTiers", index, "unitPrice"], h3Rate);
+                                        }}
+                                    >
+                                        填入{gatewayH3 ? "源点动力参考价" : "国内官方价"}（¥{h3Rate}/秒）
+                                    </Button>
+                                ) : null}
+                            </div>
+                        ) : null}
+                        {isVideo && (h3IRSupported || watchedTier?.minimaxH3IRPrice != null) ? (
+                            <Form.Item
+                                className="admin-price-tier-unit-price mb-0"
+                                name={[index, "minimaxH3IRPrice"]}
+                                label={`Context-IR 每次售价（${priceUnit}）`}
+                                extra={h3IRSupported ? "留空关闭。填写 0 会启用增强并免收 IR 费用。适用 4–15 秒视频。" : "当前协议、型号或计费方式不支持 Context-IR，请清空价格。"}
+                            >
+                                <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.01} />
+                            </Form.Item>
+                        ) : null}
                         {referenceVideoPriced ? (
                             <div className="admin-price-tier-billing-grid">
                                 <Form.Item

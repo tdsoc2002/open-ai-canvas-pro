@@ -168,7 +168,7 @@ func fixedPriceMatches(price *model.UserGroupFixedPrice, capability, mode string
 	}
 	hasTextPrices := price.Input != nil || price.Cached != nil || price.CacheWrite != nil
 	switch mode {
-	case "fixed_request", "per_second":
+	case "fixed_request", "per_second", model.BillingModeMinimaxH3:
 		return price.Unit != nil && price.Output == nil && !hasTextPrices && price.ImagePricing == nil
 	case "token":
 		tokenFieldsComplete := capability == "video" && !hasTextPrices ||

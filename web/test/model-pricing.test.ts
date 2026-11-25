@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { modelQuoteRequest, systemModelQuoteRequest, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection, requestCreditCost } from "../src/lib/model-pricing";
+import { modelQuoteDescription, modelQuoteRequest, systemModelQuoteRequest, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection, requestCreditCost } from "../src/lib/model-pricing";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
 import type { ModelRequirements } from "../src/lib/model-selection";
 import { createModelChannel, defaultConfig, normalizeConfigSnapshot, resolveModelChannel, type AiConfig } from "../src/stores/use-config-store";
@@ -70,6 +70,19 @@ const textVideoRequirements: ModelRequirements = {
 };
 
 describe("model request pricing", () => {
+    test("源点动力 H3 按秒报价包含单次 IR 费用", () => {
+        const summary = modelQuoteDescription({
+            logicalModelId: "",
+            billingMode: "per_second",
+            quantity: 5,
+            amountMicrocredits: 2_650_000,
+            minimaxH3IRChargeMicrocredits: 150_000,
+            estimated: false,
+        });
+        expect(summary).toContain("本次消耗 2.65 积分");
+        expect(summary).toContain("Context-IR 提示词增强 0.15 积分 / 次");
+    });
+
     test("image usage uses the server quote and never displays a zero fixed price", () => {
         const config = systemConfig({ capability: "image", tiers: [{ selector: {}, billingMode: "image_usage", unitPriceMicrocredits: 0 }] });
         const quote = modelQuoteRequest(config, config.imageModel, "image", { capability: "image", input: { textCount: 1, imageCount: 3, videoCount: 0, audioCount: 0, characterCount: 0 } });

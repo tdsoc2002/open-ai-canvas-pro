@@ -145,6 +145,13 @@ func normalizeChannelModelPriceTiersWithIDs(req ChannelModelRequest, capability 
 		if err := validateChannelModelTierPricing(capability, protocol, billingMode, input); err != nil {
 			return nil, err
 		}
+		providerModel := channelProviderModelKey(firstNonEmpty(input.ProviderModelKey, fallbackProviderModelKey), protocol)
+		if err := validateMinimaxH3PriceTier(protocol, billingMode, providerModel, resolution); err != nil {
+			return nil, err
+		}
+		if input.MinimaxH3IRPriceMicrocredits != nil && !supportsMinimaxH3IRModel(protocol, providerModel) {
+			return nil, BadAuthRequest("Context-IR 计价需要 MiniMax-H3 标准版或源点动力的 minimax h3")
+		}
 		rules, rulesErr := normalizeTokenPriceRules(capability, billingMode, input.TokenPriceRulesEnabled, input.TokenPriceRules)
 		if rulesErr != nil {
 			return nil, rulesErr
@@ -155,6 +162,7 @@ func normalizeChannelModelPriceTiersWithIDs(req ChannelModelRequest, capability 
 		}
 		enabled := input.Enabled == nil || *input.Enabled
 		result = append(result, model.ChannelModelPriceTier{
+			MinimaxH3IRPriceMicrocredits:        input.MinimaxH3IRPriceMicrocredits,
 			ImagePricing:                        input.ImagePricing,
 			CostPricing:                         input.CostPricing,
 			ID:                                  id,
@@ -163,7 +171,7 @@ func normalizeChannelModelPriceTiersWithIDs(req ChannelModelRequest, capability 
 			Selector:                            selector,
 			Resolution:                          resolution,
 			VideoSeconds:                        videoSeconds,
-			ProviderModelKey:                    channelProviderModelKey(firstNonEmpty(input.ProviderModelKey, fallbackProviderModelKey), protocol),
+			ProviderModelKey:                    providerModel,
 			BillingMode:                         billingMode,
 			UnitPriceMicrocredits:               input.UnitPriceMicrocredits,
 			InputTokenPriceMicrocredits:         input.InputTokenPriceMicrocredits,
@@ -390,6 +398,16 @@ func normalizeChannelModelTierSelector(capability string, input ChannelModelPric
 }
 
 func validateChannelModelTierPricing(capability string, protocol model.ChannelInterfaceType, billingMode string, input ChannelModelPriceTierRequest) error {
+	if price := input.MinimaxH3IRPriceMicrocredits; price != nil {
+		native := protocol == model.ChannelInterfaceMiniMaxVideo && billingMode == model.BillingModeMinimaxH3
+		gateway := protocol == "tack2ai-video" && (billingMode == "fixed_request" || billingMode == "per_second" || billingMode == model.BillingModeMinimaxH3)
+		if capability != "video" || (!native && !gateway) {
+			return BadAuthRequest("Context-IR 计价适用于 MiniMax H3 计费档或源点动力视频的按次、按秒价格档")
+		}
+		if *price < 0 || *price > 1_000_000_000_000 {
+			return BadAuthRequest("Context-IR 每次价格必须在 0 至 100 万计价单位之间")
+		}
+	}
 	if err := validateCreditCostPricing(capability, billingMode, input.CostPricing); err != nil {
 		return err
 	}
@@ -403,8 +421,11 @@ func validateChannelModelTierPricing(capability string, protocol model.ChannelIn
 	} else if input.ImagePricing != nil {
 		return BadAuthRequest("图片用量价格仅用于图片用量计费模式")
 	}
-	if billingMode != "fixed_request" && billingMode != "per_second" && billingMode != "token" && billingMode != imagebilling.Mode {
-		return BadAuthRequest("模型计费方式仅支持按次、按秒、Token 或图片用量")
+	if billingMode != "fixed_request" && billingMode != "per_second" && billingMode != "token" && billingMode != imagebilling.Mode && billingMode != model.BillingModeMinimaxH3 {
+		return BadAuthRequest("模型计费方式无效")
+	}
+	if billingMode == model.BillingModeMinimaxH3 && capability != "video" {
+		return BadAuthRequest("MiniMax H3 计费仅适用于视频模型")
 	}
 	if billingMode == "per_second" && capability != "video" && capability != "audio" {
 		return BadAuthRequest("只有视频或音频模型可以按秒计费")

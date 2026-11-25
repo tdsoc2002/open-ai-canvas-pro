@@ -36,7 +36,7 @@ function PriceField({ name, label }: { name: (number | string)[]; label: string 
 }
 
 function FixedPriceFields({ index, price }: { index: number; price: UserGroupFixedPrice }) {
-    const unitLabel = price.billingMode === "per_second" ? "积分/秒" : "积分/次";
+    const unitLabel = price.billingMode === "minimax_h3" ? "输出视频积分/秒" : price.billingMode === "per_second" ? "积分/秒" : "积分/次";
     const terms: ReadonlyArray<readonly [keyof FixedPriceTerms, string]> =
         price.billingMode === "token" ? (price.inputTokenPriceMicrocredits === undefined ? [["outputTokenPriceMicrocredits", "积分/百万视频 Token"]] : tokenTerms) : price.billingMode === "image_usage" ? [] : [["unitPriceMicrocredits", unitLabel]];
     return (

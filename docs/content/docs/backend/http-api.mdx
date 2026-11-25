@@ -678,6 +678,18 @@ Token 报价的 `estimated` 为 `true`，`quantity` 是预留 Token 数。`inten
 
 按秒或视频 Token 计费、挂参考视频的视频报价另有 `referenceVideo`（按次计费不返回）：`count`、`billed`（模型开启参考视频计费时为 `true`）、`generatedSeconds`、`referenceSeconds`、`billedSeconds`（按秒计入数量的参考视频秒数，Token 为 0）、`estimated`（时长未知、按 15 秒预估）。系统渠道目录的模型新增 `referenceVideoBilling`，价格档新增 `referenceVideoUnitPriceMicrocredits` / `referenceVideoOutputTokenPriceMicrocredits`（开关关闭时为 0）。规则见[视频 Token 计费](/docs/backend/video-token-billing#参考视频计费开关)。所有视频协议均支持 Token 定价；10% 预留是平台策略，不是费用上限。成功后优先有效上游用量，无有效用量时按提交的公式快照结算，余量不计入公式费用。账单新增 `videoFormulaTokens` 及 `usageSource`（`provider` / `video_formula`），公式结算的 `usageAvailable` 为 `false`，`outputTokens` 表示公式数量。算法、配置与异常用量处理见[视频 Token 计费](/docs/backend/video-token-billing)。
 
+### MiniMax H3 视频计费
+
+在「渠道与模型」编辑模型，为官方 H3 上游型号添加具体分辨率的规格价，计费方式选「MiniMax H3」。使用人民币官方价格时，先将渠道模型价的币种设为 CNY，再点「填入国内官方价」。`billingMode=minimax_h3` 以 `unitPriceMicrocredits` 保存输出视频每秒基准价，输入视频和超额图片继承同型号和分辨率的官方费率比例，输入音频免费。标准版、Highspeed、Lite 每次任务前 5 张输入图免费，Max 前 2 张免费。系统内可独立填写输出视频每秒积分成本，同样按官方比例计算各项成本。[MiniMax 官方定价](https://platform.minimax.cn/docs/pricing/overview)
+
+报价 `quantity` 是请求的输出秒数，`videoUnitPriceMicrocredits` 是输出视频每秒积分价，`videoInputImages.count` 是输入图总数，`videoInputImages.billable` 是超额张数。输入视频的独立用量读 `referenceVideo.referenceSeconds`，报价可使用已知时长或估算，任务提交后端实测。H3 规格直接计算输入视频费用。任务成功按预留后的订单金额结算，失败按任务退款规则处理。前台逻辑模型可通过跟随渠道价使用此规则。
+
+MiniMax 视频协议的标准版 `MiniMax-H3` 规格可在「Context-IR 每次售价」填入按次价格。API 字段 `minimaxH3IRPriceMicrocredits` 使用同一模型币种，省略时关闭，填写 0 时启用并免收影策 IR 费。启用后，4–15 秒视频先调用官方增强接口，增强成功后用返回的提示词创建视频任务。首尾帧与多模态参考不能混用。报价的 `minimaxH3IRChargeMicrocredits` 是已计入订单总价的单次增强费用，实际成功交付按订单快照结算。IR 已提交且上游费用未明确时沿用待核对流程。MiniMax 对上游 IR 接口按实际 Token 计费。[官方 IR 接口与约束](https://platform.minimax.cn/docs/api-reference/video-generation-v2-h3-context-ir) · [官方定价](https://platform.minimax.cn/docs/pricing/overview#context-ir)
+
+源点动力的视频协议 `tack2ai-video` 使用上游模型 ID `minimax h3` 时，可以在 480P、768P、1080P 和 2K 档选择 H3 专属计费。输出和输入视频使用该档每秒售价，前 5 张参考图免费，超额图片继承费率比例。基础价仍可选择按次或按秒。三种计费方式都支持同一个「Context-IR 每次售价」字段。影策在单次 `POST /v1/videos` 中使用 `X-TD-Contract: td.video.v1` 和 `parameters.context_ir_enabled`，由源点动力在该任务内执行增强。启用时在基础费上加一次 IR 费用。
+
+启用 IR 的订单保留原视频成本快照，待 IR 成本可核算后再汇总为整单成本。
+
 ## 用户分组与多币种计价
 
 用户模型目录、报价、任务创建、工作台任务、短剧模型选择、云端 Agent 模型列表和系统渠道中转都按当前用户分组过滤系统渠道：分组未绑定的渠道不出现在 `GET /model-catalog` 与 `GET /models`，直接提交其 `channelId` 时报价、建任务和中转返回 `reason=model_catalog_mismatch`。管理员账号可见全部渠道。目录与报价返回分组实际扣费的微积分单价。有专属单价的规格直接使用该积分价，其余规格按基础价换算。缺少必要货币兑换比例的规格不展示，直接报价返回 `model_price_not_configured`。

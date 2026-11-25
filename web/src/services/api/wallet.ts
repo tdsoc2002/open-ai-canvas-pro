@@ -83,7 +83,7 @@ export type ChannelModel = {
     capability: "text" | "image" | "video" | "audio" | "";
     protocol?: import("@/lib/model-protocols").ModelProtocol;
     protocolRelease?: string;
-    billingMode: "fixed_request" | "per_second" | "token" | "image_usage";
+    billingMode: "fixed_request" | "per_second" | "token" | "image_usage" | "minimax_h3";
     unitPriceMicrocredits: number;
     inputTokenPriceMicrocredits: number;
     outputTokenPriceMicrocredits: number;
@@ -104,6 +104,7 @@ export type ChannelModel = {
 };
 
 export type ChannelModelPriceTier = {
+    minimaxH3IRPriceMicrocredits?: number | null;
     imagePricing?: ImagePricing | null;
     /** 仅管理员模型编辑接口返回，不能复制到用户模型目录。 */
     costPricing?: CreditCostPricing;

@@ -51,6 +51,14 @@ Redis 逻辑库不是防御恶意客户端的权限边界，只适合同一信�
 
 迁移只添加缺少的列，支持重复执行；历史订单的图片 JSON 保持空值，不反推或重算费用。实际用量在下载前持久化，结算和退款沿用订单状态条件、余额校验和账本事务。规则和 API 合同见[图片用量计费](/docs/backend/image-usage-billing)。
 
+## MiniMax H3 视频计费（扩展 Schema 7）
+
+`yingce_schema_migrations` 版本 7 `minimax_h3_billing` 为 `billing_orders` 增加 `video_billable_images` 和 `cost_minimax_h3_microcredits`，均为非空整数、默认 0。订单沿用输入图总数、输入视频毫秒数、输出秒数及授权金额字段，切换供应线路时同步记录新线路的成本快照。内部成本字段不会向创作端序列化。
+
+迁移只追加列，历史订单无需回填。按部署流程备份，使用 `migrate-schema up` 和 `migrate-schema verify` 升级后再开启该计费方式。旧版后端可能拒绝较高的扩展版本，回滚使用匹配版本的数据库备份。
+
+扩展版本 8 `minimax_h3_ir_price` 增加两个可空整数列。`channel_model_price_tiers.minimax_h3_ir_price_microcredits` 保存规格按次售价，`billing_orders.minimax_h3_ir_charge_microcredits` 保存已换算为微积分的每次收费快照。空值关闭，显式 0 表示启用但免收影策 IR 费用。任务的协议绑定保存是否执行增强，历史订单和任务无需回填。
+
 ## 微信登录（Schema 102）
 
 版本 102 `wechat_oauth` 为 `o_auth_states` 增加 `purpose`（登录、绑定、重新核验用途）、`client_id`（发起时的网站应用 AppID）和 `profile_json`（首次微信注册的临时昵称、头像及身份标识）。旧状态的这些字段为空，不改变 Linux.do 与 OIDC 的处理。

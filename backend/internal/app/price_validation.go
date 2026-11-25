@@ -30,6 +30,8 @@ func ValidateChannelModelPrice(billingMode string, capability string, protocol m
 	case "per_second":
 		// 按秒计费：0 表示免费，负数无效。
 		return unitPrice >= 0
+	case model.BillingModeMinimaxH3:
+		return capability == "video" && unitPrice >= 0
 	case "token":
 		if validateTokenPrices(capability, inputPrice, outputPrice, cachedPrice, cacheWritePrice) != nil {
 			return false

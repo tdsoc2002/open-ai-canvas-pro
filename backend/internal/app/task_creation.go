@@ -237,7 +237,7 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 			return nil, BadAuthRequest("模型调用报价超过本轮 Agent 积分上限，尚未创建任务或扣费")
 		}
 		switch billingOrder.BillingMode {
-		case "fixed_request", "per_second", "token":
+		case "fixed_request", "per_second", "token", model.BillingModeMinimaxH3:
 			billingOrder.ChargeLimitSet = true
 			billingOrder.ChargeLimitMicrocredits = billingOrder.AmountMicrocredits
 			task.AuthorizedChargeMicrocredits = billingOrder.AmountMicrocredits

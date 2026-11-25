@@ -130,7 +130,8 @@ func exportChannelModel(item model.ChannelModel) (SystemChannelExportModel, erro
 		tiers = append(tiers, ChannelModelPriceTierRequest{
 			ImagePricing: tier.ImagePricing,
 			CostPricing:  tier.CostPricing, Selector: selector, Resolution: tier.Resolution, VideoSeconds: tier.VideoSeconds,
-			ProviderModelKey: tier.ProviderModelKey, BillingMode: tier.BillingMode, UnitPriceMicrocredits: tier.UnitPriceMicrocredits,
+			MinimaxH3IRPriceMicrocredits: tier.MinimaxH3IRPriceMicrocredits,
+			ProviderModelKey:             tier.ProviderModelKey, BillingMode: tier.BillingMode, UnitPriceMicrocredits: tier.UnitPriceMicrocredits,
 			InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits,
 			CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits, CacheWriteTokenPriceMicrocredits: tier.CacheWriteTokenPriceMicrocredits,
 			TokenPriceRulesEnabled: tier.TokenPriceRulesEnabled, TokenPriceRules: tier.TokenPriceRules,

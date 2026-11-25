@@ -37,7 +37,7 @@ export function pricingSnapshot(value: PricingSnapshot): PricingSnapshot {
         const item = object(raw);
         const tier = copyFields(item, defaultPriceTier());
         tier.providerModelKey = "";
-        if (!["default", "advanced"].includes(tier.matchMode) || !["fixed_request", "per_second", "token", "image_usage"].includes(tier.billingMode)) throw new Error("模板价格类型无效");
+        if (!["default", "advanced"].includes(tier.matchMode) || !["fixed_request", "per_second", "token", "image_usage", "minimax_h3"].includes(tier.billingMode)) throw new Error("模板价格类型无效");
         if (tier.billingMode === "image_usage") {
             if (!validImagePricingForm(item.imagePricing as typeof tier.imagePricing)) throw new Error("模板图片价格无效");
             tier.imagePricing = structuredClone(item.imagePricing) as typeof tier.imagePricing;

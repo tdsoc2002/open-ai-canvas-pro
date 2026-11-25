@@ -70,6 +70,7 @@ type providerConfig struct {
 	pinned                bool
 	releaseWithdrawn      bool
 	mediaTransport        ReferenceMediaTransport // resolved from administrator settings; never deserialized from task input
+	minimaxH3IR           bool                    // frozen in the server-side protocol binding
 	ChannelID             string                  `json:"channelId"`
 	ChannelModelKey       string                  `json:"channelModelKey,omitempty"`
 	PriceTierID           string                  `json:"priceTierId,omitempty"`

@@ -89,6 +89,7 @@ type ChannelModel struct {
 // SelectorKey 是规范化 JSON，用于 PostgreSQL 的活动规格唯一约束。旧的 Resolution / VideoSeconds
 // 仅保留给历史 API 与升级回填，不能再作为 SKU 唯一性依据。
 type ChannelModelPriceTier struct {
+	MinimaxH3IRPriceMicrocredits     *int64            `json:"minimaxH3IRPriceMicrocredits,omitempty" gorm:"column:minimax_h3_ir_price_microcredits"`
 	ImagePricing                     *ImagePricing     `json:"imagePricing,omitempty" gorm:"serializer:json;type:text"`
 	CostPricing                      CreditCostPricing `json:"-" gorm:"embedded;embeddedPrefix:cost_"`
 	ID                               string            `json:"id" gorm:"primaryKey;size:36"`

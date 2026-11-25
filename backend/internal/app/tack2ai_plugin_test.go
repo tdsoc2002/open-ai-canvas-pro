@@ -262,6 +262,84 @@ func TestTack2AIInstalledHTTPGenerationAndVideoResume(t *testing.T) {
 	}
 }
 
+func TestTack2AIMinimaxH3SendsIRInVideoCreate(t *testing.T) {
+	allowLoopbackProviderTest(t)
+	registry := tack2aiTestRuntime(t).registrySnapshot()
+	ctx := withProtocolRegistry(context.Background(), registry)
+	adapter, ok := registry.Resolve("tack2ai-video")
+	if !ok {
+		t.Fatal("missing Tack2AI video adapter")
+	}
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprint(enabled), func(t *testing.T) {
+			creates := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != "/v1/videos" || r.Header.Get("X-TD-Contract") != "td.video.v1" {
+					t.Errorf("unexpected upstream call: %s %s", r.Method, r.URL.Path)
+					http.NotFound(w, r)
+					return
+				}
+				creates++
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				parameters, _ := body["parameters"].(map[string]any)
+				if body["model"] != "minimax h3" || body["mode"] != "text_to_video" || body["duration"] != float64(5) || body["prompt"] != "原始提示词" ||
+					body["ratio"] != "16:9" || body["resolution"] != "768P" || body["seconds"] != nil || body["metadata"] != nil ||
+					parameters["context_ir_enabled"] != enabled || parameters["aigc_watermark"] != true {
+					t.Errorf("unexpected request: %#v", body)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"id":"h3-job","status":"queued"}`)
+			}))
+			defer server.Close()
+			input := canvasGenerationInput{
+				Mode: "video", Prompt: "原始提示词",
+				Metadata: map[string]any{"providerOptions": map[string]any{
+					"tack2ai-video": map[string]any{
+						"metadata": map[string]any{"context_ir_enabled": !enabled, "aigc_watermark": true},
+					},
+				}},
+				Config: providerConfig{
+					BaseURL: server.URL + "/v1", APIKey: "test-only-key", ChannelID: "tack2ai-channel",
+					Model: "minimax h3", InterfaceType: "tack2ai-video", VideoSeconds: "5",
+					Size: "16:9", VQuality: "768P", minimaxH3IR: enabled,
+				},
+			}
+			_, err := runProtocolAdapterTaskWithPolicy(ctx, input, adapter, fastVideoPollPolicy())
+			var pending providerStatePendingError
+			if !errors.As(err, &pending) || pending.TaskID != "h3-job" || !pending.Detached || creates != 1 {
+				t.Fatalf("submitted video = %#v, %v; create=%d", pending, err, creates)
+			}
+		})
+	}
+}
+
+func TestTack2AIMinimaxH3NativeReferenceMedia(t *testing.T) {
+	spec := protocol.RequestSpec{Path: "/v1/videos", Body: map[string]any{"prompt": "compiled prompt"}}
+	request := protocol.GenerationRequest{
+		Model: "minimax h3", Duration: 4, Resolution: "480P", Extra: map[string]any{"tack2aiVideoMode": "multi_ref"},
+		Inputs: []protocol.MediaReference{
+			{Role: "reference_video", URL: "https://example.com/video.mp4", Order: 2},
+			{Role: "reference_image", URL: "https://example.com/image.png", Order: 1},
+		},
+	}
+	if err := applyTack2AIH3VideoContract(&spec, request, true); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(spec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `"input":{"media":[{"type":"reference_image","url":"https://example.com/image.png"},{"type":"reference_video","url":"https://example.com/video.mp4"}]}`
+	if !strings.Contains(string(raw), want) || !strings.Contains(string(raw), `"mode":"multi_ref"`) {
+		t.Fatalf("unexpected native body: %s", raw)
+	}
+}
+
 func TestTack2AIAudioAdmissionUsesDeclaredReferenceLimit(t *testing.T) {
 	input := map[string]any{
 		"mode": "audio", "prompt": "你好",

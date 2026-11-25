@@ -473,7 +473,11 @@ func (s *Service) taskBillingOrder(userID string, task *model.Task, input map[st
 		return nil, nil
 	}
 	if task.LogicalModelID != "" {
-		return s.newLogicalModelBillingOrder(userID, task, input)
+		order, err := s.newLogicalModelBillingOrder(userID, task, input)
+		if err != nil {
+			return nil, err
+		}
+		return order, validateMinimaxH3IRBillingBinding(task.ProtocolBindingJSON, order)
 	}
 	config, _ := input["config"].(map[string]any)
 	if config == nil {
@@ -494,7 +498,11 @@ func (s *Service) taskBillingOrder(userID string, task *model.Task, input map[st
 	scene := firstNonEmpty(strings.TrimSpace(task.Operation), task.Type)
 	intent := ModelRequestIntentFromTaskInput(input, task.Type, task.Operation)
 	priceTierID, _ := config["priceTierId"].(string)
-	return s.newBillingOrderWithPriceTier(userID, task.ID, "task:"+task.ID+":"+newID(), channelID, modelKey, capability, scene, requestedBillingQuantity(capability, config), s.estimateTaskBilling(firstNonEmpty(task.UserID, userID), input, capability), strings.TrimSpace(priceTierID), intent)
+	order, err := s.newBillingOrderWithPriceTier(userID, task.ID, "task:"+task.ID+":"+newID(), channelID, modelKey, capability, scene, requestedBillingQuantity(capability, config), s.estimateTaskBilling(firstNonEmpty(task.UserID, userID), input, capability), strings.TrimSpace(priceTierID), intent)
+	if err != nil {
+		return nil, err
+	}
+	return order, validateMinimaxH3IRBillingBinding(task.ProtocolBindingJSON, order)
 }
 
 func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, input map[string]any) (*model.BillingOrder, error) {
@@ -616,6 +624,12 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 		return nil, err
 	}
 	snapshotCreditCost(order, costTier, requestedBillingQuantity(capability, config), tokenEstimate)
+	if costTier != nil && costTier.BillingMode == model.BillingModeMinimaxH3 && costTier.CostPricing.Configured {
+		estimate := s.estimateTaskBilling(firstNonEmpty(task.UserID, userID), input, capability)
+		if err := snapshotMinimaxH3Cost(order, costTier, requestedBillingQuantity(capability, config), intent, estimate.ReferenceVideos); err != nil {
+			return nil, err
+		}
+	}
 	if order.CostBillingMode == imagebilling.Mode && order.BillingMode != imagebilling.Mode {
 		order.ImageInputImages, order.ImageMaxOutputImages, err = imageBillingReservation(intent)
 		if err != nil {
@@ -686,6 +700,11 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	if tier == nil {
 		return nil, BadAuthRequest("当前模型尚未配置所选规格的用户积分价格")
 	}
+	if tier.MinimaxH3IRPriceMicrocredits != nil {
+		if err := validateMinimaxH3IRDuration(requestedQuantity); err != nil {
+			return nil, err
+		}
+	}
 	quantity := int64(1)
 	amount := int64(0)
 	// 视频 Token 的成本用量按上游公式（含参考视频）计算，不受用户侧参考视频计费开关影响；
@@ -698,6 +717,13 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	}
 	referenceBilled := references.Count > 0 && item.ReferenceVideoBilling && (tier.BillingMode == "per_second" || tier.BillingMode == "token")
 	referenceMillis := int64(0)
+	var h3Rates minimaxH3Rates
+	var h3BillableImages int64
+	var h3IRCharge *int64
+	intent := ModelRequestIntent{}
+	if len(intents) > 0 {
+		intent = intents[0]
+	}
 	if references.RecordedKnown {
 		referenceMillis = references.RecordedMillis
 	}
@@ -707,6 +733,23 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 			return nil, BadAuthRequest("图片用量计费缺少图片请求规格")
 		}
 	case "fixed_request":
+	case model.BillingModeMinimaxH3:
+		if capability != "video" || item.Capability != "video" || len(intents) == 0 || requestedQuantity <= 0 {
+			return nil, BadAuthRequest("MiniMax H3 计费需要有效的视频生成时长与输入素材规格")
+		}
+		var ok bool
+		h3Rates, ok = minimaxH3Rate(tier.ProviderModelKey, tier.Resolution)
+		actualResolution, _ := intent.Options["vquality"].(string)
+		if !ok || normalizeChannelModelTierResolution(actualResolution) != tier.Resolution {
+			return nil, BadAuthRequest("MiniMax H3 计费规格与请求分辨率不匹配")
+		}
+		quantity = requestedQuantity
+		referenceMillis, _, err = references.perSecondMillis()
+		if err != nil {
+			return nil, err
+		}
+		referenceBilled = references.Count > 0
+		h3BillableImages = max(0, int64(intent.Inputs["image"])-h3Rates.freeImages)
 	case "per_second":
 		if (item.Capability != "video" && item.Capability != "audio") || capability != item.Capability {
 			return nil, BadAuthRequest("按秒计费仅适用于视频或音频生成")
@@ -763,7 +806,7 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	if fixedTier != nil {
 		pricedTier = fixedTier
 	}
-	if referenceBilled {
+	if referenceBilled && tier.BillingMode != model.BillingModeMinimaxH3 {
 		if pricedTier, err = referenceVideoPricedTier(pricedTier, fixedTier != nil); err != nil {
 			return nil, err
 		}
@@ -807,6 +850,9 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 			holdPrices = tierCreditPrices{Input: rule.Input, Output: rule.Output, Cached: rule.Cached, CacheWrite: rule.CacheWrite}
 		}
 		amount, err = tokenEstimateAmountForOrder(&model.ChannelModel{InputTokenPriceMicrocredits: holdPrices.Input, OutputTokenPriceMicrocredits: holdPrices.Output, CachedTokenPriceMicrocredits: holdPrices.Cached, CacheWriteTokenPriceMicrocredits: holdPrices.CacheWrite}, tokenEstimate, multiplierBPS, roundToCent)
+	} else if tier.BillingMode == model.BillingModeMinimaxH3 {
+		imageInputs = int64(intent.Inputs["image"])
+		amount, err = h3Rates.amount(quantity, referenceMillis, imageInputs, prices.Unit, multiplierBPS, roundToCent)
 	} else if roundToCent {
 		amount, err = kernel.UnitBillingAmountRounded(prices.Unit, quantity, multiplierBPS)
 	} else {
@@ -815,6 +861,36 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	if err != nil {
 		return nil, err
 	}
+	if irUnitPrice := tier.MinimaxH3IRPriceMicrocredits; irUnitPrice != nil {
+		h3IRCharge = new(int64)
+		if *irUnitPrice > 0 {
+			irPricing := pricing
+			if fixedTier != nil {
+				irPricing, _, err = s.groupTierPrices(access, item, tier, modelKey)
+				if err != nil {
+					return nil, err
+				}
+			}
+			unit, convertErr := irPricing.convertPrice(*irUnitPrice)
+			if convertErr != nil {
+				return nil, convertErr
+			}
+			var charge int64
+			if roundToCent {
+				charge, err = kernel.UnitBillingAmountRounded(unit, 1, irPricing.MultiplierBPS)
+			} else {
+				charge, err = creditAmount(unit, 1, irPricing.MultiplierBPS)
+			}
+			if err != nil {
+				return nil, err
+			}
+			if charge > math.MaxInt64-amount {
+				return nil, kernel.ErrTokenBillingOverflow
+			}
+			*h3IRCharge = charge
+			amount += charge
+		}
+	}
 	var videoFormulaTokens int64
 	if tier.BillingMode == "token" && tokenEstimate.Video != nil {
 		videoFormulaTokens = tokenEstimate.Video.FormulaTokens
@@ -822,7 +898,9 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 	order := &model.BillingOrder{
 		ID: newID(), UserID: userID, IdempotencyKey: idempotencyKey, TaskID: taskID,
 		ImagePricing: imagePricing, ImageInputImages: imageInputs, ImageMaxOutputImages: imageOutputs,
-		ChannelID: channelID, ChannelModelID: item.ID, PriceTierID: tier.ID, PriceTierVersion: tier.PriceVersion, PriceSelectorJSON: tier.SelectorJSON, Model: modelKey, Capability: capability,
+		VideoBillableImages:           h3BillableImages,
+		MinimaxH3IRChargeMicrocredits: h3IRCharge,
+		ChannelID:                     channelID, ChannelModelID: item.ID, PriceTierID: tier.ID, PriceTierVersion: tier.PriceVersion, PriceSelectorJSON: tier.SelectorJSON, Model: modelKey, Capability: capability,
 		Scene: truncateRunes(scene, 80), BillingMode: tier.BillingMode, PriceVersion: item.PriceVersion,
 		UnitPriceMicrocredits: prices.Unit, MultiplierBasisPoints: multiplierBPS, Quantity: quantity, AmountMicrocredits: amount,
 		ReservedAmountMicrocredits: amount, RoundChargeToCent: roundToCent, InputTokenPriceMicrocredits: prices.Input,
@@ -838,6 +916,9 @@ func (s *Service) newBillingOrderWithPriceTierAt(pricedAt time.Time, roundToCent
 		return nil, err
 	}
 	snapshotCreditCost(order, tier, requestedQuantity, costEstimate)
+	if err := snapshotMinimaxH3Cost(order, tier, requestedQuantity, intent, references); err != nil {
+		return nil, err
+	}
 	if order.CostBillingMode == imagebilling.Mode && order.BillingMode != imagebilling.Mode {
 		if len(intents) == 0 {
 			return nil, BadAuthRequest("图片用量成本缺少实际请求规格")

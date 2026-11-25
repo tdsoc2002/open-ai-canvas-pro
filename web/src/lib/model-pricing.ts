@@ -12,7 +12,7 @@ export type ModelPriceTier = NonNullable<NonNullable<AiConfig["channels"][number
 type ModelCreditCost = {
     model: string;
     pricePolicy?: "channel" | "unified";
-    billingMode: "fixed_request" | "per_second" | "token" | "image_usage";
+    billingMode: ModelPriceTier["billingMode"];
     unitPriceMicrocredits: number;
     logicalPriceTiers?: ModelPriceTier[];
 };
@@ -26,13 +26,13 @@ export function requestCreditCost(options: { channelMode: string; modelCosts?: M
         const tiers = priceTiersForCurrentSelection(cost.logicalPriceTiers || [], options.capability, options.config, options.requirements);
         if (!tiers.length) return null;
         const first = tiers[0];
-        if (!first || first.billingMode === "token" || first.billingMode === "image_usage") return null;
+        if (!first || (first.billingMode !== "fixed_request" && first.billingMode !== "per_second")) return null;
         // 同一精确规格可能来自多个逻辑路由；只有价格一致时才可在客户端安全展示。
         if (tiers.some((tier) => tier.billingMode !== first.billingMode || tier.unitPriceMicrocredits !== first.unitPriceMicrocredits)) return null;
         return creditAmount(first.billingMode, first.unitPriceMicrocredits, options.count, options.seconds);
     }
     // Token 订单由服务端按请求体预授权并在 usage 返回后结算，前端不展示无依据的固定价格。
-    if (cost.billingMode === "token" || cost.billingMode === "image_usage") return null;
+    if (cost.billingMode !== "fixed_request" && cost.billingMode !== "per_second") return null;
     return creditAmount(cost.billingMode, cost.unitPriceMicrocredits, options.count, options.seconds);
 }
 
@@ -64,6 +64,7 @@ export function priceTierSummaryLabel(tiers: ModelPriceTier[], capability?: Mode
             .filter((value) => Number.isFinite(value) && value >= 0);
     const fixedRequestValues = unitPrices("fixed_request");
     const perSecondValues = unitPrices("per_second");
+    const h3Values = unitPrices("minimax_h3");
     // 分时与上下文规则也计入输出价区间，用户看到的是可能被收取的全部输出单价。
     const tokenTiers = tiers.filter((tier) => tier.billingMode === "token");
     const tokenValues = tokenTiers
@@ -75,6 +76,7 @@ export function priceTierSummaryLabel(tiers: ModelPriceTier[], capability?: Mode
         [
             fixedRequestValues.length ? formatPriceRange(fixedRequestValues, "积分") : "",
             perSecondValues.length ? formatPriceRange(perSecondValues, "积分/秒") : "",
+            h3Values.length ? `H3 输出 ${formatPriceRange(h3Values, "积分/秒")}，输入按用量计费` : "",
             tokenValues.length ? `${capability === "video" ? "" : "输出 "}${formatPriceRange(tokenValues, compactTokenUnit ? "/M Token" : capability === "video" ? "积分/百万视频 Token" : "积分/百万 Token")}${timeBased ? " · 分时" : ""}` : "",
         ]
             .filter(Boolean)
@@ -86,7 +88,7 @@ export function videoPriceTierSummaryLabel(tiers: ModelPriceTier[]) {
     const perSecondByResolution = new Map<string, ModelPriceTier[]>();
     const otherTiers: ModelPriceTier[] = [];
     for (const tier of tiers) {
-        if (tier.billingMode !== "per_second") {
+        if (tier.billingMode !== "per_second" && tier.billingMode !== "minimax_h3") {
             otherTiers.push(tier);
             continue;
         }
@@ -129,6 +131,13 @@ export function modelQuoteDescription(quote: LogicalModelQuote) {
     const amount = formatCreditDisplay(quote.amountMicrocredits);
     if (quote.billingMode === "image_usage") return `最多冻结 ${amount} 积分；输入 ${quote.imageUsage?.inputImages ?? 0} 张，最多输出 ${quote.imageUsage?.maxOutputImages ?? quote.quantity} 张（含底图）；完成后按实际输入张数及每张输出像素结算，退回差额`;
     const descriptions = [`${quote.estimated ? "预计" : "本次"}消耗 ${amount} 积分`];
+    if (quote.minimaxH3IRChargeMicrocredits !== undefined) descriptions.push(`Context-IR 提示词增强 ${formatCreditDisplay(quote.minimaxH3IRChargeMicrocredits)} 积分 / 次`);
+    if (quote.billingMode === "minimax_h3") {
+        descriptions.push(`输出视频 ${quote.quantity} 秒`);
+        if (quote.referenceVideo) descriptions.push(`输入视频 ${quote.referenceVideo.referenceSeconds} 秒${quote.referenceVideo.estimated ? "（估算）" : ""}`);
+        if (quote.videoInputImages?.count) descriptions.push(`输入图片 ${quote.videoInputImages.count} 张，其中 ${quote.videoInputImages.billable} 张计费`);
+        return descriptions.join("；");
+    }
     const breakdown = referenceVideoQuoteBreakdown(quote.referenceVideo);
     if (breakdown) descriptions.push(breakdown);
     const estimate = quote.videoTokenEstimate;

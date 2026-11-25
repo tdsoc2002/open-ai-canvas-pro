@@ -28,7 +28,7 @@ export function CreditCostFields({
                       ["costCachedTokenPrice", "缓存命中 / 百万 Token"],
                       ["costCacheWriteTokenPrice", "缓存写入 / 百万 Token"],
                   ]
-            : [["costUnitPrice", billingMode === "per_second" ? "积分 / 秒" : "积分 / 次"], ...(referenceVideoCost ? [["costReferenceVideoUnitPrice", "带参考视频 积分 / 秒"]] : [])];
+            : [["costUnitPrice", billingMode === "minimax_h3" ? "输出视频 积分 / 秒" : billingMode === "per_second" ? "积分 / 秒" : "积分 / 次"], ...(referenceVideoCost ? [["costReferenceVideoUnitPrice", "带参考视频 积分 / 秒"]] : [])];
     return (
         <section className="admin-price-tier-cost-panel" aria-label="积分成本设置">
             <header className="admin-price-tier-cost-header">

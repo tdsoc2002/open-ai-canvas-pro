@@ -11,17 +11,24 @@ import (
 // LogicalModelQuote 是创作端当前参数命中的实际供应线路报价。
 // Token 视频在上游返回真实 usage 前只能预估，创建任务仍以账务预留逻辑为准。
 type LogicalModelQuote struct {
-	ImageUsage         *ImageQuote         `json:"imageUsage,omitempty"`
-	LogicalModelID     string              `json:"logicalModelId"`
-	BillingMode        string              `json:"billingMode"`
-	Quantity           int64               `json:"quantity"`
-	AmountMicrocredits int64               `json:"amountMicrocredits"`
-	Estimated          bool                `json:"estimated"`
-	VideoTokenEstimate *VideoTokenEstimate `json:"videoTokenEstimate,omitempty"`
+	ImageUsage                    *ImageQuote            `json:"imageUsage,omitempty"`
+	VideoInputImages              *VideoInputImagesQuote `json:"videoInputImages,omitempty"`
+	MinimaxH3IRChargeMicrocredits *int64                 `json:"minimaxH3IRChargeMicrocredits,omitempty"`
+	LogicalModelID                string                 `json:"logicalModelId"`
+	BillingMode                   string                 `json:"billingMode"`
+	Quantity                      int64                  `json:"quantity"`
+	AmountMicrocredits            int64                  `json:"amountMicrocredits"`
+	Estimated                     bool                   `json:"estimated"`
+	VideoTokenEstimate            *VideoTokenEstimate    `json:"videoTokenEstimate,omitempty"`
 	// VideoUnitPriceMicrocredits is the video price per billable second, before reservation margin.
 	VideoUnitPriceMicrocredits *int64 `json:"videoUnitPriceMicrocredits,omitempty"`
 	// ReferenceVideo 仅在视频请求挂了参考视频时返回。
 	ReferenceVideo *QuoteReferenceVideo `json:"referenceVideo,omitempty"`
+}
+
+type VideoInputImagesQuote struct {
+	Count    int64 `json:"count"`
+	Billable int64 `json:"billable"`
 }
 
 type ImageQuote struct {
@@ -106,11 +113,14 @@ type QuoteReferenceVideo struct {
 func quoteReferenceVideo(order *model.BillingOrder, estimate tokenBillingEstimate) *QuoteReferenceVideo {
 	references := estimate.ReferenceVideos
 	// 按次计费与时长无关，没有“生成 N 秒 + 参考视频 M 秒”的构成可写。
-	if order.Capability != "video" || references.Count == 0 || (order.BillingMode != "per_second" && order.BillingMode != "token") {
+	if order.Capability != "video" || references.Count == 0 {
 		return nil
 	}
 	detail := &QuoteReferenceVideo{Count: references.Count, Billed: order.ReferenceVideoBilled, ReferenceSeconds: float64(order.ReferenceVideoMillis) / 1000}
 	switch order.BillingMode {
+	case model.BillingModeMinimaxH3:
+		detail.GeneratedSeconds = order.Quantity
+		detail.Estimated = references.Measure == nil && !references.RecordedKnown
 	case "per_second":
 		if order.ReferenceVideoBilled {
 			detail.BilledSeconds = (order.ReferenceVideoMillis + 999) / 1000
@@ -125,12 +135,18 @@ func quoteReferenceVideo(order *model.BillingOrder, estimate tokenBillingEstimat
 				detail.Estimated = estimate.Video.ReferenceDurationEstimated
 			}
 		}
+	default:
+		return nil
 	}
 	return detail
 }
 
 func quoteFromOrder(logicalModelID string, order *model.BillingOrder, estimate tokenBillingEstimate) (*LogicalModelQuote, error) {
 	quote := &LogicalModelQuote{LogicalModelID: logicalModelID, BillingMode: order.BillingMode, Quantity: order.Quantity, AmountMicrocredits: order.AmountMicrocredits, Estimated: order.BillingMode == "token"}
+	quote.MinimaxH3IRChargeMicrocredits = order.MinimaxH3IRChargeMicrocredits
+	if order.BillingMode == model.BillingModeMinimaxH3 {
+		quote.VideoInputImages = &VideoInputImagesQuote{Count: order.ImageInputImages, Billable: order.VideoBillableImages}
+	}
 	if order.BillingMode == "image_usage" {
 		quote.Estimated = true
 		quote.ImageUsage = &ImageQuote{InputImages: order.ImageInputImages, MaxOutputImages: order.ImageMaxOutputImages}
@@ -166,7 +182,7 @@ func (q *LogicalModelQuote) setVideoUnitPrice(secondPrice, outputTokenPrice, mul
 	var amount int64
 	var err error
 	switch q.BillingMode {
-	case "per_second":
+	case "per_second", model.BillingModeMinimaxH3:
 		amount, err = creditAmount(secondPrice, 1, multiplierBPS)
 	case "token":
 		video := q.VideoTokenEstimate

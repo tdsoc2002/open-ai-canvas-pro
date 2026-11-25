@@ -7,6 +7,24 @@ import type { ChannelModel, ChannelModelPriceTier } from "@/services/api/wallet"
 // @ts-expect-error -- Node 原生 TypeScript 测试运行器需要保留扩展名。
 import { defaultPriceTier, legacyPriceTierToForm, priceTierPayloadFromForm, priceTierToForm } from "./channel-model-price-tier-form.ts";
 
+test("H3 Context-IR 按次售价区分留空、免费和收费", () => {
+    const tier = { ...defaultPriceTier("advanced"), billingMode: "minimax_h3" as const, resolution: "768p", unitPrice: 0.5 };
+    assert.equal(priceTierPayloadFromForm("video", tier, "MiniMax-H3").minimaxH3IRPriceMicrocredits, undefined);
+    assert.equal(priceTierPayloadFromForm("video", { ...tier, minimaxH3IRPrice: 0 }, "MiniMax-H3").minimaxH3IRPriceMicrocredits, 0);
+    const payload = priceTierPayloadFromForm("video", { ...tier, minimaxH3IRPrice: 0.15 }, "MiniMax-H3");
+    assert.equal(payload.minimaxH3IRPriceMicrocredits, 150_000);
+    assert.equal(priceTierToForm(payload as ChannelModelPriceTier).minimaxH3IRPrice, 0.15);
+});
+
+test("源点动力 H3 的按次和按秒视频档都可提交独立 IR 附加价", () => {
+    for (const billingMode of ["fixed_request", "per_second"] as const) {
+        const tier = { ...defaultPriceTier(), billingMode, unitPrice: 0.5 };
+        assert.equal(priceTierPayloadFromForm("video", tier, "minimax h3").minimaxH3IRPriceMicrocredits, undefined);
+        assert.equal(priceTierPayloadFromForm("video", { ...tier, minimaxH3IRPrice: 0 }, "minimax h3").minimaxH3IRPriceMicrocredits, 0);
+        assert.equal(priceTierPayloadFromForm("video", { ...tier, minimaxH3IRPrice: 0.15 }, "minimax h3").minimaxH3IRPriceMicrocredits, 150_000);
+    }
+});
+
 test("编辑无价格档的旧模型时不再把顶层上游键固化进统一价格档", () => {
     const legacy: ChannelModel = {
         id: "model-1",

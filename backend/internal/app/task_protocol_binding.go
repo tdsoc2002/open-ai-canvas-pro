@@ -26,6 +26,7 @@ type taskProtocolBinding struct {
 	PriceVersion      int64  `json:"priceVersion"`
 	CapabilityConfig  string `json:"capabilityConfig"`
 	ConnectionRef     string `json:"connectionRef"`
+	MinimaxH3IR       bool   `json:"minimaxH3IR,omitempty"`
 }
 
 func (s *Service) protocolConnectionRef(channel *model.ModelChannel) (string, error) {
@@ -59,9 +60,25 @@ func (s *Service) captureTaskProtocolBinding(input map[string]any, selected *mod
 	if id != stringValue(config["interfaceType"]) || selected.ChannelID != channelID || selected.ProtocolRelease != stringValue(config["protocolRelease"]) || !hasPrice || !hasProfile || selected.PriceVersion != priceRevision || selected.CapabilityVersion != profileRevision {
 		return "", InvalidModelSelection("模型配置已更新，请重新选择")
 	}
+	irEnabled := false
+	for _, tier := range selected.PriceTiers {
+		if tier.ID == stringValue(config["priceTierId"]) && tier.MinimaxH3IRPriceMicrocredits != nil {
+			if err := validateMinimaxH3IRDuration(requestedBillingQuantity("video", config)); err != nil {
+				return "", err
+			}
+			irEnabled = true
+			break
+		}
+	}
 	release, err := selectModelRelease(s.protocolRegistry(), id, selected.ProtocolRelease, false)
-	if err != nil || release.SHA256 == "" {
+	if err != nil {
 		return "", err
+	}
+	if release.SHA256 == "" {
+		if irEnabled {
+			return "", BadAuthRequest("Context-IR 需要可绑定的渠道视频协议")
+		}
+		return "", nil
 	}
 	channel, err := s.SystemChannel(channelID)
 	if err != nil {
@@ -77,6 +94,7 @@ func (s *Service) captureTaskProtocolBinding(input map[string]any, selected *mod
 		UpstreamModel: stringValue(config["providerModelKey"]), ProfileModel: firstNonEmpty(selected.ProviderModelKey, selected.ModelKey),
 		Capability: selected.Capability, CapabilityConfig: selected.CapabilityConfigJSON,
 		CapabilityVersion: selected.CapabilityVersion, PriceVersion: selected.PriceVersion,
+		MinimaxH3IR: irEnabled,
 	}
 	raw, err := json.Marshal(binding)
 	return string(raw), err
@@ -91,6 +109,22 @@ func decodeTaskProtocolBinding(raw string) (taskProtocolBinding, error) {
 		return binding, errors.New("任务原始渠道模型绑定无效")
 	}
 	return binding, nil
+}
+
+func validateMinimaxH3IRBillingBinding(raw string, order *model.BillingOrder) error {
+	if order == nil || order.Capability != "video" {
+		return nil
+	}
+	var bound taskProtocolBinding
+	if raw != "" {
+		if err := json.Unmarshal([]byte(raw), &bound); err != nil {
+			return err
+		}
+	}
+	if bound.MinimaxH3IR != (order.MinimaxH3IRChargeMicrocredits != nil) {
+		return BadAuthRequest("Context-IR 计费设置已更新，请重新选择模型并生成")
+	}
+	return nil
 }
 
 func (s *Service) boundChannelModel(binding taskProtocolBinding, channel *model.ModelChannel, item *model.ChannelModel, config *providerConfig) (*protocol.Registry, error) {
@@ -111,6 +145,7 @@ func (s *Service) boundChannelModel(binding taskProtocolBinding, channel *model.
 	item.Protocol, item.Capability, item.CapabilityConfigJSON = model.ChannelInterfaceType(binding.ProviderID), binding.Capability, binding.CapabilityConfig
 	item.ProviderModelKey = binding.ProfileModel
 	config.ProviderModelKey, config.pinned = binding.UpstreamModel, true
+	config.minimaxH3IR = binding.MinimaxH3IR
 	config.releaseWithdrawn = !release.Selectable
 	return release.Registry, nil
 }

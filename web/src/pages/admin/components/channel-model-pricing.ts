@@ -26,7 +26,7 @@ export function modelPriceFields(tier: ChannelModelPriceTier, capability: Channe
                 { key: "referenceVideoOutputTokenPriceMicrocredits" as const, label: "带参考视频", unit: "百万视频 Token" },
             ];
     }
-    if (tier.billingMode !== "token") return [{ key: "unitPriceMicrocredits" as const, label: "", unit: tier.billingMode === "per_second" ? "秒" : "次" }];
+    if (tier.billingMode !== "token") return [{ key: "unitPriceMicrocredits" as const, label: tier.billingMode === "minimax_h3" ? "H3 输出" : "", unit: tier.billingMode === "per_second" || tier.billingMode === "minimax_h3" ? "秒" : "次" }];
     if (capability === "video") return [{ key: "outputTokenPriceMicrocredits" as const, label: "视频", unit: "百万视频 Token" }];
     return [
         { key: "inputTokenPriceMicrocredits" as const, label: "输入", unit: "百万 Token" },

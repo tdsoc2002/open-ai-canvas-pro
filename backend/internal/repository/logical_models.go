@@ -315,6 +315,7 @@ func (r *Repository) SwitchTaskLogicalRoute(taskID string, expectedRouteID strin
 		updates["cost_billing_mode"] = cost.CostBillingMode
 		updates["cost_quantity"] = cost.CostQuantity
 		updates["cost_video_formula_tokens"] = cost.CostVideoFormulaTokens
+		updates["cost_minimax_h3_microcredits"] = cost.CostMinimaxH3Microcredits
 		if replacement != nil {
 			if replacement.UserID != order.UserID || replacement.TaskID != taskID ||
 				replacement.RoundChargeToCent != order.RoundChargeToCent ||
@@ -381,6 +382,8 @@ func (r *Repository) SwitchTaskLogicalRoute(taskID string, expectedRouteID strin
 			updates["image_pricing"] = string(imagePricing)
 			updates["image_input_images"] = replacement.ImageInputImages
 			updates["image_max_output_images"] = replacement.ImageMaxOutputImages
+			updates["video_billable_images"] = replacement.VideoBillableImages
+			updates["minimax_h3_ir_charge_microcredits"] = replacement.MinimaxH3IRChargeMicrocredits
 			updates["price_version"] = replacement.PriceVersion
 			updates["price_tier_id"] = replacement.PriceTierID
 			updates["price_tier_version"] = replacement.PriceTierVersion

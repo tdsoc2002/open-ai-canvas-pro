@@ -5732,6 +5732,12 @@ components:
                           required: [billingMode, priceConfigured, enabled]
                           properties:
                             billingMode: {type: string}
+                            minimaxH3IRPriceMicrocredits:
+                              type: integer
+                              format: int64
+                              minimum: 0
+                              maximum: 1000000000000
+                              description: MiniMax-H3 标准版专属规格或源点动力 minimax h3 按次和按秒规格的 Context-IR 每次售价，按模型计价货币填写，省略时关闭，0 为启用且免费
                             imagePricing:
                               $ref: "#/components/schemas/ImagePricing"
                             priceConfigured: {type: boolean}
@@ -6009,7 +6015,7 @@ components:
           description: 前台逻辑模型 ID；直接查询系统渠道模型时为空字符串
         billingMode:
           type: string
-          enum: [fixed_request, per_second, token, image_usage]
+          enum: [fixed_request, per_second, token, image_usage, minimax_h3]
         quantity:
           type: integer
           format: int64
@@ -6029,6 +6035,18 @@ components:
           properties:
             inputImages: {type: integer, format: int64, minimum: 0}
             maxOutputImages: {type: integer, format: int64, minimum: 1, maximum: 128}
+        videoInputImages:
+          type: object
+          description: 仅 MiniMax H3 计费返回，记录输入图片总张数及超出本次免费额度的张数
+          required: [count, billable]
+          properties:
+            count: {type: integer, format: int64, minimum: 0}
+            billable: {type: integer, format: int64, minimum: 0}
+        minimaxH3IRChargeMicrocredits:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 启用 H3-Context-IR 时单次增强的微积分金额，已包含在 amountMicrocredits 中
         videoTokenEstimate:
           $ref: "#/components/schemas/VideoTokenEstimate"
         videoUnitPriceMicrocredits:
@@ -6040,14 +6058,14 @@ components:
           $ref: "#/components/schemas/QuoteReferenceVideo"
     QuoteReferenceVideo:
       type: object
-      description: 仅按秒或视频 Token 计费的视频请求挂参考视频时返回（按次计费不返回），用于展示“生成 N 秒 + 参考视频 M 秒”的报价构成
+      description: 按秒、视频 Token 或 MiniMax H3 计费的视频请求挂参考视频时返回，用于展示生成和输入视频的时长
       required:
         [count, billed, generatedSeconds, referenceSeconds, billedSeconds, estimated]
       properties:
         count: { type: integer, minimum: 1 }
         billed:
           type: boolean
-          description: true 表示模型开启参考视频计费，本次按带参考视频价格计入参考视频；false 表示参考视频不计费
+          description: true 表示本次计入参考视频费用，false 表示参考视频不计费
         generatedSeconds: { type: integer, format: int64, minimum: 0 }
         referenceSeconds:
           type: number
@@ -6056,7 +6074,7 @@ components:
           type: integer
           format: int64
           minimum: 0
-          description: 按秒计费时计入数量的参考视频秒数（向上取整）；Token 计费为 0
+          description: 按秒计费时计入数量的参考视频秒数（向上取整）；Token 和 MiniMax H3 计费为 0，H3 的输入时长读取 referenceSeconds
         estimated:
           type: boolean
           description: 参考视频时长未知，按 15 秒上限预估
