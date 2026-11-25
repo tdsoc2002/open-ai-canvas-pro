@@ -140,6 +140,7 @@ func Models() []any {
 		&model.WorkflowStepTask{},
 		&model.ProductionTaskLink{},
 		&model.CanvasProject{},
+		&model.CanvasFolder{},
 		&model.CanvasSnapshot{},
 		&model.CanvasSnapshotResource{},
 		&model.CanvasMutationReceipt{},

@@ -20,7 +20,7 @@ func TestUserCanvasLibraryPageIsBoundedAndScoped(t *testing.T) {
 	if err := db.Create(&model.CanvasProject{ID: "foreign", UserID: "other", Title: "Foreign", PayloadJSON: `{}`}).Error; err != nil {
 		t.Fatal(err)
 	}
-	page, err := service.UserCanvasProjectsPage("owner", 1, 999, "", "", "name")
+	page, err := service.UserCanvasProjectsPage("owner", 1, 999, "", "", "name", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,11 +34,11 @@ func TestUserCanvasLibraryPageIsBoundedAndScoped(t *testing.T) {
 	if strings.Contains(string(encoded), "secret") || strings.Contains(string(encoded), "foreign") {
 		t.Fatal("page exposed full payload or another account")
 	}
-	last, err := service.UserCanvasProjectsPage("owner", 2, 50, "", "", "name")
+	last, err := service.UserCanvasProjectsPage("owner", 2, 50, "", "", "name", "")
 	if err != nil || len(last.Projects) != 5 || last.HasMore {
 		t.Fatalf("last page: %+v %v", last, err)
 	}
-	filtered, err := service.UserCanvasProjectsPage("owner", 1, 40, "", "Title 04", "name")
+	filtered, err := service.UserCanvasProjectsPage("owner", 1, 40, "", "Title 04", "name", "")
 	if err != nil || filtered.Total != 1 || filtered.Projects[0].NodeCount != 1 {
 		t.Fatalf("filter: %+v %v", filtered, err)
 	}

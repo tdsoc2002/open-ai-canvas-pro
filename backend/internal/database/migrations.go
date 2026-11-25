@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 110
+const CurrentSchemaVersion int64 = 111
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -407,6 +407,24 @@ var schemaMigrations = []migration{
 		}
 		return reconcileAgentStorageUsage(tx)
 	}},
+	{version: 111, name: "canvas_folders", checksum: "sha256:canvas-folders-v111", apply: migrateCanvasFolders},
+}
+
+func migrateCanvasFolders(tx *gorm.DB) error {
+	if err := tx.AutoMigrate(&model.CanvasFolder{}); err != nil {
+		return err
+	}
+	project := &model.CanvasProject{}
+	if !tx.Migrator().HasColumn(project, "FolderID") {
+		if err := tx.Migrator().AddColumn(project, "FolderID"); err != nil {
+			return err
+		}
+	}
+	const folderIndex = "idx_canvas_projects_user_folder_updated"
+	if !tx.Migrator().HasIndex(project, folderIndex) {
+		return tx.Migrator().CreateIndex(project, folderIndex)
+	}
+	return nil
 }
 
 func migrateAPILogGenerationContent(tx *gorm.DB) error {

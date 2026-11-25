@@ -2,10 +2,10 @@ import { workspacePath, workspaceTeamId } from "@/lib/workspace-routes";
 import { migrateCanvasNodeModel } from "@/lib/canvas/migrate-canvas-node-model";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Dropdown, Modal } from "antd";
 import { Select } from "@/components/ui/base/select";
-import { ArrowDownAZ, Clock3, Download, FileUp, History, ListFilter, LoaderCircle, Plus, SlidersHorizontal } from "lucide-react";
+import { ArrowDownAZ, ArrowLeft, Clock3, Download, FileUp, FolderInput, FolderPlus, History, ListFilter, LoaderCircle, Plus, SlidersHorizontal } from "lucide-react";
 import { ListSearchInput } from "@/components/ui/base/list-search-input";
 
 import { CollectionGrid, WorkspacePage } from "@/components/layout/workspace-page";
@@ -25,7 +25,7 @@ import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 import { resetGenerationTaskMetadata } from "@/lib/canvas/canvas-task-state";
 import { saveCanvasDrawing, type CanvasDrawingRenderDraft } from "@/lib/canvas/canvas-drawing-storage";
 import { hasRemoteUserDataSyncSession, loadCanvasProjectForEditing, saveRemoteUserDataNow, scheduleRemoteUserDataSync } from "@/services/user-data-sync";
-import { listRemoteCanvasProjectsPage, type CanvasLibrarySummary } from "@/services/api/user-data";
+import { canvasLibraryFolders, listRemoteCanvasProjectsPage, type CanvasLibraryFolder, type CanvasLibrarySummary } from "@/services/api/user-data";
 import { useUserStore } from "@/stores/use-user-store";
 import { listProjects } from "@/services/api/projects";
 import { loadCanvasProjectPage } from "@/lib/workspace-route-modules";
@@ -35,6 +35,7 @@ import { useSyncProgressStore } from "@/stores/use-sync-progress-store";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { trackSiteTrafficAction } from "@/services/site-traffic";
+import { CANVAS_LIBRARY_DRAG_TYPE, CanvasLibraryFolderCard, CanvasLibraryFolderDialog, type CanvasFolderAction } from "./canvas-library-folders";
 
 const CanvasDeleteProjectsDialog = lazy(() => import("@/components/canvas/canvas-delete-projects-dialog").then((module) => ({ default: module.CanvasDeleteProjectsDialog })));
 
@@ -42,7 +43,8 @@ export default function CanvasPage() {
     const { message } = App.useApp();
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const queryClient = useQueryClient();
     const inputRef = useRef<HTMLInputElement>(null);
     const autoOpenRef = useRef(false);
     const [keyword, setKeyword] = useState("");
@@ -57,16 +59,45 @@ export default function CanvasPage() {
     const userId = useUserStore((state) => state.user?.id);
     const sessionHydrated = useUserStore((state) => state.hydrated);
     const [debouncedKeyword, setDebouncedKeyword] = useState("");
+    const [folderAction, setFolderAction] = useState<CanvasFolderAction>();
+    const mode = searchParams.get("mode");
+    const folderId = userId ? searchParams.get("folder") || null : null;
+    const folderScope = mode === "recent" ? undefined : (folderId ?? (debouncedKeyword || projectFilter !== "all" ? undefined : "root"));
+    const foldersKey = ["canvas-folders", userId, workspaceTeamId];
+    const libraryKey = ["canvas-library", userId, workspaceTeamId];
+    const refreshMovedCanvases = (ids: string[]) => {
+        useCanvasUiStore.getState().removeSelectedProjectIds(ids);
+        void queryClient.invalidateQueries({ queryKey: libraryKey });
+    };
+    const dropMove = useMutation({
+        mutationFn: ({ canvasId, folder }: { canvasId: string; folder: CanvasLibraryFolder }) => canvasLibraryFolders.move([canvasId], folder.id),
+        onSuccess: (_, { canvasId, folder }) => {
+            refreshMovedCanvases([canvasId]);
+            message.success(`已移动到「${folder.name}」`);
+        },
+        onError: (error) => message.error(`移动画布失败：${error.message}`),
+    });
     useEffect(() => {
         const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 250);
         return () => window.clearTimeout(timer);
     }, [keyword]);
+    useEffect(() => {
+        const selection = useCanvasUiStore.getState();
+        selection.removeSelectedProjectIds(selection.selectedProjectIds);
+        setFolderAction(undefined);
+    }, [folderId, userId]);
+    const foldersQuery = useQuery({
+        queryKey: foldersKey,
+        queryFn: ({ signal }) => canvasLibraryFolders.list(signal),
+        enabled: Boolean(userId) && sessionHydrated,
+    });
     const libraryQuery = useInfiniteQuery({
-        queryKey: ["canvas-library", userId, projectFilter, sort, debouncedKeyword],
-        queryFn: ({ pageParam, signal }) => listRemoteCanvasProjectsPage({ page: pageParam, pageSize: 40, projectId: projectFilter, sort, query: debouncedKeyword, signal }),
+        queryKey: [...libraryKey, folderScope, projectFilter, sort, debouncedKeyword],
+        queryFn: ({ pageParam, signal }) => listRemoteCanvasProjectsPage({ page: pageParam, pageSize: 40, projectId: projectFilter, folderId: folderScope, sort, query: debouncedKeyword, signal }),
         initialPageParam: 1,
         getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
-        placeholderData: (previousData, previousQuery) => (sessionHydrated && previousQuery?.queryKey[1] === userId ? keepPreviousData(previousData) : undefined),
+        placeholderData: (previousData, previousQuery) =>
+            sessionHydrated && previousQuery?.queryKey[1] === userId && previousQuery?.queryKey[2] === workspaceTeamId && previousQuery?.queryKey[3] === folderScope ? keepPreviousData(previousData) : undefined,
         staleTime: 60_000,
         gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: false,
@@ -96,7 +127,6 @@ export default function CanvasPage() {
     const [associationProjectId, setAssociationProjectId] = useState("");
     const projectQuery = useQuery({ queryKey: ["projects"], queryFn: () => listProjects(), enabled: !workspaceTeamId });
 
-    const mode = searchParams.get("mode");
     const agentMode = mode === "new" || mode === "recent" || mode === "choose";
     const handoffMode = mode === "handoff";
     const forwardedQuery = agentMode || handoffMode || searchParams.get("agent") === "1" ? `?${searchParams.toString()}` : "";
@@ -129,6 +159,21 @@ export default function CanvasPage() {
     const projectNames = useMemo(() => new Map((projectQuery.data?.projects || []).map(({ project }) => [project.id, project.name])), [projectQuery.data]);
     const visibleProjects = userId ? filteredProjects : filteredProjects.slice(0, loadedProjectCount);
     const hasRenderableProjects = visibleProjects.length > 0;
+    const folders = foldersQuery.data?.folders ?? [];
+    const activeFolder = folders.find((folder) => folder.id === folderId);
+    const visibleFolders = folderId || projectFilter !== "all" ? [] : folders.filter((folder) => folder.name.toLowerCase().includes(debouncedKeyword.toLowerCase()));
+    const canMoveToFolder = foldersQuery.isSuccess && folders.length > 0;
+    const canDragToFolder = canMoveToFolder && visibleFolders.length > 0 && !dropMove.isPending;
+    const openFolder = (id?: string) => {
+        setKeyword("");
+        setDebouncedKeyword("");
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            if (id) next.set("folder", id);
+            else next.delete("folder");
+            return next;
+        });
+    };
     const hasMore = userId ? libraryQuery.hasNextPage : visibleProjects.length < filteredProjects.length;
     const selectedProjects = projects.filter((project) => selectedIds.includes(project.id));
     const projectFilterLabel = projectFilter === "all" ? "全部画布" : projectFilter === "independent" ? "自由画布" : projectNames.get(projectFilter) || "项目画布";
@@ -450,6 +495,14 @@ export default function CanvasPage() {
         <WorkspacePage className="studio-collection-page canvas-list-page">
             <div className="studio-band">
                 <h1 className="sr-only">我的画布</h1>
+                {folderId && (
+                    <div className="mb-3 flex min-w-0 items-center gap-2">
+                        <Button type="text" icon={<ArrowLeft />} onClick={() => openFolder()}>
+                            画布库
+                        </Button>
+                        {activeFolder && <h2 className="truncate text-body-md font-semibold">{activeFolder.name}</h2>}
+                    </div>
+                )}
                 <CollectionToolbar
                     label="画布浏览工具"
                     active={Boolean(keyword || projectFilter !== "all" || sort !== "updated")}
@@ -463,16 +516,25 @@ export default function CanvasPage() {
                             <Button type="text" icon={<History />} onClick={() => setHistoryOpen(true)}>
                                 创作历史
                             </Button>
-                            <Button type="primary" disabled={!hydrated} icon={<Plus />} onClick={createAndEnter}>
-                                新建画布
-                            </Button>
-                            <Button disabled={!hydrated} icon={<FileUp />} onClick={() => inputRef.current?.click()}>
-                                导入
-                            </Button>
+                            {!folderId && (
+                                <>
+                                    {userId && (
+                                        <Button icon={<FolderPlus />} disabled={!sessionHydrated} onClick={() => setFolderAction({ kind: "create" })}>
+                                            新建文件夹
+                                        </Button>
+                                    )}
+                                    <Button type="primary" disabled={!hydrated} icon={<Plus />} onClick={createAndEnter}>
+                                        新建画布
+                                    </Button>
+                                    <Button disabled={!hydrated} icon={<FileUp />} onClick={() => inputRef.current?.click()}>
+                                        导入
+                                    </Button>
+                                </>
+                            )}
                         </>
                     }
                 >
-                    <ListSearchInput value={keyword} placeholder="搜索画布" aria-label="搜索画布" onValueChange={setKeyword} />
+                    <ListSearchInput value={keyword} placeholder={folderId ? "搜索此文件夹" : userId ? "搜索画布或文件夹" : "搜索画布"} aria-label={folderId ? "搜索此文件夹" : "搜索画布"} onValueChange={setKeyword} />
                     {!workspaceTeamId && (
                         <Dropdown trigger={["click"]} placement="bottomLeft" classNames={{ root: "canvas-list-project-menu" }} menu={{ items: projectFilterItems, selectedKeys: [projectFilter], onClick: ({ key }) => setProjectFilter(String(key)) }}>
                             <Button className="canvas-list-project-filter" icon={<SlidersHorizontal />} aria-label="按所属项目筛选" title={projectFilterLabel}>
@@ -489,9 +551,22 @@ export default function CanvasPage() {
             </div>
 
             <div className="collection-content">
+                {userId && foldersQuery.isError && (
+                    <div role="alert" className="mb-3 flex items-center gap-2 text-sm">
+                        <span>文件夹读取失败</span>
+                        <Button type="link" onClick={() => void foldersQuery.refetch()}>
+                            重试
+                        </Button>
+                    </div>
+                )}
                 {selectedIds.length ? (
                     <div className="collection-selection-bar">
                         <strong className="mr-auto font-medium">已选 {selectedIds.length} 个画布</strong>
+                        {canMoveToFolder && (
+                            <Button size="small" icon={<FolderInput className="size-3.5" />} onClick={() => setFolderAction({ kind: "move", ids: selectedIds })}>
+                                移动到文件夹
+                            </Button>
+                        )}
                         {!workspaceTeamId && (
                             <Button
                                 size="small"
@@ -525,13 +600,31 @@ export default function CanvasPage() {
                     </div>
                 ) : null}
 
-                {userId && libraryQuery.isError && !hasRenderableProjects ? (
+                {folderId && foldersQuery.isSuccess && !activeFolder ? (
+                    <WorkspaceState icon="canvas" title="文件夹不存在" description="可返回画布库查找画布。" />
+                ) : userId && libraryQuery.isError && !hasRenderableProjects ? (
                     <WorkspaceErrorState compact title="画布列表读取失败" description={libraryQuery.error instanceof Error ? libraryQuery.error.message : "请检查网络后重试。"} actionLabel="重试" onRetry={() => void libraryQuery.refetch()} />
-                ) : !hydrated || (userId && libraryQuery.isPending && !hasRenderableProjects) ? (
+                ) : !hydrated || (userId && ((folderId && foldersQuery.isPending) || (libraryQuery.isPending && !hasRenderableProjects))) ? (
                     <WorkspaceLoadingState label="正在恢复画布" detail="读取本地缓存与账号同步状态" />
-                ) : visibleProjects.length ? (
+                ) : visibleProjects.length || visibleFolders.length ? (
                     <>
                         <CollectionGrid className={`canvas-collection-grid${libraryQuery.isFetching && !libraryQuery.isPlaceholderData ? " is-stale" : ""}`}>
+                            {visibleFolders.map((folder) => (
+                                <CanvasLibraryFolderCard
+                                    key={`folder:${folder.id}`}
+                                    folder={folder}
+                                    onOpen={() => openFolder(folder.id)}
+                                    onAction={setFolderAction}
+                                    onCanvasDrop={
+                                        canDragToFolder
+                                            ? (canvasId) => {
+                                                  const project = visibleProjects.find((item) => item.id === canvasId);
+                                                  if (project && project.folderId !== folder.id) dropMove.mutate({ canvasId, folder });
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            ))}
                             {visibleProjects.map((project) => (
                                 <CanvasFolderCard
                                     key={project.id}
@@ -539,6 +632,15 @@ export default function CanvasPage() {
                                     projectName={project.projectId ? projectNames.get(project.projectId) || "未同步项目" : undefined}
                                     onClick={() => enterProject(project.id)}
                                     onPrefetch={preloadProject}
+                                    onMove={canMoveToFolder ? () => setFolderAction({ kind: "move", ids: [project.id] }) : undefined}
+                                    onDragStart={
+                                        canDragToFolder
+                                            ? (event) => {
+                                                  event.dataTransfer.effectAllowed = "move";
+                                                  event.dataTransfer.setData(CANVAS_LIBRARY_DRAG_TYPE, project.id);
+                                              }
+                                            : undefined
+                                    }
                                     opening={openingProjectId === project.id}
                                 />
                             ))}
@@ -558,6 +660,8 @@ export default function CanvasPage() {
                             setProjectFilter("all");
                         }}
                     />
+                ) : folderId ? (
+                    <WorkspaceState icon="canvas" title="文件夹里还没有画布" description="可在画布库选择画布，再移动到这个文件夹。" />
                 ) : (
                     <WorkspaceState
                         icon="canvas"
@@ -600,6 +704,22 @@ export default function CanvasPage() {
                     onChange={setAssociationProjectId}
                 />
             </Modal>
+            {folderAction && (
+                <CanvasLibraryFolderDialog
+                    action={folderAction}
+                    folders={folders}
+                    onClose={() => setFolderAction(undefined)}
+                    onSaved={() => {
+                        setFolderAction(undefined);
+                        if (folderAction.kind === "move") {
+                            refreshMovedCanvases(folderAction.ids);
+                        } else {
+                            void queryClient.invalidateQueries({ queryKey: foldersKey });
+                            if (folderAction.kind === "delete") void queryClient.invalidateQueries({ queryKey: libraryKey });
+                        }
+                    }}
+                />
+            )}
             <CanvasHistoryDrawer open={historyOpen} onClose={() => setHistoryOpen(false)} />
             {deleteDialogOpen ? (
                 <Suspense fallback={null}>

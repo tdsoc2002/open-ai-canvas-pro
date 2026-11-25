@@ -2133,7 +2133,63 @@ paths:
     get:
       tags: [canvas]
       summary: 当前空间的自由画布列表
+      parameters:
+        - in: query
+          name: folderId
+          schema: { type: string }
+          description: 分页列表的目录范围。root 为画布库首页，目录 ID 为指定目录，省略时包含当前空间全部画布。
       responses: { '200': { $ref: '#/components/responses/Envelope' } }
+  /canvas-folders:
+    servers: *workspaceContentServers
+    get:
+      tags: [canvas]
+      summary: 当前空间的画布文件夹
+      responses: { '200': { $ref: '#/components/responses/Envelope' } }
+    post:
+      tags: [canvas]
+      summary: 创建画布文件夹
+      requestBody: &canvasFolderName
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 40 }
+      responses: { '200': { $ref: '#/components/responses/Envelope' }, '400': { $ref: '#/components/responses/Error' } }
+  /canvas-folders/{id}:
+    servers: *workspaceContentServers
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [canvas]
+      summary: 重命名画布文件夹
+      requestBody: *canvasFolderName
+      responses: { '200': { $ref: '#/components/responses/Envelope' }, '400': { $ref: '#/components/responses/Error' }, '404': { $ref: '#/components/responses/Error' } }
+    delete:
+      tags: [canvas]
+      summary: 删除文件夹并把其中的画布移回首页
+      responses: { '200': { $ref: '#/components/responses/Envelope' }, '404': { $ref: '#/components/responses/Error' } }
+  /canvas-folders/move:
+    servers: *workspaceContentServers
+    post:
+      tags: [canvas]
+      summary: 批量移动当前空间的画布
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [folderId, canvasIds]
+              properties:
+                folderId: { type: string, maxLength: 36, description: '目标文件夹 ID，空字符串表示画布库首页。' }
+                canvasIds: { type: array, minItems: 1, maxItems: 200, items: { type: string, minLength: 1, maxLength: 80 } }
+      responses: { '200': { $ref: '#/components/responses/Envelope' }, '400': { $ref: '#/components/responses/Error' }, '404': { $ref: '#/components/responses/Error' } }
   /canvas-projects/{id}:
     servers: *workspaceContentServers
     parameters:

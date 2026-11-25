@@ -37,8 +37,19 @@ export type RemoteUserDataSnapshot = {
 };
 
 export type CanvasLibrarySummary = Pick<CanvasProject, "id" | "projectId" | "title" | "revision" | "createdAt" | "updatedAt"> & {
+    folderId?: string;
     nodeCount: number;
     previewNodes: CanvasProject["nodes"];
+};
+
+export type CanvasLibraryFolder = { id: string; name: string };
+
+export const canvasLibraryFolders = {
+    list: (signal?: AbortSignal) => http.get<{ folders: CanvasLibraryFolder[] }>("/canvas-folders", { signal }),
+    create: (name: string) => http.post<{ folder: CanvasLibraryFolder }>("/canvas-folders", { name }),
+    rename: (id: string, name: string) => http.patch<{ id: string }>(`/canvas-folders/${encodeURIComponent(id)}`, { name }),
+    remove: (id: string) => http.delete<{ id: string }>(`/canvas-folders/${encodeURIComponent(id)}`),
+    move: (canvasIds: string[], folderId: string) => http.post<{ folderId: string }>("/canvas-folders/move", { canvasIds, folderId }),
 };
 
 export type CanvasOperation =
@@ -71,10 +82,10 @@ export function changeCanvasEditLease(id: string, proof: CanvasEditProof, action
     return http.post<{ serverTime: string; lease?: CanvasEditLease; token?: string }>(`/canvas-projects/${encodeURIComponent(id)}/edit-lease`, { ...proof, action }, { timeout: 8000 });
 }
 
-export function listRemoteCanvasProjectsPage(options: { page: number; pageSize: number; projectId?: string; query?: string; sort?: string; signal?: AbortSignal }) {
+export function listRemoteCanvasProjectsPage(options: { page: number; pageSize: number; projectId?: string; folderId?: string; query?: string; sort?: string; signal?: AbortSignal }) {
     return http.get<{ projects: CanvasLibrarySummary[]; page: number; pageSize: number; total: number; hasMore: boolean }>("/canvas-projects", {
         signal: options.signal,
-        params: compactApiParams({ page: options.page, pageSize: options.pageSize, projectId: options.projectId, q: options.query, sort: options.sort }),
+        params: compactApiParams({ page: options.page, pageSize: options.pageSize, projectId: options.projectId, folderId: options.folderId, q: options.query, sort: options.sort }),
     });
 }
 

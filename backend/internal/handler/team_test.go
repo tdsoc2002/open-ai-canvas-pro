@@ -216,6 +216,17 @@ func verifyTeamSessionRoutes(t *testing.T, db *gorm.DB, dir string) {
 		{"type": "create_connection", "connection": gin.H{"id": "link", "fromNodeId": "note", "toNodeId": "end"}},
 	}}
 	call(member, "PATCH", canvasPath+"/operations", save, 200, nil)
+	var folderResult struct{ Folder model.CanvasFolder }
+	call(member, "POST", workspace+"/canvas-folders", gin.H{"name": "团队分镜"}, 200, &folderResult)
+	move := gin.H{"folderId": folderResult.Folder.ID, "canvasIds": []string{"shared-story"}}
+	call(other, "POST", workspace+"/canvas-folders/move", move, 403, nil)
+	call(member, "POST", "/canvas-folders/move", move, 404, nil)
+	call(member, "POST", workspace+"/canvas-folders/move", move, 200, nil)
+	var folderPage service.CanvasLibraryPage
+	call(owner, "GET", workspace+"/canvas-projects?page=1&folderId="+folderResult.Folder.ID, nil, 200, &folderPage)
+	if len(folderPage.Projects) != 1 || folderPage.Projects[0].ID != "shared-story" {
+		t.Fatalf("unexpected shared folder page: %+v", folderPage)
+	}
 	verifyWorkspaceAssetLifecycle(t, db, call, team.ID, owner, member, source.ID)
 	call(other, "GET", workspace+"/tasks", nil, 403, nil)
 	call(owner, "POST", base+"/leave", nil, 409, nil)

@@ -1,7 +1,7 @@
 import { App, Input } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
-import { Download, Layers3, LoaderCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import { Download, FolderInput, Layers3, LoaderCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import type { DragEventHandler, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPreview } from "@/components/canvas/canvas-project-card";
@@ -18,6 +18,8 @@ type CanvasFolderCardProps = {
     projectName?: string;
     onClick: () => void;
     onPrefetch?: () => void;
+    onMove?: () => void;
+    onDragStart?: DragEventHandler<HTMLDivElement>;
     opening?: boolean;
 };
 
@@ -25,7 +27,7 @@ type CanvasFolderCardProps = {
  * 画布库卡片：独立封面负责打开，名称和铅笔负责重命名。
  * 多选框在封面上，时间、归属和更多菜单在封面下方。
  */
-export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, opening = false }: CanvasFolderCardProps) {
+export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, onMove, onDragStart, opening = false }: CanvasFolderCardProps) {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const renameProject = useCanvasStore((state) => state.renameProject);
@@ -39,6 +41,7 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const editing = editingId === project.id;
     const selected = selectedIds.includes(project.id);
+    const canDrag = Boolean(onDragStart) && !editing && !opening;
     const updatedTitle = t("canvasB.folderCard.updatedTitle", { updated: formatAbsoluteDateTime(project.updatedAt), created: formatAbsoluteDateTime(project.createdAt) });
 
     const saveTitle = async () => {
@@ -72,9 +75,19 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
 
     return (
         <article className={cn("product-collection-card canvas-collection-card", selected && "is-selected", editing && "is-editing", opening && "is-opening")} onPointerEnter={onPrefetch} onPointerDown={onPrefetch} onFocusCapture={onPrefetch}>
-            <div className="canvas-collection-open" role="button" tabIndex={0} aria-label={t("canvasB.folderCard.openCanvas", { title: project.title })} aria-busy={opening} onClick={() => !editing && !opening && onClick()} onKeyDown={handleOpenKeyDown}>
+            <div
+                className="canvas-collection-open"
+                role="button"
+                tabIndex={0}
+                aria-label={t("canvasB.folderCard.openCanvas", { title: project.title })}
+                aria-busy={opening}
+                draggable={canDrag}
+                onDragStart={canDrag ? onDragStart : undefined}
+                onClick={() => !editing && !opening && onClick()}
+                onKeyDown={handleOpenKeyDown}
+            >
                 <div className="canvas-collection-preview">
-                    <div className="canvas-collection-preview-media" aria-hidden="true">
+                    <div className="canvas-collection-preview-media pointer-events-none" aria-hidden="true">
                         <ProjectPreview project={{ id: project.id, nodes: project.previewNodes }} quiet />
                     </div>
                     <span className="canvas-collection-badge" title={t("canvasB.folderCard.nodeCount", { count: project.nodeCount })}>
@@ -153,6 +166,7 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
                             menu={{
                                 items: [
                                     { key: "rename", icon: <Pencil className="size-3.5" />, label: t("canvasB.common.rename"), onClick: () => startEditing(project.id, project.title) },
+                                    ...(onMove ? [{ key: "move", icon: <FolderInput className="size-3.5" />, label: "移动到文件夹", onClick: onMove }] : []),
                                     { key: "export", icon: <Download className="size-3.5" />, label: t("canvasB.folderCard.exportCanvas"), onClick: () => void exportProject() },
                                     { type: "divider" },
                                     { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: t("common.delete"), onClick: () => setDeleteIds([project.id]) },

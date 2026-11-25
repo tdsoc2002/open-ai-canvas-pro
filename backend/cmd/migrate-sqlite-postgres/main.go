@@ -512,6 +512,7 @@ func migrations() []tableMigration {
 		migrateTable[model.WorkflowStepInstance]("workflow_step_instances"),
 		migrateTable[model.WorkflowStepTask]("workflow_step_tasks"),
 		migrateTable[model.ProductionTaskLink]("production_task_links"),
+		migrateTable[model.CanvasFolder]("canvas_folders"),
 		migrateTable[model.CanvasProject]("canvas_projects"),
 		migrateTable[model.CanvasMutationReceipt]("canvas_mutation_receipts"),
 		migrateTable[model.CanvasEditLease]("canvas_edit_leases"),

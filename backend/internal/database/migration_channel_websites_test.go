@@ -93,6 +93,7 @@ func TestChannelWebsiteMigrationUpgradesVersion96(t *testing.T) {
 		t.Fatal(err)
 	}
 	seedHistoricalBillingOrders(t, db)
+	createCanvasTableBeforeFolders(t, db)
 	if err := db.Migrator().DropColumn(&model.ModelChannel{}, "WebsiteID"); err != nil {
 		t.Fatal(err)
 	}

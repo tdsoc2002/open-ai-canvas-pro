@@ -26,6 +26,44 @@ func TestCurrentSchemaVersionMatchesMigrationPlan(t *testing.T) {
 	}
 }
 
+func createCanvasTableBeforeFolders(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	if err := db.Exec(`CREATE TABLE canvas_projects (id VARCHAR(80) PRIMARY KEY, user_id VARCHAR(36), project_id VARCHAR(36), title VARCHAR(240), payload_json TEXT, revision BIGINT, created_at TIMESTAMP, updated_at TIMESTAMP)`).Error; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMigrateCanvasFoldersPreservesExistingCanvas(t *testing.T) {
+	db, err := Open(Config{Driver: "sqlite", DataDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	createCanvasTableBeforeFolders(t, db)
+	if err := db.Exec(`INSERT INTO canvas_projects (id, user_id, project_id, title, payload_json, revision) VALUES ('legacy', 'owner', 'project', '分镜', '{"nodes":[]}', 7)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := db.Transaction(migrateCanvasFolders); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var canvas model.CanvasProject
+	if err := db.Select("id", "folder_id", "project_id", "payload_json", "revision").First(&canvas, "id = ?", "legacy").Error; err != nil {
+		t.Fatal(err)
+	}
+	if canvas.FolderID != "" || canvas.ProjectID != "project" || canvas.PayloadJSON != `{"nodes":[]}` || canvas.Revision != 7 {
+		t.Fatalf("legacy canvas changed: %+v", canvas)
+	}
+	if !db.Migrator().HasTable(&model.CanvasFolder{}) || !db.Migrator().HasIndex(&model.CanvasProject{}, "idx_canvas_projects_user_folder_updated") {
+		t.Fatal("canvas folder table or index missing")
+	}
+}
+
 func TestMigrateLegacyJoyseeAigcQuotaSnapshots(t *testing.T) {
 	db, err := Open(Config{Driver: "sqlite", DSN: "file:legacy-joysee-aigc-quota?mode=memory&cache=shared"})
 	if err != nil {

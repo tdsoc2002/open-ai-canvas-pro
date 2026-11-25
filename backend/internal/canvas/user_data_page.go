@@ -39,6 +39,7 @@ func (s *Service) UserAssetsByIDs(userID string, ids []string) ([]json.RawMessag
 type CanvasLibrarySummary struct {
 	ID           string           `json:"id"`
 	ProjectID    string           `json:"projectId,omitempty"`
+	FolderID     string           `json:"folderId,omitempty"`
 	Title        string           `json:"title"`
 	Revision     int64            `json:"revision"`
 	CreatedAt    time.Time        `json:"createdAt"`
@@ -55,7 +56,7 @@ type CanvasLibraryPage struct {
 	HasMore  bool                   `json:"hasMore"`
 }
 
-func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, projectID string, search string, sort string) (CanvasLibraryPage, error) {
+func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, projectID, search, sort, folderID string) (CanvasLibraryPage, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -68,7 +69,7 @@ func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, 
 	if pageSize > 50 {
 		pageSize = 50
 	}
-	projects, total, err := s.repo.UserCanvasProjectsPage(userID, page, pageSize, projectID, search, sort)
+	projects, total, err := s.repo.UserCanvasProjectsPage(userID, page, pageSize, projectID, search, sort, folderID)
 	if err != nil {
 		return CanvasLibraryPage{}, err
 	}
@@ -108,7 +109,7 @@ func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, 
 			item["metadata"] = metadata
 			preview = append(preview, item)
 		}
-		result.Projects = append(result.Projects, CanvasLibrarySummary{ID: project.ID, ProjectID: project.ProjectID, Title: project.Title, Revision: project.Revision, CreatedAt: project.CreatedAt, UpdatedAt: project.UpdatedAt, NodeCount: len(document.Nodes), PreviewNodes: preview})
+		result.Projects = append(result.Projects, CanvasLibrarySummary{ID: project.ID, ProjectID: project.ProjectID, FolderID: project.FolderID, Title: project.Title, Revision: project.Revision, CreatedAt: project.CreatedAt, UpdatedAt: project.UpdatedAt, NodeCount: len(document.Nodes), PreviewNodes: preview})
 	}
 	return result, nil
 }

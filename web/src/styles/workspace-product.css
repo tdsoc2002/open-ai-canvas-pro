@@ -173,6 +173,12 @@
     cursor: pointer;
     border-radius: var(--user-radius-media);
 }
+.canvas-collection-open[draggable="true"] {
+    cursor: grab;
+}
+.canvas-collection-open[draggable="true"]:active {
+    cursor: grabbing;
+}
 .canvas-collection-open:focus-visible,
 .canvas-collection-title:focus-visible,
 .canvas-collection-select input:focus-visible {
@@ -190,6 +196,12 @@
 .canvas-collection-card.is-selected .canvas-collection-preview {
     outline: 2px solid var(--user-accent);
     outline-offset: -2px;
+}
+.canvas-collection-card[data-drop-target] .canvas-collection-preview {
+    outline: 2px solid var(--user-accent);
+    outline-offset: -2px;
+    background: var(--user-accent-soft);
+    color: var(--user-accent);
 }
 .canvas-collection-preview-media {
     position: absolute;

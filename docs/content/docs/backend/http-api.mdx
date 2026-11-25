@@ -806,6 +806,21 @@ MiniMax 视频协议的标准版 `MiniMax-H3` 规格可在「Context-IR 每次�
 
 上传、工作流结构查询、取消查询和取消请求也不参与财务归属，即使日志被标记为可计费；它们不能代替生成请求承载订单金额。订单是否已结算以账单状态为准，保留人工核账后结算订单的统计能力。
 
+## 画布文件夹
+
+个人空间使用 `/api` 前缀，团队空间使用 `/api/teams/:teamId/workspace`。目录与画布均按当前空间校验归属。
+
+| 接口 | 行为 |
+| --- | --- |
+| `GET /canvas-projects?page=1` | 可用 `folderId=root` 读取未归档画布，或用 `folderId=<目录 ID>` 读取指定文件夹。省略 `folderId` 时可搜索或列出整个空间内的画布。摘要中的 `folderId` 表示已归档画布所在的位置。 |
+| `GET /canvas-folders` | 返回当前空间的 `{ folders }`。 |
+| `POST /canvas-folders` | 传入 `{ name }` 创建目录，返回 `{ folder }`。名称裁去两端空白后为 1–40 个字符。 |
+| `PATCH /canvas-folders/:id` | 传入 `{ name }` 重命名目录。 |
+| `DELETE /canvas-folders/:id` | 删除目录，在同一个事务中将所含画布移回首页。 |
+| `POST /canvas-folders/move` | 传入 `{ canvasIds, folderId }` 移动 1–200 个画布。`folderId` 为空字符串时移回首页。目标目录或任一画布缺失或不在当前空间时，整批返回 `404`。 |
+
+目录操作独立于画布正文和业务项目关联，也适用于正在编辑的画布。
+
 ## 画布保存与 operations 同步
 
 画布写入统一使用 `PATCH /canvas-projects/:id/operations`。请求只携带对象级或字段级变更，不提交整批画布快照；`mutationId` 是一次写入的幂等身份，客户端在响应丢失、断网、刷新或后台重试时必须复用同一个 ID 和原始 `operations`。`baseRevision` 记录生成请求时的已确认基线版本，用于诊断和响应；字段/对象的 `before`、`expected`、`beforeValue` 是实际并发校验，允许不同字段合并，拒绝同字段覆盖和缺失对象更新。可选顶层字段缺失时必须显式编码为 JSON `null`；服务端仅对早期客户端省略这些可选字段的 `value` 或 `beforeValue` 按 `null` 兼容处理，并继续执行基线校验。

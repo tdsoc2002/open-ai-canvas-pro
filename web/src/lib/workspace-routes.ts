@@ -14,7 +14,7 @@ export function workspaceApiPath(path: string, teamId = workspaceTeamId, method 
     if (!teamId || /^\/(?:teams|team-invitations|auth|site-traffic|diagnostics)(?:\/|$)/.test(path)) return path;
     if (method.toLowerCase() === "get" && /^\/(?:features|(?:public\/)?appearance|model-catalog|channels\/system|announcements|settings\/prompt-templates|plugins(?:\/catalog|\/status)?|workbench\/tools)(?:\?|$)/.test(path)) return path;
     if (method.toLowerCase() === "post" && /^\/(?:model-catalog|models\/[^/]+)\/quote$/.test(path)) return path;
-    if (/^\/(?:canvas-projects|creation-conversations|user-data|assets|asset-folders|resources|tasks)(?:\/|\?|$)/.test(path)) return workspacePath(`/workspace${path}`, teamId);
+    if (/^\/(?:canvas-projects|canvas-folders|creation-conversations|user-data|assets|asset-folders|resources|tasks)(?:\/|\?|$)/.test(path)) return workspacePath(`/workspace${path}`, teamId);
     throw new Error("此功能尚未在当前团队空间开放");
 }
 

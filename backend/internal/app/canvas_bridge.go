@@ -313,8 +313,28 @@ func (s *Service) UserAssetsByIDs(userID string, ids []string) ([]json.RawMessag
 	return s.canvasDomain().UserAssetsByIDs(userID, ids)
 }
 
-func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, projectID string, search string, sort string) (CanvasLibraryPage, error) {
-	return s.canvasDomain().UserCanvasProjectsPage(userID, page, pageSize, projectID, search, sort)
+func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, projectID, search, sort, folderID string) (CanvasLibraryPage, error) {
+	return s.canvasDomain().UserCanvasProjectsPage(userID, page, pageSize, projectID, search, sort, folderID)
+}
+
+func (s *Service) CanvasFolders(ownerKey string) ([]model.CanvasFolder, error) {
+	return s.canvasDomain().CanvasFolders(ownerKey)
+}
+
+func (s *Service) CreateCanvasFolder(ownerKey, name string) (model.CanvasFolder, error) {
+	return s.canvasDomain().CreateCanvasFolder(ownerKey, name)
+}
+
+func (s *Service) RenameCanvasFolder(ownerKey, folderID, name string) error {
+	return s.canvasDomain().RenameCanvasFolder(ownerKey, folderID, name)
+}
+
+func (s *Service) DeleteCanvasFolder(ownerKey, folderID string) error {
+	return s.canvasDomain().DeleteCanvasFolder(ownerKey, folderID)
+}
+
+func (s *Service) MoveCanvasProjectsToFolder(ownerKey, folderID string, canvasIDs []string) error {
+	return s.canvasDomain().MoveCanvasProjectsToFolder(ownerKey, folderID, canvasIDs)
 }
 
 func clientAssetPayload(asset model.Asset) json.RawMessage {

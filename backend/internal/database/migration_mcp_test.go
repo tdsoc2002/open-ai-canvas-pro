@@ -38,6 +38,7 @@ func agentMCPMigrationFixture(t *testing.T) (*gorm.DB, migration, []schemaMigrat
 		t.Fatal(err)
 	}
 	seedHistoricalBillingOrders(t, db)
+	createCanvasTableBeforeFolders(t, db)
 	// Record the published v99 ledger without rerunning unrelated historical
 	// business conversions. No MCP table exists before this upgrade.
 	stamp := time.Date(2026, 11, 10, 12, 30, 45, 123456000, time.UTC)

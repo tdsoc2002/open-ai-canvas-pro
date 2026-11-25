@@ -168,7 +168,7 @@ func (r *Repository) ProjectCanvasSummariesPage(userID string, projectID string,
 	return canvases, total, err
 }
 
-func (r *Repository) UserCanvasProjectsPage(userID string, page int, pageSize int, projectID string, search string, sort string) ([]model.CanvasProject, int64, error) {
+func (r *Repository) UserCanvasProjectsPage(userID string, page int, pageSize int, projectID, search, sort, folderID string) ([]model.CanvasProject, int64, error) {
 	var projects []model.CanvasProject
 	var total int64
 	query := r.db.Model(&model.CanvasProject{}).Where("user_id = ?", userID)
@@ -176,6 +176,11 @@ func (r *Repository) UserCanvasProjectsPage(userID string, page int, pageSize in
 		query = query.Where("project_id = '' OR project_id IS NULL")
 	} else if projectID != "" && projectID != "all" {
 		query = query.Where("project_id = ?", projectID)
+	}
+	if folderID == "root" {
+		query = query.Where("folder_id = ''")
+	} else if folderID != "" {
+		query = query.Where("folder_id = ?", folderID)
 	}
 	if search = strings.TrimSpace(search); search != "" {
 		query = query.Where("LOWER(title) LIKE ?", "%"+strings.ToLower(search)+"%")
