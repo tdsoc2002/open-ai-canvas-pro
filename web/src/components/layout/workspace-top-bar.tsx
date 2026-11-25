@@ -40,8 +40,7 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
     const spaceCredit = teamId ? scopedCredit : data?.personal;
     const spaceBalance = spaceCredit ? teamCredits(spaceCredit.availableMicrocredits) : "—";
     const spaceTitle = teamId ? "本空间积分" : "个人积分";
-    const teamTotal = !teamId && data?.spaces.length ? `团队 ${teamCredits(data.spaces.reduce((sum, space) => sum + space.availableMicrocredits, 0))}` : "";
-    const spaceLabel = [spaceTitle, spaceBalance, teamTotal].filter(Boolean).join(" ") + "，查看各空间额度";
+    const spaceLabel = `${spaceTitle} ${spaceBalance}，查看各空间额度`;
     const sectionKey = workspacePageTitleKey(pathname);
     const pageTitle = teamId ? scopedCredit?.name || "团队空间" : pathname === "/teams" ? "公司与团队" : sectionKey ? t(sectionKey) : brandName;
     const balance = availableMicrocredits === null ? "--" : formatCreditDisplay(availableMicrocredits, currentLocale());
@@ -69,7 +68,6 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
                                 <BalanceMark aria-hidden />
                                 <span>{spaceTitle}</span>
                                 <strong>{spaceBalance}</strong>
-                                {teamTotal && <small>{teamTotal}</small>}
                             </button>
                         ) : (
                             <button type="button" className="app-workspace-topbar-credit-pill" aria-label={t("shell.openWallet", { balance })} onClick={() => openWorkspaceWallet()}>
