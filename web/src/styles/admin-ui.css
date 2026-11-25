@@ -652,252 +652,45 @@
     line-height: 1.6;
 }
 
-/* Editable skin library: one document-style workspace, consistent with the other
- * admin settings modules. Theme cards select the active draft; edits stay local
- * until the shared page command bar saves the complete appearance document. */
 .admin-skin-workspace {
     display: grid;
     gap: 16px;
     padding: 20px;
 }
 
-.admin-skin-library-toolbar,
-.admin-skin-library-toolbar > div,
-.admin-skin-editor-heading,
 .admin-skin-mode-bar,
-.admin-skin-mode-bar > div,
-.admin-skin-locked-note {
+.admin-skin-mode-bar > div {
     display: flex;
     align-items: center;
 }
 
-.admin-skin-library-toolbar,
-.admin-skin-editor-heading,
 .admin-skin-mode-bar {
     justify-content: space-between;
     gap: 16px;
 }
 
-.admin-skin-library-toolbar > div:first-child,
-.admin-skin-mode-bar > div:first-child,
-.admin-skin-editor-heading > div {
+.admin-skin-mode-bar > div:first-child {
     min-width: 0;
     align-items: flex-start;
     flex-direction: column;
     gap: 2px;
 }
 
-.admin-skin-library-toolbar > div:last-child {
-    flex: 0 0 auto;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-.admin-skin-library-toolbar strong,
-.admin-skin-mode-bar strong,
-.admin-skin-editor-heading strong {
+.admin-skin-mode-bar strong {
     color: var(--admin-text-primary);
     font-size: 13px;
     font-weight: 600;
 }
 
-.admin-skin-library-toolbar span,
-.admin-skin-mode-bar span,
-.admin-skin-editor-heading > div > span {
+.admin-skin-mode-bar span {
     color: var(--admin-text-muted);
     font-size: 11px;
     line-height: 1.5;
 }
 
-.admin-skin-library {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.admin-skin-card {
-    position: relative;
-    min-width: 0;
-    overflow: hidden;
-    border: 1px solid var(--admin-card-border);
-    border-radius: var(--r-lg);
-    background: var(--admin-layer-2);
-    transition:
-        border-color var(--motion-state) ease-out,
-        background-color var(--motion-state) ease-out,
-        transform var(--motion-state) var(--ease-aceternity);
-}
-
-.admin-skin-card:hover {
-    border-color: color-mix(in srgb, var(--workspace-accent) 46%, var(--admin-card-border));
-}
-
-.admin-skin-card.is-selected {
-    border-color: color-mix(in srgb, var(--workspace-accent) 76%, var(--admin-card-border));
-    background: color-mix(in srgb, var(--workspace-accent) 5%, var(--admin-layer-2));
-}
-
-.admin-skin-card-select {
-    position: relative;
-    display: grid;
-    width: 100%;
-    min-width: 0;
-    grid-template-rows: 68px auto;
-    gap: 8px;
-    border: 0;
-    background: transparent;
-    padding: 8px 8px 8px;
-    color: var(--admin-text-primary);
-    text-align: left;
-}
-
-.admin-skin-card-select:focus-visible {
-    outline: var(--focus-ring-width) solid color-mix(in srgb, var(--ring) 72%, transparent);
-    outline-offset: -3px;
-}
-
-.admin-skin-card-preview {
-    display: block;
-    overflow: hidden;
-    border: 1px solid color-mix(in srgb, white 11%, transparent);
-    padding: 8px;
-}
-
-.admin-skin-card-preview > span {
-    display: flex;
-    height: 100%;
-    overflow: hidden;
-    align-items: center;
-    gap: 4px;
-    padding: 8px;
-}
-
-.admin-skin-card-preview i {
-    width: 10px;
-    height: 22px;
-    flex: 0 0 10px;
-    border-radius: var(--r-full);
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.14);
-}
-
-.admin-skin-card-copy {
-    display: grid;
-    min-width: 0;
-    gap: 2px;
-    padding-right: 24px;
-}
-
-.admin-skin-card-copy strong,
-.admin-skin-card-copy small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.admin-skin-card-copy strong {
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.admin-skin-card-copy small {
-    color: var(--admin-text-muted);
-    font-size: 11px;
-}
-
-.admin-skin-card-check,
-.admin-skin-card-lock {
-    position: absolute;
-    right: 9px;
-    display: grid;
-    place-items: center;
-}
-
-.admin-skin-card-check {
-    top: 9px;
-    width: 20px;
-    height: 20px;
-    border-radius: var(--r-full);
-    background: var(--btn-solid-bg);
-    color: var(--btn-solid-fg);
-}
-
-.admin-skin-card-check svg {
-    width: 12px;
-    height: 12px;
-}
-
-.admin-skin-card-lock {
-    right: 10px;
-    bottom: 45px;
-    width: 14px;
-    color: var(--admin-text-muted);
-}
-
-.admin-skin-card-actions {
-    display: flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 2px;
-    border-top: 1px solid var(--admin-divider);
-    padding: 4px 8px;
-}
-
-.admin-skin-delete-button.ant-btn:not(:disabled) {
-    border-color: var(--destructive);
-    background: var(--destructive) !important;
-    color: var(--destructive-foreground);
-    box-shadow: none;
-}
-
-.admin-skin-delete-button.ant-btn:not(:disabled):hover,
-.admin-skin-delete-button.ant-btn:not(:disabled):focus-visible {
-    border-color: var(--destructive-hover);
-    background: var(--destructive-hover) !important;
-    color: var(--destructive-foreground) !important;
-}
-
-.admin-skin-delete-button.ant-btn:not(:disabled):active {
-    border-color: var(--destructive-active);
-    background: var(--destructive-active) !important;
-}
-
 .admin-skin-editor {
     display: grid;
     gap: 16px;
-    border-top: 1px solid var(--admin-divider);
-    padding-top: 16px;
-}
-
-.admin-skin-editor-heading > div {
-    display: flex;
-}
-
-.admin-skin-editor-heading strong {
-    overflow: hidden;
-    max-width: 60ch;
-    font-size: 14px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.admin-skin-locked-note {
-    align-items: flex-start;
-    gap: 8px;
-    border: 1px solid var(--admin-card-border);
-    border-radius: var(--r-md);
-    background: var(--admin-layer-2);
-    padding: 12px 12px;
-    color: var(--admin-text-muted);
-    font-size: 11px;
-    line-height: 1.55;
-}
-
-.admin-skin-locked-note svg {
-    flex: 0 0 auto;
-    margin-top: 1px;
-    color: var(--icon-muted);
 }
 
 .admin-skin-identity-form {
@@ -1238,7 +1031,6 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .admin-skin-library,
     .admin-skin-color-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1301,19 +1093,11 @@
         padding: 16px;
     }
 
-    .admin-skin-library-toolbar,
-    .admin-skin-mode-bar,
-    .admin-skin-editor-heading {
+    .admin-skin-mode-bar {
         align-items: flex-start;
         flex-direction: column;
     }
 
-    .admin-skin-library-toolbar > div:last-child {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .admin-skin-library,
     .admin-skin-color-grid,
     .admin-skin-component-grid {
         grid-template-columns: 1fr;

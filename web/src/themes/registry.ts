@@ -10,7 +10,3 @@ export function registerThemePack(pack: ThemePack) {
 export function themePackFor(skinId: string | null | undefined): ThemePack | undefined {
     return skinId ? packs.get(skinId) : undefined;
 }
-
-export function registeredThemePacks(): ThemePack[] {
-    return [...packs.values()];
-}

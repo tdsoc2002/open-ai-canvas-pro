@@ -1,135 +1,33 @@
-import { Button, Form, Input, InputNumber } from "antd";
-import { IconButton, SegmentedControl, Select, Tooltip } from "@/pages/admin/ui/controls";
-import { Check, Copy, LockKeyhole, Moon, Plus, Sun, Trash2, Palette } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Form, Input, InputNumber } from "antd";
+import { SegmentedControl, Select } from "@/pages/admin/ui/controls";
+import { Moon, Sun, Palette } from "lucide-react";
+import { useState } from "react";
 
-import { SKIN_COLOR_GROUPS, SKIN_COMPONENT_NUMBER_FIELDS, SKIN_BUTTON_COLOR_FIELDS, getSkinButtonAppearance, skinSwatches, type SkinButtonFill, type SkinComponentTokens, type SkinDefinition, type SkinModeTokens, type SkinThemeMode } from "@/lib/skin-themes";
-import { cn } from "@/lib/utils";
-import { AdminStatusBadge } from "@/pages/admin/components/admin-ui";
+import { SKIN_COLOR_GROUPS, SKIN_COMPONENT_NUMBER_FIELDS, SKIN_BUTTON_COLOR_FIELDS, getSkinButtonAppearance, type SkinButtonFill, type SkinComponentTokens, type SkinDefinition, type SkinModeTokens, type SkinThemeMode } from "@/lib/skin-themes";
 
-export function SkinThemeEditor({
-    themes,
-    selectedID,
-    disabled,
-    onSelect,
-    onCreate,
-    onDuplicate,
-    onDelete,
-    onChange,
-}: {
-    themes: SkinDefinition[];
-    selectedID: string;
-    disabled: boolean;
-    onSelect: (id: string) => void;
-    onCreate: () => void;
-    onDuplicate: (id: string) => void;
-    onDelete: (id: string) => void;
-    onChange: (theme: SkinDefinition) => void;
-}) {
+export function SkinThemeEditor({ skin, disabled, onChange }: { skin: SkinDefinition; disabled: boolean; onChange: (theme: SkinDefinition) => void }) {
     const [mode, setMode] = useState<SkinThemeMode>("light");
-    const selected = useMemo(() => themes.find((theme) => theme.id === selectedID) || themes[0], [selectedID, themes]);
-    if (!selected) return null;
-    const editorDisabled = disabled || selected.locked;
-    const buttonFill = selected.tokens.buttons[mode];
-    const updateButton = (patch: Partial<SkinButtonFill>) => onChange({ ...selected, tokens: { ...selected.tokens,
-        buttons: { ...selected.tokens.buttons, [mode]: { ...buttonFill, ...patch } },
-    } });
+    const buttonFill = skin.tokens.buttons[mode];
+    const updateButton = (patch: Partial<SkinButtonFill>) => onChange({ ...skin, tokens: { ...skin.tokens, buttons: { ...skin.tokens.buttons, [mode]: { ...buttonFill, ...patch } } } });
 
-    const updateIdentity = (patch: Partial<Pick<SkinDefinition, "name" | "description">>) => onChange({ ...selected, ...patch });
+    const updateIdentity = (patch: Partial<Pick<SkinDefinition, "name" | "description">>) => onChange({ ...skin, ...patch });
     const updateColor = (key: keyof SkinModeTokens, value: string) =>
         onChange({
-            ...selected,
-            tokens: { ...selected.tokens, [mode]: { ...selected.tokens[mode], [key]: value.trim().toLowerCase() } },
+            ...skin,
+            tokens: { ...skin.tokens, [mode]: { ...skin.tokens[mode], [key]: value.trim().toLowerCase() } },
         });
-    const updateComponent = <Key extends keyof SkinComponentTokens>(key: Key, value: SkinComponentTokens[Key]) => onChange({ ...selected, tokens: { ...selected.tokens, components: { ...selected.tokens.components, [key]: value } } });
+    const updateComponent = <Key extends keyof SkinComponentTokens>(key: Key, value: SkinComponentTokens[Key]) => onChange({ ...skin, tokens: { ...skin.tokens, components: { ...skin.tokens.components, [key]: value } } });
 
     return (
         <div className="admin-skin-workspace">
-            <div className="admin-skin-library-toolbar">
-                <div>
-                    <strong>主题库</strong>
-                    <span>共 {themes.length} 套，最多 16 套</span>
-                </div>
-                <div>
-                    <Button icon={<Plus className="size-3.5" />} disabled={disabled || themes.length >= 16} onClick={onCreate}>
-                        从默认新建
-                    </Button>
-                    <Button icon={<Copy className="size-3.5" />} disabled={disabled || themes.length >= 16} onClick={() => onDuplicate(selected.id)}>
-                        复制当前
-                    </Button>
-                </div>
-            </div>
-
-            <div className="admin-skin-library" role="radiogroup" aria-label="选择全站皮肤主题">
-                {themes.map((theme) => {
-                    const active = theme.id === selected.id;
-                    const swatches = skinSwatches(theme);
-                    return (
-                        <article key={theme.id} className={cn("admin-skin-card", active && "is-selected")}>
-                            <button type="button" className="admin-skin-card-select" role="radio" aria-checked={active} disabled={disabled} onClick={() => onSelect(theme.id)}>
-                                <span className="admin-skin-card-preview" aria-hidden="true" style={{ background: theme.tokens.dark.canvas, borderRadius: theme.tokens.components.cardRadius }}>
-                                    <span style={{ background: theme.tokens.dark.surface, borderRadius: theme.tokens.components.inputRadius }}>
-                                        {swatches.map((color, index) => (
-                                            <i key={`${color}-${index}`} style={{ background: color }} />
-                                        ))}
-                                    </span>
-                                </span>
-                                <span className="admin-skin-card-copy">
-                                    <strong>{theme.name}</strong>
-                                    <small>{theme.description || "暂无说明"}</small>
-                                </span>
-                                {theme.locked ? <LockKeyhole className="admin-skin-card-lock" aria-label="系统默认主题不可修改" /> : null}
-                                {active ? (
-                                    <span className="admin-skin-card-check" aria-hidden="true">
-                                        <Check />
-                                    </span>
-                                ) : null}
-                            </button>
-                            <div className="admin-skin-card-actions">
-                                <Tooltip title="复制这套主题">
-                                    <IconButton size="sm" variant="ghost" icon={Copy} aria-label={`复制 ${theme.name}`} disabled={disabled || themes.length >= 16} onClick={() => onDuplicate(theme.id)} />
-                                </Tooltip>
-                                <Tooltip title={theme.locked ? "系统默认主题不可删除" : "删除这套主题"}>
-                                    <Button
-                                        className="admin-skin-delete-button"
-                                        type="primary"
-                                        danger
-                                        size="small"
-                                        aria-label={`删除 ${theme.name}`}
-                                        icon={<Trash2 className="size-3.5" />}
-                                        disabled={disabled || theme.locked}
-                                        onClick={() => onDelete(theme.id)}
-                                    />
-                                </Tooltip>
-                            </div>
-                        </article>
-                    );
-                })}
-            </div>
-
             <div className="admin-skin-editor">
-                <div className="admin-skin-editor-heading">
-                    <div>
-                        <span>当前编辑</span>
-                        <strong>{selected.name}</strong>
-                    </div>
-                    <AdminStatusBadge label={selected.locked ? "系统默认 · 只读" : "自定义主题"} tone={selected.locked ? "neutral" : "info"} />
-                </div>
-
-                {selected.locked ? (
-                    <div className="admin-skin-locked-note">
-                        <LockKeyhole className="size-4" aria-hidden="true" />
-                        <span>经典黑白采用黑白基础配色与紫蓝渐变主按钮，不能改名、修改或删除。点击“从默认新建”即可复制全部参数后自由调整。</span>
-                    </div>
-                ) : null}
-
-                <Form className="admin-appearance-form admin-skin-identity-form" layout="vertical" requiredMark={false} disabled={editorDisabled}>
+                <Form className="admin-appearance-form admin-skin-identity-form" layout="vertical" requiredMark={false} disabled={disabled}>
                     <div className="admin-appearance-form-grid">
                         <Form.Item label="主题名称" extra="1–40 个字符，可随时更改。">
-                            <Input value={selected.name} maxLength={40} showCount onChange={(event) => updateIdentity({ name: event.target.value })} />
+                            <Input value={skin.name} maxLength={40} showCount onChange={(event) => updateIdentity({ name: event.target.value })} />
                         </Form.Item>
-                        <Form.Item label="主题说明" extra="用于主题库辨识，不影响前台文案。">
-                            <Input value={selected.description} maxLength={100} showCount onChange={(event) => updateIdentity({ description: event.target.value })} />
+                        <Form.Item label="主题说明" extra="显示在后台皮肤设置中。">
+                            <Input value={skin.description} maxLength={100} showCount onChange={(event) => updateIdentity({ description: event.target.value })} />
                         </Form.Item>
                     </div>
                 </Form>
@@ -166,27 +64,51 @@ export function SkinThemeEditor({
                     />
                 </div>
 
-                <SkinThemePreview theme={selected} mode={mode} />
+                <SkinThemePreview theme={skin} mode={mode} />
 
                 <details className="admin-skin-token-group" open>
-                    <summary><span>主按钮填充</span><small>{mode === "light" ? "浅色" : "深色"}模式</small></summary>
+                    <summary>
+                        <span>主按钮填充</span>
+                        <small>{mode === "light" ? "浅色" : "深色"}模式</small>
+                    </summary>
                     <div className="admin-skin-component-grid">
                         <label className="admin-skin-number-field">
                             <span>填充方式</span>
-                            <Select value={buttonFill.mode} disabled={editorDisabled}
-                                options={[{ label: "纯色（使用主操作颜色）", value: "solid" }, { label: "渐变", value: "gradient" }]}
-                                onChange={(value) => updateButton({ mode: value })} />
+                            <Select
+                                value={buttonFill.mode}
+                                disabled={disabled}
+                                options={[
+                                    { label: "纯色（使用主操作颜色）", value: "solid" },
+                                    { label: "渐变", value: "gradient" },
+                                ]}
+                                onChange={(value) => updateButton({ mode: value })}
+                            />
                         </label>
-                        {buttonFill.mode === "gradient" ? <label className="admin-skin-number-field">
-                            <span>渐变角度</span>
-                            <InputNumber aria-label="渐变角度" value={buttonFill.angle} min={0} max={360} precision={0} addonAfter="°" disabled={editorDisabled}
-                                onChange={(value) => { if (typeof value === "number") updateButton({ angle: value }); }} />
-                        </label> : null}
+                        {buttonFill.mode === "gradient" ? (
+                            <label className="admin-skin-number-field">
+                                <span>渐变角度</span>
+                                <InputNumber
+                                    aria-label="渐变角度"
+                                    value={buttonFill.angle}
+                                    min={0}
+                                    max={360}
+                                    precision={0}
+                                    addonAfter="°"
+                                    disabled={disabled}
+                                    onChange={(value) => {
+                                        if (typeof value === "number") updateButton({ angle: value });
+                                    }}
+                                />
+                            </label>
+                        ) : null}
                     </div>
-                    {buttonFill.mode === "gradient" ? <div className="admin-skin-color-grid">
-                        {SKIN_BUTTON_COLOR_FIELDS.map(({ key, label }) => <ColorTokenField key={key} label={label} help="仅影响主按钮，不改变选中态、开关和危险操作" value={buttonFill[key]} disabled={editorDisabled}
-                            onChange={(value) => updateButton({ [key]: value.trim().toLowerCase() })} />)}
-                    </div> : null}
+                    {buttonFill.mode === "gradient" ? (
+                        <div className="admin-skin-color-grid">
+                            {SKIN_BUTTON_COLOR_FIELDS.map(({ key, label }) => (
+                                <ColorTokenField key={key} label={label} help="仅影响主按钮，不改变选中态、开关和危险操作" value={buttonFill[key]} disabled={disabled} onChange={(value) => updateButton({ [key]: value.trim().toLowerCase() })} />
+                            ))}
+                        </div>
+                    ) : null}
                 </details>
 
                 <div className="admin-skin-color-groups">
@@ -198,7 +120,7 @@ export function SkinThemeEditor({
                             </summary>
                             <div className="admin-skin-color-grid">
                                 {group.fields.map((field) => (
-                                    <ColorTokenField key={field.key} label={field.label} help={field.help} value={selected.tokens[mode][field.key]} disabled={editorDisabled} onChange={(value) => updateColor(field.key, value)} />
+                                    <ColorTokenField key={field.key} label={field.label} help={field.help} value={skin.tokens[mode][field.key]} disabled={disabled} onChange={(value) => updateColor(field.key, value)} />
                                 ))}
                             </div>
                         </details>
@@ -215,12 +137,12 @@ export function SkinThemeEditor({
                             <label key={field.key} className="admin-skin-number-field">
                                 <span>{field.label}</span>
                                 <InputNumber
-                                    value={selected.tokens.components[field.key]}
+                                    value={skin.tokens.components[field.key]}
                                     min={field.min}
                                     max={field.max}
                                     step={field.step || 1}
                                     addonAfter={field.suffix || undefined}
-                                    disabled={editorDisabled}
+                                    disabled={disabled}
                                     onChange={(value) => {
                                         if (typeof value === "number") updateComponent(field.key, value);
                                     }}
@@ -230,8 +152,8 @@ export function SkinThemeEditor({
                         <label className="admin-skin-number-field">
                             <span>阴影风格</span>
                             <Select
-                                value={selected.tokens.components.shadowStyle}
-                                disabled={editorDisabled}
+                                value={skin.tokens.components.shadowStyle}
+                                disabled={disabled}
                                 options={[
                                     { label: "无阴影", value: "none" },
                                     { label: "柔和阴影", value: "soft" },

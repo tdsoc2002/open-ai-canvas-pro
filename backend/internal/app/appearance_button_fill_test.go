@@ -9,13 +9,12 @@ import (
 
 func TestAppearanceButtonFillRoundTripAndValidation(t *testing.T) {
 	svc, _, _, admin := newAppearanceTestService(t)
-	themes := defaultAppearanceSkinThemes()
-	custom := cloneAppearanceSkin(themes[0], "custom-gradient", "渐变主题", "主按钮渐变")
+	custom := defaultAppearanceSkin
 	custom.Tokens.Buttons.Light.Mode = "gradient"
 	custom.Tokens.Buttons.Light.Angle = 45
 	custom.Tokens.Buttons.Light.Start = "#123456"
 	custom.Tokens.Buttons.Dark.Mode = "solid"
-	themes = append(themes, custom)
+	themes := []AppearanceSkinTheme{custom}
 	input := AppearanceSetting{BrandName: "测试站点", BrandSlug: "test", AuthHeroTitle: defaultAppearanceHeroTitle, SkinID: custom.ID, SkinThemes: themes}
 	saved, err := svc.UpdateAppearance(admin, input)
 	if err != nil {
@@ -47,14 +46,6 @@ func TestAppearanceButtonFillRoundTripAndValidation(t *testing.T) {
 			}
 		})
 	}
-	input.SkinThemes[0].Tokens.Buttons.Light.Start = "#000000"
-	overwritten, err := svc.UpdateAppearance(admin, input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if overwritten.SkinThemes[0].Tokens.Buttons != defaultClassicAppearanceSkin().Tokens.Buttons {
-		t.Fatal("classic fill mutation was stored")
-	}
 }
 
 func TestAppearanceLegacyButtonFills(t *testing.T) {
@@ -63,10 +54,10 @@ func TestAppearanceLegacyButtonFills(t *testing.T) {
 		themes[index].Tokens.Buttons = AppearanceSkinButtons{}
 	}
 	migrated := normalizeAppearanceSkinThemes(themes)
-	if err := validateAppearanceSkinThemes(migrated, "classic"); err != nil {
+	if err := validateAppearanceSkinThemes(migrated); err != nil {
 		t.Fatal(err)
 	}
-	// 经典与内置皮肤都回到纯色墨主按钮；渐变只在管理员显式开启后出现。
+	// 渐变只在管理员显式开启后出现。
 	for _, skin := range migrated {
 		if skin.Tokens.Buttons.Light.Mode != "solid" || skin.Tokens.Buttons.Dark.Mode != "solid" {
 			t.Fatalf("wrong fill for %s", skin.ID)
@@ -80,9 +71,12 @@ func TestAppearanceLegacyButtonFills(t *testing.T) {
 
 func TestAppearanceReadsLegacyButtonFillsByStoredIdentity(t *testing.T) {
 	svc, db, _, admin := newAppearanceTestService(t)
-	classic := defaultClassicAppearanceSkin()
-	custom := cloneAppearanceSkin(classic, "custom-legacy", "旧主题", "保持纯色")
-	encoded, err := json.Marshal([]AppearanceSkinTheme{custom, classic})
+	classic := defaultAppearanceSkin
+	classic.ID = "classic"
+	classic.Tokens.Buttons.Light.Mode = "gradient"
+	custom := defaultAppearanceSkin
+	custom.Name = "乐见按钮调整"
+	encoded, err := json.Marshal([]AppearanceSkinTheme{classic, custom})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,9 +84,7 @@ func TestAppearanceReadsLegacyButtonFillsByStoredIdentity(t *testing.T) {
 	if err := json.Unmarshal(encoded, &themes); err != nil {
 		t.Fatal(err)
 	}
-	for _, skin := range themes {
-		delete(skin["tokens"].(map[string]any), "buttons")
-	}
+	delete(themes[1]["tokens"].(map[string]any), "buttons")
 	encoded, err = json.Marshal(map[string]any{"schemaVersion": 7, "skinId": custom.ID, "skinThemes": themes})
 	if err != nil {
 		t.Fatal(err)
@@ -104,13 +96,10 @@ func TestAppearanceReadsLegacyButtonFillsByStoredIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.Public.ActiveSkin.Tokens.Buttons != defaultAppearanceSkinButtons() || loaded.SkinThemes[1].Tokens.Buttons != defaultClassicAppearanceSkin().Tokens.Buttons {
-		t.Fatal("legacy fields inherited another theme's fill")
+	if loaded.Public.ActiveSkin != custom || len(loaded.SkinThemes) != 1 {
+		t.Fatal("the saved Joysee skin must recover its own defaults")
 	}
-	if loaded.SkinThemes[1].Tokens.Buttons.Light.Mode != "solid" {
-		t.Fatal("classic primary button must stay a solid ink fill")
-	}
-	if err := validateAppearanceSkinThemes(loaded.SkinThemes, custom.ID); err != nil {
+	if err := validateAppearanceSkinThemes(loaded.SkinThemes); err != nil {
 		t.Fatal(err)
 	}
 }

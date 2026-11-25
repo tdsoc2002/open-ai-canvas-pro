@@ -1,14 +1,18 @@
 import { describe, expect, test } from "bun:test";
 
-import { applySkinTheme, DEFAULT_CLASSIC_SKIN, duplicateSkinDefinition, getSkinAntOverrides, normalizeSkinDefinition, skinSwatches, SKIN_COLOR_GROUPS, SKIN_COMPONENT_NUMBER_FIELDS } from "../src/lib/skin-themes";
+import { applySkinTheme, cloneSkinDefinition, getSkinAntOverrides, normalizeSkinDefinition, SKIN_COLOR_GROUPS, SKIN_COMPONENT_NUMBER_FIELDS } from "../src/lib/skin-themes";
+import { JOYSEE_MINIMAL_SKIN } from "../src/themes/joysee-minimal/skin";
 import { normalizePublicAppearance } from "../src/stores/use-appearance-store";
 import { moduleGroupSource } from "./helpers/module-group-source";
 
-describe("site appearance and editable skin library", () => {
-    test("classic keeps every token in globals.css and writes no inline variables", () => {
-        expect(DEFAULT_CLASSIC_SKIN.locked).toBe(true);
-        expect(getSkinAntOverrides(DEFAULT_CLASSIC_SKIN, "light")).toEqual({});
-        expect(getSkinAntOverrides(DEFAULT_CLASSIC_SKIN, "dark")).toEqual({});
+describe("site appearance and editable Joysee skin", () => {
+    test("Joysee is the only supported site skin and applies its tokens", () => {
+        const legacy = { ...JOYSEE_MINIMAL_SKIN, id: "classic", name: "经典黑白" };
+        const legacyAppearance = normalizePublicAppearance({ brandName: "源点画布", skinId: legacy.id, activeSkin: legacy });
+        expect(legacyAppearance.brandName).toBe("源点画布");
+        expect(legacyAppearance.skinId).toBe("joysee-minimal");
+        expect(legacyAppearance.activeSkin).toEqual(JOYSEE_MINIMAL_SKIN);
+        expect(getSkinAntOverrides(legacy, "light").primary).toBe("#1a1a1a");
 
         const removed: string[] = [];
         const assigned = new Map<string, string>();
@@ -21,27 +25,26 @@ describe("site appearance and editable skin library", () => {
                 },
             },
         } as unknown as Document;
-        applySkinTheme(DEFAULT_CLASSIC_SKIN, "light", target);
+        applySkinTheme(legacy, "light", target);
         expect(removed.length).toBeGreaterThan(60);
         expect(removed).toContain("--button-primary-bg");
-        expect(assigned.size).toBe(0);
-        expect(target.documentElement.dataset.skin).toBe("classic");
+        expect(assigned.get("--button-primary-bg")).toBe("#1a1a1a");
+        expect(target.documentElement.dataset.skin).toBe("joysee-minimal");
     });
 
-    test("duplicating classic materializes a complete editable theme", () => {
-        const copy = duplicateSkinDefinition(DEFAULT_CLASSIC_SKIN, ["classic"], "我的主题");
-        expect(copy.id.startsWith("custom-")).toBe(true);
-        expect(copy.name).toBe("我的主题");
+    test("cloning Joysee retains the complete editable token contract", () => {
+        const copy = cloneSkinDefinition(JOYSEE_MINIMAL_SKIN);
+        expect(copy.id).toBe("joysee-minimal");
         expect(copy.locked).toBe(false);
-        expect(copy.tokens).not.toBe(DEFAULT_CLASSIC_SKIN.tokens);
-        expect(copy.tokens.light).not.toBe(DEFAULT_CLASSIC_SKIN.tokens.light);
+        expect(copy.tokens).not.toBe(JOYSEE_MINIMAL_SKIN.tokens);
+        expect(copy.tokens.light).not.toBe(JOYSEE_MINIMAL_SKIN.tokens.light);
         expect(Object.keys(copy.tokens.light)).toHaveLength(50);
         expect(SKIN_COLOR_GROUPS.flatMap((group) => group.fields)).toHaveLength(50);
         expect(SKIN_COMPONENT_NUMBER_FIELDS).toHaveLength(16);
     });
 
     test("custom themes map semantic colors and component styles into runtime variables", () => {
-        const custom = duplicateSkinDefinition(DEFAULT_CLASSIC_SKIN, ["classic"]);
+        const custom = cloneSkinDefinition(JOYSEE_MINIMAL_SKIN);
         custom.tokens.light.primary = "#123456";
         custom.tokens.light.switchChecked = "#17864b";
         custom.tokens.light.switchUnchecked = "#a3a3a3";
@@ -73,7 +76,7 @@ describe("site appearance and editable skin library", () => {
     });
 
     test("legacy custom themes backfill new switch and destructive interaction colors", () => {
-        const legacy = duplicateSkinDefinition(DEFAULT_CLASSIC_SKIN, ["classic"]) as SkinFixture;
+        const legacy = cloneSkinDefinition(JOYSEE_MINIMAL_SKIN) as SkinFixture;
         legacy.tokens.light.primary = "#123456";
         legacy.tokens.light.primaryHover = "#234567";
         legacy.tokens.light.danger = "#c0262d";
@@ -88,22 +91,14 @@ describe("site appearance and editable skin library", () => {
         expect(normalized.tokens.light.dangerActive).toBe("#c0262d");
     });
 
-    test("theme-card swatches expose every real unique color in frequency order", () => {
-        const swatches = skinSwatches(DEFAULT_CLASSIC_SKIN);
-        const allColors = [...Object.values(DEFAULT_CLASSIC_SKIN.tokens.light), ...Object.values(DEFAULT_CLASSIC_SKIN.tokens.dark)];
-        expect(swatches[0]).toBe(DEFAULT_CLASSIC_SKIN.tokens.light.canvas);
-        expect(swatches[1]).toBe(DEFAULT_CLASSIC_SKIN.tokens.dark.canvas);
-        expect(new Set(swatches)).toEqual(new Set(allColors));
-    });
-
-    test("unsafe or incomplete public themes fall back to classic", () => {
-        const invalid = normalizeSkinDefinition({ ...DEFAULT_CLASSIC_SKIN, id: "bad id", tokens: { ...DEFAULT_CLASSIC_SKIN.tokens, light: { ...DEFAULT_CLASSIC_SKIN.tokens.light, primary: "red;url(x)" } } });
-        expect(invalid.id).toBe("classic");
-        expect(invalid.tokens.light.primary).toBe(DEFAULT_CLASSIC_SKIN.tokens.light.primary);
+    test("unsafe or incomplete public themes fall back to Joysee", () => {
+        const invalid = normalizeSkinDefinition({ ...JOYSEE_MINIMAL_SKIN, id: "bad id", tokens: { ...JOYSEE_MINIMAL_SKIN.tokens, light: { ...JOYSEE_MINIMAL_SKIN.tokens.light, primary: "red;url(x)" } } });
+        expect(invalid.id).toBe("joysee-minimal");
+        expect(invalid.tokens.light.primary).toBe(JOYSEE_MINIMAL_SKIN.tokens.light.primary);
     });
 
     test("custom site metadata, footer, filing, and active skin survive normalization", () => {
-        const activeSkin = duplicateSkinDefinition(DEFAULT_CLASSIC_SKIN, ["classic"], "暖调测试");
+        const activeSkin = { ...cloneSkinDefinition(JOYSEE_MINIMAL_SKIN), name: "暖调测试" };
         const appearance = normalizePublicAppearance({
             brandName: "HIMA Studio",
             brandSlug: "hima-studio",
@@ -130,7 +125,7 @@ describe("site appearance and editable skin library", () => {
         expect(appearance.activeSkin.name).toBe("暖调测试");
     });
 
-    test("site UI wires metadata, editable theme actions, and the official ICP destination", async () => {
+    test("site UI wires metadata, the Joysee editor, and the official ICP destination", async () => {
         const [storeSource, footerSource, pageSource, editorSource, globalStyles, adminStyles] = await Promise.all([
             Bun.file(new URL("../src/stores/use-appearance-store.ts", import.meta.url)).text(),
             Bun.file(new URL("../src/components/layout/site-compliance-footer.tsx", import.meta.url)).text(),
@@ -145,13 +140,11 @@ describe("site appearance and editable skin library", () => {
         expect(footerSource).toContain("https://beian.miit.gov.cn/");
         expect(footerSource).toContain('rel="noopener noreferrer"');
         expect(pageSource).toContain('title="皮肤主题"');
-        expect(editorSource).toContain("从默认新建");
-        expect(editorSource).toContain("复制当前");
-        expect(editorSource).toContain("删除这套主题");
-        expect(editorSource).toContain("系统默认 · 只读");
-        expect(editorSource).toContain('className="admin-skin-delete-button"');
-        expect(editorSource).toContain('type="primary"');
-        expect(editorSource).toContain("danger");
+        expect(pageSource).toContain("调整乐见极简");
+        expect(editorSource).toContain("主题名称");
+        expect(editorSource).toContain("主按钮填充");
+        expect(editorSource).not.toContain("从默认新建");
+        expect(editorSource).not.toContain("删除这套主题");
         expect(editorSource).toContain('<div className="admin-skin-color-field">');
         expect(editorSource).not.toContain('<label className="admin-skin-color-field">');
         expect(editorSource).toContain("后台菜单");
@@ -166,8 +159,8 @@ describe("site appearance and editable skin library", () => {
     });
 });
 
-type SkinFixture = Omit<ReturnType<typeof duplicateSkinDefinition>, "tokens"> & {
-    tokens: Omit<ReturnType<typeof duplicateSkinDefinition>["tokens"], "light"> & {
-        light: Partial<ReturnType<typeof duplicateSkinDefinition>["tokens"]["light"]>;
+type SkinFixture = Omit<ReturnType<typeof cloneSkinDefinition>, "tokens"> & {
+    tokens: Omit<ReturnType<typeof cloneSkinDefinition>["tokens"], "light"> & {
+        light: Partial<ReturnType<typeof cloneSkinDefinition>["tokens"]["light"]>;
     };
 };

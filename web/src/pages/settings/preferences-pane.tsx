@@ -14,7 +14,6 @@ import { useNotificationPreferencesStore } from "@/stores/use-notification-prefe
 import { useThemeStore, type ThemeName } from "@/stores/use-theme-store";
 import { useAppearancePreferencesStore, usePersonalAppearancePreferences, type PersonalAppearancePreferences } from "@/stores/use-appearance-preferences-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { registeredThemePacks } from "@/themes/registry";
 
 const PersonalAvatarDialog = lazy(() => import("./personal-avatar-dialog").then((module) => ({ default: module.PersonalAvatarDialog })));
 
@@ -62,20 +61,6 @@ export function PreferencesPane() {
                                 ]}
                             />
                         }
-                    />
-                    <SettingsRow
-                        label={t("personalAppearance.skin")}
-                        control={
-                            <Select
-                                aria-label={t("personalAppearance.skin")}
-                                className="w-full"
-                                disabled={!userId}
-                                value={preferences.skinId}
-                                onChange={(skinId: string) => updateAppearance({ skinId })}
-                                options={[{ value: "", label: t("personalAppearance.site") }, { value: "classic", label: t("personalAppearance.classic") }, ...registeredThemePacks().map((pack) => ({ value: pack.id, label: pack.name }))]}
-                            />
-                        }
-                        controlClassName="w-[200px]"
                     />
                     <SettingsRow
                         label={t("personalAppearance.avatar")}

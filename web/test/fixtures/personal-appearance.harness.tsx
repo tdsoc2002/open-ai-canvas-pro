@@ -5,11 +5,9 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createJSONStorage } from "zustand/middleware";
 import { DEFAULT_CANVAS_APPEARANCE } from "../../src/lib/canvas/agent-appearance";
-import { DEFAULT_CLASSIC_SKIN } from "../../src/lib/skin-themes";
 import { useAppearanceStore } from "../../src/stores/use-appearance-store";
 import { useUserStore } from "../../src/stores/use-user-store";
 import { personalAppearanceMessages } from "../../src/i18n/personal-appearance-messages";
-import "../../src/themes/longying-ink";
 
 const dom = new Window({ url: "https://canvas.example/settings" });
 const originals = new Map<string, PropertyDescriptor | undefined>();
@@ -70,29 +68,25 @@ afterAll(() => {
     }
 });
 
-test("ordinary accounts switch real themes and avatars without changing site configuration", async () => {
-    const siteSkin = { ...DEFAULT_CLASSIC_SKIN, id: "site-custom" };
+test("ordinary accounts switch avatars while keeping the Joysee site skin", async () => {
     const siteCanvas = { ...DEFAULT_CANVAS_APPEARANCE, agentName: "测试助手", avatarBundleResourceId: "site-bundle" };
-    const site = { ...initialAppearance, activeSkin: siteSkin, canvas: siteCanvas };
+    const site = { ...initialAppearance, canvas: siteCanvas };
     useAppearanceStore.setState({ appearance: site });
     await account("creator-a");
     const output = await render();
-    expect(output.dataset.skin).toBe("site-custom");
+    expect(output.dataset.skin).toBe("joysee-minimal");
     expect(output.dataset.bundle).toBe("site-bundle");
     await act(async () => {
-        useAppearancePreferencesStore.getState().update("creator-a", { skinId: "classic", avatar: "classic" });
+        useAppearancePreferencesStore.getState().update("creator-a", { avatar: "classic" });
     });
-    expect(output.dataset.skin).toBe("classic");
+    expect(output.dataset.skin).toBe("joysee-minimal");
     expect(output.dataset.type).toBe("bundle");
     expect(output.dataset.bundle).toBe("");
     expect(output.dataset.name).toBe("测试助手");
     expect(useAppearanceStore.getState().appearance).toBe(site);
-    await act(async () => {
-        useAppearancePreferencesStore.getState().update("creator-a", { skinId: "longying-ink" });
-    });
-    expect(output.dataset.skin).toBe("longying-ink");
+    expect(output.dataset.skin).toBe("joysee-minimal");
     await account("creator-b");
-    expect(output.dataset.skin).toBe("site-custom");
+    expect(output.dataset.skin).toBe("joysee-minimal");
     expect(output.dataset.bundle).toBe("site-bundle");
     await act(async () => {
         useAppearancePreferencesStore.getState().update("creator-b", { avatar: "orb" });
@@ -100,27 +94,24 @@ test("ordinary accounts switch real themes and avatars without changing site con
     expect(output.dataset.type).toBe("orb");
     await account("creator-a");
     expect(output.dataset.type).toBe("bundle");
-    expect(output.dataset.skin).toBe("longying-ink");
+    expect(output.dataset.skin).toBe("joysee-minimal");
     await account(null);
     expect(output.dataset.bundle).toBe("site-bundle");
-    expect(output.dataset.skin).toBe("site-custom");
+    expect(output.dataset.skin).toBe("joysee-minimal");
 });
 
-test("preferences survive reload, reset to the site default and reject invalid writes", async () => {
+test("reload ignores obsolete skin preferences and keeps the saved avatar", async () => {
     await account("creator-a");
-    useAppearancePreferencesStore.getState().update("creator-a", { skinId: "classic", avatar: "orb" });
-    const serialized = dom.localStorage.getItem("canvas:personal-appearance");
-    expect(serialized).toContain("creator-a");
-    useAppearancePreferencesStore.setState({ byUser: {} });
-    dom.localStorage.setItem("canvas:personal-appearance", serialized!);
+    const serialized = JSON.stringify({ state: { byUser: { "creator-a": { skinId: "classic", avatar: "orb" } } }, version: 0 });
+    dom.localStorage.setItem("canvas:personal-appearance", serialized);
     await useAppearancePreferencesStore.persist.rehydrate();
     const output = await render();
     expect(output.dataset.avatar).toBe("orb");
-    expect(output.dataset.skin).toBe("classic");
+    expect(output.dataset.skin).toBe("joysee-minimal");
     expect(() => useAppearancePreferencesStore.getState().update("", { avatar: "orb" })).toThrow();
-    expect(() => useAppearancePreferencesStore.getState().update("creator-a", { skinId: "not-installed" })).toThrow();
+    expect(useAppearancePreferencesStore.getState().byUser["creator-a"]).toEqual({ avatar: "orb" });
     await act(async () => {
-        useAppearancePreferencesStore.getState().update("creator-a", { skinId: "", avatar: "site" });
+        useAppearancePreferencesStore.getState().update("creator-a", { avatar: "site" });
     });
     expect(output.dataset.skin).toBe(initialAppearance.activeSkin.id);
     expect(output.dataset.avatar).toBe("site");

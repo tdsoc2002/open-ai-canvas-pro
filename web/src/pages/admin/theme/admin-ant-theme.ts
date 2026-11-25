@@ -1,9 +1,10 @@
+import { JOYSEE_MINIMAL_SKIN } from "@/themes/joysee-minimal/skin";
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 import { getSkinAntOverrides } from "@/lib/skin-themes";
 
 /** 后台保留独立密度与表面，主操作颜色继承站点皮肤。 */
-export function getIsolatedAdminAntTheme(dark: boolean, skinID: unknown = "classic"): ThemeConfig {
+export function getIsolatedAdminAntTheme(dark: boolean, skinID: unknown = JOYSEE_MINIMAL_SKIN): ThemeConfig {
     const skin = getSkinAntOverrides(skinID, dark ? "dark" : "light");
     const text = dark ? "#f5f5f5" : "#111111";
     const textSecondary = dark ? "#c4c4c4" : "#525252";

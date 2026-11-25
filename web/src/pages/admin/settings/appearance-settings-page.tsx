@@ -13,7 +13,7 @@ import { DEFAULT_UPDATE_ANNOUNCEMENT, normalizeUpdateAnnouncement, validateUpdat
 import { App, Button, Tabs, Form, Input } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBlocker } from "react-router";
-import { cloneSkinDefinition, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition, type SkinDefinition, duplicateSkinDefinition } from "@/lib/skin-themes";
+import { cloneSkinDefinition, normalizeSiteSkin, type SkinDefinition } from "@/lib/skin-themes";
 import { DEFAULT_CANVAS_APPEARANCE, type CanvasAppearance } from "@/lib/canvas/agent-appearance";
 import {
     getAdminAppearance,
@@ -26,9 +26,9 @@ import {
     updateAdminAppearance,
     updateAdminTurnstileSetting,
 } from "@/services/api/appearance";
-import { normalizeDraftCopy, normalizeSingleLine, hasUnsupportedControlCharacter, validateSkinDrafts, useAppearancePreviews, AppearanceSkeleton, AssetPicker, LogoThemePreview } from "./appearance-settings-parts";
+import { normalizeDraftCopy, normalizeSingleLine, hasUnsupportedControlCharacter, validateSkinDraft, useAppearancePreviews, AppearanceSkeleton, AssetPicker, LogoThemePreview } from "./appearance-settings-parts";
 import { type DraftFiles, FILE_RULES, type ResetState } from "./appearance-settings-parts";
-import { registeredThemePacks } from "@/themes/registry";
+import { JOYSEE_MINIMAL_SKIN, JOYSEE_MINIMAL_SKIN_ID } from "@/themes/joysee-minimal/skin";
 
 export { type DraftFiles, FILE_RULES, type ResetState } from "./appearance-settings-parts";
 
@@ -172,8 +172,7 @@ export default function AppearanceSettingsPage() {
     const [authHeroDescription, setAuthHeroDescription] = useState("");
     const [authVideoAutoplay, setAuthVideoAutoplay] = useState(true);
     const [logoFrameEnabled, setLogoFrameEnabled] = useState(true);
-    const [skinId, setSkinId] = useState("classic");
-    const [skinThemes, setSkinThemes] = useState<SkinDefinition[]>([DEFAULT_CLASSIC_SKIN]);
+    const [skin, setSkin] = useState<SkinDefinition>(JOYSEE_MINIMAL_SKIN);
     const [seoTitle, setSeoTitle] = useState("");
     const [seoDescription, setSeoDescription] = useState("");
     const [seoKeywords, setSeoKeywords] = useState("");
@@ -207,8 +206,7 @@ export default function AppearanceSettingsPage() {
             normalizeDraftCopy(authHeroDescription) !== setting?.authHeroDescription ||
             authVideoAutoplay !== setting?.authVideoAutoplay ||
             logoFrameEnabled !== setting?.logoFrameEnabled ||
-            skinId !== setting?.skinId ||
-            JSON.stringify(skinThemes) !== JSON.stringify(setting?.skinThemes) ||
+            JSON.stringify(skin) !== JSON.stringify(setting?.skinThemes[0]) ||
             normalizeSingleLine(seoTitle) !== setting?.seoTitle ||
             normalizeDraftCopy(seoDescription) !== setting?.seoDescription ||
             normalizeSingleLine(seoKeywords) !== setting?.seoKeywords ||
@@ -221,9 +219,8 @@ export default function AppearanceSettingsPage() {
     const blocker = useBlocker(dirty && !saving && !restoring);
 
     const applySetting = useCallback((value: AdminAppearance) => {
-        const themes = value.skinThemes.length ? value.skinThemes.map((theme) => normalizeSkinDefinition(theme)) : [cloneSkinDefinition(DEFAULT_CLASSIC_SKIN)];
-        const selectedID = themes.some((theme) => theme.id === value.skinId) ? value.skinId : "classic";
-        setSetting({ ...value, skinThemes: themes, skinId: selectedID });
+        const siteSkin = normalizeSiteSkin(value.skinThemes.find((theme) => theme.id === JOYSEE_MINIMAL_SKIN_ID));
+        setSetting({ ...value, skinThemes: [siteSkin], skinId: JOYSEE_MINIMAL_SKIN_ID });
         setBrandName(value.brandName);
         setCanvas(value.canvas || DEFAULT_CANVAS_APPEARANCE);
         setUpdates(normalizeUpdateAnnouncement(value.updates));
@@ -232,8 +229,7 @@ export default function AppearanceSettingsPage() {
         setAuthHeroDescription(value.authHeroDescription);
         setAuthVideoAutoplay(value.authVideoAutoplay);
         setLogoFrameEnabled(value.logoFrameEnabled);
-        setSkinThemes(themes);
-        setSkinId(selectedID);
+        setSkin(siteSkin);
         setSeoTitle(value.seoTitle);
         setSeoDescription(value.seoDescription);
         setSeoKeywords(value.seoKeywords);
@@ -344,8 +340,7 @@ export default function AppearanceSettingsPage() {
         setAuthHeroDescription(setting.authHeroDescription);
         setAuthVideoAutoplay(setting.authVideoAutoplay);
         setLogoFrameEnabled(setting.logoFrameEnabled);
-        setSkinId(setting.skinId);
-        setSkinThemes(setting.skinThemes.map((theme) => cloneSkinDefinition(theme)));
+        setSkin(cloneSkinDefinition(setting.skinThemes[0]));
         setSeoTitle(setting.seoTitle);
         setSeoDescription(setting.seoDescription);
         setSeoKeywords(setting.seoKeywords);
@@ -477,7 +472,7 @@ export default function AppearanceSettingsPage() {
                 return;
             }
         }
-        const skinError = validateSkinDrafts(skinThemes, skinId);
+        const skinError = validateSkinDraft(skin);
         if (skinError) {
             setActiveTab("skins");
             message.error(skinError);
@@ -512,8 +507,8 @@ export default function AppearanceSettingsPage() {
                 authVideoResourceId: ids.video,
                 authVideoPosterResourceId: ids.poster,
                 authVideoAutoplay,
-                skinId,
-                skinThemes,
+                skinId: JOYSEE_MINIMAL_SKIN_ID,
+                skinThemes: [skin],
                 seoTitle: nextSeoTitle,
                 seoDescription: nextSeoDescription,
                 seoKeywords: nextSeoKeywords,
@@ -549,39 +544,6 @@ export default function AppearanceSettingsPage() {
     const status = setting?.configured ? <AdminStatusBadge label="已自定义" tone="success" /> : <AdminStatusBadge label="使用原始外观" tone="neutral" />;
     const copyCustomized = normalizeDraftCopy(authHeroTitle) !== DEFAULT_PUBLIC_APPEARANCE.authHeroTitle || normalizeDraftCopy(authHeroDescription) !== DEFAULT_PUBLIC_APPEARANCE.authHeroDescription;
     const draftBrandName = brandName.trim() || "站点名称";
-    const selectedSkin = skinThemes.find((skin) => skin.id === skinId) || skinThemes[0] || DEFAULT_CLASSIC_SKIN;
-
-    const changeSkin = (next: SkinDefinition) => {
-        if (next.locked) return;
-        setSkinThemes((current) => current.map((theme) => (theme.id === next.id ? next : theme)));
-    };
-
-    const duplicateSkin = (sourceID: string) => {
-        if (skinThemes.length >= 16) return;
-        const source = skinThemes.find((theme) => theme.id === sourceID) || DEFAULT_CLASSIC_SKIN;
-        const copy = duplicateSkinDefinition(
-            source,
-            skinThemes.map((theme) => theme.id),
-        );
-        setSkinThemes((current) => [...current, copy]);
-        setSkinId(copy.id);
-    };
-
-    const deleteSkin = (targetID: string) => {
-        const target = skinThemes.find((theme) => theme.id === targetID);
-        if (!target || target.locked) return;
-        modal.confirm({
-            title: `删除主题“${target.name}”？`,
-            content: "删除会随本页其他调整一起保存；保存前仍可点击“撤销调整”恢复。若它当前启用，将自动切回经典黑白。",
-            okText: "删除主题",
-            cancelText: "取消",
-            okButtonProps: { danger: true },
-            onOk: () => {
-                setSkinThemes((current) => current.filter((theme) => theme.id !== targetID));
-                if (skinId === targetID) setSkinId("classic");
-            },
-        });
-    };
 
     return (
         <AdminPageFrame title="站点及外观" description="统一管理品牌身份、登录页、搜索信息、备案展示与全站皮肤主题" scroll>
@@ -914,44 +876,10 @@ export default function AppearanceSettingsPage() {
                                         className="admin-appearance-section"
                                         icon={<Type className="size-4" aria-hidden="true" />}
                                         title="皮肤主题"
-                                        description="经典黑白采用黑白底色与紫蓝渐变主按钮；复制后可调整浅色、深色、按钮填充及控件参数，所有修改统一保存。"
-                                        status={<AdminStatusBadge label={selectedSkin.name} tone="info" />}
+                                        description="调整乐见极简的浅色、深色、按钮填充及控件参数。"
+                                        status={<AdminStatusBadge label={skin.name} tone="info" />}
                                     >
-                                        {registeredThemePacks()
-                                            .filter((pack) => {
-                                                const installed = skinThemes.find((theme) => theme.id === pack.id);
-                                                return !installed || JSON.stringify(normalizeSkinDefinition(installed)) !== JSON.stringify(normalizeSkinDefinition(pack.skin));
-                                            })
-                                            .map((pack) => {
-                                                const installed = skinThemes.some((theme) => theme.id === pack.id);
-                                                return (
-                                                    <Button
-                                                        key={pack.id}
-                                                        className="mb-3"
-                                                        disabled={saving || refreshing || restoring || (!installed && skinThemes.length >= 16)}
-                                                        title={installed ? "用源码中的新版参数更新此主题草稿，保存后生效；不修改其他主题。" : "添加并选中此主题草稿，保存后生效。"}
-                                                        onClick={() => {
-                                                            if (saving || refreshing || restoring || (!installed && skinThemes.length >= 16)) return;
-                                                            setSkinThemes((current) =>
-                                                                current.some((theme) => theme.id === pack.id) ? current.map((theme) => (theme.id === pack.id ? cloneSkinDefinition(pack.skin) : theme)) : [...current, cloneSkinDefinition(pack.skin)],
-                                                            );
-                                                            setSkinId(pack.id);
-                                                        }}
-                                                    >
-                                                        {installed ? "更新" : "添加"}主题包：{pack.name}
-                                                    </Button>
-                                                );
-                                            })}
-                                        <SkinThemeEditor
-                                            themes={skinThemes}
-                                            selectedID={skinId}
-                                            disabled={saving || refreshing || restoring}
-                                            onSelect={setSkinId}
-                                            onCreate={() => duplicateSkin("classic")}
-                                            onDuplicate={duplicateSkin}
-                                            onDelete={deleteSkin}
-                                            onChange={changeSkin}
-                                        />
+                                        <SkinThemeEditor skin={skin} disabled={saving || refreshing || restoring} onChange={setSkin} />
                                     </SettingsSectionCard>
                                 ),
                             },

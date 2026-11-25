@@ -1,28 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-import { DEFAULT_CLASSIC_SKIN, duplicateSkinDefinition, skinCSSVariables } from "../src/lib/skin-themes";
+import { cloneSkinDefinition, skinCSSVariables } from "../src/lib/skin-themes";
+import { JOYSEE_MINIMAL_SKIN } from "../src/themes/joysee-minimal/skin";
 
 const source = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 
 describe("authentication follows the application theme", () => {
-    test("classic login surfaces have distinct light and dark palettes", () => {
-        // globals.css 在不同平台上可能是 LF 或 CRLF；先归一化再分段，
-        // 否则按字面换行查找 .dark 段会返回 -1，把断言变成永远失败。
-        const css = source("styles/globals.css").replace(/\r\n/g, "\n");
-        const dark = css.slice(css.indexOf(".dark {\n    --background:"));
+    test("Joysee login surfaces have distinct light and dark palettes", () => {
         for (const [mode, background, panel, card] of [
-            ["light", "#ffffff", "#f7f7f7", "#ffffff"],
-            ["dark", "#08090c", "#0b0c10", "#121318"],
+            ["light", "#ffffff", "#fafafa", "#ffffff"],
+            ["dark", "#121212", "#171717", "#202020"],
         ] as const) {
-            const variables = skinCSSVariables(DEFAULT_CLASSIC_SKIN, mode);
-            const modeCSS = mode === "dark" ? dark : css.slice(0, css.indexOf(".auth-scene {"));
+            const variables = skinCSSVariables(JOYSEE_MINIMAL_SKIN, mode);
             expect(variables["--auth-page-bg"]).toBe(background);
             expect(variables["--auth-panel-bg"]).toBe(panel);
             expect(variables["--auth-card-bg"]).toBe(card);
-            for (const key of ["--auth-page-bg", "--auth-panel-bg", "--auth-card-bg", "--auth-accent", "--auth-muted"]) {
-                expect(modeCSS).toContain(`${key}: ${variables[key]};`);
-            }
         }
     });
 
@@ -65,7 +58,7 @@ describe("authentication follows the application theme", () => {
     });
 
     test("custom auth palettes are preserved per mode", () => {
-        const skin = duplicateSkinDefinition(DEFAULT_CLASSIC_SKIN, ["classic"]);
+        const skin = cloneSkinDefinition(JOYSEE_MINIMAL_SKIN);
         skin.tokens.light.authPanel = "#f6ebe3";
         skin.tokens.light.authCard = "#fffdf9";
         skin.tokens.dark.authPanel = "#21120e";

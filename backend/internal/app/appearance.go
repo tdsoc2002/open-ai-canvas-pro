@@ -36,17 +36,16 @@ const (
 )
 
 const (
-	appearanceThemePackLibraryVersion       = 12
-	appearanceSchemaVersion                 = appearanceThemePackLibraryVersion
-	appearanceLogoMaxBytes            int64 = 5 << 20
-	appearancePosterMaxBytes          int64 = 10 << 20
-	appearanceVideoMaxBytes           int64 = 256 << 20
+	appearanceSchemaVersion        = 12
+	appearanceLogoMaxBytes   int64 = 5 << 20
+	appearancePosterMaxBytes int64 = 10 << 20
+	appearanceVideoMaxBytes  int64 = 256 << 20
 )
 
 const (
 	defaultAppearanceBrandName = "乐见画布"
 	defaultAppearanceBrandSlug = "joysee-canvas"
-	defaultAppearanceSkinID    = "classic"
+	defaultAppearanceSkinID    = "joysee-minimal"
 	defaultAppearanceLogoURL   = "/logo.svg"
 	defaultAppearanceHeroTitle = "让一个故事，\n从文字走向银幕。"
 	defaultRedeemPurchaseURL   = "" // 默认不配置购买链接，前端为空时不展示入口
@@ -210,10 +209,7 @@ func (s *Service) UpdateAppearance(actor *model.User, value AppearanceSetting) (
 	value.DarkLogoResourceID = strings.TrimSpace(value.DarkLogoResourceID)
 	value.AuthVideoResourceID = strings.TrimSpace(value.AuthVideoResourceID)
 	value.AuthVideoPosterResourceID = strings.TrimSpace(value.AuthVideoPosterResourceID)
-	value.SkinID = strings.TrimSpace(value.SkinID)
-	if len(value.SkinThemes) == 0 {
-		value.SkinThemes = defaultAppearanceSkinThemes()
-	}
+	value.SkinID = defaultAppearanceSkinID
 	value.SkinThemes = normalizeAppearanceSkinThemes(value.SkinThemes)
 	value.SEOTitle = normalizeAppearanceSingleLine(value.SEOTitle)
 	value.SEODescription = normalizeAppearanceCopy(value.SEODescription)
@@ -458,15 +454,11 @@ func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, err
 		return nil, AppearanceSetting{}, err
 	}
 	value := defaultAppearanceSetting()
-	// Decode stored themes without reusing built-in slice entries: omitted
-	// fields must be migrated according to each stored theme's identity.
+	// Decode the saved theme independently of the built-in slice entry.
 	value.SkinThemes = nil
-	// An omitted version in an old record must still trigger the upgrade.
-	value.SchemaVersion = 0
 	if strings.TrimSpace(setting.ValueJSON) == "" || json.Unmarshal([]byte(setting.ValueJSON), &value) != nil {
 		return nil, AppearanceSetting{}, errors.New("外观配置格式无效")
 	}
-	storedSchemaVersion := value.SchemaVersion
 	value.SchemaVersion = appearanceSchemaVersion
 	value.BrandName = strings.TrimSpace(value.BrandName)
 	if value.BrandName == "" {
@@ -481,17 +473,8 @@ func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, err
 		value.AuthHeroTitle = defaultAppearanceHeroTitle
 	}
 	value.AuthHeroDescription = normalizeAppearanceCopy(value.AuthHeroDescription)
-	value.SkinID = strings.TrimSpace(value.SkinID)
-	if value.SkinID == "" {
-		value.SkinID = defaultAppearanceSkinID
-	}
-	if len(value.SkinThemes) == 0 {
-		value.SkinThemes = defaultAppearanceSkinThemes()
-	}
+	value.SkinID = defaultAppearanceSkinID
 	value.SkinThemes = normalizeAppearanceSkinThemes(value.SkinThemes)
-	if storedSchemaVersion < appearanceThemePackLibraryVersion {
-		value.SkinThemes = appendMissingAppearanceThemePackSkins(value.SkinThemes)
-	}
 	value.SEOTitle = normalizeAppearanceSingleLine(value.SEOTitle)
 	value.SEODescription = normalizeAppearanceCopy(value.SEODescription)
 	value.SEOKeywords = normalizeAppearanceSingleLine(value.SEOKeywords)
@@ -558,7 +541,7 @@ func validateAppearanceSetting(value AppearanceSetting) error {
 	if err := validateAppearanceCopy(value.AuthHeroDescription, "登录页说明文案", 160, false); err != nil {
 		return err
 	}
-	if err := validateAppearanceSkinThemes(value.SkinThemes, value.SkinID); err != nil {
+	if err := validateAppearanceSkinThemes(value.SkinThemes); err != nil {
 		return err
 	}
 	for _, field := range []struct {
@@ -762,7 +745,7 @@ func publicAppearanceSetting(setting *model.SystemSetting, value AppearanceSetti
 		LogoFrameEnabled:    value.LogoFrameEnabled,
 		AuthVideoAutoplay:   value.AuthVideoAutoplay,
 		SkinID:              value.SkinID,
-		ActiveSkin:          activeAppearanceSkin(value.SkinThemes, value.SkinID),
+		ActiveSkin:          value.SkinThemes[0],
 		SEOTitle:            effectiveAppearanceSEOTitle(value),
 		SEODescription:      effectiveAppearanceSEODescription(value),
 		SEOKeywords:         value.SEOKeywords,

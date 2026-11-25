@@ -1,7 +1,8 @@
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 
-import { getSkinAntOverrides, normalizeSkinID } from "@/lib/skin-themes";
+import { getSkinAntOverrides } from "@/lib/skin-themes";
+import { JOYSEE_MINIMAL_SKIN, JOYSEE_MINIMAL_SKIN_ID } from "@/themes/joysee-minimal/skin";
 
 // 主操作、普通选择和开关是不同交互语义，必须各自维护成对的背景/前景色。
 const controlTheme = {
@@ -85,7 +86,7 @@ const controlTheme = {
     },
 };
 
-export function getAntThemeConfig(dark: boolean, skinID: unknown = "classic"): ThemeConfig {
+export function getAntThemeConfig(dark: boolean, skinID: unknown = JOYSEE_MINIMAL_SKIN): ThemeConfig {
     const baseColor = dark ? controlTheme.dark : controlTheme.light;
     const skin = getSkinAntOverrides(skinID, dark ? "dark" : "light");
     const color = {
@@ -143,7 +144,7 @@ export function getAntThemeConfig(dark: boolean, skinID: unknown = "classic"): T
 
     return {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-        cssVar: { key: `yingce-${normalizeSkinID(skinID)}-${dark ? "dark" : "light"}` },
+        cssVar: { key: `yingce-${JOYSEE_MINIMAL_SKIN_ID}-${dark ? "dark" : "light"}` },
         token: {
             colorPrimary: color.solidBg,
             colorPrimaryHover: color.solidHoverBg,
@@ -512,7 +513,7 @@ export function getWorkspaceAntThemeConfig(style?: "joysee"): ThemeConfig {
     };
 }
 
-export function getAdminAntThemeConfig(dark: boolean, skinID: unknown = "classic"): ThemeConfig {
+export function getAdminAntThemeConfig(dark: boolean, skinID: unknown = JOYSEE_MINIMAL_SKIN): ThemeConfig {
     const base = getAntThemeConfig(dark, skinID);
     const skin = getSkinAntOverrides(skinID, dark ? "dark" : "light");
     const mutedForeground = dark ? "rgba(250, 250, 250, 0.58)" : "rgba(23, 23, 23, 0.58)";

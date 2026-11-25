@@ -1,7 +1,7 @@
 import { LONGYING_INK_SKIN } from "../src/themes/longying-ink/skin";
 import { YUNHE_XIANGUAN_SKIN } from "../src/themes/yunhe-xianguan/skin";
 
-/** 只输出安装脚本，不发请求；管理员在自己的站点控制台执行输出内容。 */
+/** 导出旧版多皮肤站点的安装脚本。 */
 export function buildThemeSkinInstallScript() {
     return `(async () => {
     const skins = ${JSON.stringify([LONGYING_INK_SKIN, YUNHE_XIANGUAN_SKIN])};
@@ -15,6 +15,7 @@ export function buildThemeSkinInstallScript() {
     }
     const before = await api("GET");
     if (!Array.isArray(before.skinThemes)) throw new Error("皮肤库格式不兼容，未修改。");
+    if (before.skinThemes.length === 1 && before.skinThemes[0]?.id === "joysee-minimal") throw new Error("当前版本仅支持乐见极简，未修改。");
     const themes = [...before.skinThemes];
     for (const skin of skins) {
         const existing = themes.find((item) => item.id === skin.id);

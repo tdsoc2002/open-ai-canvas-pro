@@ -10,7 +10,7 @@ import "./canvas-editor.css";
 
 export const joyseeMinimalTheme: ThemePack = {
     id: JOYSEE_MINIMAL_SKIN_ID,
-    name: "乐见极简",
+    name: JOYSEE_MINIMAL_SKIN.name,
     skin: JOYSEE_MINIMAL_SKIN,
     creationLayout: "compact",
     workspaceStyle: "joysee",

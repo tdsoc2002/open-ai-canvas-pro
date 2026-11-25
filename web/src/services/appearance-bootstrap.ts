@@ -1,12 +1,11 @@
 import { getPublicAppearance, type PublicAppearance } from "@/services/api/appearance";
 import { commitPublicAppearance, DEFAULT_PUBLIC_APPEARANCE, useAppearanceStore } from "@/stores/use-appearance-store";
-import { JOYSEE_MINIMAL_SKIN, JOYSEE_MINIMAL_SKIN_ID } from "@/themes/joysee-minimal/skin";
 
 const APPEARANCE_BOOTSTRAP_TIMEOUT_MS = 4_000;
 let refreshing: Promise<PublicAppearance | undefined> | undefined;
 
 /**
- * 本机 LJCanvas 开发入口可通过环境变量固定使用乐见皮肤。
+ * 本机 LJCanvas 开发入口可通过环境变量固定使用乐见品牌。
  * 只影响 Vite 开发进程，不改写服务器保存的外观配置。
  */
 function applyLocalAppearanceOverride(appearance: PublicAppearance) {
@@ -16,8 +15,6 @@ function applyLocalAppearanceOverride(appearance: PublicAppearance) {
         ...appearance,
         brandName,
         brandSlug: "joysee-canvas",
-        skinId: JOYSEE_MINIMAL_SKIN_ID,
-        activeSkin: JOYSEE_MINIMAL_SKIN,
         seoTitle: brandName,
         seoDescription: `${brandName}，AI 影视与短剧创作工作台。`,
         footerCopyright: `© ${new Date().getFullYear()} ${brandName}. All rights reserved.`,

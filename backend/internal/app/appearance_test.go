@@ -10,7 +10,6 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,7 +36,7 @@ func TestAppearanceDefaultsPreserveBuiltInBrand(t *testing.T) {
 	if appearance.LogoConfigured || appearance.DarkLogoConfigured || appearance.AuthVideoConfigured || appearance.AuthVideoPosterConfigured || appearance.Revision != "builtin" {
 		t.Fatalf("Appearance() configured state = %#v", appearance)
 	}
-	if appearance.ActiveSkin.ID != defaultAppearanceSkinID || !appearance.ActiveSkin.Locked {
+	if appearance.ActiveSkin.ID != defaultAppearanceSkinID || appearance.ActiveSkin.Locked {
 		t.Fatalf("Appearance() active skin = %#v", appearance.ActiveSkin)
 	}
 	if appearance.ActiveSkin.Tokens.Light.SwitchChecked == appearance.ActiveSkin.Tokens.Light.SwitchUnchecked || appearance.ActiveSkin.Tokens.Dark.SwitchChecked == appearance.ActiveSkin.Tokens.Dark.SwitchUnchecked || appearance.ActiveSkin.Tokens.Light.DangerForeground == "" {
@@ -47,26 +46,23 @@ func TestAppearanceDefaultsPreserveBuiltInBrand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(adminAppearance.SkinThemes) != 6 || !adminAppearance.SkinThemes[0].Locked {
+	if len(adminAppearance.SkinThemes) != 1 || adminAppearance.SkinThemes[0] != defaultAppearanceSkin {
 		t.Fatalf("AdminAppearance() skin library = %#v", adminAppearance.SkinThemes)
 	}
-	if adminAppearance.SkinThemes[4].ID != "longying-ink" || adminAppearance.SkinThemes[5].ID != "yunhe-xianguan" {
-		t.Fatal("default skin library is missing the bundled theme packs")
-	}
-	if err := validateAppearanceSkinThemes(adminAppearance.SkinThemes, defaultAppearanceSkinID); err != nil {
+	if err := validateAppearanceSkinThemes(adminAppearance.SkinThemes); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestAppearanceAddsBundledSkinsToLegacyLibrary(t *testing.T) {
+func TestAppearanceRetainsSavedJoyseeSkinFromLegacyLibrary(t *testing.T) {
 	svc, db, _, admin := newAppearanceTestService(t)
-	installed := appearanceThemePackSkins[0]
-	installed.Name = "自定义水墨"
-	installed.Tokens.Light.Primary = "#123456"
+	joysee := defaultAppearanceSkin
+	joysee.Tokens.Light.Primary = "#123456"
 	legacy := defaultAppearanceSetting()
 	legacy.SchemaVersion = 11
-	legacy.SkinID = installed.ID
-	legacy.SkinThemes = []AppearanceSkinTheme{defaultClassicAppearanceSkin(), installed}
+	legacy.BrandName = "旧品牌"
+	legacy.SkinID = "classic"
+	legacy.SkinThemes = []AppearanceSkinTheme{{ID: "classic"}, joysee, {ID: "longying-ink"}}
 	encoded, err := json.Marshal(legacy)
 	if err != nil {
 		t.Fatal(err)
@@ -80,34 +76,24 @@ func TestAppearanceAddsBundledSkinsToLegacyLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := append(legacy.SkinThemes, appearanceThemePackSkins[1])
-	if !slices.Equal(loaded.SkinThemes, want) || loaded.Public.ActiveSkin != installed {
-		t.Fatal("upgrade must append only the missing skin and keep the existing selection")
+	if loaded.BrandName != legacy.BrandName || loaded.Public.SkinID != joysee.ID || loaded.Public.ActiveSkin != joysee || len(loaded.SkinThemes) != 1 || loaded.SkinThemes[0] != joysee {
+		t.Fatal("legacy brand and saved Joysee tokens must be preserved")
 	}
-	loaded.SkinThemes = loaded.SkinThemes[:2]
-	if _, err := svc.UpdateAppearance(admin, loaded.AppearanceSetting); err != nil {
+	var persisted model.SystemSetting
+	if err := db.Where("key = ?", appearanceSettingKey).First(&persisted).Error; err != nil {
 		t.Fatal(err)
 	}
-	reloaded, err := svc.AdminAppearance(admin)
+	if persisted.ValueJSON != stored.ValueJSON {
+		t.Fatal("reading appearance must not write the legacy setting")
+	}
+
+	legacy.AuthHeroTitle = "更新后的登录文案"
+	saved, err := svc.UpdateAppearance(admin, legacy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(reloaded.SkinThemes, legacy.SkinThemes) {
-		t.Fatal("a skin removed after upgrade must stay removed")
-	}
-}
-
-func TestAppearanceBundledSkinsRespectLibraryLimit(t *testing.T) {
-	existing := []AppearanceSkinTheme{defaultClassicAppearanceSkin()}
-	for index := 1; index < maxAppearanceSkinThemes-1; index++ {
-		existing = append(existing, cloneAppearanceSkin(existing[0], "custom-"+strconv.Itoa(index), "自定义皮肤", ""))
-	}
-	got := appendMissingAppearanceThemePackSkins(slices.Clone(existing))
-	if len(got) != maxAppearanceSkinThemes || !slices.Equal(got[:len(existing)], existing) || got[len(existing)].ID != "longying-ink" {
-		t.Fatal("only the available library slot may be used")
-	}
-	if !slices.Equal(appendMissingAppearanceThemePackSkins(slices.Clone(got)), got) {
-		t.Fatal("a full library must stay intact")
+	if saved.AuthHeroTitle != legacy.AuthHeroTitle || saved.SkinID != joysee.ID || len(saved.SkinThemes) != 1 || saved.SkinThemes[0] != joysee {
+		t.Fatal("saving a legacy payload must keep only the saved Joysee skin")
 	}
 }
 
@@ -189,7 +175,7 @@ func TestAppearanceBackfillsVersionSevenFieldsForExistingSetting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if appearance.SchemaVersion != appearanceSchemaVersion || appearance.BrandName != "旧品牌" || appearance.BrandSlug != defaultAppearanceBrandSlug || appearance.AuthHeroTitle != defaultAppearanceHeroTitle || appearance.AuthHeroDescription != "" || appearance.DarkLogoURL != defaultAppearanceLogoURL || !appearance.LogoFrameEnabled || !appearance.AuthVideoAutoplay || appearance.SEOTitle != "旧品牌" || !strings.Contains(appearance.SEODescription, "旧品牌") || !strings.Contains(appearance.FooterCopyright, "旧品牌") || appearance.ActiveSkin.ID != "classic" {
+	if appearance.SchemaVersion != appearanceSchemaVersion || appearance.BrandName != "旧品牌" || appearance.BrandSlug != defaultAppearanceBrandSlug || appearance.AuthHeroTitle != defaultAppearanceHeroTitle || appearance.AuthHeroDescription != "" || appearance.DarkLogoURL != defaultAppearanceLogoURL || !appearance.LogoFrameEnabled || !appearance.AuthVideoAutoplay || appearance.SEOTitle != "旧品牌" || !strings.Contains(appearance.SEODescription, "旧品牌") || !strings.Contains(appearance.FooterCopyright, "旧品牌") || appearance.ActiveSkin != defaultAppearanceSkin {
 		t.Fatalf("legacy appearance = %#v", appearance)
 	}
 }
@@ -229,7 +215,7 @@ func TestUpdateAppearancePersistsAuditsAndUsesVersionedPublicAssets(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !updated.Configured || updated.BrandName != "HIMA Studio" || updated.BrandSlug != "hima-studio" || updated.Public.BrandSlug != "hima-studio" || updated.AuthHeroTitle != "把灵感，\n变成可见的故事。" || updated.Public.AuthHeroDescription != "从画布开始，持续推进你的创作。" || !updated.Public.LogoConfigured || !updated.Public.DarkLogoConfigured || updated.Public.LogoFrameEnabled || !updated.Public.AuthVideoConfigured || !updated.Public.AuthVideoPosterConfigured || updated.Public.AuthVideoAutoplay || updated.Public.SkinID != "studio-indigo" || updated.Public.SEOTitle != "HIMA Studio - AI 影视工作台" || updated.Public.SEOKeywords != "AI 影视,短剧,画布" || !updated.Public.ICPFilingEnabled || updated.Public.ICPFilingNumber != "蜀ICP备2026000000号-1" {
+	if !updated.Configured || updated.BrandName != "HIMA Studio" || updated.BrandSlug != "hima-studio" || updated.Public.BrandSlug != "hima-studio" || updated.AuthHeroTitle != "把灵感，\n变成可见的故事。" || updated.Public.AuthHeroDescription != "从画布开始，持续推进你的创作。" || !updated.Public.LogoConfigured || !updated.Public.DarkLogoConfigured || updated.Public.LogoFrameEnabled || !updated.Public.AuthVideoConfigured || !updated.Public.AuthVideoPosterConfigured || updated.Public.AuthVideoAutoplay || updated.Public.SkinID != defaultAppearanceSkinID || updated.Public.SEOTitle != "HIMA Studio - AI 影视工作台" || updated.Public.SEOKeywords != "AI 影视,短剧,画布" || !updated.Public.ICPFilingEnabled || updated.Public.ICPFilingNumber != "蜀ICP备2026000000号-1" {
 		t.Fatalf("UpdateAppearance() = %#v", updated)
 	}
 	for _, assetURL := range []string{updated.Public.LogoURL, updated.Public.DarkLogoURL, updated.Public.AuthVideoURL, updated.Public.AuthVideoPosterURL} {
@@ -495,83 +481,37 @@ func TestUpdateAppearanceValidatesLoginCopy(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "英文品牌标识") {
 		t.Fatalf("invalid slug error = %v", err)
 	}
-	_, err = svc.UpdateAppearance(admin, AppearanceSetting{BrandName: "HIMA Studio", BrandSlug: "hima-studio", AuthHeroTitle: defaultAppearanceHeroTitle, SkinID: "unknown-skin"})
-	if err == nil || !strings.Contains(err.Error(), "皮肤主题") {
-		t.Fatalf("invalid skin error = %v", err)
-	}
 	_, err = svc.UpdateAppearance(admin, AppearanceSetting{BrandName: "HIMA Studio", BrandSlug: "hima-studio", AuthHeroTitle: defaultAppearanceHeroTitle, SkinID: defaultAppearanceSkinID, ICPFilingEnabled: true})
 	if err == nil || !strings.Contains(err.Error(), "备案号") {
 		t.Fatalf("missing ICP number error = %v", err)
 	}
 }
 
-func TestAppearanceSkinLibrarySupportsEditableCopiesAndProtectsClassic(t *testing.T) {
+func TestAppearanceJoyseeSkinSupportsEditingAndValidatesTokens(t *testing.T) {
 	svc, _, _, admin := newAppearanceTestService(t)
-	themes := defaultAppearanceSkinThemes()
-	custom := cloneAppearanceSkin(themes[0], "custom-editorial", "片场夜蓝", "自定义控件与明暗色")
+	custom := defaultAppearanceSkin
+	custom.Name = "乐见主题调整"
 	custom.Tokens.Light.Primary = "#123456"
 	custom.Tokens.Light.PrimaryHover = "#234567"
+	custom.Tokens.Light.SwitchChecked = ""
+	custom.Tokens.Light.DangerHover = ""
 	custom.Tokens.Dark.Primary = "#abcdef"
 	custom.Tokens.Components.ButtonRadius = 14
-	themes = append(themes, custom)
-	legacyCustom := custom
-	legacyCustom.Tokens.Light.SwitchChecked = ""
-	legacyCustom.Tokens.Light.SwitchCheckedHover = ""
-	legacyCustom.Tokens.Light.SwitchCheckedHandle = ""
-	legacyCustom.Tokens.Light.SwitchUnchecked = ""
-	legacyCustom.Tokens.Light.SwitchUncheckedHover = ""
-	legacyCustom.Tokens.Light.SwitchUncheckedHandle = ""
-	legacyCustom.Tokens.Light.DangerHover = ""
-	legacyCustom.Tokens.Light.DangerActive = ""
-	legacyCustom.Tokens.Light.DangerForeground = ""
-	backfilledThemes := normalizeAppearanceSkinThemes([]AppearanceSkinTheme{legacyCustom})
-	var backfilled AppearanceSkinTheme
-	for _, theme := range backfilledThemes {
-		if theme.ID == legacyCustom.ID {
-			backfilled = theme
-			break
-		}
-	}
-	if backfilled.ID != legacyCustom.ID || backfilled.Tokens.Light.SwitchChecked != "#123456" || backfilled.Tokens.Light.SwitchCheckedHover != "#234567" || backfilled.Tokens.Light.SwitchUnchecked != legacyCustom.Tokens.Light.ControlBorder || backfilled.Tokens.Light.DangerHover != legacyCustom.Tokens.Light.Danger {
-		t.Fatalf("legacy skin state backfill = %#v", backfilled.Tokens.Light)
-	}
 
-	updated, err := svc.UpdateAppearance(admin, AppearanceSetting{
-		BrandName: "HIMA Studio", BrandSlug: "hima-studio", AuthHeroTitle: defaultAppearanceHeroTitle,
-		SkinID: custom.ID, SkinThemes: themes,
-	})
+	input := defaultAppearanceSetting()
+	input.SkinThemes = []AppearanceSkinTheme{custom}
+	updated, err := svc.UpdateAppearance(admin, input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Public.ActiveSkin.ID != custom.ID || updated.Public.ActiveSkin.Tokens.Light.Primary != "#123456" || updated.Public.ActiveSkin.Tokens.Components.ButtonRadius != 14 || len(updated.SkinThemes) != len(themes) {
-		t.Fatalf("custom skin round trip = %#v", updated)
+	custom.Tokens.Light.SwitchChecked = defaultAppearanceSkin.Tokens.Light.SwitchChecked
+	custom.Tokens.Light.DangerHover = defaultAppearanceSkin.Tokens.Light.DangerHover
+	if len(updated.SkinThemes) != 1 || updated.Public.ActiveSkin != custom {
+		t.Fatalf("custom Joysee skin round trip = %#v", updated.Public.ActiveSkin)
 	}
 
-	classic := defaultClassicAppearanceSkin()
-	withoutClassic := append([]AppearanceSkinTheme(nil), themes[1:]...)
-	restored, err := svc.UpdateAppearance(admin, AppearanceSetting{BrandName: "HIMA Studio", BrandSlug: "hima-studio", AuthHeroTitle: defaultAppearanceHeroTitle, SkinID: custom.ID, SkinThemes: withoutClassic})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if restored.SkinThemes[0] != classic {
-		t.Fatalf("missing classic was not restored = %#v", restored.SkinThemes[0])
-	}
-
-	mutatedClassic := append([]AppearanceSkinTheme(nil), themes...)
-	mutatedClassic[0].Name = "改名"
-	mutatedClassic[0].Tokens.Light.Primary = "#000000"
-	overwritten, err := svc.UpdateAppearance(admin, AppearanceSetting{BrandName: "HIMA Studio", BrandSlug: "hima-studio", AuthHeroTitle: defaultAppearanceHeroTitle, SkinID: custom.ID, SkinThemes: mutatedClassic})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if overwritten.SkinThemes[0] != classic || overwritten.Public.ActiveSkin.ID != custom.ID {
-		t.Fatalf("mutated classic was not overwritten = %#v", overwritten.SkinThemes[0])
-	}
-
-	invalidColor := append([]AppearanceSkinTheme(nil), themes...)
-	invalidColor[len(invalidColor)-1].Tokens.Light.Primary = "red; background:url(x)"
-	_, err = svc.UpdateAppearance(admin, AppearanceSetting{BrandName: "HIMA Studio", BrandSlug: "hima-studio", AuthHeroTitle: defaultAppearanceHeroTitle, SkinID: custom.ID, SkinThemes: invalidColor})
-	if err == nil || !strings.Contains(err.Error(), "十六进制") {
+	input.SkinThemes[0].Tokens.Light.Primary = "red; background:url(x)"
+	if _, err = svc.UpdateAppearance(admin, input); err == nil || !strings.Contains(err.Error(), "十六进制") {
 		t.Fatalf("invalid color error = %v", err)
 	}
 }

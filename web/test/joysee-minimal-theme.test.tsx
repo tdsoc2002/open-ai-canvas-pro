@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { CANVAS_APPEARANCE_PRESETS, canvasAppearanceValues, resolveCanvasAppearance, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
-import { applySkinTheme, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition } from "@/lib/skin-themes";
+import { applySkinTheme, normalizeSkinDefinition } from "@/lib/skin-themes";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
 import { applyThemePackCanvas } from "@/themes/apply";
 import { themePackFor } from "@/themes/registry";
@@ -49,11 +49,10 @@ function contrast(first: string, second: string, background = "#ffffff") {
 describe("乐见极简主题合同", () => {
     afterEach(() => applyThemePackCanvas("classic"));
 
-    test("独立登记并保持皮肤校验合同，不改默认皮肤或品牌文案", () => {
+    test("登记乐见极简并使用同一份默认皮肤参数", () => {
         expect(themePackFor(JOYSEE_MINIMAL_SKIN_ID)).toBe(joyseeMinimalTheme);
         expect(normalizeSkinDefinition(JOYSEE_MINIMAL_SKIN)).toEqual(JOYSEE_MINIMAL_SKIN);
-        expect(JOYSEE_MINIMAL_SKIN.tokens.light).not.toBe(DEFAULT_CLASSIC_SKIN.tokens.light);
-        expect(JOYSEE_MINIMAL_SKIN.id).not.toBe(DEFAULT_CLASSIC_SKIN.id);
+        expect(normalizeSkinDefinition(undefined)).toEqual(JOYSEE_MINIMAL_SKIN);
         expect(joyseeMinimalTheme.creationLayout).toBe("compact");
         expect(joyseeMinimalTheme.workspaceStyle).toBe("joysee");
         expect(joyseeMinimalTheme.copy?.homeHeading).toBe("今天，想创作什么？");

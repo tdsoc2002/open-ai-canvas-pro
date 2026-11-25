@@ -3,8 +3,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { AGENT_AVATAR_STATES, DEFAULT_CANVAS_APPEARANCE, type AgentAvatarState, type CanvasAppearance } from "@/lib/canvas/agent-appearance";
-import { DEFAULT_CLASSIC_SKIN } from "@/lib/skin-themes";
-import { themePackFor } from "@/themes/registry";
 import { useAppearanceStore } from "./use-appearance-store";
 import { useUserStore } from "./use-user-store";
 
@@ -14,17 +12,13 @@ export type PersonalAssistantAvatar = {
     entry?: string;
     clipStates?: Partial<Record<AgentAvatarState, string>>;
 };
-export type PersonalAppearancePreferences = { skinId: string; avatar: "site" | "classic" | "orb" | "custom"; customAvatar?: PersonalAssistantAvatar };
-const DEFAULT_PREFERENCES: PersonalAppearancePreferences = { skinId: "", avatar: "site" };
+export type PersonalAppearancePreferences = { avatar: "site" | "classic" | "orb" | "custom"; customAvatar?: PersonalAssistantAvatar };
+const DEFAULT_PREFERENCES: PersonalAppearancePreferences = { avatar: "site" };
 
 type AppearancePreferencesStore = {
     byUser: Record<string, PersonalAppearancePreferences>;
     update: (userId: string, patch: Partial<PersonalAppearancePreferences>) => void;
 };
-
-export function personalSkin(skinId: string) {
-    return skinId === DEFAULT_CLASSIC_SKIN.id ? DEFAULT_CLASSIC_SKIN : themePackFor(skinId)?.skin;
-}
 
 function normalizeCustomAvatar(value: unknown): PersonalAssistantAvatar | undefined {
     if (!value || typeof value !== "object") return undefined;
@@ -45,7 +39,6 @@ function normalizePreferences(value: unknown): PersonalAppearancePreferences {
     const candidate = value && typeof value === "object" ? (value as Partial<PersonalAppearancePreferences>) : {};
     const customAvatar = normalizeCustomAvatar(candidate.customAvatar);
     return {
-        skinId: typeof candidate.skinId === "string" && candidate.skinId.length <= 128 ? candidate.skinId : "",
         avatar: candidate.avatar === "custom" && customAvatar ? "custom" : candidate.avatar === "classic" || candidate.avatar === "orb" ? candidate.avatar : "site",
         ...(customAvatar ? { customAvatar } : {}),
     };
@@ -57,7 +50,6 @@ export const useAppearancePreferencesStore = create<AppearancePreferencesStore>(
             byUser: {},
             update: (userId, patch) => {
                 if (!userId) throw new Error("An account is required to save appearance preferences");
-                if (patch.skinId && !personalSkin(patch.skinId)) throw new Error("Unknown theme");
                 if (patch.avatar && !["site", "classic", "orb", "custom"].includes(patch.avatar)) throw new Error("Unknown assistant appearance");
                 if (patch.customAvatar && !normalizeCustomAvatar(patch.customAvatar)) throw new Error("Invalid assistant appearance");
                 set((state) => {
@@ -85,9 +77,7 @@ export function usePersonalAppearancePreferences() {
 }
 
 export function useEffectiveSkin() {
-    const siteSkin = useAppearanceStore((state) => state.appearance.activeSkin);
-    const preferences = usePersonalAppearancePreferences();
-    return personalSkin(preferences.skinId) ?? siteSkin;
+    return useAppearanceStore((state) => state.appearance.activeSkin);
 }
 
 export function resolvePersonalCanvasAppearance(site: CanvasAppearance, avatar: PersonalAppearancePreferences["avatar"], custom?: PersonalAssistantAvatar): CanvasAppearance {

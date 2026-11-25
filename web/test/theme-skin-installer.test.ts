@@ -4,12 +4,13 @@ import { buildThemeSkinInstallScript } from "../scripts/export-theme-skins";
 import { LONGYING_INK_SKIN } from "@/themes/longying-ink/skin";
 import { YUNHE_XIANGUAN_SKIN } from "@/themes/yunhe-xianguan/skin";
 
-for (const scenario of ["success", "duplicate", "conflict", "unauthorized", "concurrent", "full", "save-failed", "readback-drift"]) {
+for (const scenario of ["success", "duplicate", "conflict", "unauthorized", "concurrent", "full", "save-failed", "readback-drift", "joysee-only"]) {
     test(`主题皮肤安装器：${scenario}`, async () => {
         let setting: Record<string, unknown> = { brandName: "测试站点", skinId: "classic", skinThemes: [{ id: "classic" }], canvas: { agentName: "原助手" } };
         if (scenario === "duplicate") setting.skinThemes = [LONGYING_INK_SKIN, YUNHE_XIANGUAN_SKIN];
         if (scenario === "conflict") setting.skinThemes = [{ ...YUNHE_XIANGUAN_SKIN, name: "已有自定义名称" }];
         if (scenario === "full") setting.skinThemes = Array.from({ length: 15 }, (_, i) => ({ id: `skin-${i}` }));
+        if (scenario === "joysee-only") setting = { ...setting, skinId: "joysee-minimal", skinThemes: [{ id: "joysee-minimal" }] };
         const before = structuredClone(setting);
         let writes = 0;
         let reads = 0;
@@ -42,6 +43,7 @@ for (const scenario of ["success", "duplicate", "conflict", "unauthorized", "con
         } else {
             expect(errors).toHaveLength(1);
             expect(writes).toBe(["save-failed", "readback-drift"].includes(scenario) ? 1 : 0);
+            if (scenario === "joysee-only") expect(errors[0][1]).toContain("当前版本仅支持乐见极简");
         }
     });
 }

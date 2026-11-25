@@ -4,7 +4,8 @@ import { DEFAULT_UPDATE_ANNOUNCEMENT, normalizeUpdateAnnouncement } from "@/lib/
 
 import type { PublicAppearance } from "@/services/api/appearance";
 import { composeDocumentTitle } from "@/lib/document-title";
-import { applySkinTheme, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition } from "@/lib/skin-themes";
+import { applySkinTheme, normalizeSiteSkin } from "@/lib/skin-themes";
+import { JOYSEE_MINIMAL_SKIN, JOYSEE_MINIMAL_SKIN_ID } from "@/themes/joysee-minimal/skin";
 import { applyThemeBrandVariables, applyThemePackCanvas } from "@/themes/apply";
 import { useDocumentTitleStore } from "@/stores/use-document-title-store";
 
@@ -22,8 +23,8 @@ export const DEFAULT_PUBLIC_APPEARANCE: PublicAppearance = {
     authVideoUrl: "",
     authVideoPosterUrl: "",
     authVideoAutoplay: true,
-    skinId: "classic",
-    activeSkin: DEFAULT_CLASSIC_SKIN,
+    skinId: JOYSEE_MINIMAL_SKIN_ID,
+    activeSkin: JOYSEE_MINIMAL_SKIN,
     seoTitle: "乐见画布",
     seoDescription: "乐见画布，面向 AI 影视与短剧创作的工作台。",
     seoKeywords: "",
@@ -97,8 +98,8 @@ export function normalizePublicAppearance(value?: Partial<PublicAppearance> | nu
         authVideoUrl: safeAppearanceURL(value?.authVideoUrl, DEFAULT_PUBLIC_APPEARANCE.authVideoUrl),
         authVideoPosterUrl: safeAppearanceURL(value?.authVideoPosterUrl, customVideo ? "" : DEFAULT_PUBLIC_APPEARANCE.authVideoPosterUrl),
         authVideoAutoplay: value?.authVideoAutoplay !== false,
-        skinId: normalizeSkinDefinition(value?.activeSkin).id,
-        activeSkin: normalizeSkinDefinition(value?.activeSkin),
+        skinId: JOYSEE_MINIMAL_SKIN_ID,
+        activeSkin: normalizeSiteSkin(value?.activeSkin),
         seoTitle,
         seoDescription,
         seoKeywords,

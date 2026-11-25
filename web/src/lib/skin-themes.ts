@@ -1,3 +1,5 @@
+import { JOYSEE_MINIMAL_SKIN, JOYSEE_MINIMAL_SKIN_ID } from "@/themes/joysee-minimal/skin";
+
 export type SkinThemeMode = "light" | "dark";
 export type SkinShadowStyle = "none" | "soft" | "strong";
 
@@ -13,27 +15,15 @@ export type SkinButtonFill = {
     foreground: string;
 };
 
-// 主按钮默认取皮肤主操作色的纯色墨（docs/ui-design-system.md §3.0）。渐变色值只在管理员
-// 把自定义皮肤切到“渐变”后才生效，默认给同色系的上亮下暗，不再预置紫蓝渐变。
-export const DEFAULT_BUTTON_FILLS: Record<SkinThemeMode, SkinButtonFill> = {
-    light: {
-        mode: "solid", angle: 180,
-        start: "#3f3f46", end: "#18181b",
-        hoverStart: "#52525b", hoverEnd: "#27272a",
-        activeStart: "#27272a", activeEnd: "#09090b", foreground: "#fafafa",
-    },
-    dark: {
-        mode: "solid", angle: 180,
-        start: "#ffffff", end: "#e4e4e7",
-        hoverStart: "#ffffff", hoverEnd: "#f4f4f5",
-        activeStart: "#e4e4e7", activeEnd: "#d4d4d8", foreground: "#18181b",
-    },
-};
+export const DEFAULT_BUTTON_FILLS = JOYSEE_MINIMAL_SKIN.tokens.buttons;
 
 export const SKIN_BUTTON_COLOR_FIELDS = [
-    { key: "start", label: "渐变起色" }, { key: "end", label: "渐变终色" },
-    { key: "hoverStart", label: "悬停起色" }, { key: "hoverEnd", label: "悬停终色" },
-    { key: "activeStart", label: "按下起色" }, { key: "activeEnd", label: "按下终色" },
+    { key: "start", label: "渐变起色" },
+    { key: "end", label: "渐变终色" },
+    { key: "hoverStart", label: "悬停起色" },
+    { key: "hoverEnd", label: "悬停终色" },
+    { key: "activeStart", label: "按下起色" },
+    { key: "activeEnd", label: "按下终色" },
     { key: "foreground", label: "渐变按钮文字" },
 ] as const;
 
@@ -298,142 +288,12 @@ export const SKIN_COMPONENT_NUMBER_FIELDS: readonly SkinComponentNumberField[] =
     { key: "motionNormal", label: "常规过渡时长", suffix: "ms", min: 0, max: 800, step: 10 },
 ] as const;
 
-export const DEFAULT_CLASSIC_SKIN: SkinDefinition = {
-    id: "classic",
-    name: "经典黑白",
-    description: "项目原始样式 · 不可修改",
-    locked: true,
-    tokens: {
-        light: {
-            canvas: "#ffffff",
-            surface: "#ffffff",
-            surfaceSubtle: "#f7f7f7",
-            surfaceRaised: "#ececec",
-            overlay: "#ffffff",
-            text: "#171717",
-            textMuted: "#737373",
-            border: "#e5e5e5",
-            control: "#ffffff",
-            controlHover: "#f5f5f5",
-            controlActive: "#ececec",
-            controlBorder: "#d1d1d1",
-            controlFocus: "#171717",
-            controlDisabledBackground: "#f2f2f2",
-            controlDisabledForeground: "#a3a3a3",
-            switchChecked: "#16a34a",
-            switchCheckedHover: "#15803d",
-            switchCheckedHandle: "#ffffff",
-            switchUnchecked: "#b8b8b8",
-            switchUncheckedHover: "#9f9f9f",
-            switchUncheckedHandle: "#ffffff",
-            primary: "#171717",
-            primaryHover: "#303030",
-            primaryActive: "#404040",
-            primaryForeground: "#ffffff",
-            selected: "#e8e8e8",
-            selectedHover: "#dedede",
-            selectedActive: "#d5d5d5",
-            selectedForeground: "#171717",
-            icon: "#3f3f46",
-            iconMuted: "#a1a1aa",
-            iconActive: "#171717",
-            success: "#16a34a",
-            warning: "#d97706",
-            danger: "#dc2626",
-            dangerHover: "#b91c1c",
-            dangerActive: "#991b1b",
-            dangerForeground: "#ffffff",
-            info: "#2563eb",
-            workspace: "#ffffff",
-            workspaceGrid: "#f3f3f3",
-            adminBackground: "#f3f4f6",
-            adminSurface: "#ffffff",
-            adminSubtle: "#f7f8fa",
-            adminStrong: "#eceff3",
-            authBackground: "#ffffff",
-            authPanel: "#f7f7f7",
-            authCard: "#ffffff",
-            authAccent: "#2563eb",
-            authMuted: "#737373",
-        },
-        dark: {
-            canvas: "#0a0a0a",
-            surface: "#181818",
-            surfaceSubtle: "#202020",
-            surfaceRaised: "#2a2a2a",
-            overlay: "#1f1f20",
-            text: "#f5f5f5",
-            textMuted: "#a3a3a3",
-            border: "#2d2d2d",
-            control: "#202020",
-            controlHover: "#292929",
-            controlActive: "#333333",
-            controlBorder: "#4a4a4a",
-            controlFocus: "#f5f5f5",
-            controlDisabledBackground: "#252525",
-            controlDisabledForeground: "#737373",
-            switchChecked: "#22c55e",
-            switchCheckedHover: "#4ade80",
-            switchCheckedHandle: "#071a0f",
-            switchUnchecked: "#525252",
-            switchUncheckedHover: "#686868",
-            switchUncheckedHandle: "#f5f5f5",
-            primary: "#f5f5f5",
-            primaryHover: "#ffffff",
-            primaryActive: "#e5e5e5",
-            primaryForeground: "#171717",
-            selected: "#2b2b2b",
-            selectedHover: "#343434",
-            selectedActive: "#3d3d3d",
-            selectedForeground: "#f5f5f5",
-            icon: "#d4d4d8",
-            iconMuted: "#71717a",
-            iconActive: "#ffffff",
-            success: "#4ade80",
-            warning: "#fbbf24",
-            danger: "#f87171",
-            dangerHover: "#fca5a5",
-            dangerActive: "#ef4444",
-            dangerForeground: "#2b0808",
-            info: "#60a5fa",
-            workspace: "#181818",
-            workspaceGrid: "#222222",
-            adminBackground: "#101010",
-            adminSurface: "#181818",
-            adminSubtle: "#202020",
-            adminStrong: "#2a2a2a",
-            authBackground: "#08090c",
-            authPanel: "#0b0c10",
-            authCard: "#121318",
-            authAccent: "#93c5fd",
-            authMuted: "#8a8b91",
-        },
-        buttons: { light: { ...DEFAULT_BUTTON_FILLS.light }, dark: { ...DEFAULT_BUTTON_FILLS.dark } },
-        components: {
-            buttonRadius: 6,
-            inputRadius: 6,
-            cardRadius: 12,
-            overlayRadius: 12,
-            menuRadius: 8,
-            checkboxRadius: 4,
-            controlHeight: 36,
-            controlHeightSmall: 30,
-            controlHeightLarge: 42,
-            borderWidth: 1,
-            focusRingWidth: 2,
-            iconSize: 16,
-            buttonFontWeight: 500,
-            hoverLift: 1,
-            motionFast: 120,
-            motionNormal: 180,
-            shadowStyle: "soft",
-        },
-    },
-};
-
 const HEX_COLOR = /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i;
 const MANAGED_VARIABLES = [
-    "--button-primary-bg", "--button-primary-hover-bg", "--button-primary-active-bg", "--button-primary-fg",
+    "--button-primary-bg",
+    "--button-primary-hover-bg",
+    "--button-primary-active-bg",
+    "--button-primary-fg",
     "--background",
     "--foreground",
     "--card",
@@ -530,7 +390,7 @@ const MANAGED_VARIABLES = [
     "--theme-admin-card-shadow",
 ] as const;
 
-export function normalizeSkinDefinition(value: unknown, fallback: SkinDefinition = DEFAULT_CLASSIC_SKIN): SkinDefinition {
+export function normalizeSkinDefinition(value: unknown, fallback: SkinDefinition = JOYSEE_MINIMAL_SKIN): SkinDefinition {
     if (!value || typeof value !== "object") return cloneSkinDefinition(fallback);
     const candidate = value as Partial<SkinDefinition>;
     const id = typeof candidate.id === "string" && /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(candidate.id) ? candidate.id : fallback.id;
@@ -542,100 +402,30 @@ export function normalizeSkinDefinition(value: unknown, fallback: SkinDefinition
         id,
         name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim().slice(0, 40) : fallback.name,
         description: typeof candidate.description === "string" ? candidate.description.trim().slice(0, 100) : fallback.description,
-        locked: id === "classic",
-        tokens: { light, dark, components: { ...modes.components }, buttons: {
-            light: normalizeButtonFill(modes.buttons?.light, "light"),
-            dark: normalizeButtonFill(modes.buttons?.dark, "dark"),
-        } },
+        locked: false,
+        tokens: {
+            light,
+            dark,
+            components: { ...modes.components },
+            buttons: {
+                light: normalizeButtonFill(modes.buttons?.light, "light"),
+                dark: normalizeButtonFill(modes.buttons?.dark, "dark"),
+            },
+        },
     };
+}
+
+export function normalizeSiteSkin(value: unknown): SkinDefinition {
+    if (!value || typeof value !== "object" || (value as Partial<SkinDefinition>).id !== JOYSEE_MINIMAL_SKIN_ID) return cloneSkinDefinition(JOYSEE_MINIMAL_SKIN);
+    return normalizeSkinDefinition(value);
 }
 
 export function cloneSkinDefinition(source: SkinDefinition): SkinDefinition {
     return { ...source, tokens: cloneSkinTokens(source.tokens) };
 }
 
-export function createSkinThemeID(existingIDs: Iterable<string>) {
-    const existing = new Set(existingIDs);
-    const base = `custom-${Date.now().toString(36)}`;
-    let candidate = base;
-    let suffix = 2;
-    while (existing.has(candidate)) candidate = `${base}-${suffix++}`;
-    return candidate;
-}
-
-export function duplicateSkinDefinition(source: SkinDefinition, existingIDs: Iterable<string>, name?: string): SkinDefinition {
-    const copy = cloneSkinDefinition(source);
-    copy.id = createSkinThemeID(existingIDs);
-    copy.name = (name || `${source.name} 副本`).slice(0, 40);
-    copy.description = source.id === "classic" ? "从经典黑白参数复制，可自由调整" : `复制自 ${source.name}`;
-    copy.locked = false;
-    return copy;
-}
-
-export function skinSwatches(skin: SkinDefinition) {
-    const frequencyOrder: readonly (keyof SkinModeTokens)[] = [
-        "canvas",
-        "surface",
-        "text",
-        "textMuted",
-        "border",
-        "surfaceSubtle",
-        "control",
-        "controlHover",
-        "primary",
-        "primaryHover",
-        "selected",
-        "selectedForeground",
-        "surfaceRaised",
-        "overlay",
-        "controlBorder",
-        "switchChecked",
-        "switchUnchecked",
-        "icon",
-        "iconMuted",
-        "iconActive",
-        "success",
-        "warning",
-        "danger",
-        "info",
-        "workspace",
-        "workspaceGrid",
-        "adminBackground",
-        "adminSurface",
-        "adminSubtle",
-        "adminStrong",
-        "authBackground",
-        "authPanel",
-        "authCard",
-        "authAccent",
-        "authMuted",
-        "controlActive",
-        "controlFocus",
-        "controlDisabledBackground",
-        "controlDisabledForeground",
-        "primaryActive",
-        "primaryForeground",
-        "selectedHover",
-        "selectedActive",
-        "switchCheckedHover",
-        "switchCheckedHandle",
-        "switchUncheckedHover",
-        "switchUncheckedHandle",
-        "dangerHover",
-        "dangerActive",
-        "dangerForeground",
-    ];
-    const colors = frequencyOrder.flatMap((key) => [skin.tokens.light[key], skin.tokens.dark[key]]);
-    return [...new Set(colors)];
-}
-
-export function normalizeSkinID(value: unknown) {
-    return normalizeSkinDefinition(value).id;
-}
-
 export function getSkinAntOverrides(value: unknown, mode: SkinThemeMode): Partial<SkinAntOverrides> {
-    const skin = normalizeSkinDefinition(value);
-    if (skin.id === "classic") return {};
+    const skin = normalizeSiteSkin(value);
     const color = skin.tokens[mode];
     const component = skin.tokens.components;
     return {
@@ -697,23 +487,18 @@ export function getSkinAntOverrides(value: unknown, mode: SkinThemeMode): Partia
 
 export function applySkinTheme(skinValue: unknown, mode: SkinThemeMode, targetDocument: Document | undefined = typeof document === "undefined" ? undefined : document) {
     if (!targetDocument) return;
-    const skin = normalizeSkinDefinition(skinValue);
+    const skin = normalizeSiteSkin(skinValue);
     const root = targetDocument.documentElement;
     for (const property of MANAGED_VARIABLES) root.style.removeProperty(property);
-    // 经典皮肤的全部 token（包括主按钮）都由 globals.css 定义；只有自定义皮肤写入行内变量，
-    // 这样首屏 JS 执行前主按钮也有颜色，旧后端返回的历史填充也不会改变经典外观。
-    if (skin.id !== "classic") {
-        const values = { ...skinCSSVariables(skin, mode), ...skinButtonCSSVariables(skin, mode) };
-        for (const [property, value] of Object.entries(values)) root.style.setProperty(property, value);
-    }
+    const values = { ...skinCSSVariables(skin, mode), ...skinButtonCSSVariables(skin, mode) };
+    for (const [property, value] of Object.entries(values)) root.style.setProperty(property, value);
     root.dataset.skin = skin.id;
 }
 
 export function isSkinButtonFill(value: unknown): value is SkinButtonFill {
     if (!value || typeof value !== "object") return false;
     const fill = value as SkinButtonFill;
-    return ["solid", "gradient"].includes(fill.mode) && Number.isInteger(fill.angle) && fill.angle >= 0 && fill.angle <= 360
-        && SKIN_BUTTON_COLOR_FIELDS.every(({ key }) => typeof fill[key] === "string" && HEX_COLOR.test(fill[key]));
+    return ["solid", "gradient"].includes(fill.mode) && Number.isInteger(fill.angle) && fill.angle >= 0 && fill.angle <= 360 && SKIN_BUTTON_COLOR_FIELDS.every(({ key }) => typeof fill[key] === "string" && HEX_COLOR.test(fill[key]));
 }
 
 function normalizeButtonFill(value: unknown, mode: SkinThemeMode): SkinButtonFill {
@@ -724,16 +509,19 @@ export function getSkinButtonAppearance(skin: SkinDefinition, mode: SkinThemeMod
     const fill = normalizeButtonFill(skin.tokens.buttons?.[mode], mode);
     const color = skin.tokens[mode];
     const gradient = (start: string, end: string) => `linear-gradient(${fill.angle}deg, ${start}, ${end})`;
-    return fill.mode === "gradient" ? {
-        background: gradient(fill.start, fill.end), hover: gradient(fill.hoverStart, fill.hoverEnd),
-        active: gradient(fill.activeStart, fill.activeEnd), foreground: fill.foreground,
-    } : { background: color.primary, hover: color.primaryHover, active: color.primaryActive, foreground: color.primaryForeground };
+    return fill.mode === "gradient"
+        ? {
+              background: gradient(fill.start, fill.end),
+              hover: gradient(fill.hoverStart, fill.hoverEnd),
+              active: gradient(fill.activeStart, fill.activeEnd),
+              foreground: fill.foreground,
+          }
+        : { background: color.primary, hover: color.primaryHover, active: color.primaryActive, foreground: color.primaryForeground };
 }
 
 function skinButtonCSSVariables(skin: SkinDefinition, mode: SkinThemeMode) {
     const button = getSkinButtonAppearance(skin, mode);
-    return { "--button-primary-bg": button.background, "--button-primary-hover-bg": button.hover,
-        "--button-primary-active-bg": button.active, "--button-primary-fg": button.foreground };
+    return { "--button-primary-bg": button.background, "--button-primary-hover-bg": button.hover, "--button-primary-active-bg": button.active, "--button-primary-fg": button.foreground };
 }
 
 export function skinCSSVariables(skin: SkinDefinition, mode: SkinThemeMode): Record<string, string> {
@@ -840,17 +628,36 @@ function skinShadowVariables(style: SkinShadowStyle, mode: SkinThemeMode) {
     // 每档阴影两层：贴边、清晰的小阴影交代边缘，大而淡的阴影交代悬浮高度。
     if (style === "strong") {
         return mode === "dark"
-            ? { "--elevation-card": "0 1px 2px #00000080, 0 6px 16px #00000066", "--elevation-card-hover": "0 1px 3px #00000080, 0 18px 44px #0000008c", "--elevation-overlay": "0 2px 6px #00000080, 0 30px 90px #000000a6", "--theme-admin-card-shadow": "0 1px 2px #00000070, 0 6px 16px #00000052" }
-            : { "--elevation-card": "0 1px 2px #0f172a1f, 0 6px 16px #0f172a1f", "--elevation-card-hover": "0 1px 3px #0f172a24, 0 18px 44px #0f172a33", "--elevation-overlay": "0 2px 6px #0f172a29, 0 30px 90px #0f172a42", "--theme-admin-card-shadow": "0 1px 2px #1118271f, 0 6px 16px #1118271a" };
+            ? {
+                  "--elevation-card": "0 1px 2px #00000080, 0 6px 16px #00000066",
+                  "--elevation-card-hover": "0 1px 3px #00000080, 0 18px 44px #0000008c",
+                  "--elevation-overlay": "0 2px 6px #00000080, 0 30px 90px #000000a6",
+                  "--theme-admin-card-shadow": "0 1px 2px #00000070, 0 6px 16px #00000052",
+              }
+            : {
+                  "--elevation-card": "0 1px 2px #0f172a1f, 0 6px 16px #0f172a1f",
+                  "--elevation-card-hover": "0 1px 3px #0f172a24, 0 18px 44px #0f172a33",
+                  "--elevation-overlay": "0 2px 6px #0f172a29, 0 30px 90px #0f172a42",
+                  "--theme-admin-card-shadow": "0 1px 2px #1118271f, 0 6px 16px #1118271a",
+              };
     }
     return mode === "dark"
-        ? { "--elevation-card": "0 1px 2px #00000052, 0 4px 12px #00000047", "--elevation-card-hover": "0 1px 3px #00000061, 0 12px 30px #00000066", "--elevation-overlay": "0 2px 6px #00000066, 0 26px 72px #00000085", "--theme-admin-card-shadow": "0 1px 2px #00000047, 0 4px 12px #0000003d" }
-        : { "--elevation-card": "0 1px 2px #0f172a14, 0 4px 12px #0f172a0d", "--elevation-card-hover": "0 1px 3px #0f172a1a, 0 12px 30px #0f172a1f", "--elevation-overlay": "0 2px 6px #0f172a1a, 0 26px 72px #0f172a2b", "--theme-admin-card-shadow": "0 1px 2px #1118270f, 0 4px 12px #1118270a" };
+        ? {
+              "--elevation-card": "0 1px 2px #00000052, 0 4px 12px #00000047",
+              "--elevation-card-hover": "0 1px 3px #00000061, 0 12px 30px #00000066",
+              "--elevation-overlay": "0 2px 6px #00000066, 0 26px 72px #00000085",
+              "--theme-admin-card-shadow": "0 1px 2px #00000047, 0 4px 12px #0000003d",
+          }
+        : {
+              "--elevation-card": "0 1px 2px #0f172a14, 0 4px 12px #0f172a0d",
+              "--elevation-card-hover": "0 1px 3px #0f172a1a, 0 12px 30px #0f172a1f",
+              "--elevation-overlay": "0 2px 6px #0f172a1a, 0 26px 72px #0f172a2b",
+              "--theme-admin-card-shadow": "0 1px 2px #1118270f, 0 4px 12px #1118270a",
+          };
 }
 
 function cloneSkinTokens(tokens: SkinTokens): SkinTokens {
-    return { light: { ...tokens.light }, dark: { ...tokens.dark }, components: { ...tokens.components },
-        buttons: { light: { ...tokens.buttons.light }, dark: { ...tokens.buttons.dark } } };
+    return { light: { ...tokens.light }, dark: { ...tokens.dark }, components: { ...tokens.components }, buttons: { light: { ...tokens.buttons.light }, dark: { ...tokens.buttons.dark } } };
 }
 
 function isSkinMode(value: unknown): value is SkinModeTokens {

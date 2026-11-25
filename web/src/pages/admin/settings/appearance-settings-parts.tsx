@@ -136,21 +136,14 @@ export function hasUnsupportedControlCharacter(value: string) {
     return Array.from(value).some((character) => character !== "\n" && /[\u0000-\u001f\u007f]/.test(character));
 }
 
-export function validateSkinDrafts(themes: SkinDefinition[], selectedID: string) {
-    if (!themes.length || themes.length > 16) return "皮肤主题数量必须为 1 到 16 套";
-    const ids = new Set<string>();
-    for (const theme of themes) {
-        if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(theme.id) || ids.has(theme.id)) return "皮肤主题 ID 无效或重复";
-        ids.add(theme.id);
-        if (!theme.name.trim() || Array.from(theme.name.trim()).length > 40) return "皮肤主题名称必须为 1 到 40 个字符";
-        if (Array.from(theme.description.trim()).length > 100) return "皮肤主题说明不能超过 100 个字符";
-        const invalidColor = [...Object.values(theme.tokens.light), ...Object.values(theme.tokens.dark)].some((color) => !/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(color));
-        if (invalidColor) return `主题“${theme.name}”存在无效颜色，请使用 6 或 8 位十六进制色值`;
-        if (!isSkinButtonFill(theme.tokens.buttons.light) || !isSkinButtonFill(theme.tokens.buttons.dark)) return `主题“${theme.name}”的主按钮参数无效，请检查颜色和渐变角度（0–360°）`;
-        if (theme.tokens.components.controlHeightSmall > theme.tokens.components.controlHeight || theme.tokens.components.controlHeight > theme.tokens.components.controlHeightLarge) return `主题“${theme.name}”的控件高度顺序无效`;
-        if (theme.tokens.components.motionFast > theme.tokens.components.motionNormal) return `主题“${theme.name}”的快速动效不能慢于常规动效`;
-    }
-    if (!ids.has("classic") || !ids.has(selectedID)) return "默认主题或当前启用主题不存在";
+export function validateSkinDraft(theme: SkinDefinition) {
+    if (!theme.name.trim() || Array.from(theme.name.trim()).length > 40) return "皮肤主题名称必须为 1 到 40 个字符";
+    if (Array.from(theme.description.trim()).length > 100) return "皮肤主题说明不能超过 100 个字符";
+    const invalidColor = [...Object.values(theme.tokens.light), ...Object.values(theme.tokens.dark)].some((color) => !/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(color));
+    if (invalidColor) return `主题“${theme.name}”存在无效颜色，请使用 6 或 8 位十六进制色值`;
+    if (!isSkinButtonFill(theme.tokens.buttons.light) || !isSkinButtonFill(theme.tokens.buttons.dark)) return `主题“${theme.name}”的主按钮参数无效，请检查颜色和渐变角度（0–360°）`;
+    if (theme.tokens.components.controlHeightSmall > theme.tokens.components.controlHeight || theme.tokens.components.controlHeight > theme.tokens.components.controlHeightLarge) return `主题“${theme.name}”的控件高度顺序无效`;
+    if (theme.tokens.components.motionFast > theme.tokens.components.motionNormal) return `主题“${theme.name}”的快速动效不能慢于常规动效`;
     return "";
 }
 
