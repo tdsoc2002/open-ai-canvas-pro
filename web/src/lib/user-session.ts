@@ -241,7 +241,7 @@ export function systemChannelModelChannels(channels: PublicChannelCatalog[]): Mo
                     selector: tier.selector || {},
                     resolution: tier.resolution || "*",
                     videoSeconds: tier.videoSeconds || 0,
-                    billingMode: tier.billingMode as "fixed_request" | "per_second" | "token" | "image_usage",
+                    billingMode: tier.billingMode,
                     imagePricing: tier.imagePricing,
                     unitPriceMicrocredits: tier.unitPriceMicrocredits || 0,
                     inputTokenPriceMicrocredits: tier.inputTokenPriceMicrocredits || 0,
