@@ -203,7 +203,6 @@ export function ChannelModelBatchEditDialog({ channelId, items, currentItems, co
                 />
                 {capabilityLibrary.error || pricingLibrary.error ? <Alert type="warning" title={capabilityLibrary.error || pricingLibrary.error} /> : null}
                 {protocolError && !validationError ? <Alert type="warning" title={protocolError} /> : null}
-                <p className="border-t border-foreground/10 pt-3 text-xs text-foreground/50">以下项目仅修改勾选项</p>
                 {row(
                     "displayName",
                     "模型展示名",

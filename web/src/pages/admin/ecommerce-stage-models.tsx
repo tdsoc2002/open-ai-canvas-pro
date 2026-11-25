@@ -12,8 +12,8 @@ import "./ecommerce-stage-models.css";
 
 // 只列真正执行的两个文本阶段；第三步出图用用户在电商页选的生图模型，这里只做说明。
 const stages = [
-    { key: "vision", label: "商品识别与视觉方向", hint: "读取商品图，识别商品并推荐 4 套视觉方向" },
-    { key: "planning", label: "整套策划", hint: "按选定方向写卖点文案、逐张分镜和生图提示词" },
+    { key: "vision", label: "商品识别与视觉方向" },
+    { key: "planning", label: "整套策划" },
 ] as const;
 type StageKey = (typeof stages)[number]["key"];
 type StageChoice = { model: string; fallback: string; thinkingLevel: ThinkingRequest };
@@ -124,10 +124,7 @@ export function EcommerceStageModels({ embedded = false, onSaved }: { embedded?:
             <header>
                 <div>
                     {embedded ? null : <Typography.Text strong>电商 Agent 阶段模型</Typography.Text>}
-                    <Typography.Paragraph type="secondary">
-                        两个阶段都要读商品图，只有开启了识图的文本模型可选，列表里的「图×N」是该模型最多能读的图片数。主模型不可用时自动改用备用模型。思考等级表示阶段意图，按实际使用模型的能力归一；备用模型沿用同一意图。「模型默认」不强制提高等级。
-                        {config ? ` 当前目录 ${counts.text} 个文本模型，其中 ${counts.vision} 个已开启识图。` : ""}
-                    </Typography.Paragraph>
+                    <Typography.Paragraph type="secondary">请选择支持识图的文本模型。主模型不可用时使用备用模型，思考等级按实际模型能力调整。</Typography.Paragraph>
                 </div>
                 <Button icon={<RefreshCw size={14} />} loading={loading} onClick={() => void load()}>
                     刷新模型
@@ -154,7 +151,7 @@ export function EcommerceStageModels({ embedded = false, onSaved }: { embedded?:
                             <span className="ecommerce-stage-models-index">{index + 1}</span>
                             <div className="ecommerce-stage-models-label">
                                 <strong>{stage.label}</strong>
-                                <small>{missing[stage.key] ? "已保存的模型已下架或不可用，请重新选择" : stage.hint}</small>
+                                {missing[stage.key] ? <small>已保存的模型不可用，请重新选择</small> : null}
                             </div>
                             <div className="ecommerce-stage-models-picker">
                                 <ModelPicker
@@ -194,7 +191,7 @@ export function EcommerceStageModels({ embedded = false, onSaved }: { embedded?:
                         <span className="ecommerce-stage-models-index">{stages.length + 1}</span>
                         <div className="ecommerce-stage-models-label">
                             <strong>生成图片</strong>
-                            <small>用户在电商页选择生图模型，按方案逐张出图并保存到资产库</small>
+                            <small>由用户在电商页选择生图模型</small>
                         </div>
                     </li>
                 </ol>

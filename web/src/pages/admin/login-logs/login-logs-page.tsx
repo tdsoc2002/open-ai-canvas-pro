@@ -138,7 +138,7 @@ export default function LoginLogsPage() {
     return (
         <AdminPageFrame
             title="用户登录日志"
-            description="登录、注册后自动登录与主动退出 · 时间按当前设备时区显示"
+            description="时间按当前设备时区显示"
             actions={
                 <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => setRetry((value) => value + 1)}>
                     刷新
@@ -203,13 +203,7 @@ export default function LoginLogsPage() {
                         </Button>
                     </div>
                 }
-                empty={
-                    error ? (
-                        <AdminTableEmpty title="日志暂时无法读取" description="请重试，当前未展示查询结果。" />
-                    ) : (
-                        <AdminTableEmpty filtered={filtered} title={filtered ? "没有匹配的登录日志" : "暂无登录日志"} description={filtered ? "调整筛选条件后重试。" : "开始记录后的登录与主动退出事件将显示在这里。"} />
-                    )
-                }
+                empty={error ? <AdminTableEmpty title="日志暂时无法读取" description="请重试，当前未展示查询结果。" /> : <AdminTableEmpty filtered={filtered} title={filtered ? "没有匹配的登录日志" : "暂无登录日志"} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(next, size) => update({ page: next, pageSize: size })} />}
                 table={{ rowKey: "id", dataSource: logs, columns, loading, pagination: false, scroll: { x: 1400 }, size: "small" }}
             />

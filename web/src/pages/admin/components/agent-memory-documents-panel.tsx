@@ -127,7 +127,6 @@ export default function AgentMemoryDocumentsPanel() {
 
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-xs text-foreground/60">每个用户一份记忆文件，由该用户的 Agent 在对话中维护，用户可随时编辑和撤销。这里只读，展开行查看正文。</p>
             <AdminDataTable
                 toolbar={
                     <div className="flex flex-wrap items-center gap-2">
@@ -160,7 +159,7 @@ export default function AgentMemoryDocumentsPanel() {
                     expandable: { expandedRowRender: (record) => <DocumentEntries record={record} />, rowExpandable: () => true },
                     pagination: { defaultPageSize: 20, showSizeChanger: true },
                 }}
-                empty={<AdminTableEmpty title="还没有记忆文件" description="用户第一次打开记忆设置或 Agent 第一次运行后才会创建。" />}
+                empty={<AdminTableEmpty title="还没有记忆文件" />}
             />
         </div>
     );

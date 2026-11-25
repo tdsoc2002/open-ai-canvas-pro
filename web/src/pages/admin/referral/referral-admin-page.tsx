@@ -43,7 +43,6 @@ export default function AdminReferralPage() {
     return (
         <AdminPageFrame
             title="推广中心"
-            description="选择全民推广或只开放给指定推广人，并设置被邀请用户积分充值的返佣比例。"
             scroll
             actions={
                 <Button icon={<RefreshCw className="size-3.5" />} loading={setting.isFetching || commissions.isFetching} onClick={() => void Promise.all([setting.refetch(), commissions.refetch()])}>
@@ -119,9 +118,9 @@ export default function AdminReferralPage() {
                         </div>
                     )}
                 </SettingsSectionCard>
-                <SettingsSectionCard title="返佣记录" description="全站推广返佣明细，按入账时间倒序。" layout="stacked">
+                <SettingsSectionCard title="返佣记录" layout="stacked">
                     <AdminDataTable<ReferralCommission>
-                        empty={<AdminTableEmpty title="暂无返佣记录" description="被邀请用户完成积分充值后会出现在这里。" />}
+                        empty={<AdminTableEmpty title="暂无返佣记录" />}
                         footer={commissions.data && commissions.data.total > PAGE_SIZE ? <PaginationBar current={page} pageSize={PAGE_SIZE} total={commissions.data.total} pageSizeOptions={[PAGE_SIZE]} onChange={(next) => setPage(next)} /> : undefined}
                         table={{
                             rowKey: "id",

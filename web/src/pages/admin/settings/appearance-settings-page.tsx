@@ -546,7 +546,7 @@ export default function AppearanceSettingsPage() {
     const draftBrandName = brandName.trim() || "站点名称";
 
     return (
-        <AdminPageFrame title="站点及外观" description="统一管理品牌身份、登录页、搜索信息、备案展示与全站皮肤主题" scroll>
+        <AdminPageFrame title="站点及外观" scroll>
             {loading ? (
                 <AppearanceSkeleton />
             ) : loadError || !setting ? (
@@ -568,13 +568,7 @@ export default function AppearanceSettingsPage() {
                 <div className="admin-settings-stack admin-appearance-settings">
                     <div className={cn("admin-appearance-command-bar", dirty && "is-dirty")}>
                         <div className="admin-appearance-command-copy" aria-live="polite">
-                            <div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <strong>{dirty ? "站点配置有调整待保存" : "站点及外观已与服务端同步"}</strong>
-                                    <AdminStatusBadge label={dirty ? "尚未生效" : "服务端当前值"} tone={dirty ? "warning" : "neutral"} />
-                                </div>
-                                <p>{dirty ? "切换分类保留草稿；保存修改会一次应用品牌、登录页、更新公告、SEO、备案和皮肤调整。" : "按分类管理站点配置；欢迎页开关独立即时保存，其余修改统一保存。"}</p>
-                            </div>
+                            <strong>{dirty ? "站点配置待保存" : "站点配置已同步"}</strong>
                         </div>
                         <div className="admin-appearance-command-actions">
                             {dirty ? (
@@ -635,7 +629,7 @@ export default function AppearanceSettingsPage() {
                                                 <AssetPicker
                                                     slot="logo"
                                                     title="浅色模式 Logo"
-                                                    description="用于浅色界面；建议透明背景 PNG 或 WebP。"
+                                                    description="建议使用透明背景的 PNG 或 WebP。"
                                                     configured={Boolean(setting.logoResourceId) && !resets.logo}
                                                     file={files.logo}
                                                     inputRef={inputRefs.logo}
@@ -647,7 +641,7 @@ export default function AppearanceSettingsPage() {
                                                 <AssetPicker
                                                     slot="logo-dark"
                                                     title="深色模式 Logo（可选）"
-                                                    description="用于深色界面；不上传时自动复用浅色模式 Logo。"
+                                                    description="未上传时使用浅色模式 Logo。"
                                                     configured={Boolean(setting.darkLogoResourceId) && !resets["logo-dark"]}
                                                     file={files["logo-dark"]}
                                                     inputRef={inputRefs["logo-dark"]}
@@ -786,7 +780,7 @@ export default function AppearanceSettingsPage() {
                                 key: "welcome",
                                 label: "欢迎页",
                                 children: (
-                                    <SettingsSectionCard className="admin-appearance-section" icon={<Globe2 className="size-4" aria-hidden="true" />} title="欢迎页" description="控制访客是否可以访问欢迎页，开关修改后立即保存。">
+                                    <SettingsSectionCard className="admin-appearance-section" icon={<Globe2 className="size-4" aria-hidden="true" />} title="欢迎页">
                                         <div className="admin-appearance-section-form">
                                             <WelcomeSetting />
                                         </div>
@@ -801,7 +795,6 @@ export default function AppearanceSettingsPage() {
                                         className="admin-appearance-section"
                                         icon={<Search className="size-4" aria-hidden="true" />}
                                         title="SEO 信息"
-                                        description="配置浏览器标题、搜索摘要和关键词；留空时标题与描述会自动跟随当前站点名称。"
                                         status={<AdminStatusBadge label={seoTitle || seoDescription || seoKeywords ? "已自定义" : "自动跟随品牌"} tone={seoTitle || seoDescription || seoKeywords ? "success" : "neutral"} />}
                                     >
                                         <Form className="admin-appearance-form admin-appearance-section-form" layout="vertical" requiredMark={false} disabled={saving || refreshing || restoring}>
@@ -809,11 +802,11 @@ export default function AppearanceSettingsPage() {
                                                 <Form.Item label="SEO 标题" extra="建议简洁描述站点用途；留空时使用站点名称。">
                                                     <Input value={seoTitle} maxLength={70} showCount placeholder={draftBrandName} onChange={(event) => setSeoTitle(event.target.value)} />
                                                 </Form.Item>
-                                                <Form.Item label="SEO 关键词" extra="以逗号分隔；Google 不使用该标签排名，仍可供其他工具读取。">
+                                                <Form.Item label="SEO 关键词（逗号分隔）">
                                                     <Input value={seoKeywords} maxLength={300} showCount placeholder="AI 影视, AI 短剧, 创作工作台" onChange={(event) => setSeoKeywords(event.target.value)} />
                                                 </Form.Item>
                                             </div>
-                                            <Form.Item label="SEO 描述" extra="建议用一到两句话准确概括站点，避免重复堆砌关键词；留空时自动生成品牌描述。">
+                                            <Form.Item label="SEO 描述">
                                                 <Input.TextArea
                                                     value={seoDescription}
                                                     maxLength={200}
@@ -835,7 +828,6 @@ export default function AppearanceSettingsPage() {
                                         className="admin-appearance-section"
                                         icon={<Globe2 className="size-4" aria-hidden="true" />}
                                         title="首页页尾与备案"
-                                        description="配置公开登录首页底部的版权和备案信息；备案号启用后固定链接工信部备案管理系统。"
                                         status={<AdminStatusBadge label={icpFilingEnabled ? "展示备案号" : "未展示备案号"} tone={icpFilingEnabled ? "success" : "neutral"} />}
                                     >
                                         <div className="admin-appearance-section-form admin-appearance-footer-settings">
@@ -872,13 +864,7 @@ export default function AppearanceSettingsPage() {
                                 key: "skins",
                                 label: "皮肤主题",
                                 children: (
-                                    <SettingsSectionCard
-                                        className="admin-appearance-section"
-                                        icon={<Type className="size-4" aria-hidden="true" />}
-                                        title="皮肤主题"
-                                        description="调整乐见极简的浅色、深色、按钮填充及控件参数。"
-                                        status={<AdminStatusBadge label={skin.name} tone="info" />}
-                                    >
+                                    <SettingsSectionCard className="admin-appearance-section" icon={<Type className="size-4" aria-hidden="true" />} title="皮肤主题" status={<AdminStatusBadge label={skin.name} tone="info" />}>
                                         <SkinThemeEditor skin={skin} disabled={saving || refreshing || restoring} onChange={setSkin} />
                                     </SettingsSectionCard>
                                 ),

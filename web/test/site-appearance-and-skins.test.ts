@@ -140,7 +140,7 @@ describe("site appearance and editable Joysee skin", () => {
         expect(footerSource).toContain("https://beian.miit.gov.cn/");
         expect(footerSource).toContain('rel="noopener noreferrer"');
         expect(pageSource).toContain('title="皮肤主题"');
-        expect(pageSource).toContain("调整乐见极简");
+        expect(pageSource).toContain("<SkinThemeEditor skin={skin}");
         expect(editorSource).toContain("主题名称");
         expect(editorSource).toContain("主按钮填充");
         expect(editorSource).not.toContain("从默认新建");

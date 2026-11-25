@@ -262,10 +262,6 @@ export function ArkAdminGroupsTab({ onOpenReviews }: { onOpenReviews: () => void
                                 <FolderPlus className="size-5" />
                             </span>
                             <h3>还没有素材组</h3>
-                            <p>用户自建的真人、虚拟素材组，以及管理员创建的平台素材组都会显示在这里。</p>
-                            <Button icon={<Plus className="size-4" />} onClick={() => setCreating({})}>
-                                新建平台素材组
-                            </Button>
                         </div>
                     )
                 }

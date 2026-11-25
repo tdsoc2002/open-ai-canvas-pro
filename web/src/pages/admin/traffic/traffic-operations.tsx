@@ -103,8 +103,6 @@ export function TrafficOperations({ data, loading, unavailableValue, partial }: 
                         </span>
                     ) : null}
                 </header>
-                <p className="admin-traffic-ops-help">运营帮助：对照首次观测与回访的数量和占比，判断应优先改善拉新入口，还是安排内容更新与召回。</p>
-                <p className="admin-traffic-ops-note">按有 PV 的匿名浏览器标识估算，非准确人数；首次观测不等于首次使用。</p>
                 {!mix ? (
                     <p className="admin-traffic-ops-note" role="status">
                         {loading ? "正在读取访客结构…" : unavailableValue}
@@ -119,7 +117,7 @@ export function TrafficOperations({ data, loading, unavailableValue, partial }: 
                                 无前置回看窗口，无法划分首次观测与回访；不视为 100% 新访客。
                             </p>
                         ) : mix.visitors === 0 ? (
-                            <AdminEmpty title="当前范围暂无 PV 访客" description="读取成功，但没有可用于访客结构分析的页面浏览。" />
+                            <AdminEmpty title="当前范围暂无 PV 访客" />
                         ) : (
                             <>
                                 <dl className="admin-traffic-ops-mix">
@@ -183,14 +181,11 @@ export function TrafficOperations({ data, loading, unavailableValue, partial }: 
                         </span>
                     ) : null}
                 </header>
-                <p className="admin-traffic-ops-help">运营帮助：用四项指标的等时段变化定位优先核对的环节，再结合活动、入口和功能发布逐项排查。</p>
-                <p className="admin-traffic-ops-note">规则：上期 ≥ 30、绝对变化 ≥ 10 且相对幅度 ≥ 30% 同时满足；变化不能推断原因，未触发不等于无故障。</p>
                 {anomalies && !comparable ? (
                     <p className="admin-traffic-ops-notice" role="status">
                         {historyNote}；不标为正常。
                     </p>
                 ) : null}
-                {data && partial ? <p className="admin-traffic-ops-note">当前时段尚未结束，按已过去时长与上期比较，数值仍会变化。</p> : null}
                 <AdminDataTable<AnomalyMetric>
                     skeletonColumns={5}
                     table={{ rowKey: "key", size: "small", loading, columns, dataSource: anomalies?.metrics ?? [], pagination: false, tableLayout: "fixed", scroll: { x: 652 } }}
@@ -206,7 +201,7 @@ export function TrafficOperations({ data, loading, unavailableValue, partial }: 
                     </summary>
                     <ul>
                         <li>固定比较 UV 访客、PV 浏览量、访问会话与关键操作。关键操作包含导航意图，不是生成提交数，更不是生成成功数。</li>
-                        <li>以上期同长度时段为基线，同时满足上期值至少 30、变化数量至少 10、变化幅度至少 30% 才触发上升或下降提示；本页不新增通知或定时器。</li>
+                        <li>以上期同长度时段为基线，当前时段未结束时按已过去时长比较。上期值至少 30、变化数量至少 10、变化幅度至少 30% 时触发提示。</li>
                         <li>历史不足、上期超出保留窗口、上期为 0 或样本不足均暂不可判断。“未触发当前规则”只说明本条规则未命中，不证明采集完整或业务无故障。</li>
                         <li>访客与 PV 同降时先核对活动与入口；访客平稳但操作减少时再核对功能入口及意图采集。先确认时间范围和基线，勿把相关变化直接归因为某次发布。</li>
                     </ul>

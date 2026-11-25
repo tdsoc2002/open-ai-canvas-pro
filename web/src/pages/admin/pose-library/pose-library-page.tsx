@@ -248,7 +248,6 @@ export default function PoseLibraryAdminPage() {
     return (
         <AdminPageFrame
             title="姿势库"
-            description="画布「姿势库」的数据来源。代码仓库不带任何姿势图片：站长导入元数据后，把图片同步到本站数据目录。"
             actions={
                 <div className="flex flex-wrap gap-2">
                     <Button icon={<RefreshCw className="size-4" />} loading={query.isFetching && !sync?.running} onClick={reload}>
@@ -370,7 +369,7 @@ export default function PoseLibraryAdminPage() {
                     setStatus("");
                     setPage(1);
                 }}
-                empty={<AdminTableEmpty filtered={filtered} title={filtered ? "没有匹配的姿势" : "还没有导入姿势"} description={filtered ? "调整筛选条件后重试。" : "点击右上角「导入数据」，上传 ai-pose-gallery-zh 的 data/pose-zh.json。"} />}
+                empty={<AdminTableEmpty filtered={filtered} title={filtered ? "没有匹配的姿势" : "还没有导入姿势"} description={filtered ? undefined : "导入 ai-pose-gallery-zh 的 data/pose-zh.json。"} />}
                 footer={
                     <PaginationBar
                         alwaysShow

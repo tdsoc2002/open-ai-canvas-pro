@@ -391,15 +391,13 @@ export function DefaultOptionsEditor({ spec, value, onChange }: { spec?: Capabil
     if (!options.length) return <div className="rounded-md bg-muted/20 px-3 py-2 text-xs text-foreground/50">当前能力没有需要设置的默认参数。</div>;
     return (
         <div className="divide-y divide-border">
+            <p className="pb-2 text-xs text-foreground/45">未填写的参数沿用创作端或线路默认值。</p>
             {options.map((definition) => {
                 const constraint = spec!.options![definition.name];
                 const selected = value?.[definition.name] as Scalar | undefined;
                 return (
-                    <div key={definition.name} className="grid grid-cols-12 items-center gap-2 py-3 first:pt-0 last:pb-0">
-                        <div className="col-span-12 sm:col-span-5">
-                            <div className="text-sm font-medium">{definition.label}</div>
-                            <div className="text-xs text-foreground/45">留空时由创作端或线路默认值决定</div>
-                        </div>
+                    <div key={definition.name} className="grid grid-cols-12 items-center gap-2 py-3 last:pb-0">
+                        <div className="col-span-12 text-sm font-medium sm:col-span-5">{definition.label}</div>
                         <div className="col-span-12 sm:col-span-7">
                             <ConstraintValueInput
                                 field={spec?.imageParameters?.find((p) => p.name === definition.name)}

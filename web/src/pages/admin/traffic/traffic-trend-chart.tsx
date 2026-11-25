@@ -453,7 +453,7 @@ export function TrafficTrendChart({
                         </ComposedChart>
                     </ResponsiveContainer>
                 ) : (
-                    <AdminEmpty title={hourly ? todayEmptyTitle : emptyTitle} description={hasData ? "仅展示实际上线后采集的趋势，不补造历史。" : hourly ? "今日统计读取成功后显示，不使用范围数据补零。" : "趋势将在当前范围读取成功后显示。"} />
+                    <AdminEmpty title={hourly ? todayEmptyTitle : emptyTitle} />
                 )}
             </div>
         </section>

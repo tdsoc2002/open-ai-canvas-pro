@@ -577,7 +577,7 @@ export default function AdminAnnouncementsPanel({
                         <AdminTableEmpty
                             filtered={hasFilters}
                             title={listError ? "公告读取失败" : !hasFilters ? "暂无系统公告" : undefined}
-                            description={listError || (!hasFilters ? "发布后的公告会在这里展示状态和历史记录。" : undefined)}
+                            description={listError || undefined}
                             action={
                                 !listError && !hasFilters && !publishBlocked ? (
                                     <Button

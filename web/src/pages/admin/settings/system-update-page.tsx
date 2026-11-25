@@ -151,7 +151,7 @@ export default function SystemUpdatePage() {
 
     if (loading) {
         return (
-            <AdminPageFrame title="系统更新" description="检查发布版本，并在备份、迁移和健康验证保护下完成在线更新。" scroll>
+            <AdminPageFrame title="系统更新" scroll>
                 <div className="admin-settings-stack admin-system-update">
                     <Skeleton active paragraph={{ rows: 12 }} />
                 </div>
@@ -162,7 +162,6 @@ export default function SystemUpdatePage() {
     return (
         <AdminPageFrame
             title="系统更新"
-            description="检查 GitHub Release，并在完成备份、迁移和健康验证后切换版本。"
             scroll
             actions={
                 <Button icon={<RefreshCw className="size-4" />} loading={checking} disabled={operationActive || sourceDirty || !status?.supported} onClick={() => void requestCheck()}>
@@ -190,7 +189,6 @@ export default function SystemUpdatePage() {
                         layout="stacked"
                         icon={<ServerCog className="size-4" />}
                         title="可用版本"
-                        description={status?.updateAvailable ? `当前运行 ${status.currentVersion}，可更新到 ${status.latestRelease?.version}。` : "检查 GitHub Release 与当前运行的镜像标签。"}
                         status={<PhaseBadge phase={status?.operation.phase ?? "idle"} />}
                         footer={
                             <>
@@ -206,7 +204,7 @@ export default function SystemUpdatePage() {
                                 <div>
                                     <span>当前运行</span>
                                     <strong>{status?.currentVersion || "未识别"}</strong>
-                                    {status?.currentVersion && !isReleaseVersion(status.currentVersion) ? <AdminStatusBadge label="非正式版本" tone="warning" /> : null}
+                                    {status?.currentVersion && !isReleaseVersion(status.currentVersion) ? <AdminStatusBadge label="非正式版本" tone="warning" title="当前镜像标签不是正式发布版本。更新后将使用发布镜像。" /> : null}
                                 </div>
                                 <div>
                                     <span>最新发布</span>
@@ -215,13 +213,6 @@ export default function SystemUpdatePage() {
                                     {status?.updateAvailable ? <AdminStatusBadge label="可更新" tone="success" /> : null}
                                 </div>
                             </div>
-                            {status?.updateAvailable && status.latestRelease ? (
-                                <p className="admin-system-update-hint">
-                                    {isReleaseVersion(status.currentVersion)
-                                        ? `可以从 ${status.currentVersion} 更新到 ${status.latestRelease.version}。`
-                                        : `当前镜像标签不是正式版本号，所以会显示成 ${status.currentVersion}。点开始更新后会切换到 ${status.latestRelease.version}。`}
-                                </p>
-                            ) : null}
                             <dl className="admin-system-update-facts">
                                 <dt>部署方式</dt>
                                 <dd>{status?.deployment || "未知"}</dd>
@@ -244,13 +235,7 @@ export default function SystemUpdatePage() {
                         </div>
                     </SettingsSectionCard>
 
-                    <SettingsSectionCard
-                        layout="stacked"
-                        icon={<ShieldCheck className="size-4" />}
-                        title="更新前检查"
-                        description="所有阻断项通过后才允许切换服务。"
-                        status={{ label: status?.connected ? "更新器已连接" : "更新器未连接", color: status?.connected ? "success" : "error" }}
-                    >
+                    <SettingsSectionCard layout="stacked" icon={<ShieldCheck className="size-4" />} title="更新前检查" status={{ label: status?.connected ? "更新器已连接" : "更新器未连接", color: status?.connected ? "success" : "error" }}>
                         <div className="admin-system-update-checks">
                             {(status?.checks || []).map((check) => (
                                 <UpdateCheckRow key={check.key} check={check} />
@@ -259,7 +244,7 @@ export default function SystemUpdatePage() {
                     </SettingsSectionCard>
                 </div>
 
-                <SettingsSectionCard layout="stacked" icon={<History className="size-4" />} title="更新进度" description="操作状态和日志由宿主机持久化，服务重启后仍可读取。" status={<PhaseBadge phase={status?.operation.phase ?? "idle"} />}>
+                <SettingsSectionCard layout="stacked" icon={<History className="size-4" />} title="更新进度" status={<PhaseBadge phase={status?.operation.phase ?? "idle"} />}>
                     <div className="admin-system-update-progress">
                         {status?.operation.error ? <UpdateAlert tone="error" title="本次操作失败" detail={status.operation.error} compact /> : null}
                         {(status?.operation.logs || []).length ? (

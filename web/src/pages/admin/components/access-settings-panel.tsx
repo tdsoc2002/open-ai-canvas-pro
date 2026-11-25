@@ -384,7 +384,7 @@ export default function AccessSettingsPanel() {
                     className="admin-access-section admin-access-registration-section"
                     icon={<UserPlus className="size-4" aria-hidden="true" />}
                     title="1. 是否允许创建新账号"
-                    description="先决定是否开放注册。关闭后已有账号仍可登录，已有数据不会删除。"
+                    description="开关调整后立即保存。"
                     status={<AdminStatusBadge label={registration.enabled ? "已开放" : "已关闭"} tone={registration.enabled ? "success" : "neutral"} />}
                 >
                     <div className="admin-access-registration-policy">
@@ -392,10 +392,7 @@ export default function AccessSettingsPanel() {
                             <UsersRound className="size-5" aria-hidden="true" />
                         </span>
                         <div className="admin-access-policy-copy">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <strong>允许创建新账号</strong>
-                                <AdminStatusBadge label="切换即保存" tone="info" />
-                            </div>
+                            <strong>允许创建新账号</strong>
                             <p>关闭后，本地注册和未绑定账号的第三方首次登录都会被拒绝；已有账号及已绑定身份仍可继续登录。</p>
                             <span>{formatSettingTime(registration.updatedAt, "当前来自部署环境默认值")}</span>
                         </div>
@@ -406,10 +403,7 @@ export default function AccessSettingsPanel() {
                             <Mail className="size-5" aria-hidden="true" />
                         </span>
                         <div className="admin-access-policy-copy">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <strong>注册必须填写邮箱</strong>
-                                <AdminStatusBadge label="切换即保存" tone="info" />
-                            </div>
+                            <strong>注册必须填写邮箱</strong>
                             <p>关闭时邮箱选填，用户可只用用户名注册，之后在账号设置中绑定邮箱。用邮箱作账号登录时始终会保存邮箱。</p>
                         </div>
                         <Switch
@@ -425,10 +419,7 @@ export default function AccessSettingsPanel() {
                             <MailCheck className="size-5" aria-hidden="true" />
                         </span>
                         <div className="admin-access-policy-copy">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <strong>注册必须通过验证码</strong>
-                                <AdminStatusBadge label="切换即保存" tone="info" />
-                            </div>
+                            <strong>注册必须通过验证码</strong>
                             <p>开启时按登录注册策略验证邮箱或手机号（需先配置邮件服务）。关闭后填写的邮箱标记为“未验证”，不能用于邮箱验证码登录，用户可在账号设置中验证。注意：未验证邮箱同样会占用该地址，真实邮箱主人无法再用它注册。</p>
                         </div>
                         <Switch
@@ -447,7 +438,6 @@ export default function AccessSettingsPanel() {
                     className="admin-access-section admin-access-linuxdo-section"
                     icon={<KeyRound className="size-4" aria-hidden="true" />}
                     title="2. 是否开放 Linux.do 登录"
-                    description="先决定是否在登录与注册页展示 Linux.do。开启后再填写 OAuth 接入信息。"
                     status={<AdminStatusBadge label={draftLinuxDOEnabled ? (dirty ? "待启用" : "运行中") : dirty && linuxdo.enabled ? "待停用" : "未启用"} tone={dirty ? "warning" : draftLinuxDOEnabled ? "success" : "neutral"} />}
                     footer={
                         <>
@@ -487,10 +477,8 @@ export default function AccessSettingsPanel() {
                             <div className="admin-access-policy-copy">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <strong>在登录与注册页显示 Linux.do</strong>
-                                    <AdminStatusBadge label="保存后生效" tone="info" />
                                 </div>
                                 <p>开启后显示第三方登录入口；首次登录是否能创建账号仍受上方注册开关控制。</p>
-                                {!draftLinuxDOEnabled ? <span>当前关闭，因此 OAuth 凭据和端点配置已收起。</span> : null}
                             </div>
                             <Form.Item noStyle name="enabled" valuePropName="checked">
                                 <Switch aria-label="在登录与注册页显示 Linux.do" onChange={toggleLinuxDO} />
@@ -500,7 +488,7 @@ export default function AccessSettingsPanel() {
                         {draftLinuxDOEnabled ? (
                             <>
                                 <div className="admin-access-form-section">
-                                    <FormSectionTitle icon={<KeyRound className="size-4" />} title="应用凭据" description="填写 Linux.do OAuth 应用的客户端信息；密钥只保存在服务端。" />
+                                    <FormSectionTitle icon={<KeyRound className="size-4" />} title="应用凭据" />
                                     <div className="admin-access-form-grid is-credentials">
                                         <Form.Item name="clientAuthMethod" label="Token 请求鉴权方式" rules={[{ required: true, message: "请选择鉴权方式" }]} extra="应用未特别要求时使用 Client Secret Post。">
                                             <Select
@@ -547,7 +535,6 @@ export default function AccessSettingsPanel() {
                                         </span>
                                         <span>
                                             <strong>高级：用户资料字段映射</strong>
-                                            <small>指定从 Linux.do 响应中读取本地账号信息的字段路径。</small>
                                         </span>
                                         <AdminStatusBadge label="通常无需修改" tone="neutral" />
                                         <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -556,10 +543,10 @@ export default function AccessSettingsPanel() {
                                         <Form.Item name="subjectField" label="唯一用户 ID 字段" extra="账号绑定的唯一依据，必须长期稳定。">
                                             <Input placeholder="id" />
                                         </Form.Item>
-                                        <Form.Item name="usernameField" label="用户名字段" extra="用于生成本站用户名。">
+                                        <Form.Item name="usernameField" label="用户名字段">
                                             <Input placeholder="username" />
                                         </Form.Item>
-                                        <Form.Item name="displayNameField" label="显示名称字段" extra="显示在用户菜单中的名称。">
+                                        <Form.Item name="displayNameField" label="显示名称字段">
                                             <Input placeholder="name" />
                                         </Form.Item>
                                         <Form.Item name="emailField" label="邮箱字段" extra="没有或无效时允许留空。">
@@ -583,29 +570,22 @@ export default function AccessSettingsPanel() {
                     className="admin-access-section admin-access-agreement-section"
                     icon={<FileText className="size-4" aria-hidden="true" />}
                     title="4. 服务协议名称与条款"
-                    description="注册页勾选框与弹窗展示的内容。协议名称留空时自动跟随品牌名生成，条款留空时注册页给出待补充提示。"
                     status={<AdminStatusBadge label={agreementDirty ? "待保存" : agreementContent.trim() ? "已自定义" : "待补充"} tone={agreementDirty ? "warning" : agreementContent.trim() ? "success" : "neutral"} />}
                     footer={
-                        <>
-                            <div className="admin-access-footer-note">
-                                <BadgeCheck className="size-4" aria-hidden="true" />
-                                <span>保存后注册页立即生效，无需重启服务</span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {agreementDirty ? (
-                                    <Button icon={<RotateCcw className="size-4" />} disabled={savingAgreement} onClick={resetAgreementDraft}>
-                                        撤销
-                                    </Button>
-                                ) : null}
-                                <Button type="primary" icon={<Save className="size-4" />} loading={savingAgreement} disabled={!agreementDirty || loading || refreshing} onClick={() => void saveAgreement()}>
-                                    保存服务协议
+                        <div className="ml-auto flex flex-wrap items-center gap-2">
+                            {agreementDirty ? (
+                                <Button icon={<RotateCcw className="size-4" />} disabled={savingAgreement} onClick={resetAgreementDraft}>
+                                    撤销
                                 </Button>
-                            </div>
-                        </>
+                            ) : null}
+                            <Button type="primary" icon={<Save className="size-4" />} loading={savingAgreement} disabled={!agreementDirty || loading || refreshing} onClick={() => void saveAgreement()}>
+                                保存服务协议
+                            </Button>
+                        </div>
                     }
                 >
                     <Form layout="vertical" requiredMark={false} disabled={loading || refreshing || savingAgreement}>
-                        <Form.Item label="协议名称" extra={`留空时自动跟随品牌名生成，即《${brandName}服务协议》。此处只需填名称本身，书名号由注册页补充。`} className="admin-access-agreement-title-field">
+                        <Form.Item label="协议名称" tooltip={`留空时使用「${brandName}服务协议」，书名号由注册页添加。`} className="admin-access-agreement-title-field">
                             <Input
                                 value={agreementTitle}
                                 maxLength={60}
@@ -616,7 +596,7 @@ export default function AccessSettingsPanel() {
                                 }}
                             />
                         </Form.Item>
-                        <Form.Item label="协议条款内容" extra="支持多段落文本，按空行分段展示；留空时注册页弹窗显示“服务协议内容待补充”。" className="admin-access-agreement-content-field">
+                        <Form.Item label="协议条款内容" tooltip="按空行分段，留空时提示「服务协议内容待补充」。" className="admin-access-agreement-content-field">
                             <Input.TextArea
                                 value={agreementContent}
                                 maxLength={20000}
@@ -629,10 +609,6 @@ export default function AccessSettingsPanel() {
                             />
                         </Form.Item>
                         <div className="admin-access-agreement-toolbar">
-                            <div className="admin-access-agreement-template-note">
-                                <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-                                <span>没有准备条款时，可先填入通用模板再按需修改。</span>
-                            </div>
                             <div className="admin-access-agreement-template-actions">
                                 <span className="admin-access-agreement-metric">{agreementContent.trim() ? `${agreementParagraphsCount} 段 · ${agreementContent.length} 字` : "尚未填写条款"}</span>
                                 <Button
@@ -666,13 +642,7 @@ export default function AccessSettingsPanel() {
             </div>
 
             <div id="admin-access-login-mode" className="admin-settings-anchor">
-                <SettingsSectionCard
-                    className="admin-access-section admin-access-login-mode-section"
-                    icon={<AppWindow className="size-4" aria-hidden="true" />}
-                    title="5. 登录与注册的打开方式"
-                    description="决定用户点击「登录」或访问需要登录的页面时，登录与注册界面以弹窗还是独立页面呈现。"
-                    status={<AdminStatusBadge label="切换即保存" tone="info" />}
-                >
+                <SettingsSectionCard className="admin-access-section admin-access-login-mode-section" icon={<AppWindow className="size-4" aria-hidden="true" />} title="5. 登录与注册的打开方式" status={<AdminStatusBadge label="切换即保存" tone="info" />}>
                     <div className="admin-storage-mode-content">
                         <div className="admin-storage-mode-grid" role="radiogroup" aria-label="登录与注册的打开方式">
                             {LOGIN_MODES.map((item) => {
@@ -714,13 +684,13 @@ export default function AccessSettingsPanel() {
     );
 }
 
-function FormSectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+function FormSectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
     return (
         <div className="admin-access-form-section-heading">
             <span>{icon}</span>
             <div>
                 <h3>{title}</h3>
-                <p>{description}</p>
+                {description ? <p>{description}</p> : null}
             </div>
         </div>
     );

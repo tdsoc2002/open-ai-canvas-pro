@@ -26,17 +26,14 @@ export function SkinThemeEditor({ skin, disabled, onChange }: { skin: SkinDefini
                         <Form.Item label="主题名称" extra="1–40 个字符，可随时更改。">
                             <Input value={skin.name} maxLength={40} showCount onChange={(event) => updateIdentity({ name: event.target.value })} />
                         </Form.Item>
-                        <Form.Item label="主题说明" extra="显示在后台皮肤设置中。">
+                        <Form.Item label="主题说明">
                             <Input value={skin.description} maxLength={100} showCount onChange={(event) => updateIdentity({ description: event.target.value })} />
                         </Form.Item>
                     </div>
                 </Form>
 
                 <div className="admin-skin-mode-bar">
-                    <div>
-                        <strong>颜色体系</strong>
-                        <span>同一用途的控件统一消费下列语义颜色</span>
-                    </div>
+                    <strong>颜色体系</strong>
                     <SegmentedControl<SkinThemeMode>
                         ariaLabel="皮肤预览模式"
                         value={mode}
@@ -69,7 +66,6 @@ export function SkinThemeEditor({ skin, disabled, onChange }: { skin: SkinDefini
                 <details className="admin-skin-token-group" open>
                     <summary>
                         <span>主按钮填充</span>
-                        <small>{mode === "light" ? "浅色" : "深色"}模式</small>
                     </summary>
                     <div className="admin-skin-component-grid">
                         <label className="admin-skin-number-field">
@@ -196,10 +192,7 @@ function SkinThemePreview({ theme, mode }: { theme: SkinDefinition; mode: SkinTh
                 <span className="admin-skin-live-preview-icon" style={{ background: color.surfaceSubtle, color: color.iconActive, borderRadius: component.inputRadius }}>
                     <Palette />
                 </span>
-                <div>
-                    <strong>控件组合预览</strong>
-                    <small style={{ color: color.textMuted }}>按钮、输入、选中与状态均来自同一套主题参数</small>
-                </div>
+                <strong>控件组合预览</strong>
                 <span className="admin-skin-live-preview-status" style={{ background: color.selected, color: color.selectedForeground, borderRadius: component.menuRadius }}>
                     已选中
                 </span>

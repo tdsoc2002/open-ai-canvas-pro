@@ -8,7 +8,7 @@ import { useBlocker, useSearchParams } from "react-router";
 import { cn } from "@/lib/utils";
 import { getAdminArkPrivateAssetSetting, updateAdminArkPrivateAssetSetting, type AdminArkPrivateAssetSetting } from "@/services/api/auth";
 import { AdminPageFrame } from "../components/admin-shell";
-import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "../components/admin-ui";
+import { AdminStatusBadge, SettingsSectionCard } from "../components/admin-ui";
 import { ArkAdminGroupsTab } from "./ark-assets/ark-admin-groups-tab";
 import { ArkAdminReviewsTab } from "./ark-assets/ark-admin-reviews-tab";
 import "./ark-assets/ark-admin.css";
@@ -17,7 +17,6 @@ type ArkSite = AdminArkPrivateAssetSetting["site"];
 type ArkTab = "groups" | "reviews" | "settings";
 
 const MICRO_PER_CREDIT = 1_000_000;
-const PAGE_DESCRIPTION = "管理平台方舟账号下的真人、虚拟与版权 IP 素材组，审核用户上传，并配置方舟凭据、开放范围与建组收费";
 
 type ArkPrivateAssetForm = {
     enabled: boolean;
@@ -94,7 +93,7 @@ export default function ArkPrivateAssetsSettingsPage() {
         setSearchParams(params, { replace: true });
     };
     return (
-        <AdminPageFrame title="方舟素材库" description={PAGE_DESCRIPTION} actions={<AdminSegmented<ArkTab> ariaLabel="方舟素材库视图" value={tab} onChange={selectTab} options={ARK_TABS} />} scroll>
+        <AdminPageFrame title="方舟素材库" actions={<AdminSegmented<ArkTab> ariaLabel="方舟素材库视图" value={tab} onChange={selectTab} options={ARK_TABS} />} scroll>
             <div className="admin-ark-tabs-body">
                 {tab === "groups" ? <ArkAdminGroupsTab onOpenReviews={() => selectTab("reviews")} /> : null}
                 {tab === "reviews" ? <ArkAdminReviewsTab /> : null}
@@ -322,10 +321,7 @@ function ArkPrivateAssetsSettingsForm() {
         <div className="admin-settings-stack admin-ark-settings">
             <div className={cn("admin-ark-command-bar", dirty && "is-dirty")}>
                 <div className="admin-ark-command-copy" aria-live="polite">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <strong>{dirty ? "方舟素材库有调整待保存" : "方舟素材库配置已同步"}</strong>
-                        <AdminStatusBadge label={dirty ? "尚未生效" : "服务端配置"} tone={dirty ? "warning" : "neutral"} />
-                    </div>
+                    <strong>{dirty ? "方舟素材库配置待保存" : "方舟素材库配置已同步"}</strong>
                 </div>
                 <div className="admin-ark-command-actions">
                     {dirty ? (
@@ -385,8 +381,12 @@ function ArkPrivateAssetsSettingsForm() {
                             <Form.Item name="accessKeyId" label="IAM AccessKey">
                                 <Input autoComplete="off" prefix={<KeyRound className="size-4 text-foreground/35" />} placeholder="仅保存在服务端" />
                             </Form.Item>
-                            <Form.Item name="accessKeySecret" label={setting.hasAccessKeySecret ? `IAM SecretKey（${configuredSecretText}）` : "IAM SecretKey"} extra={setting.hasAccessKeySecret ? "AccessKey 不变时留空可保留原密钥。" : undefined}>
-                                <Input.Password autoComplete="new-password" placeholder={setting.hasAccessKeySecret ? "留空保留原密钥" : "仅保存在服务端"} />
+                            <Form.Item
+                                name="accessKeySecret"
+                                label={setting.hasAccessKeySecret ? "IAM SecretKey（已配置）" : "IAM SecretKey"}
+                                tooltip={setting.hasAccessKeySecret ? "AccessKey 不变时可留空。更换 AccessKey 时须填写匹配的 SecretKey。" : undefined}
+                            >
+                                <Input.Password autoComplete="new-password" />
                             </Form.Item>
                         </div>
                     </SettingsSectionCard>

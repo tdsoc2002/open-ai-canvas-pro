@@ -331,7 +331,7 @@ export default function RedemptionCodesPanel({ createOpen, onCreateOpenChange, o
                         <AdminTableEmpty
                             filtered={hasFilters}
                             title={listError ? "批次读取失败" : !hasFilters ? "暂无兑换码批次" : undefined}
-                            description={listError || (!hasFilters ? "生成后的批次会在这里集中展示和追踪。" : undefined)}
+                            description={listError || undefined}
                             action={
                                 !listError && !hasFilters && !uncertainCreateNotice ? (
                                     <Button type="primary" icon={<TicketCheck className="size-4" />} onClick={() => onCreateOpenChange(true)}>

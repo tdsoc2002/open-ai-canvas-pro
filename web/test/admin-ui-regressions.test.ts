@@ -210,7 +210,7 @@ test("task-first settings reveal dependent configuration only after the primary 
     ]);
 
     expect(storageSource).toContain('title="1. 选择新资源存储位置"');
-    expect(storageSource).toContain("选择后继续完成第 2 步并保存");
+    expect(storageSource).toContain("仅影响新增资源，已有文件仍从原位置读取。");
     expect(sourceSection(storageSource, "const requestModeChange", "const save")).not.toContain("save(values)");
 
     expect(emailSource).toContain("{draftEnabled ? (");
@@ -295,7 +295,6 @@ test("request logs display user credit billing independently from upstream cost"
     const billingSummary = sourceSection(listSource, "function BillingSummary", "function MediaResult");
     expect(listSource).toContain('title: "积分计算"');
     expect(listSource).toContain('title: "请求阶段 / 状态"');
-    expect(listSource).toContain('description="模型生成与结果下载记录；仅计费调用扣除积分"');
     expect(billingSummary).toContain("billingReservedMicrocredits");
     expect(billingSummary).toContain("billingSettledMicrocredits");
     expect(billingSummary).toContain("billingAvailable");

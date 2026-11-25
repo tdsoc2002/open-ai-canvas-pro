@@ -1,6 +1,6 @@
 import { App, Button, Input, Skeleton } from "antd";
 import { Switch } from "@/pages/admin/ui/controls";
-import { AlertTriangle, BadgeCheck, CircleCheck, CloudDownload, Link2, RefreshCw, RotateCcw, Save, Server, ShieldCheck, Trash2, Wifi } from "lucide-react";
+import { AlertTriangle, CloudDownload, Link2, RefreshCw, RotateCcw, Save, ShieldCheck, Trash2, Wifi } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "react-router";
 
@@ -332,7 +332,7 @@ export default function LibTVSettingsPage() {
 
     if (loading && !setting) {
         return (
-            <AdminPageFrame title="第三方参数配置" description="先连接平台账号，再决定是否开放用户导入" scroll>
+            <AdminPageFrame title="第三方参数配置" scroll>
                 <div className="admin-settings-stack admin-third-party-settings" aria-label="正在读取第三方参数配置" role="status">
                     <div className="admin-third-party-command-bar">
                         <Skeleton active title={{ width: 190 }} paragraph={false} />
@@ -347,7 +347,7 @@ export default function LibTVSettingsPage() {
 
     if (!setting) {
         return (
-            <AdminPageFrame title="第三方参数配置" description="先连接平台账号，再决定是否开放用户导入" scroll>
+            <AdminPageFrame title="第三方参数配置" scroll>
                 <div className="admin-settings-stack admin-third-party-settings">
                     <div className="admin-third-party-load-error" role="alert">
                         <span className="admin-third-party-load-error-icon">
@@ -367,17 +367,11 @@ export default function LibTVSettingsPage() {
     }
 
     return (
-        <AdminPageFrame title="第三方参数配置" description="先连接平台账号，再决定是否开放用户导入" scroll>
+        <AdminPageFrame title="第三方参数配置" scroll>
             <div className="admin-settings-stack admin-third-party-settings">
                 <div className={cn("admin-third-party-command-bar", dirty && "is-dirty")}>
                     <div className="admin-third-party-command-copy" aria-live="polite">
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <strong>{dirty ? "第三方参数有调整待保存" : "第三方参数已与服务端同步"}</strong>
-                                <AdminStatusBadge label={dirty ? "尚未生效" : "服务端当前值"} tone={dirty ? "warning" : "neutral"} />
-                            </div>
-                            <p>{dirty ? "导入开关只在本页暂存；保存前可撤销或重新读取。" : "当前仅接入 LibTV；授权令牌只保存在服务端，不会从接口回传。"}</p>
-                        </div>
+                        <strong>{dirty ? "第三方参数待保存" : "第三方参数已同步"}</strong>
                     </div>
                     <div className="admin-third-party-command-actions">
                         {dirty ? (
@@ -403,31 +397,10 @@ export default function LibTVSettingsPage() {
                         className="admin-third-party-section admin-third-party-credential-section"
                         icon={<Link2 className="size-4" aria-hidden="true" />}
                         title="1. 连接 LibTV 账号"
-                        description={`使用官方微信扫码授权，让${brandName}服务端读取可复制的 LibTV 画布。授权令牌不会回传到浏览器。`}
+                        description="用微信扫码授权站点只读访问可复制的 LibTV 画布。令牌仅保存在服务端。"
                         status={<AdminStatusBadge label={connectionLabel} tone={connected ? "success" : "neutral"} />}
                     >
-                        <div className="admin-third-party-provider">
-                            <div className="admin-third-party-provider-heading">
-                                <span className="admin-third-party-provider-mark">L</span>
-                                <div>
-                                    <strong>LibTV</strong>
-                                    <p>画布项目读取接入</p>
-                                </div>
-                            </div>
-                            <div className="admin-third-party-provider-tags">
-                                <AdminStatusBadge label="服务端代理" tone="info" />
-                                <AdminStatusBadge label="只读外部画布" tone="neutral" />
-                                <AdminStatusBadge label={connected ? "账号已连接" : "尚未连接"} tone={connected ? "success" : "warning"} />
-                            </div>
-                        </div>
                         <div className="admin-third-party-credential-panel">
-                            <div className="admin-third-party-credential-state">
-                                <span className={cn("admin-third-party-credential-indicator", connected && "is-ready")}>
-                                    {connected ? <CircleCheck className="size-4" aria-hidden="true" /> : <AlertTriangle className="size-4" aria-hidden="true" />}
-                                    {connectionLabel}
-                                </span>
-                                <p>{connected ? "已使用站点级管理员授权。用户导入画布时会复用这个连接，无需各自粘贴密钥。" : "官方已不再提供可粘贴的接口密钥。请连接一个管理员 LibTV 账号，用于按 UUID 导入可复制画布。"}</p>
-                            </div>
                             <div className="admin-third-party-credential-actions">
                                 <Button type={connected ? "default" : "primary"} icon={<Link2 className="size-4" />} loading={connecting} disabled={saving || refreshing || disconnecting} onClick={() => void startConnect()}>
                                     {connected ? "重新连接" : "连接 LibTV 账号"}
@@ -473,22 +446,20 @@ export default function LibTVSettingsPage() {
                             className="admin-third-party-section admin-third-party-access-section"
                             icon={<CloudDownload className="size-4" aria-hidden="true" />}
                             title="2. 是否开放用户导入 LibTV 画布"
-                            description="控制创作台是否允许普通用户通过 UUID 发起新的 LibTV 画布导入。"
                             status={<AdminStatusBadge label={enabledDirty ? (enabled ? "待开放" : "待关闭") : enabled ? "入口开放" : "入口关闭"} tone={enabledDirty ? "warning" : enabled ? "success" : "neutral"} />}
                             footer={<ThirdPartySaveFooter setting={setting} dirty={dirty} saving={saving} refreshing={refreshing} onReset={resetDraft} onSave={submitSave} />}
                         >
                             <div className="admin-third-party-policy-control">
                                 <div>
-                                    <strong>{enabled ? "允许发起新的 LibTV 导入" : "不开放新的 LibTV 导入"}</strong>
-                                    <p>{enabled ? "保存后，服务端会使用已连接的 LibTV 账号读取用户指定的画布。" : "已有导入节点与连线继续保留，不会被删除或转换。"}</p>
+                                    <strong>允许用户导入 LibTV 画布</strong>
+                                    {enabled ? null : <p>关闭后保留已导入的节点与连线。</p>}
                                 </div>
                                 <div className="admin-third-party-policy-switch">
-                                    <span>{enabled ? "开启" : "关闭"}</span>
                                     <Switch aria-label="允许用户导入 LibTV 画布" checked={enabled} disabled={saving || refreshing} onChange={changeEnabled} />
                                 </div>
                             </div>
                             <div className="admin-third-party-flow" aria-label="LibTV 画布导入链路">
-                                <FlowStep icon={<Link2 className="size-4" />} label="站点级授权" detail="令牌不回传" />
+                                <FlowStep icon={<Link2 className="size-4" />} label="站点级授权" />
                                 <span aria-hidden="true">→</span>
                                 <FlowStep icon={<Wifi className="size-4" />} label="读取画布" detail="按 UUID 请求" />
                                 <span aria-hidden="true">→</span>
@@ -504,8 +475,11 @@ export default function LibTVSettingsPage() {
                             className="admin-third-party-section admin-third-party-test-card"
                             icon={<Wifi className="size-4" aria-hidden="true" />}
                             title="3. 验证已连接的 LibTV 账号"
-                            description={`使用服务端当前保存的授权发起一次只读请求，不会向 LibTV 或当前${brandName}画布写入内容。`}
-                            status={<TestStatus status={testStatus} />}
+                            status={
+                                <span role="status">
+                                    <TestStatus status={testStatus} />
+                                </span>
+                            }
                         >
                             <div className="admin-third-party-test-controls">
                                 <div className="admin-third-party-test-input">
@@ -526,10 +500,12 @@ export default function LibTVSettingsPage() {
                                     验证连接
                                 </Button>
                             </div>
-                            <div className={cn("admin-third-party-test-note", testStatus === "error" && "is-error", testStatus === "success" && "is-success")} role={testStatus === "error" ? "alert" : "status"}>
-                                {testStatus === "success" ? <BadgeCheck className="size-4" aria-hidden="true" /> : testStatus === "error" ? <AlertTriangle className="size-4" aria-hidden="true" /> : <Server className="size-4" aria-hidden="true" />}
-                                <span>{testStatus === "success" ? "验证成功：已连接的 LibTV 账号可以读取该画布。" : testStatus === "error" ? `验证失败：${testError}` : "验证会产生一次真实的外部只读请求，但不会保存画布内容。"}</span>
-                            </div>
+                            {testStatus === "error" ? (
+                                <div className="admin-third-party-test-note is-error" role="alert">
+                                    <AlertTriangle className="size-4" aria-hidden="true" />
+                                    <span>验证失败：{testError}</span>
+                                </div>
+                            ) : null}
                         </SettingsSectionCard>
                     </div>
                 ) : null}
@@ -559,13 +535,13 @@ function ThirdPartySaveFooter({ setting, dirty, saving, refreshing, onReset, onS
     );
 }
 
-function FlowStep({ icon, label, detail }: { icon: ReactNode; label: string; detail: string }) {
+function FlowStep({ icon, label, detail }: { icon: ReactNode; label: string; detail?: string }) {
     return (
         <div className="admin-third-party-flow-step">
             <span>{icon}</span>
             <div>
                 <strong>{label}</strong>
-                <small>{detail}</small>
+                {detail ? <small>{detail}</small> : null}
             </div>
         </div>
     );

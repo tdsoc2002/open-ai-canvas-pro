@@ -415,7 +415,7 @@ export default function ChannelsPage() {
     );
 
     return (
-        <AdminPageFrame title="渠道与模型" description="按 API 网站管理多个 Key 分组；每个 Key 的模型、协议、能力和价格独立。">
+        <AdminPageFrame title="渠道与模型">
             <Segmented
                 className="admin-channel-view-switch"
                 aria-label="渠道与模型视图"
@@ -664,10 +664,7 @@ export default function ChannelsPage() {
                                 ))}
                             </div>
                         ) : (
-                            <AdminTableEmpty
-                                title={loading ? "正在加载渠道" : loadError ? "暂时无法读取渠道" : hasFilters ? "没有匹配的渠道" : "添加渠道，开始管理模型"}
-                                description={loading ? "加载完成后将在此显示渠道模型。" : loadError ? "请在左侧重试加载。" : hasFilters ? "调整左侧搜索或状态筛选。" : "在左侧新增渠道，配置连接信息后即可拉取或新增模型。"}
-                            />
+                            <AdminTableEmpty title={loading ? "正在加载渠道" : loadError ? "暂时无法读取渠道" : hasFilters ? "没有匹配的渠道" : "添加渠道，开始管理模型"} description={!loading && loadError ? "请在左侧重试加载。" : undefined} />
                         )}
                     </section>
                 </div>
@@ -749,7 +746,7 @@ export default function ChannelsPage() {
                     <Form.Item name="proxyUrl" label="代理地址" extra="为该渠道单独配置出站代理，支持 socks5://、socks5h://、http://、https://。留空则使用全局环境变量代理。">
                         <Input disabled={Boolean(addingToWebsite)} placeholder="例如：socks5://127.0.0.1:1080 或 http://127.0.0.1:7890" />
                     </Form.Item>
-                    <Form.Item name="mediaTransport" label="参考素材发送方式" extra="作为本渠道默认值；渠道内模型可单独覆盖。未设置时保持现有协议行为。">
+                    <Form.Item name="mediaTransport" label="参考素材发送方式">
                         <MediaTransportFields />
                     </Form.Item>
                     <Form.Item name="useGlobalConcurrency" label="跟随系统并发配置" valuePropName="checked">

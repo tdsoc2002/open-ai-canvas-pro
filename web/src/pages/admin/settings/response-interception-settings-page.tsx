@@ -216,7 +216,7 @@ export default function ResponseInterceptionSettingsPage() {
 
     if (loading && !setting) {
         return (
-            <AdminPageFrame title="模型响应拦截" description="先决定是否替换用户错误，再配置规则与优先级" scroll>
+            <AdminPageFrame title="模型响应拦截" scroll>
                 <div className="admin-settings-stack admin-intercept-settings" aria-label="正在读取模型响应拦截配置" role="status">
                     <div className="admin-intercept-command-bar">
                         <Skeleton active title={{ width: 190 }} paragraph={false} />
@@ -231,7 +231,7 @@ export default function ResponseInterceptionSettingsPage() {
 
     if (!setting) {
         return (
-            <AdminPageFrame title="模型响应拦截" description="先决定是否替换用户错误，再配置规则与优先级" scroll>
+            <AdminPageFrame title="模型响应拦截" scroll>
                 <div className="admin-settings-stack admin-intercept-settings">
                     <div className="admin-intercept-load-error" role="alert">
                         <span className="admin-intercept-load-error-icon">
@@ -251,20 +251,14 @@ export default function ResponseInterceptionSettingsPage() {
     }
 
     return (
-        <AdminPageFrame title="模型响应拦截" description="先决定是否替换用户错误，再配置规则与优先级" scroll>
+        <AdminPageFrame title="模型响应拦截" scroll>
             <div className="admin-settings-stack admin-intercept-settings">
                 <div className={cn("admin-intercept-command-bar", dirty && "is-dirty")}>
                     <div className="admin-intercept-command-copy" aria-live="polite">
                         <span className="admin-intercept-command-icon">
                             <ShieldAlert className="size-4" aria-hidden="true" />
                         </span>
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <strong>{dirty ? "响应拦截有调整待保存" : "响应拦截配置已同步"}</strong>
-                                <AdminStatusBadge label={dirty ? "尚未生效" : "服务端当前值"} tone={dirty ? "warning" : "neutral"} />
-                            </div>
-                            <p>{dirty ? "当前开关、文案和优先级只在本页暂存；本地预览不会调用后端。" : "仅投影用户最终看到的错误文案，原始响应与请求明细保持不变。"}</p>
-                        </div>
+                        <strong>{dirty ? "响应拦截配置待保存" : "响应拦截配置已同步"}</strong>
                     </div>
                     <div className="admin-intercept-command-actions">
                         {dirty ? (
@@ -290,7 +284,6 @@ export default function ResponseInterceptionSettingsPage() {
                         className="admin-intercept-section admin-intercept-policy-section"
                         icon={<ShieldAlert className="size-4" aria-hidden="true" />}
                         title="1. 是否替换用户可见的上游错误"
-                        description="这是响应拦截的主开关。关闭时规则继续保留，但不会改写用户最终看到的错误文案。"
                         status={<AdminStatusBadge label={enabledDirty ? (enabled ? "待启用" : "待停用") : enabled ? "已启用" : "已停用"} tone={enabledDirty ? "warning" : enabled ? "success" : "neutral"} />}
                         footer={
                             !enabled ? (
@@ -319,8 +312,7 @@ export default function ResponseInterceptionSettingsPage() {
                             </span>
                             <div className="admin-intercept-policy-copy">
                                 <strong>投影替换用户可见错误</strong>
-                                <p>启用后按规则顺序检查错误文案，忽略英文大小写；第一条包含匹配命中后，用“替换为”整条覆盖用户所见文案。</p>
-                                <span>{enabled ? (draft.rules.length ? "当前草稿会依次检查所有规则，未命中时原样显示。" : "当前没有规则，即使启用也不会改变用户所见错误。") : "当前停用，所有用户可见错误均原样显示。"}</span>
+                                {!enabled ? <span>停用时显示原始错误文案。</span> : null}
                             </div>
                             <div className="admin-intercept-policy-switch">
                                 <span>{enabled ? "启用" : "停用"}</span>
@@ -341,7 +333,7 @@ export default function ResponseInterceptionSettingsPage() {
                                 className="admin-intercept-section admin-intercept-rules-section"
                                 icon={<ListOrdered className="size-4" aria-hidden="true" />}
                                 title="2. 配置替换规则与优先级"
-                                description="越靠前的规则越先匹配；命中后停止继续检查。匹配文案最多 200 字，替换文案最多 500 字。"
+                                description="忽略英文大小写，首条包含匹配的规则会整条替换用户可见文案。"
                                 status={<AdminStatusBadge label={`${draft.rules.length}/${MAX_RULES} 条`} tone={duplicateRuleIndexes.size ? "warning" : draft.rules.length ? "info" : "neutral"} />}
                                 footer={
                                     <>
@@ -363,10 +355,7 @@ export default function ResponseInterceptionSettingsPage() {
                                 }
                             >
                                 <div className="admin-intercept-rule-toolbar">
-                                    <div>
-                                        <strong>按优先级从上到下排列</strong>
-                                        <p>重复或包含关系过宽的文案可能使后续规则无法命中，可通过箭头调整顺序并在下方本地预览。</p>
-                                    </div>
+                                    <strong>按优先级从上到下排列</strong>
                                     <Button icon={<Plus className="size-4" />} disabled={loading || refreshing || saving || rules.length >= MAX_RULES} onClick={addRule}>
                                         添加规则
                                     </Button>
@@ -392,7 +381,6 @@ export default function ResponseInterceptionSettingsPage() {
                                                 <div key={index} className={cn("admin-intercept-rule-row", duplicateRuleIndexes.has(index) && "has-duplicate")}>
                                                     <div className="admin-intercept-rule-index">
                                                         <span>{index + 1}</span>
-                                                        <small>{index === 0 ? "最先" : `第 ${index + 1}`}</small>
                                                     </div>
                                                     <div className="admin-intercept-rule-field">
                                                         <Input
@@ -404,7 +392,6 @@ export default function ResponseInterceptionSettingsPage() {
                                                             placeholder="例如：余额不足、HTTP 429"
                                                             onChange={(event) => updateRule(index, "contains", event.target.value)}
                                                         />
-                                                        <small>忽略英文大小写，使用包含判断。</small>
                                                     </div>
                                                     <div className="admin-intercept-rule-field">
                                                         <Input.TextArea
@@ -417,7 +404,6 @@ export default function ResponseInterceptionSettingsPage() {
                                                             placeholder="例如：服务暂时繁忙，请稍后重试"
                                                             onChange={(event) => updateRule(index, "replace", event.target.value)}
                                                         />
-                                                        <small>命中后整条替换，不是局部替换。</small>
                                                     </div>
                                                     <div className="admin-intercept-rule-actions">
                                                         <Button type="text" icon={<ArrowUp className="size-4" />} aria-label={`上移第 ${index + 1} 条规则`} disabled={loading || refreshing || saving || index === 0} onClick={() => moveRule(index, -1)} />
@@ -452,18 +438,11 @@ export default function ResponseInterceptionSettingsPage() {
                         </div>
 
                         <div id="admin-intercept-preview" className="admin-settings-anchor">
-                            <SettingsSectionCard
-                                className="admin-intercept-section admin-intercept-preview-section"
-                                icon={<Eye className="size-4" aria-hidden="true" />}
-                                title="3. 本地预览用户最终文案"
-                                description="使用当前草稿模拟服务端的裁剪、忽略大小写包含和首条命中逻辑；内容不会发送或保存。"
-                                status={<AdminStatusBadge label="仅当前浏览器" tone="neutral" />}
-                            >
+                            <SettingsSectionCard className="admin-intercept-section admin-intercept-preview-section" icon={<Eye className="size-4" aria-hidden="true" />} title="3. 本地预览用户最终文案" description="输入仅用于本地预览，不发送或保存。">
                                 <div className="admin-intercept-preview-grid">
                                     <div className="admin-intercept-preview-input">
                                         <label htmlFor="admin-intercept-preview-input">模拟上游错误文案</label>
                                         <Input.TextArea id="admin-intercept-preview-input" value={previewInput} autoSize={{ minRows: 4, maxRows: 8 }} placeholder="粘贴一段用于本地预览的错误文案" onChange={(event) => setPreviewInput(event.target.value)} />
-                                        <p>只在内存中计算，不进入保存请求、审计或请求明细。</p>
                                     </div>
                                     <div className="admin-intercept-preview-result" aria-live="polite">
                                         <div className="admin-intercept-preview-heading">
@@ -473,16 +452,7 @@ export default function ResponseInterceptionSettingsPage() {
                                                 tone={!preview.raw || preview.matchIndex < 0 || !enabled ? "neutral" : "success"}
                                             />
                                         </div>
-                                        <p className={cn(!preview.output && "is-placeholder")}>{preview.output || "输入模拟错误后，这里会显示按当前开关和规则计算的结果。"}</p>
-                                        <small>
-                                            {preview.matchIndex >= 0
-                                                ? enabled
-                                                    ? "已按首条命中规则整条替换。"
-                                                    : "规则可以命中，但全局开关停用，所以实际仍原样显示。"
-                                                : preview.raw
-                                                  ? "没有规则包含该文案，因此保持原样。"
-                                                  : "预览不验证真实上游响应，也不会触发模型请求。"}
-                                        </small>
+                                        <p className={cn(!preview.output && "is-placeholder")}>{preview.output || "—"}</p>
                                     </div>
                                 </div>
                             </SettingsSectionCard>

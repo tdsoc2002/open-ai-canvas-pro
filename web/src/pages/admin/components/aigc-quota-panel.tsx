@@ -37,7 +37,7 @@ export function AigcQuotaPanel() {
             <div className="mb-3 flex items-center justify-between">
                 <div>
                     <h2 className="text-base font-semibold">VOD 渠道额度</h2>
-                    <p className="mt-1 text-xs text-foreground/45">每日凌晨 3 点自动同步，也可手动刷新全部渠道</p>
+                    <p className="mt-1 text-xs text-foreground/45">每日凌晨 3 点自动同步</p>
                 </div>
                 <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void refresh()}>
                     刷新全部

@@ -344,7 +344,7 @@ export default function TrafficPage() {
     };
 
     return (
-        <AdminPageFrame title="访问统计" description="独立统计站点访问与关键操作，不与运行总览的生成任务混算。" scroll>
+        <AdminPageFrame title="访问统计" scroll>
             <div className="admin-traffic-page" aria-busy={loading}>
                 <section className="admin-traffic-control-deck" aria-label="时间范围与筛选控制">
                     <ListToolbar

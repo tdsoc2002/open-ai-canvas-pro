@@ -217,7 +217,6 @@ export default function AdminSkillsPage() {
     return (
         <AdminPageFrame
             title="技能管理"
-            description="全站技能（含私有和已下架）· GitHub 同步的技能只能编辑基本信息"
             actions={
                 <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => setReloadKey((value) => value + 1)}>
                     刷新
@@ -254,7 +253,7 @@ export default function AdminSkillsPage() {
                             </Button>
                         </div>
                     ) : (
-                        <AdminTableEmpty filtered={filtered} title={filtered ? "没有符合条件的技能" : "还没有技能"} description={filtered ? "调整筛选条件后重试。" : undefined} />
+                        <AdminTableEmpty filtered={filtered} title={filtered ? "没有符合条件的技能" : "还没有技能"} />
                     )
                 }
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} pageSizeOptions={pageSizes} onChange={(next, size) => update({ page: next, pageSize: size })} />}

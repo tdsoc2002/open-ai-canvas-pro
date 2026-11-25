@@ -405,13 +405,13 @@ export default function RuntimePolicySettingsPage() {
 
     if (loading && !draft) {
         return (
-            <AdminPageFrame title="资源与策略" description="账号配额、任务调度与请求安全策略" scroll>
+            <AdminPageFrame title="资源与策略" scroll>
                 <div className="admin-settings-stack admin-runtime-policy" aria-label="正在读取资源与策略配置" role="status">
                     <div className="admin-runtime-policy-command-bar">
                         <Skeleton active title={{ width: 190 }} paragraph={false} />
                     </div>
                     <div className="admin-runtime-policy-overview">
-                        {Array.from({ length: 4 }).map((_, index) => (
+                        {Array.from({ length: 3 }).map((_, index) => (
                             <div key={index} className="admin-stat-tile">
                                 <Skeleton active title={{ width: 96 }} paragraph={{ rows: 1 }} />
                             </div>
@@ -427,7 +427,7 @@ export default function RuntimePolicySettingsPage() {
 
     if (!draft || !savedSetting) {
         return (
-            <AdminPageFrame title="资源与策略" description="账号配额、任务调度与请求安全策略" scroll>
+            <AdminPageFrame title="资源与策略" scroll>
                 <div className="admin-settings-stack admin-runtime-policy">
                     <div className="admin-runtime-policy-load-error" role="alert">
                         <span className="admin-runtime-policy-load-error-icon">
@@ -452,7 +452,7 @@ export default function RuntimePolicySettingsPage() {
     const activeTaskLimit = readDraftNumber(draft, "task", "activeTaskLimit");
 
     return (
-        <AdminPageFrame title="资源与策略" description="账号配额、任务调度与请求安全策略" scroll>
+        <AdminPageFrame title="资源与策略" scroll>
             <Form
                 form={form}
                 initialValues={draft}
@@ -470,13 +470,7 @@ export default function RuntimePolicySettingsPage() {
                             <span className="admin-runtime-policy-command-icon">
                                 <ShieldCheck className="size-4" aria-hidden="true" />
                             </span>
-                            <div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <strong>{dirty ? `${dirtyFields.length} 项调整待保存` : "资源与策略状态已同步"}</strong>
-                                    <AdminStatusBadge label={dirty ? "尚未生效" : savedSetting.configured ? "管理员配置" : "系统默认"} tone={dirty ? "warning" : savedSetting.configured ? "success" : "neutral"} />
-                                </div>
-                                <p>{dirty ? "当前调整只在本页暂存；点击保存修改后才会影响运行中的业务。" : updateDetail}</p>
-                            </div>
+                            <strong>{dirty ? `${dirtyFields.length} 项调整待保存` : "资源与策略状态已同步"}</strong>
                         </div>
                         <div className="admin-runtime-policy-command-actions">
                             {dirty ? (
@@ -512,7 +506,6 @@ export default function RuntimePolicySettingsPage() {
 
                     <div className="admin-runtime-policy-overview" aria-label="资源与策略配置概览">
                         <AdminStatTile label="配置来源" value={savedSetting.configured ? "管理员配置" : "系统默认"} detail={updateDetail} />
-                        <AdminStatTile label="待保存调整" value={dirtyFields.length} detail={dirty ? "仅本页暂存，尚未生效" : "当前草稿与服务端一致"} />
                         <AdminStatTile label="Worker 并发" value={formatNumber(workerConcurrency)} detail={dirtyFields.some((field) => field.name === "workerConcurrency") ? "暂存状态预览" : "集群后台任务并发"} />
                         <AdminStatTile label="账号活动任务" value={formatNumber(activeTaskLimit)} detail={dirtyFields.some((field) => field.name === "activeTaskLimit") ? "暂存状态预览" : "单账号排队与运行总数"} />
                     </div>

@@ -177,7 +177,7 @@ export default function StoryboardPromptsPage() {
     ];
 
     return (
-        <AdminPageFrame title="提示词模板" description="平台创作策略与版本管理" actions={<Button type="primary" icon={<Plus className="size-4" />} disabled={!definitions.length} onClick={() => openDrawer()}>新建版本</Button>}>
+        <AdminPageFrame title="提示词模板" actions={<Button type="primary" icon={<Plus className="size-4" />} disabled={!definitions.length} onClick={() => openDrawer()}>新建版本</Button>}>
             <AdminDataTable
                 toolbar={<AdminSearchInput allowClear className="app-list-search" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} aria-label="搜索提示词模板" placeholder="搜索模板或内容" onValueChange={(value) => updateUrl({ filter: value })} />}
                 toolbarActive={hasFilters}

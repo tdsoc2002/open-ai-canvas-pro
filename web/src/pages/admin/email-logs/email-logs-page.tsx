@@ -127,7 +127,7 @@ export default function EmailLogsPage() {
     return (
         <AdminPageFrame
             title="邮件发送记录"
-            description="每封系统邮件的投递结果，保留 90 天 · 不保存正文和验证码"
+            description="保留 90 天 · 不保存正文和验证码"
             actions={
                 <div className="flex items-center gap-2">
                     <Link to="/admin/settings/email">
@@ -199,13 +199,7 @@ export default function EmailLogsPage() {
                         </Button>
                     </div>
                 }
-                empty={
-                    error ? (
-                        <AdminTableEmpty title="记录暂时无法读取" description="请重试，当前未展示查询结果。" />
-                    ) : (
-                        <AdminTableEmpty filtered={filtered} title={filtered ? "没有匹配的发送记录" : "暂无邮件发送记录"} description={filtered ? "调整筛选条件后重试。" : "用户请求验证码、找回密码或收到消费日报后，记录会出现在这里。"} />
-                    )
-                }
+                empty={error ? <AdminTableEmpty title="记录暂时无法读取" description="请重试，当前未展示查询结果。" /> : <AdminTableEmpty filtered={filtered} title={filtered ? "没有匹配的发送记录" : "暂无邮件发送记录"} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={data?.total ?? 0} onChange={(next, size) => update({ page: next, pageSize: size })} />}
                 table={{ rowKey: "id", dataSource: data?.logs ?? [], columns, loading, pagination: false, scroll: { x: 1300 }, size: "small" }}
             />

@@ -124,7 +124,7 @@ export default function EcommerceSkillsPage() {
                     GitHub 适配 {skills.filter((skill) => skill.origin === "github-adapted").length} · 原创 {skills.filter((skill) => skill.origin === "first-party").length}
                 </Typography.Text>
             </Space>
-            <Alert type="info" showIcon message="安装后默认启用，Agent 从全部已启用 Skills 中分析匹配，每轮按需调用最多 8 项。GitHub 安装自动跟随来源分支更新；已提交任务保留当时的技能快照。" />
+            <Alert type="info" showIcon message="Agent 每轮从已启用的 Skills 中匹配并调用最多 8 项。GitHub 安装自动跟随来源分支更新；已提交任务保留当时的技能快照。" />
             <Space wrap>
                 <Input.Search allowClear placeholder="搜索技能、用途或来源" value={search} onChange={(event) => setSearch(event.target.value)} style={{ width: 300 }} />
                 <Select

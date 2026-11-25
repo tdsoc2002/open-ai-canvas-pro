@@ -92,7 +92,7 @@ export function TrafficHeatmap({ cells, emptyTitle, updating }: { cells?: SiteTr
                     </p>
                 </>
             ) : (
-                <AdminEmpty title={emptyTitle} description="仅在当前范围读取成功后展示，不用空网格冒充零访问。" />
+                <AdminEmpty title={emptyTitle} />
             )}
         </section>
     );

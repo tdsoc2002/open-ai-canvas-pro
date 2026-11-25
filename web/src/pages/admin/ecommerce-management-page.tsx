@@ -26,7 +26,6 @@ export default function EcommerceManagementPage() {
     return (
         <AdminPageFrame
             title="知识与技能"
-            description="电商 Agent 策划时检索的视觉知识、调用的创作 Skills，以及按商品定位方法的行业品类。"
             actions={
                 <AdminSegmented<Tab>
                     ariaLabel="知识与技能视图"

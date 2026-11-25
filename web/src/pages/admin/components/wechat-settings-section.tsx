@@ -77,11 +77,9 @@ export function WechatSettingsSection({ setting, refreshing, onSaved, onDirtyCha
                 className="admin-access-section admin-access-wechat-section"
                 icon={<MessageCircle className="size-4" aria-hidden="true" />}
                 title="3. 是否开放微信登录"
-                description="使用微信开放平台的网站应用，支持扫码与桌面微信快速确认。"
                 status={<AdminStatusBadge label={dirty ? (enabled ? "待启用" : "待停用") : setting.enabled ? "运行中" : "未启用"} tone={dirty ? "warning" : setting.enabled ? "success" : "neutral"} />}
                 footer={
                     <>
-                        <span className="admin-access-footer-note">保存后生效 · 首次使用遵循本站注册与验证策略</span>
                         <div className="flex flex-wrap items-center gap-2">
                             <Button icon={<RefreshCw className="size-4" />} disabled={saving || refreshing} onClick={onRefresh}>
                                 重新读取

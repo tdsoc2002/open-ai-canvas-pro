@@ -373,7 +373,7 @@ export default function LogicalModelsPage() {
                 open={editingModel !== undefined}
                 busy={saving}
                 title={editingModel ? "编辑前台模型" : "新增前台模型"}
-                subtitle={editingModel?.name || "配置前台展示、供应线路与能力范围"}
+                subtitle={editingModel?.name}
                 onClose={closeEditor}
                 activeKey={editorTab}
                 onTabChange={setEditorTab}
@@ -389,7 +389,7 @@ export default function LogicalModelsPage() {
                                     modelForm.setFieldValue("enabled", enabled);
                                 }}
                             />
-                            模型启用 <span className="text-xs text-foreground/50">保存后生效</span>
+                            启用模型
                         </label>
                         <div className="model-editor-footer-actions">
                             <Button disabled={saving} onClick={closeEditor}>
@@ -564,15 +564,12 @@ export default function LogicalModelsPage() {
     );
 }
 
-function EditorSection({ icon, title, description, children }: { icon?: ReactNode; title: string; description?: string; children: ReactNode }) {
+function EditorSection({ icon, title, children }: { icon?: ReactNode; title: string; children: ReactNode }) {
     return (
         <section className="model-editor-section">
             <div className="mb-4 flex items-center gap-2">
                 {icon ? <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted/50 text-foreground/55">{icon}</span> : null}
-                <div>
-                    <h2 className="text-[var(--fs-body)] font-semibold">{title}</h2>
-                    {description ? <p className="mt-1 text-xs leading-5 text-foreground/50">{description}</p> : null}
-                </div>
+                <h2 className="text-[var(--fs-body)] font-semibold">{title}</h2>
             </div>
             {children}
         </section>

@@ -1,5 +1,4 @@
-/* 电商 Agent 配置页（/admin/ecommerce/agent）。分区沿用 SettingsSectionCard，卡内不再套卡：
-   分组之间只用分隔线，字段统一“标签 12px / 控件 / 说明 11px”三段。 */
+/* 电商 Agent 配置页（/admin/ecommerce/agent）。分区沿用 SettingsSectionCard。 */
 [data-admin-root] .eac-page {
     max-width: 1080px;
     padding-bottom: 32px;
@@ -18,12 +17,6 @@
     color: var(--admin-text-muted);
     font-size: 12px;
 }
-[data-admin-root] .eac-save-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
 /* 上线检查 */
 [data-admin-root] .eac-availability {
     display: grid;
@@ -50,20 +43,10 @@
     background: var(--admin-layer-2);
     color: var(--admin-text-secondary);
 }
-[data-admin-root] .eac-availability > li > div:not(.eac-readiness-actions) {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-}
 [data-admin-root] .eac-availability strong {
     color: var(--admin-text-primary);
     font-size: 13px;
     font-weight: 600;
-}
-[data-admin-root] .eac-availability > li > div:not(.eac-readiness-actions) > span {
-    color: var(--admin-text-muted);
-    font-size: 12px;
-    line-height: 1.55;
 }
 [data-admin-root] .eac-availability > li > .eac-readiness-actions {
     display: flex;

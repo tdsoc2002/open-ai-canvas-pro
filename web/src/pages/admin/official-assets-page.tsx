@@ -445,7 +445,6 @@ export default function AdminOfficialAssetsPage() {
     return (
         <AdminPageFrame
             title="官方素材库"
-            description="管理官方图片、视频素材：上传、编辑、发布、下架与排序。已发布素材对所有用户可见。"
             actions={
                 <>
                     <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void reload()}>
@@ -529,7 +528,7 @@ export default function AdminOfficialAssetsPage() {
                     pagination: false,
                     scroll: { x: 1120 },
                 }}
-                empty={<AdminTableEmpty filtered={hasFilters} title={hasFilters ? undefined : "还没有官方素材"} description={hasFilters ? undefined : "点右上角“上传素材”，先传文件再填信息，发布后用户才可见。"} />}
+                empty={<AdminTableEmpty filtered={hasFilters} title={hasFilters ? undefined : "还没有官方素材"} />}
                 footer={
                     <PaginationBar
                         alwaysShow

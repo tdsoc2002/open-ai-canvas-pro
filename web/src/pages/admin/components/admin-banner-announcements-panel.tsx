@@ -381,7 +381,7 @@ export default function AdminBannerAnnouncementsPanel({
                     onFinish={(values) => void handleSubmit(values)}
                     onValuesChange={() => setDirty(true)}
                 >
-                    <Form.Item name="noticeType" label="通知类型" extra="决定通知条底色；浅色 / 深色主题各有一档取值">
+                    <Form.Item name="noticeType" label="通知类型">
                         <BannerNoticeTypeSelector
                             value={noticeType}
                             onChange={(next) => {

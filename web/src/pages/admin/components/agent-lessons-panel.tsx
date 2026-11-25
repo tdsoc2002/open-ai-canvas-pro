@@ -199,7 +199,7 @@ export default function AgentLessonsPanel() {
                     dataSource: items,
                     pagination: { defaultPageSize: 20, showSizeChanger: true },
                 }}
-                empty={<AdminTableEmpty title="没有匹配的旧版经验" description="换一个用户或关键词再查。新的记忆内容在「记忆文件」里查看。" />}
+                empty={<AdminTableEmpty title="没有匹配的旧版经验" />}
             />
         </div>
     );

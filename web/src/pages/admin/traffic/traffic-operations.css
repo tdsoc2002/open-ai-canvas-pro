@@ -62,17 +62,11 @@
     --traffic-ops-accent: var(--admin-perf-accent-amber);
 }
 
-.admin-traffic-ops-help,
 .admin-traffic-ops-note,
 .admin-traffic-ops-notice {
     margin: 0;
     line-height: 1.6;
     overflow-wrap: anywhere;
-}
-
-.admin-traffic-ops-help {
-    color: var(--admin-text);
-    font-weight: 500;
 }
 
 .admin-traffic-ops-note {

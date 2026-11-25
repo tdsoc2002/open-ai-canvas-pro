@@ -133,7 +133,7 @@ export function CreateRedeemBatchDrawer({
                         >
                             <Input type="datetime-local" aria-label="批次过期时间" />
                         </Form.Item>
-                        <Form.Item name="note" label="批次备注" extra="用于列表检索和后续追溯，不会展示给兑换用户。">
+                        <Form.Item name="note" label="批次内部备注">
                             <Input.TextArea rows={3} maxLength={500} showCount placeholder="例如：2026 年秋季活动发放" />
                         </Form.Item>
                         <dl className="admin-redemption-live-summary" aria-label="待生成批次摘要">

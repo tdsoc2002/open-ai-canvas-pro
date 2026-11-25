@@ -118,7 +118,6 @@ export function ChannelModelProtocolDialog({
             onOk={() => void save()}
         >
             <div className="space-y-4">
-                <p className="text-sm text-foreground/60">各类型分别选择，未选择的类型不修改。</p>
                 {groups.map((group) => (
                     <div key={group.capability} className="grid grid-cols-[100px_minmax(0,1fr)] items-center gap-3">
                         <span>

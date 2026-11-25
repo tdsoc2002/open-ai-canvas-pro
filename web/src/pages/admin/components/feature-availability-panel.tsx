@@ -46,7 +46,6 @@ type FeatureRow = {
 type FeatureGroup = {
     id: string;
     title: string;
-    description: string;
     icon: ReactNode;
     rows: FeatureRow[];
 };
@@ -71,7 +70,6 @@ const featureGroups: FeatureGroup[] = [
     {
         id: "creation",
         title: "创作功能",
-        description: "决定前台侧栏出现哪些创作入口",
         icon: <MonitorCog className="size-4" aria-hidden="true" />,
         rows: [
             {
@@ -127,7 +125,6 @@ const featureGroups: FeatureGroup[] = [
     {
         id: "tools",
         title: "插件与记录",
-        description: "插件调用和创作历史页",
         icon: <PlugZap className="size-4" aria-hidden="true" />,
         rows: [
             {
@@ -149,7 +146,6 @@ const featureGroups: FeatureGroup[] = [
     {
         id: "models",
         title: "模型与计费",
-        description: "用户选模型的来源，以及生成是否扣积分",
         icon: <Wallet className="size-4" aria-hidden="true" />,
         rows: [
             {
@@ -171,7 +167,6 @@ const featureGroups: FeatureGroup[] = [
     {
         id: "assist",
         title: "页面辅助",
-        description: "不影响生成能力的页面元素",
         icon: <SlidersHorizontal className="size-4" aria-hidden="true" />,
         rows: [
             {
@@ -398,7 +393,6 @@ export default function FeatureAvailabilityPanel() {
                             <span className="afp-group-icon">{group.icon}</span>
                             <div className="afp-group-copy">
                                 <h2 id={`afp-group-${group.id}`}>{group.title}</h2>
-                                <p>{group.description}</p>
                             </div>
                             <AdminStatusBadge label={`${enabled} / ${rows.length} 已开放`} tone={enabled === rows.length ? "success" : "neutral"} />
                         </header>
@@ -499,14 +493,11 @@ function ModelSourceRow({ draft, saving, onChange }: { draft: FeatureAvailabilit
                     <div className="afp-row-title">
                         <strong>模型来源</strong>
                         <span className="afp-location">所有模型选择器</span>
-                    </div>
-                    <p>
-                        {draft.frontendModelsEnabled ? "用户只看到前台模型目录中整理过的模型。" : "用户直接选择系统渠道中启用的模型。"}
                         <Link to="/admin/models" className="afp-link">
                             配置前台模型
                             <ArrowUpRight className="size-3" aria-hidden="true" />
                         </Link>
-                    </p>
+                    </div>
                 </div>
             </div>
             <div className="afp-row-control">

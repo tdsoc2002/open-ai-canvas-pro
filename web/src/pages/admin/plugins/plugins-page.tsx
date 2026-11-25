@@ -190,10 +190,7 @@ export default function AdminPluginsPage() {
                         </div>
                     </div>
                 ) : (
-                    <div>
-                        <div className="font-medium text-foreground/78">全局生效</div>
-                        <div className="mt-1 text-xs text-foreground/48">管理员统一控制</div>
-                    </div>
+                    <span className="font-medium text-foreground/78">全局生效</span>
                 ),
         },
         {
@@ -242,7 +239,6 @@ export default function AdminPluginsPage() {
     return (
         <AdminPageFrame
             title="插件管理"
-            description="管理平台级可用性、自定义插件安装与用户启用范围"
             actions={
                 <>
                     <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void reload()}>

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, App, Button, Form, Input, Segmented, Select, Switch, Tabs } from "antd";
 import { ModelDisplayNameInput } from "./model-display-name-input";
 import { AdminModal } from "@/pages/admin/ui/overlays";
@@ -56,7 +56,6 @@ export function ChannelModelEditor({
 }) {
     const { message, modal } = App.useApp();
     const [form] = Form.useForm<FormValues>();
-    const enabledHintId = useId();
     const [initialValues] = useState(() => draftValues ?? initialChannelModelValues(editing, protocols));
     const [editVersion] = useState(() => (editing ? { expectedUpdatedAt: editing.updatedAt, expectedPriceVersion: editing.priceVersion } : {}));
     const previousUpstream = useRef(normalizeUpstreamModelKey(initialValues.providerModelKey || initialValues.modelKey));
@@ -77,7 +76,6 @@ export function ChannelModelEditor({
     const providerModelKey = Form.useWatch("providerModelKey", form) || "";
     const capabilityConfig = Form.useWatch("capabilityConfig", form);
     const modelEnabled = Form.useWatch("enabled", form) !== false;
-    const referenceVideoBilling = Form.useWatch("referenceVideoBilling", form) === true;
     const priceTiers = Form.useWatch("priceTiers", form) || [];
     const hasDefaultPriceTier = priceTiers.some((tier) => tier.matchMode === "default");
     const tiersWithOwnUpstream = priceTiers.filter((tier) => tier.providerModelKey?.trim());
@@ -276,9 +274,7 @@ export function ChannelModelEditor({
             title={
                 <div className="admin-model-editor-title">
                     <span>{draftValues ? "复制模型" : editing ? "编辑模型" : "新增模型"}</span>
-                    <p>
-                        {channel.name} · {editing?.displayName || editing?.modelKey || draftValues?.displayName || "配置调用方式与用户积分价格"}
-                    </p>
+                    <p>{[channel.name, editing?.displayName || editing?.modelKey || draftValues?.displayName].filter(Boolean).join(" · ")}</p>
                 </div>
             }
             width={1120}
@@ -296,7 +292,6 @@ export function ChannelModelEditor({
                     <label className="admin-model-editor-footer-status">
                         <Switch
                             aria-label="启用模型"
-                            aria-describedby={enabledHintId}
                             checked={modelEnabled}
                             disabled={busy}
                             onChange={(checked) => {
@@ -305,7 +300,6 @@ export function ChannelModelEditor({
                             }}
                         />
                         <span>启用模型</span>
-                        <small id={enabledHintId}>保存后生效</small>
                     </label>
                     <div className="admin-model-editor-footer-primary">
                         <Button
@@ -346,7 +340,7 @@ export function ChannelModelEditor({
                             children: (
                                 <div className="admin-model-editor-tab-content">
                                     <section className="admin-model-editor-section">
-                                        <SectionHeading title="模型身份" description="区分产品侧展示标识与上游实际调用 ID。" />
+                                        <SectionHeading title="模型身份" />
                                         <div className="admin-model-editor-section-content admin-model-identity-grid admin-model-identity-grid-with-icon">
                                             <Form.Item
                                                 name="modelKey"
@@ -396,12 +390,12 @@ export function ChannelModelEditor({
                                             />
                                         ) : null}
                                         <ChannelModelTagsEditor />
-                                        <Form.Item name="description" label="模型描述" extra="在创作端二级渠道选项中常驻显示，可说明适用场景、渠道差异和注意事项。" rules={[{ max: 500, message: "模型描述不能超过 500 字" }]}>
+                                        <Form.Item name="description" label="模型描述" rules={[{ max: 500, message: "模型描述不能超过 500 字" }]}>
                                             <Input.TextArea rows={3} maxLength={500} showCount placeholder="填写此渠道模型的使用说明" />
                                         </Form.Item>
                                     </section>
                                     <section className="admin-model-editor-section">
-                                        <SectionHeading title="能力与协议" description="先选任务类型，再选择对应的调用协议；更换后请核对参数与价格。" />
+                                        <SectionHeading title="能力与协议" />
                                         <div className="admin-model-editor-section-content admin-model-protocol-grid">
                                             <Form.Item name="capability" label="模型能力" rules={[{ required: true }]}>
                                                 <Segmented
@@ -421,8 +415,8 @@ export function ChannelModelEditor({
                                                 <Form.Item
                                                     name="protocolRelease"
                                                     label="插件发行版本"
-                                                    tooltip={selectedRelease ? `${selectedRelease.pluginId} · SHA-256 ${selectedRelease.sha256}` : undefined}
-                                                    extra={protocolRelease && !selectedRelease ? "原绑定版本在当前实例不可用，请选择已安装版本。" : "保存后绑定到本模型。已经入队的任务继续使用提交时的版本。"}
+                                                    tooltip={selectedRelease ? `${selectedRelease.pluginId} · SHA-256 ${selectedRelease.sha256}。已入队任务仍使用提交时的版本。` : "已入队任务仍使用提交时的版本。"}
+                                                    extra={protocolRelease && !selectedRelease ? "原绑定版本在当前实例不可用，请选择已安装版本。" : undefined}
                                                     rules={[
                                                         {
                                                             validator: async (_, digest) => {
@@ -507,8 +501,8 @@ export function ChannelModelEditor({
                                             modelCapability &&
                                             modelCapability !== "audio" && (
                                                 <section className="admin-model-editor-section admin-model-editor-section-stacked admin-model-editor-references">
-                                                    <SectionHeading title="引用与限制" description="按媒体类型设置数量、大小和时长。" />
-                                                    <Form.Item name={["capabilityConfig", "mediaTransport"]} label="参考素材发送方式" extra="优先使用模型设置，其次渠道默认值，最后使用协议默认行为。">
+                                                    <SectionHeading title="引用与限制" />
+                                                    <Form.Item name={["capabilityConfig", "mediaTransport"]} label="参考素材发送方式">
                                                         <MediaTransportFields channel={channel.mediaTransport || {}} />
                                                     </Form.Item>
                                                     <ModelCapabilityEditor {...capabilityEditorProps} capability={modelCapability} disabled={busy} section="references" />
@@ -522,7 +516,7 @@ export function ChannelModelEditor({
                                                 <ModelCapabilityEditor {...capabilityEditorProps} capability={modelCapability} disabled={busy} section="protocol" />
                                             ) : (
                                                 <section className="admin-model-editor-section admin-model-editor-section-stacked admin-model-editor-parameters">
-                                                    <SectionHeading title="协议参数" description="配置可发送参数、支持值与默认值；仅影响当前模型。" />
+                                                    <SectionHeading title="协议参数" />
                                                     <div className="admin-model-editor-section-content">
                                                         <ModelCapabilityEditor {...capabilityEditorProps} capability={modelCapability} disabled={busy} section="protocol" />
                                                     </div>
@@ -530,7 +524,7 @@ export function ChannelModelEditor({
                                             ))
                                         }
                                     />
-                                    {modelCapability === "audio" && <Alert type="info" title="音频模型无需额外配置引用与参数" description="调用协议和积分定价仍需在对应分组中配置。" />}
+                                    {modelCapability === "audio" && <Alert type="info" title="音频模型无需额外配置引用与参数" />}
                                 </div>
                             ),
                         },
@@ -564,9 +558,9 @@ export function ChannelModelEditor({
                                     ) : null}
                                     {configurationChanged && <Alert type="warning" showIcon title="请核对定价" description="能力或协议已变更。请重新检查规格条件、计费方式和金额；不会自动转换价格单位。" />}{" "}
                                     <section className="admin-model-editor-section">
-                                        <SectionHeading title="用户积分价格" description="默认只需填写一个统一价格；需要区分生成方式、质量或尺寸时，再添加规格价格。" />
+                                        <SectionHeading title="用户积分价格" />
                                         <div className="admin-model-editor-section-content">
-                                            <Form.Item name="priceCurrency" label="计价货币" extra="积分：售价即扣除的积分。USD / CNY：售价按货币填写，扣费时按用户分组的「1 USD / 1 CNY = N 积分」换算；成本价仍以积分计。">
+                                            <Form.Item name="priceCurrency" label="计价货币" tooltip="USD / CNY 售价按用户分组的汇率换算为积分。成本价始终以积分填写。">
                                                 <Segmented
                                                     options={priceCurrencyOptions}
                                                     onChange={() => {
@@ -579,11 +573,7 @@ export function ChannelModelEditor({
                                                     name="referenceVideoBilling"
                                                     label="参考视频计费"
                                                     valuePropName="checked"
-                                                    extra={
-                                                        referenceVideoBilling
-                                                            ? "已开启：挂参考视频的请求使用各价格档的「带参考视频」价格。按秒 =（生成秒数 + 参考视频秒数）× 带参考视频每秒价，参考视频时长由后端实测，测不出时拒绝提交；视频 Token 按含参考视频的用量 × 带参考视频 Token 价。不挂参考视频的请求仍用原价。"
-                                                            : "已关闭：参考视频不计费。按秒只计生成秒数，视频 Token 只按生成时长计算用量。用户侧会显示「参考视频不计费」。"
-                                                    }
+                                                    tooltip="启用后，带参考视频的请求使用对应规格价：按秒计费包含生成与参考视频时长，无法读取参考时长时拒绝提交；按 Token 计费使用包含参考视频的用量。关闭后仅按生成时长计费或计算 Token 用量。无参考视频的请求始终使用原价。"
                                                 >
                                                     <Switch
                                                         aria-label="参考视频计费"
@@ -700,11 +690,10 @@ function CapabilitySections({ capability, protocol, templates, inputs, parameter
     );
 }
 
-function SectionHeading({ title, description }: { title: string; description: string }) {
+function SectionHeading({ title }: { title: string }) {
     return (
         <header className="admin-model-editor-section-heading">
             <h2>{title}</h2>
-            <p>{description}</p>
         </header>
     );
 }

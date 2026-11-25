@@ -1,5 +1,5 @@
 import { AdminPageFrame } from "../components/admin-shell";
-import { AlertTriangle, RefreshCw, Database, RotateCcw, HardDrive, Cloud, Check, ShieldCheck, Server, BadgeCheck, Save, Globe2, LocateFixed, KeyRound, Wifi } from "lucide-react";
+import { AlertTriangle, RefreshCw, Database, RotateCcw, HardDrive, Cloud, Check, ShieldCheck, Server, Save, Globe2, LocateFixed, KeyRound, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, Switch } from "@/pages/admin/ui/controls";
 import { App, Form, Skeleton, Button, Input } from "antd";
@@ -283,7 +283,7 @@ export default function StorageSettingsPage() {
 
     if (loading && !setting) {
         return (
-            <AdminPageFrame title="存储服务" description="配置新增资源的默认存储位置" scroll>
+            <AdminPageFrame title="存储服务" scroll>
                 <div className="admin-settings-stack admin-storage-settings" aria-label="正在读取平台存储配置" role="status">
                     <div className="admin-storage-loading-card">
                         <Skeleton active paragraph={{ rows: 7 }} />
@@ -295,7 +295,7 @@ export default function StorageSettingsPage() {
 
     if (!setting) {
         return (
-            <AdminPageFrame title="存储服务" description="配置新增资源的默认存储位置" scroll>
+            <AdminPageFrame title="存储服务" scroll>
                 <div className="admin-settings-stack admin-storage-settings">
                     <div className="admin-storage-load-error" role="alert">
                         <span className="admin-storage-load-error-icon">
@@ -320,7 +320,7 @@ export default function StorageSettingsPage() {
     void backfillTick;
 
     return (
-        <AdminPageFrame title="存储服务" description="配置新增资源的默认存储位置" scroll data-backfill-tick={backfillTick}>
+        <AdminPageFrame title="存储服务" scroll data-backfill-tick={backfillTick}>
             <div className="admin-settings-stack admin-storage-settings">
                 <div className={cn("admin-storage-command-bar", dirty && "is-dirty")}>
                     <div className="admin-storage-command-copy" aria-live="polite">
@@ -329,7 +329,7 @@ export default function StorageSettingsPage() {
                         </span>
                         <div>
                             <strong>{dirty ? "有未保存的存储调整" : `当前使用：${storageProviderLabel(draftMode)}`}</strong>
-                            <p>{dirty ? "保存后仅影响新增资源。" : formatSettingTime(setting.updatedAt, "使用系统默认值")}</p>
+                            {dirty ? null : <p>{formatSettingTime(setting.updatedAt, "使用系统默认值")}</p>}
                         </div>
                     </div>
                     <div className="admin-storage-command-actions">
@@ -356,7 +356,7 @@ export default function StorageSettingsPage() {
                         className="admin-storage-section admin-storage-mode-section"
                         icon={<HardDrive className="size-4" aria-hidden="true" />}
                         title="1. 选择新资源存储位置"
-                        description="先选择一种存储方式。选择结果会决定下一步需要填写的接入信息，不会迁移已有资源。"
+                        description="仅影响新增资源，已有文件仍从原位置读取。"
                         status={<AdminStatusBadge label={dirty ? "待保存" : "当前设置"} tone={dirty ? "warning" : "info"} />}
                     >
                         <div className="admin-storage-mode-content">
@@ -386,10 +386,6 @@ export default function StorageSettingsPage() {
                                     </button>
                                 ))}
                             </div>
-                            <div className="admin-storage-history-note">
-                                <ShieldCheck className="size-4" aria-hidden="true" />
-                                <span>选择后继续完成第 2 步并保存。保存只改变新增资源；历史资源仍按自身记录的 provider、Endpoint 和 Bucket 读取。</span>
-                            </div>
                         </div>
                     </SettingsSectionCard>
                 </div>
@@ -399,7 +395,6 @@ export default function StorageSettingsPage() {
                         className="admin-storage-section admin-storage-configuration-section"
                         icon={draftMode === "local" ? <Server className="size-4" aria-hidden="true" /> : <Cloud className="size-4" aria-hidden="true" />}
                         title={draftMode === "local" ? "2. 配置服务器本地访问" : `2. 配置 ${storageProviderLabel(draftMode)} 接入`}
-                        description={draftMode === "local" ? "填写浏览器访问本地资源时使用的服务器根地址，然后保存。" : "按顺序填写存储位置、读取出口和服务端访问密钥，然后测试并保存。"}
                         status={
                             <AdminStatusBadge
                                 label={dirty ? "有调整" : storageConfigurationReady(draftMode, normalizedDraft, setting) ? "已配置" : "待配置"}
@@ -407,22 +402,16 @@ export default function StorageSettingsPage() {
                             />
                         }
                         footer={
-                            <>
-                                <div className="admin-storage-footer-note">
-                                    <BadgeCheck className="size-4" aria-hidden="true" />
-                                    <span>{formatSettingTime(setting.updatedAt, "尚未保存平台存储配置")} · 保存不会自动连接存储服务，建议先执行连接测试</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {dirty ? (
-                                        <Button icon={<RotateCcw className="size-4" />} disabled={saving} onClick={resetDraft}>
-                                            撤销
-                                        </Button>
-                                    ) : null}
-                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing} onClick={() => void submitSave()}>
-                                        保存修改
+                            <div className="ml-auto flex flex-wrap items-center gap-2">
+                                {dirty ? (
+                                    <Button icon={<RotateCcw className="size-4" />} disabled={saving} onClick={resetDraft}>
+                                        撤销
                                     </Button>
-                                </div>
-                            </>
+                                ) : null}
+                                <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing} onClick={() => void submitSave()}>
+                                    保存修改
+                                </Button>
+                            </div>
                         }
                     >
                         <Form
@@ -479,7 +468,7 @@ export default function StorageSettingsPage() {
                                     </div>
 
                                     <div className="admin-storage-form-section">
-                                        <FormSectionTitle icon={<Database className="size-4" />} title="存储位置" description="Bucket 决定容器，路径前缀用于隔离当前应用写入的对象目录。" />
+                                        <FormSectionTitle icon={<Database className="size-4" />} title="存储位置" />
                                         {draftMode === "s3" ? (
                                             <Form.Item name="s3Preset" label="S3 预设" extra={getS3PresetHints(form.getFieldValue("s3Preset") || "custom").help}>
                                                 <Select
@@ -606,7 +595,7 @@ export default function StorageSettingsPage() {
                                             <Form.Item name="accessKeyId" label={accessKeyIdLabel(draftMode)}>
                                                 <Input autoComplete="off" placeholder={accessKeyIdLabel(draftMode)} />
                                             </Form.Item>
-                                            <Form.Item name="accessKeySecret" label={hasCurrentProviderSecret ? `${accessKeySecretLabel(draftMode)}（${configuredSecretText}）` : accessKeySecretLabel(draftMode)} extra="只在新增或替换当前厂商密钥时填写。">
+                                            <Form.Item name="accessKeySecret" label={hasCurrentProviderSecret ? `${accessKeySecretLabel(draftMode)}（${configuredSecretText}）` : accessKeySecretLabel(draftMode)}>
                                                 <Input.Password autoComplete="new-password" placeholder={hasCurrentProviderSecret ? "留空保留原密钥" : accessKeySecretLabel(draftMode)} />
                                             </Form.Item>
                                             {draftMode === "s3" ? (
@@ -626,9 +615,9 @@ export default function StorageSettingsPage() {
                                         ) : null}
                                     </div>
                                     <div className="admin-storage-form-section">
-                                        <FormSectionTitle icon={<Wifi className="size-4" />} title="连接验证" description="使用当前草稿执行最小读写测试；测试不会保存配置，也不会迁移已有资源。" />
+                                        <FormSectionTitle icon={<Wifi className="size-4" />} title="连接验证" />
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <Button icon={<Wifi className="size-4" />} loading={testing} disabled={saving || refreshing} onClick={() => void testConnection()}>
+                                            <Button icon={<Wifi className="size-4" />} title="测试当前草稿的读写能力，保存时不会自动测试" loading={testing} disabled={saving || refreshing} onClick={() => void testConnection()}>
                                                 测试连接
                                             </Button>
                                             <ConnectionTestStatus result={testResult} stale={testStale} />
@@ -637,8 +626,8 @@ export default function StorageSettingsPage() {
                                 </>
                             )}
                             <div className="admin-storage-form-section">
-                                <FormSectionTitle icon={<ShieldCheck className="size-4" />} title="用户自有存储" description="关闭后，用户不能保存或测试个人存储；新增文件按平台配置存储。历史文件仍从原位置读取，不会迁移或删除。" />
-                                <Form.Item name="allowUserStorage" label="允许用户自有存储" valuePropName="checked">
+                                <FormSectionTitle icon={<ShieldCheck className="size-4" />} title="用户自有存储" />
+                                <Form.Item name="allowUserStorage" label="允许用户自有存储" tooltip="关闭后，用户不能保存或测试个人存储，新增文件按平台设置存储。已有文件仍从原位置读取。" valuePropName="checked">
                                     <Switch checkedChildren="允许" unCheckedChildren="不允许" />
                                 </Form.Item>
                             </div>
@@ -650,13 +639,13 @@ export default function StorageSettingsPage() {
     );
 }
 
-function FormSectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+function FormSectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
     return (
         <div className="admin-storage-form-section-heading">
             <span>{icon}</span>
             <div>
                 <h3>{title}</h3>
-                <p>{description}</p>
+                {description ? <p>{description}</p> : null}
             </div>
         </div>
     );

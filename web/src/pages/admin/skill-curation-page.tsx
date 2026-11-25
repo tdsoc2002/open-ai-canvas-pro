@@ -57,7 +57,7 @@ export default function SkillCurationPage() {
     const editorIsRoot = target?.kind === "root" || target?.kind === "new-root";
     const editorIsCategory = target?.kind === "category" || target?.kind === "new-category";
     const editorTitle = target?.kind === "new-root" ? "新增一级分类" : target?.kind === "new-category" ? "新增子分类" : target?.kind === "root" ? `编辑一级分类 · ${root.name || "未命名"}` : target?.kind === "category" ? `编辑子分类 · ${category.name || "未命名"}` : "选择一个分类";
-    const editorDescription = editorIsRoot ? "一级分类用于组织技能库的主导航和图示。" : editorIsCategory ? "子分类必须归属于一个启用中的一级分类。" : "从左侧分类树选择一个节点，或先创建新的一级分类。";
+    const editorDescription = editorIsRoot ? "一级分类用于组织技能库的主导航和图示。" : editorIsCategory ? "子分类必须归属于一个启用中的一级分类。" : undefined;
 
     const reload = async () => {
         try {
@@ -201,7 +201,6 @@ export default function SkillCurationPage() {
     return (
         <AdminPageFrame
             title="技能分类"
-            description="管理平台技能的一级分类、子分类和技能归属。"
             scroll
             actions={
                 <Button icon={<RefreshCw className="size-3.5" />} onClick={() => void reload()} disabled={busy}>
@@ -232,7 +231,6 @@ export default function SkillCurationPage() {
                         className="admin-skill-curation-tree-panel"
                         icon={<FolderTree className="size-4" aria-hidden="true" />}
                         title="分类树"
-                        description="选择分类后，在右侧编辑；也可以从这里直接新增。"
                         status={<AdminStatusBadge label={`${(data?.roots?.length ?? 0) + (data?.categories.length ?? 0)} 个节点`} tone="info" />}
                     >
                         <div className="admin-skill-curation-tree-toolbar">
@@ -331,7 +329,6 @@ export default function SkillCurationPage() {
                             ) : (
                                 <AdminTableEmpty
                                     title="还没有一级分类"
-                                    description="先创建一个一级分类，再继续添加子分类。"
                                     action={
                                         <Button type="primary" size="small" icon={<Plus className="size-3.5" />} onClick={startNewRoot}>
                                             创建一级分类
@@ -479,7 +476,6 @@ export default function SkillCurationPage() {
                                 <div className="admin-skill-curation-editor-empty">
                                     <AdminTableEmpty
                                         title="还没有选择分类"
-                                        description="从左侧选择一个分类，或先创建一个新的一级分类。"
                                         action={
                                             <Button type="primary" size="small" icon={<Plus className="size-3.5" />} onClick={startNewRoot}>
                                                 新增一级分类
@@ -495,7 +491,6 @@ export default function SkillCurationPage() {
                             className="admin-skill-curation-assignment-panel"
                             icon={<Check className="size-4" aria-hidden="true" />}
                             title="技能归类"
-                            description="搜索公开技能，选择一级分类和它应该出现的子分类。"
                             status={<AdminStatusBadge label={skillId ? "已选择技能" : "等待选择"} tone={skillId ? "success" : "neutral"} />}
                         >
                             <div className="admin-skill-curation-assignment-form" aria-label="技能归类表单">

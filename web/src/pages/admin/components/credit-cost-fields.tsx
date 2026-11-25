@@ -37,7 +37,7 @@ export function CreditCostFields({
                         <span>积分成本</span>
                         <span className="admin-price-tier-cost-badge">仅管理员可见</span>
                     </div>
-                    <p>{referenceVideoCost ? "按当前计费方式填写成本；挂参考视频的请求使用带参考视频成本价。不影响用户售价。" : "按当前计费方式填写成本，不影响用户售价。"}</p>
+                    {referenceVideoCost && configured ? <p>带参考视频的请求使用单独的成本价。</p> : null}
                 </div>
                 <Form.Item className="admin-price-tier-cost-switch mb-0" name={[index, "costConfigured"]} valuePropName="checked">
                     <Switch aria-label="配置积分成本价" />

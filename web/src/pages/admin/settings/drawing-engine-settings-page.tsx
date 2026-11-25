@@ -206,7 +206,7 @@ export default function DrawingEngineSettingsPage() {
 
     if (loading && !draft) {
         return (
-            <AdminPageFrame title="绘图工具" description="管理新建绘图的默认编辑器与 tldraw 授权" scroll>
+            <AdminPageFrame title="绘图工具" scroll>
                 <div className="admin-settings-stack admin-drawing-settings" aria-label="正在读取绘图工具配置" role="status">
                     <div className="admin-drawing-command-bar">
                         <Skeleton active title={{ width: 180 }} paragraph={false} />
@@ -221,7 +221,7 @@ export default function DrawingEngineSettingsPage() {
 
     if (!draft || !savedSetting) {
         return (
-            <AdminPageFrame title="绘图工具" description="管理新建绘图的默认编辑器与 tldraw 授权" scroll>
+            <AdminPageFrame title="绘图工具" scroll>
                 <div className="admin-settings-stack admin-drawing-settings">
                     <div className="admin-drawing-load-error" role="alert">
                         <span className="admin-drawing-load-error-icon">
@@ -243,13 +243,13 @@ export default function DrawingEngineSettingsPage() {
     const licenseStatus = draftHasStoredLicense ? "后台已配置" : usingEnvironmentLicense ? "部署环境提供" : "未配置";
 
     return (
-        <AdminPageFrame title="绘图工具" description="管理新建绘图的默认编辑器与 tldraw 授权" scroll>
+        <AdminPageFrame title="绘图工具" scroll>
             <div className="admin-settings-stack admin-drawing-settings">
                 <div className={cn("admin-drawing-command-bar", dirty && "is-dirty")}>
                     <div className="admin-drawing-command-copy" aria-live="polite">
                         <div className="flex flex-wrap items-center gap-2">
                             <strong>{dirty ? `${dirtyFields.length} 项调整待保存` : "绘图工具配置已同步"}</strong>
-                            <AdminStatusBadge label={dirty ? "尚未生效" : savedSetting.configured ? "服务端配置" : "系统默认"} tone={dirty ? "warning" : "neutral"} />
+                            {dirty ? null : <AdminStatusBadge label={savedSetting.configured ? "服务端配置" : "系统默认"} tone="neutral" />}
                         </div>
                     </div>
                     <div className="admin-drawing-command-actions">

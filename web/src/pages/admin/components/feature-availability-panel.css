@@ -70,13 +70,6 @@
     line-height: 1.4;
 }
 
-[data-admin-root] .afp-group-copy p {
-    margin: 2px 0 0;
-    color: var(--admin-text-muted);
-    font-size: 12px;
-    line-height: 1.5;
-}
-
 [data-admin-root] .afp-tree + .afp-tree,
 [data-admin-root] .afp-list > .afp-row + .afp-tree {
     border-top: 1px solid var(--admin-row-border);
@@ -181,6 +174,11 @@
 
 [data-admin-root] .afp-link:hover {
     color: var(--admin-text);
+}
+
+[data-admin-root] .afp-row-title .afp-link {
+    margin-left: 0;
+    font-size: 12px;
 }
 
 [data-admin-root] .afp-row-copy .afp-row-warning {

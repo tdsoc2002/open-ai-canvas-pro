@@ -580,7 +580,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         },
                         scroll: { x: 1510 },
                     }}
-                    empty={<AdminTableEmpty filtered={hasFilters} title={!hasFilters ? "当前没有待核对订单" : undefined} description={!hasFilters ? "新的异常计费订单会自动出现在这里。" : undefined} />}
+                    empty={<AdminTableEmpty filtered={hasFilters} title={!hasFilters ? "当前没有待核对订单" : undefined} />}
                     footer={
                         <PaginationBar
                             alwaysShow

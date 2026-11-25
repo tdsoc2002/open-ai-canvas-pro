@@ -417,17 +417,11 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                             icon={<AlertTriangle className="size-4" />}
                             label="异常请求"
                             value={data ? formatNumber(failureTotal) : "--"}
-                            description={!data ? "数据尚未就绪" : topFailure ? `${topFailure.type} · ${topFailure.model}` : "当前范围未记录异常"}
+                            description={topFailure ? `${topFailure.type} · ${topFailure.model}` : undefined}
                             tone={!data ? "neutral" : failureTotal > 0 ? "warning" : "success"}
                             onClick={failureTotal > 0 ? () => openAnalysis("failures") : undefined}
                         />
-                        <AnalyticsAttentionItem
-                            icon={<Clock3 className="size-4" />}
-                            label="当前队列"
-                            value={data ? formatNumber(data.kpi.currentQueuedTasks) : "--"}
-                            description={!data ? "数据尚未就绪" : data.kpi.currentQueuedTasks ? "存在等待执行的生成任务" : "没有排队中的生成任务"}
-                            tone={!data ? "neutral" : data.kpi.currentQueuedTasks ? "warning" : "success"}
-                        />
+                        <AnalyticsAttentionItem icon={<Clock3 className="size-4" />} label="当前队列" value={data ? formatNumber(data.kpi.currentQueuedTasks) : "--"} tone={!data ? "neutral" : data.kpi.currentQueuedTasks ? "warning" : "success"} />
                         <AnalyticsAttentionItem
                             icon={<CircleDollarSign className="size-4" />}
                             label="成本覆盖订单"
@@ -516,7 +510,7 @@ function AnalyticsHealthCard({ icon, label, value, trend, detail, tone = "neutra
     );
 }
 
-function AnalyticsAttentionItem({ icon, label, value, description, tone = "neutral", onClick }: { icon: ReactNode; label: string; value: ReactNode; description: string; tone?: AdminStatusTone; onClick?: () => void }) {
+function AnalyticsAttentionItem({ icon, label, value, description, tone = "neutral", onClick }: { icon: ReactNode; label: string; value: ReactNode; description?: string; tone?: AdminStatusTone; onClick?: () => void }) {
     const content = (
         <>
             <span className="admin-analytics-attention-icon" aria-hidden="true">
@@ -524,7 +518,7 @@ function AnalyticsAttentionItem({ icon, label, value, description, tone = "neutr
             </span>
             <span className="admin-analytics-attention-copy">
                 <span className="admin-analytics-attention-label">{label}</span>
-                <span className="admin-analytics-attention-description">{description}</span>
+                {description ? <span className="admin-analytics-attention-description">{description}</span> : null}
             </span>
             <strong>{value}</strong>
         </>

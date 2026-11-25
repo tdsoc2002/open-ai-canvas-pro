@@ -125,7 +125,7 @@ test("运营分析只展示原概览数据，五项帮助/原生折叠/局部样
         expect(source.split("\n").length).toBeLessThan(500);
         expect(source).not.toMatch(/useQuery|setInterval|fetch\(|localStorage|createTrafficCsv/);
         expect(source).toContain("口径与运营建议");
-        expect(source).toContain("运营帮助：");
+        expect(source).not.toContain("admin-traffic-ops-help");
     }
     expect(journeys).toContain('aria-pressed={endpoint === "first"}');
     expect(journeys).toContain('aria-pressed={endpoint === "last"}');

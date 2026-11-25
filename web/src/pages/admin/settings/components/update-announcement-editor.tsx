@@ -213,8 +213,7 @@ export function UpdateAnnouncementEditor({ value, onChange, disabled, onUploadin
                 </div>
                 <aside className="admin-update-announcement-preview" aria-label="更新公告实时预览">
                     <div className="admin-update-announcement-preview-heading">
-                        <strong>更新公告 · {value.currentVersion || "待填写版本"}</strong>
-                        <span>实时预览 · 保存后生效</span>
+                        <strong>更新公告预览 · {value.currentVersion || "待填写版本"}</strong>
                     </div>
                     <UpdateAnnouncementContent value={value} mediaURL={(block) => (block.resourceId ? updateAnnouncementPreviewURL(block.resourceId) : "")} />
                 </aside>

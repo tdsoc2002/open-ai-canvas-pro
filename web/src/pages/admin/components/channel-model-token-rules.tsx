@@ -84,7 +84,7 @@ export function TokenPriceRulesSection({ form, onDirty }: { form: FormInstance<F
                                     ))}
                                 </div>
                             ) : (
-                                <p className="admin-token-rules-empty">还没有规则。添加后可按星期、时段和输入上下文长度设置不同单价，例如夜间优惠价或长上下文加价。</p>
+                                <p className="admin-token-rules-empty">暂无规则</p>
                             )}
                             <div className="admin-price-tier-list-footer">
                                 <Button

@@ -99,10 +99,7 @@ export function PriceTierFields({
                 {!amountsComplete && !requirePrice ? <Alert type="info" showIcon title="金额尚未配置，此档不可供用户使用" description="可先保存结构；填写完整金额后手动开启。显式填写 0 表示免费。" /> : null}
                 <section className="admin-price-tier-mode-row">
                     <div className="admin-price-tier-panel-heading">
-                        <div>
-                            <h3>适用范围</h3>
-                            <p>选择全部请求，或按生成规格精确匹配。</p>
-                        </div>
+                        <h3>适用范围</h3>
                     </div>
                     <Form.Item className="admin-price-tier-mode-control mb-0" name={[index, "matchMode"]} rules={[{ required: true }]}>
                         <Segmented
@@ -121,7 +118,7 @@ export function PriceTierFields({
                             <div className="admin-price-tier-panel-heading">
                                 <div>
                                     <h3>匹配条件</h3>
-                                    <p>符合以下条件时使用这条价格，精确规则优先。</p>
+                                    <p>精确规则优先。</p>
                                 </div>
                             </div>
                             <div className="admin-price-tier-match-grid">
@@ -175,10 +172,7 @@ export function PriceTierFields({
                     )}
                     <section className="admin-price-tier-panel admin-price-tier-selling-panel">
                         <div className="admin-price-tier-panel-heading">
-                            <div>
-                                <h3>销售价格</h3>
-                                <p>{priceUnit === "积分" ? "设置用户完成一次生成实际消耗的积分。" : `按 ${priceUnit} 填写售价，扣费时按用户分组兑换比例换算为积分。`}</p>
-                            </div>
+                            <h3>销售价格</h3>
                         </div>
                         <div className="admin-price-tier-billing-grid">
                             <Form.Item className="admin-price-tier-billing-mode mb-0" name={[index, "billingMode"]} label="计费方式" rules={[{ required: true }]}>

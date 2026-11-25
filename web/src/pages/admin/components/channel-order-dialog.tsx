@@ -97,12 +97,11 @@ export function ChannelOrderDialog({ channelId, onSaved, renderTrigger }: { chan
                     </div>
                 }
             >
-                <p className="mb-4 text-sm text-foreground/60">选择条目并输入目标位置，或拖动、点击上下箭头调整顺序。点击“保存排序”后生效，取消会放弃本次调整。这里包含全部条目，不受列表筛选和分页影响。</p>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                     <Select
                         className="min-w-40 flex-1"
-                        aria-label={channelId ? "选择要排序的模型" : "选择要排序的渠道"}
-                        placeholder={channelId ? "搜索并选择模型" : "搜索并选择渠道"}
+                        aria-label={channelId ? "从全部模型中选择排序条目" : "从全部渠道中选择排序条目"}
+                        placeholder={channelId ? "搜索全部模型" : "搜索全部渠道"}
                         showSearch={{ optionFilterProp: "label" }}
                         value={targetId}
                         disabled={loading || saving || !items.length}

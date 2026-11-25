@@ -431,7 +431,6 @@ export function ChannelModelManager({
     const importableFetchModels = new Set(fetchPreviewModels.filter((name) => !catalogModelUnavailableReason(fetchCatalog, name)));
     const selectedImportableFetchModels = selectedFetchModels.filter((name) => importableFetchModels.has(name));
     const selectedNewFetchModels = selectedImportableFetchModels.filter((name) => !existingFetchModelKeys.has(normalizeFetchModelKey(name)));
-    const selectedExistingFetchCount = selectedImportableFetchModels.length - selectedNewFetchModels.length;
     const fetchKeywordQuery = fetchKeyword.trim().toLowerCase();
     const visibleFetchModels = filterImportModels(fetchPreviewModels, fetchKeyword);
     const visibleImportableFetchModels = visibleFetchModels.filter((name) => importableFetchModels.has(name));
@@ -501,12 +500,7 @@ export function ChannelModelManager({
                 </div>
             ) : null}
             <AdminDataTable
-                empty={
-                    <AdminTableEmpty
-                        title={loadError ? "模型列表加载失败" : items.length ? "没有匹配的模型" : "这个渠道还没有模型"}
-                        description={loadError ? "请重试加载，暂时无法确认模型列表。" : items.length ? "调整搜索或筛选条件后重试。" : "点击“读取模型”导入，或手动新增。"}
-                    />
-                }
+                empty={<AdminTableEmpty title={loadError ? "模型列表加载失败" : items.length ? "没有匹配的模型" : "这个渠道还没有模型"} description={loadError ? "请重试加载，暂时无法确认模型列表。" : undefined} />}
                 toolbar={
                     filters ? undefined : (
                         <Input
@@ -701,7 +695,7 @@ export function ChannelModelManager({
                             <p className="text-xs text-foreground/50">目录可见不代表能够生成；协议、能力参数及价格仍按本组单独配置。</p>
                         </div>
                     )}
-                    <p className="m-0 text-sm text-foreground/65">上游共返回 {fetchPreviewModels.length} 个模型。默认勾选已存在的模型，新模型默认不勾选；可批量全选或取消全选，已存在的模型不会重复导入。</p>
+                    <p className="m-0 text-sm text-foreground/65">已有模型默认勾选且不会重复导入。新模型默认不勾选。</p>
                     <Input
                         allowClear
                         autoFocus
@@ -740,10 +734,7 @@ export function ChannelModelManager({
                             <p className="m-0 py-6 text-center text-sm text-foreground/55">没有匹配「{fetchKeyword.trim()}」的模型</p>
                         )}
                     </div>
-                    <div className="text-xs text-foreground/50">
-                        {selectedNewFetchModels.length > 0 ? `将导入 ${selectedNewFetchModels.length} 个新模型` : fetchCatalog ? "未选择新模型" : "当前勾选的模型均已存在"}
-                        {selectedExistingFetchCount > 0 ? `，另有 ${selectedExistingFetchCount} 个已存在模型已勾选` : ""}
-                    </div>
+                    <div className="text-xs text-foreground/50">{selectedNewFetchModels.length ? `将导入 ${selectedNewFetchModels.length} 个新模型` : selectedImportableFetchModels.length ? "所选模型均已存在" : "未选择模型"}</div>
                 </div>
             </AdminModal>
             {editorOpen && (

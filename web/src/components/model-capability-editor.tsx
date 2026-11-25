@@ -144,7 +144,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, definition, c
         return (
             <div className="admin-capability-reference-editor">
                 <div className="admin-capability-reference-grid">
-                    <ReferenceCard title="图片引用" description="首帧、参考图与多图输入限制">
+                    <ReferenceCard title="图片引用">
                         <NumberField label="最少图片引用" value={profile.references.minImages} min={0} max={profile.references.maxImages} disabled={disabled} onChange={(value) => updateReferences({ minImages: value || 0 })} />
                         <NumberField
                             label="最大图片引用"
@@ -158,7 +158,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, definition, c
                         />
                         <NumberField label="单张图片上限 MB" value={bytesToMB(profile.references.maxImageBytes)} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxImageBytes: mbToBytes(value) })} />
                     </ReferenceCard>
-                    <ReferenceCard title="音频引用" description={supportsAudioInput ? "输入音频的数量、大小与时长限制" : modes.some((mode) => mode.inputRoles?.includes("voice")) ? "全能参考接受音色 ID，音频文件不可用" : "当前型号不接受音频文件"}>
+                    <ReferenceCard title="音频引用" description={supportsAudioInput ? undefined : modes.some((mode) => mode.inputRoles?.includes("voice")) ? "全能参考接受音色 ID，音频文件不可用" : "当前型号不接受音频文件"}>
                         {supportsAudioInput || profile.references.maxAudios > 0 ? (
                             <>
                                 <NumberField label="参考音频最多段数" value={profile.references.maxAudios} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxAudios: value || 0 })} />
@@ -173,7 +173,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, definition, c
                             </>
                         ) : null}
                     </ReferenceCard>
-                    <ReferenceCard title="视频引用" description="视频数量、大小与时长限制">
+                    <ReferenceCard title="视频引用">
                         <NumberField label="参考视频最多段数" value={profile.references.maxVideos} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxVideos: value || 0 })} />
                         <NumberField label="单个视频上限 MB" value={bytesToMB(profile.references.maxVideoBytes)} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxVideoBytes: mbToBytes(value) })} />
                         <NumberField
@@ -184,7 +184,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, definition, c
                             onChange={(value) => updateReferences({ maxTotalVideoDurationSeconds: value ?? 0 })}
                         />
                     </ReferenceCard>
-                    <ReferenceCard title="通用限制" description="所有视频请求共用的基础约束">
+                    <ReferenceCard title="通用限制">
                         <NumberField label="提示词最大字符数" value={profile.references.promptMaxChars} min={1} disabled={disabled} onChange={(value) => updateReferences({ promptMaxChars: value || 1 })} />
                     </ReferenceCard>
                 </div>
@@ -385,7 +385,7 @@ function TextCapabilityEditor({ value, onChange, protocol, disabled, section }: 
             >
                 <span className="grid gap-0.5">
                     <span className="text-xs font-medium">支持视频识别</span>
-                    <span className="text-[var(--fs-tiny)] leading-5 text-foreground/45">勾选后该模型可接收参考视频（例如 Qwen3.8-Max-0902）；不勾选时不会把视频发给该模型。</span>
+                    {section === "all" ? <span className="text-[var(--fs-tiny)] leading-5 text-foreground/45">勾选后该模型可接收参考视频（例如 Qwen3.8-Max-0902）；不勾选时不会把视频发给该模型。</span> : null}
                 </span>
             </Checkbox>
             {videoUnderstanding ? (
@@ -400,14 +400,8 @@ function TextCapabilityEditor({ value, onChange, protocol, disabled, section }: 
     if (section === "protocol") {
         return (
             <div className="admin-capability-editor space-y-3 rounded-md bg-muted/20 p-3">
-                <CapabilityGroup title="输出方式" description="控制向上游文本模型请求的响应方式。">
-                    <ParameterField
-                        label="SSE 流式输出"
-                        description="启用后发送 stream=true，并实时推送文本增量；关闭时等待完整 JSON 响应。"
-                        supported={profile.streaming !== false}
-                        disabled={Boolean(disabled)}
-                        onChange={(streaming) => update({ streaming })}
-                    />
+                <CapabilityGroup title="输出方式">
+                    <ParameterField label="SSE 流式输出" supported={profile.streaming !== false} disabled={Boolean(disabled)} onChange={(streaming) => update({ streaming })} />
                 </CapabilityGroup>
                 <TextThinkingEditor value={profile.thinking} disabled={Boolean(disabled)} onChange={(thinking) => update({ thinking })} />
             </div>
@@ -416,7 +410,7 @@ function TextCapabilityEditor({ value, onChange, protocol, disabled, section }: 
 
     if (section === "references") {
         const contextWindowFields = (
-            <CapabilityGroup title="上下文能力" description="这是上游文本模型的能力合同，决定 Agent 本轮可保留的输入预算；不会改变运行时 checkpoint 的持久化上限。">
+            <CapabilityGroup title="上下文能力">
                 <div className="grid gap-3 sm:grid-cols-2">
                     <NumberField label="上下文窗口 Token" value={profile.contextWindowTokens} min={4_096} max={10_000_000} disabled={Boolean(disabled)} onChange={(next) => update({ contextWindowTokens: next || 4_096 })} />
                     <NumberField label="最大输出 Token" value={profile.maxOutputTokens} min={256} max={1_000_000} disabled={Boolean(disabled)} onChange={(next) => update({ maxOutputTokens: next || 256 })} />
@@ -427,14 +421,12 @@ function TextCapabilityEditor({ value, onChange, protocol, disabled, section }: 
             <div className="admin-capability-reference-editor">
                 {contextWindowFields}
                 <div className="admin-capability-reference-grid is-three">
-                    <ReferenceCard title="图片识别" description="0 表示不支持识图；大于 0 时模型列表显示「图×N」">
-                        <NumberField label="最多识别图片数" value={profile.references.maxImages} min={0} max={100} disabled={Boolean(disabled)} onChange={(next) => updateReferences({ maxImages: next || 0 })} />
+                    <ReferenceCard title="图片识别">
+                        <NumberField label="最多识别图片数（0 为关闭）" value={profile.references.maxImages} min={0} max={100} disabled={Boolean(disabled)} onChange={(next) => updateReferences({ maxImages: next || 0 })} />
                         <NumberField label="单张图片上限 MB" value={bytesToMB(profile.references.maxImageBytes)} min={0} disabled={Boolean(disabled)} onChange={(next) => updateReferences({ maxImageBytes: mbToBytes(next) })} />
                     </ReferenceCard>
-                    <ReferenceCard title="视频识别" description="默认关闭；开启后模型列表显示「视×N」">
-                        {videoFields}
-                    </ReferenceCard>
-                    <ReferenceCard title="通用限制" description="所有文本请求共用的基础约束">
+                    <ReferenceCard title="视频识别">{videoFields}</ReferenceCard>
+                    <ReferenceCard title="通用限制">
                         <NumberField label="提示词最大字符数" value={profile.references.promptMaxChars} min={1} max={1_000_000} disabled={Boolean(disabled)} onChange={(next) => updateReferences({ promptMaxChars: next || 1 })} />
                     </ReferenceCard>
                 </div>
@@ -525,7 +517,7 @@ function ImageCapabilityEditor({
                 {(specs.length > 0 || size) && (
                     <section aria-label="画面规格" className="min-w-0 space-y-3">
                         <h3 className="text-sm font-semibold">画面规格</h3>
-                        <p className="text-xs text-muted-foreground">点选支持值，星标设为默认。</p>
+                        {section === "all" ? <p className="text-xs text-muted-foreground">点选支持值，星标设为默认。</p> : null}
                         <ImageParameterSchemaEditor definitions={definitions} parameters={specs} disabled={disabled} onChange={changeParameters} />
                         {size && <ImageParameterSizeEditor profile={profile} protocol={protocol} definition={definitions.find((field) => field.name === "size") || size} disabled={disabled} onChange={(image) => onChange?.({ version: 1, image })} />}
                     </section>
@@ -545,12 +537,12 @@ function ImageCapabilityEditor({
         return (
             <div className="admin-capability-reference-editor">
                 <div className="admin-capability-reference-grid is-two">
-                    <ReferenceCard title="图片引用" description="参考图、文件大小与蒙版能力">
+                    <ReferenceCard title="图片引用">
                         <NumberField label="最大参考图" value={profile.references.maxImages} min={0} disabled={disabled} onChange={(maxImages) => updateReferences({ maxImages: maxImages || 0 })} />
                         <NumberField label="单图上限 MB" value={bytesToMB(profile.references.maxImageBytes)} min={0} disabled={disabled} onChange={(maxImageBytes) => updateReferences({ maxImageBytes: mbToBytes(maxImageBytes) })} />
-                        <ParameterField label="蒙版编辑" description="允许图片编辑接口提交 mask" supported={profile.references.maskSupported} disabled={disabled} onChange={(maskSupported) => updateReferences({ maskSupported })} />
+                        <ParameterField label="蒙版编辑" supported={profile.references.maskSupported} disabled={disabled} onChange={(maskSupported) => updateReferences({ maskSupported })} />
                     </ReferenceCard>
-                    <ReferenceCard title="通用限制" description="所有图片请求共用的基础约束">
+                    <ReferenceCard title="通用限制">
                         <NumberField label="提示词最大字符数" value={profile.references.promptMaxChars} min={1} disabled={disabled} onChange={(promptMaxChars) => updateReferences({ promptMaxChars: promptMaxChars || 1 })} />
                     </ReferenceCard>
                 </div>
@@ -562,7 +554,7 @@ function ImageCapabilityEditor({
         return withPreview(
             <div className="admin-capability-protocol-editor admin-image-protocol-editor">
                 <div className="admin-capability-protocol-grid admin-image-protocol-grid">
-                    <ProtocolParameterCard step="01" title="尺寸参数" description="按分辨率配置可用画幅，直接点选或输入比例" className="admin-image-size-card">
+                    <ProtocolParameterCard step="01" title="尺寸参数" className="admin-image-size-card">
                         <div className="admin-image-size-intro">
                             <SegmentedControl
                                 block
@@ -570,8 +562,8 @@ function ImageCapabilityEditor({
                                 value={profile.size.parameter}
                                 options={[
                                     { label: "不发送", value: "none" },
-                                    { label: "size", value: "size" },
-                                    { label: "aspect_ratio", value: "aspect_ratio" },
+                                    { label: "size（像素）", value: "size" },
+                                    { label: "aspect_ratio（比例）", value: "aspect_ratio" },
                                 ]}
                                 onChange={(value) => {
                                     const parameter = value as ImageCapabilityConfig["size"]["parameter"];
@@ -582,24 +574,23 @@ function ImageCapabilityEditor({
                                     );
                                 }}
                             />
-                            <ImageSizeHelp />
                         </div>
                         {profile.size.parameter !== "none" ? (
                             <>
                                 <ImageSizePresetsEditor profile={profile} disabled={disabled} onChange={updateSize} />
-                                <ParameterField label="允许自定义" description="允许支持值之外的尺寸" supported={profile.size.allowCustom} disabled={disabled} onChange={(allowCustom) => updateSize({ allowCustom })} />
+                                <ParameterField label="允许自定义尺寸" supported={profile.size.allowCustom} disabled={disabled} onChange={(allowCustom) => updateSize({ allowCustom })} />
                             </>
                         ) : null}
                     </ProtocolParameterCard>
-                    <ProtocolParameterCard step="02" title="输出数量" description="设置单次生成图片数量">
+                    <ProtocolParameterCard step="02" title="输出数量">
                         <NumberField label="单次生成张数" value={profile.maxOutputs} min={1} disabled={disabled} onChange={(maxOutputs) => update({ maxOutputs: maxOutputs || 1 })} />
                     </ProtocolParameterCard>
-                    <ProtocolParameterCard step="03" title="可选参数" description="控制质量、背景与响应格式">
-                        <ParameterField label="图片质量" description="发送 quality 参数" supported={profile.quality.supported} disabled={disabled} onChange={(supported) => updateQuality({ supported })} />
+                    <ProtocolParameterCard step="03" title="可选参数">
+                        <ParameterField label="图片质量" supported={profile.quality.supported} disabled={disabled} onChange={(supported) => updateQuality({ supported })} />
                         {qualityChoices}
                         <BooleanField label="透明背景" value={profile.transparentBackground} disabled={disabled} onChange={(transparentBackground) => update({ transparentBackground })} />
                         <ImageResponseFormatEditor value={profile.responseFormat} disabled={disabled} onChange={(responseFormat) => update({ responseFormat })} />
-                        <ParameterField label="output_format" description="发送 PNG 输出格式" supported={profile.outputFormat.supported} disabled={disabled} onChange={(supported) => update({ outputFormat: { supported } })} />
+                        <ParameterField label="PNG 输出（output_format）" supported={profile.outputFormat.supported} disabled={disabled} onChange={(supported) => update({ outputFormat: { supported } })} />
                     </ProtocolParameterCard>
                 </div>
             </div>,
@@ -703,6 +694,7 @@ const thinkingIntensityFields = {
 // 保存时后端按接口格式校验，预设展开后的完整配置随模型保存。
 function TextThinkingEditor({ value, disabled, onChange }: { value?: TextThinkingConfig; disabled: boolean; onChange: (value: TextThinkingConfig | undefined) => void }) {
     const preset = THINKING_PRESETS.find((item) => item.id === value?.preset);
+    const legacyHelp = "开启时使用标准档。Gemini 与插件自定义接口省略思考参数。";
     const levels = value ? thinkingLevelsFor(value) : [];
     const enabledLevels = value?.mode === "always" ? THINKING_LEVELS.filter((level) => level !== "off") : THINKING_LEVELS;
     const setLevels = (next: ThinkingLevel[]) => {
@@ -710,21 +702,21 @@ function TextThinkingEditor({ value, disabled, onChange }: { value?: TextThinkin
         onChange(withThinkingLevels(value, next));
     };
     return (
-        <CapabilityGroup title="思考等级" description="未配置时沿用旧的开关行为（开启 = 标准档，Gemini 与插件自定义接口不发送思考参数）。">
+        <CapabilityGroup title="思考等级">
             <Field label="预设">
                 <Select
                     className="w-full"
                     allowClear
-                    placeholder="未配置（沿用旧行为）"
+                    placeholder={<span title={legacyHelp}>未配置（沿用旧行为）</span>}
+                    aria-description={preset?.hint ?? (value ? undefined : legacyHelp)}
                     disabled={disabled}
                     value={value?.preset || (value ? "custom" : undefined)}
-                    options={[...THINKING_PRESETS.map((item) => ({ label: item.label, value: item.id })), { label: "自定义", value: "custom" }]}
+                    options={[...THINKING_PRESETS.map((item) => ({ label: item.label, value: item.id, title: item.hint })), { label: "自定义", value: "custom" }]}
                     onChange={(id?: string) =>
                         onChange(!id ? undefined : id === "custom" ? { ...(value || { mode: "levels", levels: ["off", "low", "medium", "high"], switch: { kind: "omit" }, intensity: { kind: "effort" } }), preset: undefined } : thinkingPresetConfig(id))
                     }
                 />
             </Field>
-            {preset ? <p className="text-[var(--fs-tiny)] leading-5 text-foreground/45">{preset.hint}</p> : null}
             {value ? (
                 <>
                     <Field label="思考模式">
@@ -858,27 +850,24 @@ function CapabilityBlock({ title, children }: { title: string; children: ReactNo
     );
 }
 
-function ReferenceCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function ReferenceCard({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
     return (
         <section className="admin-capability-reference-card">
             <header className="admin-capability-reference-card-heading">
                 <h3>{title}</h3>
-                <p>{description}</p>
+                {description ? <p>{description}</p> : null}
             </header>
             <div className="admin-capability-reference-fields">{children}</div>
         </section>
     );
 }
 
-function ProtocolParameterCard({ step, title, description, children, className = "" }: { step: string; title: string; description: string; children: ReactNode; className?: string }) {
+function ProtocolParameterCard({ step, title, children, className = "" }: { step: string; title: string; children: ReactNode; className?: string }) {
     return (
         <section className={`admin-capability-protocol-card ${className}`}>
             <header className="admin-capability-protocol-card-heading">
                 <span>{step}</span>
-                <div>
-                    <h3>{title}</h3>
-                    <p>{description}</p>
-                </div>
+                <h3>{title}</h3>
             </header>
             <div className="admin-capability-protocol-fields">{children}</div>
         </section>
@@ -963,12 +952,12 @@ function BooleanField({ label, value, disabled, onChange }: { label: string; val
     );
 }
 
-function ParameterField({ label, description, supported, disabled, onChange }: { label: string; description: string; supported: boolean; disabled: boolean; onChange: (supported: boolean) => void }) {
+function ParameterField({ label, description, supported, disabled, onChange }: { label: string; description?: string; supported: boolean; disabled: boolean; onChange: (supported: boolean) => void }) {
     return (
         <div className="admin-capability-parameter-field flex min-h-12 items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
             <div className="min-w-0">
                 <div className="break-all text-xs font-medium">{label}</div>
-                <div className="mt-0.5 text-[var(--fs-tiny)] leading-5 text-foreground/45">{description}</div>
+                {description ? <div className="mt-0.5 text-[var(--fs-tiny)] leading-5 text-foreground/45">{description}</div> : null}
             </div>
             <label className="grid shrink-0 justify-items-center gap-1 text-[var(--fs-tiny)] text-foreground/45">
                 <span>支持</span>

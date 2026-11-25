@@ -22,7 +22,7 @@ const AgentMemoryDocumentsPanel = lazy(() => import("./components/agent-memory-d
 export function AnalyticsPage() {
     const { references } = useAdminContext();
     return (
-        <AdminPageFrame title="运行总览" description="请求质量、任务队列与成本 · 趋势按自然日统计" scroll>
+        <AdminPageFrame title="运行总览" scroll>
             <AnalyticsPanel users={references.users} channels={references.channels} />
         </AdminPageFrame>
     );
@@ -35,7 +35,6 @@ export function AnnouncementsPage() {
     return (
         <AdminPageFrame
             title="系统公告"
-            description="面向全体用户的通知发布与状态管理"
             actions={
                 <Button
                     id="admin-announcement-publish-trigger"
@@ -62,7 +61,6 @@ export function BannerAnnouncementsPage() {
     return (
         <AdminPageFrame
             title="常驻通知"
-            description="配置首页顶部常驻展示的通知，支持标题、状态与有效期"
             actions={
                 <Button type="primary" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>
                     新增常驻通知
@@ -80,7 +78,6 @@ export function CreditOperationsPage() {
     return (
         <AdminPageFrame
             title="积分运营"
-            description="异常计费核对、注册与签到赠送管理及人工调账"
             actions={
                 <>
                     <BillingAutoRefundToggle />
@@ -100,7 +97,7 @@ export function CreditOperationsPage() {
 
 export function AccessSettingsPage() {
     return (
-        <AdminPageFrame title="登录与注册" description="先控制账号创建，再配置第三方登录入口、服务协议与登录打开方式" scroll>
+        <AdminPageFrame title="登录与注册" scroll>
             <AccessSettingsPanel />
         </AdminPageFrame>
     );
@@ -108,7 +105,7 @@ export function AccessSettingsPage() {
 
 export function EmailSettingsPage() {
     return (
-        <AdminPageFrame title="邮件服务" description="先决定是否发送注册验证码，再配置 SMTP" scroll>
+        <AdminPageFrame title="邮件服务" scroll>
             <EmailSettingsPanel />
         </AdminPageFrame>
     );
@@ -116,7 +113,7 @@ export function EmailSettingsPage() {
 
 export function FeatureAvailabilityPage() {
     return (
-        <AdminPageFrame title="功能开放" description="决定前台用户能看到和使用哪些功能" scroll>
+        <AdminPageFrame title="功能开放" scroll>
             <FeatureAvailabilityPanel />
         </AdminPageFrame>
     );
@@ -124,7 +121,7 @@ export function FeatureAvailabilityPage() {
 
 export function StorageResourcesPage() {
     return (
-        <AdminPageFrame title="存储资源" description="查看资源记录、容量分布与文件预览，可删除单个或批量资源" scroll>
+        <AdminPageFrame title="存储资源" scroll>
             <StorageResourcesPanel />
         </AdminPageFrame>
     );
@@ -135,7 +132,6 @@ export function AgentLessonsPage() {
     return (
         <AdminPageFrame
             title="Agent 记忆"
-            description="按用户只读查看记忆文件；编辑、撤销和确认由用户本人处理"
             actions={
                 <AdminSegmented<"documents" | "lessons">
                     ariaLabel="记忆视图"

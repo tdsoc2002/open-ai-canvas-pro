@@ -180,7 +180,7 @@ export default function OfficialAssetRecommendationsPage() {
         await client.invalidateQueries({ queryKey: ["admin-official-asset-recommendations"] });
     };
     return (
-        <AdminPageFrame title="素材推荐审核" description="审核用户推荐的图片、视频、音频和角色卡；通过后复用原资源，不复制文件。">
+        <AdminPageFrame title="素材推荐审核">
             <div className="mb-4 flex items-center justify-between gap-3">
                 <Typography.Text type="secondary">待审核推荐会保留原素材，审核结果可追溯。</Typography.Text>
                 <Select
@@ -338,7 +338,7 @@ export default function OfficialAssetRecommendationsPage() {
                     <Form.Item name="category" label="分类" rules={[{ required: true }]}>
                         <Select options={ASSET_CATEGORY_OPTIONS} />
                     </Form.Item>
-                    <Form.Item name="tagsText" label="标签" extra={publishTarget?.assetTags?.length ? "默认带入原素材当前标签，可修改。" : undefined}>
+                    <Form.Item name="tagsText" label="标签">
                         <Input placeholder="多个标签用逗号或换行分隔" maxLength={800} />
                     </Form.Item>
                     <Form.Item name="licenseNote" label="授权说明">

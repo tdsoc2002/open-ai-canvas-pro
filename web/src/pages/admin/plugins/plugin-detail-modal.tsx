@@ -76,7 +76,7 @@ function PluginDetail({ plugin, state, typeLabel, icon }: { plugin: AdminPluginD
                     {plugin.error ? <Alert type="error" showIcon title="插件加载失败" description={plugin.error} /> : null}
                     <FactGroup icon={<SlidersHorizontal />} title="管理">
                         <Fact label="来源">{originLabel(management.origin)}</Fact>
-                        <Fact label="作用范围">{management.activationScope === "user" ? "用户自主启用" : "全局生效，管理员统一控制"}</Fact>
+                        <Fact label="作用范围">{management.activationScope === "user" ? "用户自主启用" : "全局生效"}</Fact>
                         {management.activationScope === "user" ? <Fact label="已启用用户">{`${state?.enabledUserCount || 0} 位`}</Fact> : null}
                         <Fact label="配置方式">{configurationLabel(management.configurationScope)}</Fact>
                     </FactGroup>

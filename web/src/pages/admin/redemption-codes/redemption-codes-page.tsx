@@ -13,7 +13,6 @@ export default function RedemptionCodesPage() {
     return (
         <AdminPageFrame
             title="兑换码"
-            description="批次发放、核销状态与明细追踪"
             actions={
                 <Button type="primary" disabled={createBlocked} title={createBlocked ? "请先核对上一次结果不确定的生成请求" : undefined} icon={<TicketCheck className="size-4" />} onClick={() => setCreateOpen(true)}>
                     生成批次

@@ -370,13 +370,6 @@
     font-size: 14px;
     font-weight: 600;
 }
-[data-admin-root] .admin-ark-empty-state p {
-    max-width: 440px;
-    margin: 0 0 8px;
-    color: var(--admin-text-muted);
-    font-size: 12px;
-    line-height: 18px;
-}
 @media (prefers-reduced-motion: reduce) {
     [data-admin-root] .admin-ark-stat {
         transition: none;

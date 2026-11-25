@@ -158,9 +158,16 @@ test("只有不可导入条目时仍显示原因，不能全选或提交", async
 
 test("旧渠道仍默认勾选现有模型并按原请求体导入", async () => {
     await preview({ models: ["existing", "models/Unseen-V7"] }, async (requests) => {
+        const dialog = button("确认导入").closest('[role="dialog"]');
         expect(checkbox("existing").checked).toBe(true);
         expect(checkbox("models/Unseen-V7").checked).toBe(false);
+        expect(dialog?.textContent).toContain("所选模型均已存在");
+        await act(async () => button("取消全选").click());
+        expect(dialog?.textContent).toContain("未选择模型");
+        expect(dialog?.textContent).not.toContain("所选模型均已存在");
+        await act(async () => checkbox("existing").click());
         await act(async () => checkbox("models/Unseen-V7").click());
+        expect(dialog?.textContent).toContain("将导入 1 个新模型");
         await act(async () => button("确认导入").click());
         expect(requests).toEqual([{ models: ["existing", "models/Unseen-V7"] }]);
     });

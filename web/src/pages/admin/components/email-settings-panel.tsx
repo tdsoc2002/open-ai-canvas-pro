@@ -233,7 +233,7 @@ export default function EmailSettingsPanel() {
                     </span>
                     <div>
                         <strong>{dirty ? "有未保存的邮件调整" : `账户邮件：${setting.enabled ? "已启用" : "未启用"}`}</strong>
-                        <p>{dirty ? "完成当前配置后保存生效。" : formatSettingTime(setting.updatedAt, "使用系统默认值")}</p>
+                        {dirty ? null : <p>{formatSettingTime(setting.updatedAt, "使用系统默认值")}</p>}
                     </div>
                 </div>
                 <div className="admin-email-command-actions">
@@ -264,7 +264,6 @@ export default function EmailSettingsPanel() {
                     className="admin-email-section admin-email-delivery-section"
                     icon={<Send className="size-4" aria-hidden="true" />}
                     title="1. 是否发送账户安全邮件"
-                    description="这是注册验证码和密码找回邮件的主开关。关闭时不需要配置 SMTP；开启后再填写连接与发件信息。"
                     status={<AdminStatusBadge label={draftEnabled ? (dirty && !setting.enabled ? "待启用" : "已启用") : dirty && setting.enabled ? "待停用" : "未启用"} tone={dirty ? "warning" : draftEnabled ? "success" : "neutral"} />}
                     footer={
                         !draftEnabled ? (
@@ -294,10 +293,7 @@ export default function EmailSettingsPanel() {
                         <div className="admin-email-policy-copy">
                             <div className="flex flex-wrap items-center gap-2">
                                 <strong>发送注册与密码找回验证码</strong>
-                                <AdminStatusBadge label="保存后生效" tone="info" />
                             </div>
-                            <p>启用后，普通邮箱注册和密码找回使用 6 位验证码；邮件发送失败时不会保留可用验证码。</p>
-                            <span>关闭只停止后续账户邮件，不改变新用户注册开关，也不影响已有登录会话。</span>
                         </div>
                         <Switch checked={draftEnabled} disabled={loading || refreshing || saving} aria-label="发送账户安全邮件" onChange={toggleEnabled} />
                     </div>
@@ -327,7 +323,6 @@ export default function EmailSettingsPanel() {
                             className="admin-email-section admin-email-configuration-section"
                             icon={<Server className="size-4" aria-hidden="true" />}
                             title="2. 配置 SMTP 连接与发件身份"
-                            description="填写邮件服务器、身份验证和发件人信息。保存后可用页面顶部的“发送测试邮件”确认能否投递。"
                             status={<AdminStatusBadge label={dirty ? "待保存" : smtpReady ? "已配置" : "待配置"} tone={dirty ? "warning" : smtpReady ? "success" : "neutral"} />}
                             footer={
                                 <>
@@ -378,19 +373,19 @@ export default function EmailSettingsPanel() {
                             </div>
 
                             <div className="admin-email-form-section">
-                                <FormSectionTitle icon={<KeyRound className="size-4" />} title="SMTP 身份验证" description="服务器要求登录时填写账号和密码；密码留空会保留服务端已配置值。" />
+                                <FormSectionTitle icon={<KeyRound className="size-4" />} title="SMTP 身份验证" />
                                 <div className="admin-email-form-grid">
                                     <Form.Item name="username" label="SMTP 用户名" extra="通常是完整邮箱地址；无需验证的服务器可留空。">
                                         <Input autoComplete="off" placeholder="mailer@example.com" />
                                     </Form.Item>
-                                    <Form.Item name="password" label={setting.hasPassword ? `SMTP 密码（${configuredSecretText}）` : "SMTP 密码"} extra="只在需要新增或替换密码时填写。">
-                                        <Input.Password autoComplete="new-password" placeholder={setting.hasPassword ? "留空保留原密码" : "SMTP 密码或服务商授权码"} />
+                                    <Form.Item name="password" label={setting.hasPassword ? `SMTP 密码（${configuredSecretText}）` : "SMTP 密码"}>
+                                        <Input.Password autoComplete="new-password" placeholder="SMTP 密码或服务商授权码" />
                                     </Form.Item>
                                 </div>
                             </div>
 
                             <div className="admin-email-form-section">
-                                <FormSectionTitle icon={<AtSign className="size-4" />} title="发件人身份" description="这组名称和地址会显示在注册与密码重置邮件的 From 信息中。" />
+                                <FormSectionTitle icon={<AtSign className="size-4" />} title="发件人身份" />
                                 <div className="admin-email-form-grid">
                                     <Form.Item
                                         name="fromEmail"
@@ -427,7 +422,6 @@ export default function EmailSettingsPanel() {
                         className="admin-email-section"
                         icon={<MailCheck className="size-4" aria-hidden="true" />}
                         title="3. 电子邮件域名白名单"
-                        description="每行填写一个允许注册的邮箱域名；不在白名单内的邮箱无法注册。"
                         status={<AdminStatusBadge label={currentValues.registrationAllowedDomains.length > 0 ? "已限制范围" : "不限制服务商"} tone={currentValues.registrationAllowedDomains.length > 0 ? "info" : "neutral"} />}
                         footer={
                             <>
@@ -526,13 +520,13 @@ function TestEmailButton({ disabled, disabledReason }: { disabled: boolean; disa
     );
 }
 
-function FormSectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+function FormSectionTitle({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
     return (
         <div className="admin-email-form-section-heading">
             <span>{icon}</span>
             <div>
                 <h3>{title}</h3>
-                <p>{description}</p>
+                {description ? <p>{description}</p> : null}
             </div>
         </div>
     );

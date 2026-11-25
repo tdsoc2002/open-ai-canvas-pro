@@ -17,22 +17,23 @@ export function registerTrafficOperationsCases(context: TrafficOperationsCaseCon
     const section = (id: string) => context.host().querySelector(`#${id}`)!.closest("section")!;
     const rows = (id: string) => section(id).querySelectorAll("tbody .ant-table-row");
 
-    test("真实页五项均有运营帮助、关键限制与原生可展开口径，不扩请求", async () => {
+    test("真实页五项说明默认折叠并保留计算口径", async () => {
         await context.render();
         expect(context.requestCount()).toBe(2);
         for (const id of ["visitor-mix", "anomalies", "endpoints", "paths", "funnel"]) {
             const panel = section(`admin-traffic-${id}-title`);
-            expect(panel.querySelector(".admin-traffic-ops-help")!.textContent).toContain("运营帮助：");
+            expect(panel.querySelector(".admin-traffic-ops-help")).toBeNull();
             const details = panel.querySelector<HTMLDetailsElement>("details")!;
             expect(details.open).toBe(false);
             const summary = details.querySelector("summary")!;
             expect(summary.textContent).toContain("口径与运营建议");
             expect(summary.getAttribute("tabindex")).not.toBe("-1");
+            expect(details.querySelectorAll("li").length).toBeGreaterThan(0);
         }
-        expect(section("admin-traffic-paths-title").textContent).toContain("占比不能相加");
-        expect(section("admin-traffic-funnel-title").textContent).toContain("不代表任务、生成或收费成功");
-        expect(section("admin-traffic-funnel-title").textContent).toContain("同秒顺序待定不等于永久流失");
-        expect(section("admin-traffic-anomalies-title").textContent).toContain("未触发不等于无故障");
+        expect(section("admin-traffic-paths-title").querySelector("details")?.textContent).toContain("占比不能相加");
+        expect(section("admin-traffic-funnel-title").querySelector("details")?.textContent).toContain("不是成功任务或计费结果");
+        expect(section("admin-traffic-funnel-title").querySelector("details")?.textContent).toContain("未确认不等于永久流失");
+        expect(section("admin-traffic-anomalies-title").querySelector("details")?.textContent).toContain("不证明采集完整或业务无故障");
         expect(rows("admin-traffic-funnel-title")).toHaveLength(4);
     });
 

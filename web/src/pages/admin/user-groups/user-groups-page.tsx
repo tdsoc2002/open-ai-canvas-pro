@@ -169,7 +169,6 @@ export default function UserGroupsPage() {
     return (
         <AdminPageFrame
             title="用户分组"
-            description="分组 → 渠道 → 模型的可见范围、统一折扣与货币兑换积分比例"
             actions={
                 <div className="flex items-center gap-2">
                     <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void load()}>

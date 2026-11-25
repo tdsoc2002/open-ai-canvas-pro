@@ -304,7 +304,6 @@ export default function LogsPage() {
     return (
         <AdminPageFrame
             title="请求明细"
-            description="模型生成与结果下载记录；仅计费调用扣除积分"
             actions={
                 <>
                     <Button

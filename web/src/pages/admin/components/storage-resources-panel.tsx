@@ -258,7 +258,7 @@ export default function StorageResourcesPanel() {
                     pagination: false,
                     scroll: { x: 1390 },
                 }}
-                empty={<AdminTableEmpty filtered={hasFilters} title={hasFilters ? undefined : "暂无资源记录"} description={hasFilters ? undefined : "资源上传或生成后会显示在这里。"} />}
+                empty={<AdminTableEmpty filtered={hasFilters} title={hasFilters ? undefined : "暂无资源记录"} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(nextPage, nextSize) => updateUrl({ page: nextSize !== pageSize ? 1 : nextPage, pageSize: nextSize })} />}
             />
             <AdminModal

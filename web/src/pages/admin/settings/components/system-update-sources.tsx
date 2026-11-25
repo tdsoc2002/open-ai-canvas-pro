@@ -62,7 +62,6 @@ export function SystemUpdateSourcesPanel({
             layout="stacked"
             icon={<Network className="size-4" />}
             title="更新来源"
-            description="选择版本、更新文件和容器镜像的来源。连接检测由运行服务器执行。"
             status={{ label: !saved ? "不可用" : dirty ? "尚未保存" : probing ? "正在检测" : "已保存", color: !saved || dirty ? "warning" : probing ? "blue" : "default" }}
             footer={
                 <>

@@ -131,8 +131,6 @@ export function TrafficJourneys({ data, loading, unavailableValue, partial }: Tr
                             </button>
                         </div>
                     </header>
-                    <p className="admin-traffic-ops-help">运营帮助：用首个观察页检查引流承接，用末个观察页定位值得补充下一步入口或内容衔接的位置。</p>
-                    <p className="admin-traffic-ops-note">仅范围内最早／最晚接收秒的 PV；非真实入口或退出，末页不代表跳出率或停留时长。</p>
                     {data && selectedEndpoint ? (
                         <p className="admin-traffic-ops-note">
                             PV 会话分母 {count.format(data.endpoints.visits)} · {endpointLabel}歧义未分配 {count.format(selectedEndpoint.undeterminedVisits)} 个会话
@@ -141,7 +139,7 @@ export function TrafficJourneys({ data, loading, unavailableValue, partial }: Tr
                     <AdminDataTable<EndpointPage>
                         skeletonColumns={3}
                         table={{ rowKey: "page", size: "small", loading, columns: endpointColumns, dataSource: selectedEndpoint?.pages ?? [], pagination: false, tableLayout: "fixed", scroll: { x: 388 } }}
-                        empty={<AdminEmpty title={data ? `当前范围暂无可确定的${endpointLabel}` : unavailableValue} description={data ? "同秒多页面歧义单独保留，不强行分配到页面。" : undefined} />}
+                        empty={<AdminEmpty title={data ? `当前范围暂无可确定的${endpointLabel}` : unavailableValue} />}
                     />
                     <details className="admin-traffic-ops-details">
                         <summary>
@@ -168,17 +166,15 @@ export function TrafficJourneys({ data, loading, unavailableValue, partial }: Tr
                             <h2 id="admin-traffic-paths-title">Top 10 相邻观察路径</h2>
                         </div>
                     </header>
-                    <p className="admin-traffic-ops-help">运营帮助：找出常见页面衔接，优先优化高频路径的导航入口，并核对预期路径是否容易被发现。</p>
-                    <p className="admin-traffic-ops-note">登记 13 类页面，当前实际路由覆盖 11 类的观察投影，非直接跳转或完整单标签轨迹；各路径会话可重叠，占比不能相加。</p>
                     {data ? (
                         <p className="admin-traffic-ops-note">
-                            PV 会话分母 {count.format(data.paths.visits)} · 含歧义的会话 {count.format(data.paths.ambiguousVisits)}，路径不跨歧义点串接
+                            PV 会话分母 {count.format(data.paths.visits)} · 含歧义的会话 {count.format(data.paths.ambiguousVisits)}
                         </p>
                     ) : null}
                     <AdminDataTable<PathRow>
                         skeletonColumns={3}
                         table={{ rowKey: "key", size: "small", loading, columns: pathColumns, dataSource: paths, pagination: false, tableLayout: "fixed", scroll: { x: 508 } }}
-                        empty={<AdminEmpty title={data ? "当前范围暂无可确认的相邻观察路径" : unavailableValue} description={data ? "单页会话或存在同秒歧义时，不补造页面衔接。" : undefined} />}
+                        empty={<AdminEmpty title={data ? "当前范围暂无可确认的相邻观察路径" : unavailableValue} />}
                     />
                     <details className="admin-traffic-ops-details">
                         <summary>
@@ -189,7 +185,7 @@ export function TrafficJourneys({ data, loading, unavailableValue, partial }: Tr
                             <ChevronDown className="size-3.5" aria-hidden="true" />
                         </summary>
                         <ul>
-                            <li>按服务端接收秒观察相邻 PV 页面对，按涉及会话数展示前 10 条。同一会话同一路径只计一次，但可同时出现在多条路径中，比例以本条聚合的 PV 会话为分母。</li>
+                            <li>按服务端接收秒观察相邻 PV 页面对，按涉及会话数展示前 10 条，当前路由覆盖登记的 13 类页面中的 11 类。同一会话同一路径只计一次，可出现在多条路径中。比例以本次聚合的 PV 会话为分母，各路径占比不能相加。</li>
                             <li>歧义点不跨越串接；未采集的页面、范围外事件、跨标签行为和接收延迟都可能改变投影，不代表真实直接点击顺序。</li>
                             <li>高频路径可优先放置便捷入口；预期衔接较弱时核对按钮命名、位置和内容关联，再观察调整前后变化，不凭排名认定因果或流失。</li>
                         </ul>
@@ -211,11 +207,8 @@ export function TrafficJourneys({ data, loading, unavailableValue, partial }: Tr
                         </span>
                     ) : null}
                 </header>
-                <p className="admin-traffic-ops-help">运营帮助：沿固定四步找到尚未确认衔接的环节，优先核对灵感内容、进入创作入口与提交引导。</p>
-                <p className="admin-traffic-ops-note">严格确认要求接收秒递增；同秒顺序待定不等于永久流失。提交仅为意图，不代表任务、生成或收费成功。</p>
-                <p className="admin-traffic-ops-note">两种比例均按严格确认会话计算：相对漏斗起点、相对上一步；“允许同秒”只表示可能到达。</p>
                 {data && steps[0]?.visits === 0 ? (
-                    <AdminEmpty title="当前范围暂无漏斗起点会话" description="灵感嵌于创作页，没有独立灵感 PV 起点；直接进入创作或使用内嵌灵感不补造完整四步链路。" />
+                    <AdminEmpty title="当前范围暂无漏斗起点会话" />
                 ) : (
                     <AdminDataTable<FunnelStep>
                         skeletonColumns={5}

@@ -386,7 +386,6 @@ export default function WorkbenchToolsPage() {
     return (
         <AdminPageFrame
             title="工作台工具"
-            description="管理生图与视频的工具、场景输入和示例素材"
             scroll
             actions={
                 <Button type="primary" icon={<Plus className="size-4" />} onClick={() => void openEditor()}>
@@ -488,7 +487,6 @@ export default function WorkbenchToolsPage() {
                     </div>
                     <div className="admin-workbench-section-title">
                         <strong>用户需要提供什么</strong>
-                        <small>配置模特、人脸、商品等输入，用户端按媒体类型和数量展示上传入口。</small>
                     </div>
                     <div className="admin-workbench-contract-toolbar">
                         <label>
@@ -554,7 +552,6 @@ export default function WorkbenchToolsPage() {
                     </div>
                     <div className="admin-workbench-section-title">
                         <strong>结果示例</strong>
-                        <small>上传实际效果图片或视频，帮助用户了解工具用途。</small>
                     </div>
                     <div className="admin-workbench-tool-grid">
                         <Form.Item name="resultTitle" label="示例标题">

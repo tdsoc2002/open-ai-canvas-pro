@@ -255,7 +255,7 @@ export default function AdminFeedbacksPage() {
     } catch {}
 
     return (
-        <AdminPageFrame title="用户反馈收件箱" description="集中查阅全站用户提交的 Bug 缺陷、功能提议与体验建议，支持收件箱式答复与历史归档管理" scroll>
+        <AdminPageFrame title="用户反馈收件箱" scroll>
             <div className="flex grow flex-col gap-4">
                 {/* Metrics Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

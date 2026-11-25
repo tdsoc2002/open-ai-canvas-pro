@@ -132,11 +132,11 @@ export default function SystemPerformancePage() {
     };
 
     if (loading) {
-        return <AdminPageFrame title="系统性能" description="服务器、数据库与运行时缓存状态。" scroll><div className="admin-settings-stack admin-system-performance"><Skeleton active paragraph={{ rows: 14 }} /></div></AdminPageFrame>;
+        return <AdminPageFrame title="系统性能" scroll><div className="admin-settings-stack admin-system-performance"><Skeleton active paragraph={{ rows: 14 }} /></div></AdminPageFrame>;
     }
 
     if (!data) {
-        return <AdminPageFrame title="系统性能" description="运行状态未知；尚未取得有效采集数据。" scroll>
+        return <AdminPageFrame title="系统性能" scroll>
             <div className="admin-performance-alert" role="alert"><AlertTriangle className="size-4" /><span>{loadError || "性能数据不可用"}</span><Button size="small" loading={refreshing} onClick={() => void load(false)}>重试</Button></div>
         </AdminPageFrame>;
     }
@@ -151,7 +151,6 @@ export default function SystemPerformancePage() {
     return (
         <AdminPageFrame
             title="系统性能"
-            description="紧凑查看主机、数据库、Redis、画布 Agent 和安全运行时缓存；敏感连接信息不会在此展示。"
             scroll
             actions={<><label className="admin-performance-auto"><Switch size="small" checked={autoRefresh} onChange={setAutoRefresh} /><span>15 秒刷新</span></label><Button icon={<RefreshCw className="size-4" />} loading={refreshing} onClick={() => void load(false)}>刷新</Button></>}
         >
@@ -170,7 +169,7 @@ export default function SystemPerformancePage() {
                 </section>
 
                 <div className="admin-performance-grid">
-                    <SettingsSectionCard layout="stacked" icon={<Server className="size-4" />} title="服务器与进程" description="操作系统、运行时和当前进程快照。" status={{ label: data?.disk.writable ? "数据目录可写" : "数据目录不可写", color: data?.disk.writable ? "success" : "error" }}>
+                    <SettingsSectionCard layout="stacked" icon={<Server className="size-4" />} title="服务器与进程" status={{ label: data?.disk.writable ? "数据目录可写" : "数据目录不可写", color: data?.disk.writable ? "success" : "error" }}>
                         <FactGrid>
                             <Fact label="主机" value={data?.host.hostname || "未识别"} mono />
                             <Fact label="系统" value={`${data?.host.os || "--"} / ${data?.host.arch || "--"}`} />
@@ -190,7 +189,7 @@ export default function SystemPerformancePage() {
                     </SettingsSectionCard>
 
                     <div className="admin-performance-side-stack">
-                        <SettingsSectionCard layout="stacked" icon={<Database className="size-4" />} title="数据库" description="连接池、结构版本与数据库内部统计。" status={{ label: data?.database.connected ? "连接正常" : "连接异常", color: data?.database.connected ? "success" : "error" }}>
+                        <SettingsSectionCard layout="stacked" icon={<Database className="size-4" />} title="数据库" status={{ label: data?.database.connected ? "连接正常" : "连接异常", color: data?.database.connected ? "success" : "error" }}>
                             <FactGrid>
                                 <Fact label="驱动" value={data?.database.driver === "postgres" ? "PostgreSQL" : data?.database.driver || "未知"} />
                                 <Fact label="结构版本" value={`${data?.database.schema.current || 0} / ${data?.database.schema.expected || 0} ${data?.database.schema.ready ? "（已就绪）" : "（待检查）"}`} />
@@ -200,7 +199,7 @@ export default function SystemPerformancePage() {
                             </FactGrid>
                         </SettingsSectionCard>
 
-                        <SettingsSectionCard layout="stacked" icon={<Activity className="size-4" />} title="Redis" description="内存、客户端、命中率与连接池。" status={{ label: data?.redis.connected ? "连接正常" : data?.redis.mode === "local" ? "本地降级" : "连接异常", color: data?.redis.connected ? "success" : data?.redis.mode === "local" ? "warning" : "error" }}>
+                        <SettingsSectionCard layout="stacked" icon={<Activity className="size-4" />} title="Redis" status={{ label: data?.redis.connected ? "连接正常" : data?.redis.mode === "local" ? "本地降级" : "连接异常", color: data?.redis.connected ? "success" : data?.redis.mode === "local" ? "warning" : "error" }}>
                             <FactGrid>
                                 <Fact label="模式 / 版本" value={data?.redis.connected ? `Redis ${data.redis.version || "未知"}` : data?.redis.statusMessage || "未配置"} />
                                 <Fact label="运行时间" value={data?.redis.connected ? formatDuration(data.redis.uptimeSeconds) : "--"} />

@@ -228,7 +228,7 @@ function PricingTemplateEditor({
                     />
                 ) : null}
                 <Form form={form} name="pricing-template" initialValues={draft.values} layout="vertical" disabled={disabled}>
-                    <Form.Item name="priceCurrency" label="计价货币">
+                    <Form.Item name="priceCurrency" label="计价货币" tooltip="USD / CNY 售价按用户分组的汇率换算为积分。成本价始终以积分填写。">
                         <Segmented options={priceCurrencyOptions} />
                     </Form.Item>
                     {values.capability === "video" ? (

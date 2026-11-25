@@ -712,7 +712,6 @@ export default function AdminPaymentsPage() {
     return (
         <AdminPageFrame
             title="支付充值"
-            description="管理系统支付适配器、充值商品、支付订单与 T+1 对账"
             actions={
                 <Button icon={<RefreshCw className="size-4" />} loading={loading || ordersLoading || runsLoading} onClick={() => void refresh()}>
                     刷新
@@ -863,7 +862,7 @@ export default function AdminPaymentsPage() {
                                     <Button type="primary" loading={runningBill} disabled={!billProviderId} onClick={() => void runReconciliation()}>
                                         执行对账
                                     </Button>
-                                    <span className="text-xs text-foreground/45">系统每天 10:15 后自动对账昨日账单；也可在此手动重跑最近三个月账单。</span>
+                                    <span className="text-xs text-foreground/45">每日 10:15 后自动对账昨日账单，补跑日期限过去三个月。</span>
                                 </div>
                                 <AdminDataTable
                                     toolbar={
