@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 111
+const CurrentSchemaVersion int64 = 112
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -408,6 +408,7 @@ var schemaMigrations = []migration{
 		return reconcileAgentStorageUsage(tx)
 	}},
 	{version: 111, name: "canvas_folders", checksum: "sha256:canvas-folders-v111", apply: migrateCanvasFolders},
+	{version: 112, name: "canvas_folder_owner_keys", checksum: "sha256:canvas-folder-owner-keys-v112", apply: migrateCanvasFolderOwnerKeys},
 }
 
 func migrateCanvasFolders(tx *gorm.DB) error {
@@ -425,6 +426,13 @@ func migrateCanvasFolders(tx *gorm.DB) error {
 		return tx.Migrator().CreateIndex(project, folderIndex)
 	}
 	return nil
+}
+
+func migrateCanvasFolderOwnerKeys(tx *gorm.DB) error {
+	if tx.Dialector.Name() != "postgres" {
+		return nil
+	}
+	return tx.Exec("ALTER TABLE canvas_folders ALTER COLUMN user_id TYPE varchar(64)").Error
 }
 
 func migrateAPILogGenerationContent(tx *gorm.DB) error {

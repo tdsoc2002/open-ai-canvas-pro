@@ -400,7 +400,7 @@ type CanvasProject struct {
 
 type CanvasFolder struct {
 	ID        string    `json:"id" gorm:"primaryKey;size:36"`
-	UserID    string    `json:"-" gorm:"index;size:36"`
+	UserID    string    `json:"-" gorm:"index;size:64"`
 	Name      string    `json:"name" gorm:"size:40;not null"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

@@ -9,7 +9,50 @@ import (
 	"time"
 
 	"yingce/backend/internal/model"
+
+	"gorm.io/gorm"
 )
+
+func TestPostgresCanvasFolderOwnerMigration(t *testing.T) {
+	dsn := strings.TrimSpace(os.Getenv("CANVAS_TEST_POSTGRES_DSN"))
+	if dsn == "" {
+		t.Skip("CANVAS_TEST_POSTGRES_DSN is not configured")
+	}
+	db, err := Open(Config{Driver: "postgres", DSN: dsn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`CREATE TEMP TABLE canvas_folders (id varchar(36) PRIMARY KEY, user_id varchar(36), name varchar(40) NOT NULL) ON COMMIT DROP`).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec(`INSERT INTO canvas_folders (id, user_id, name) VALUES ('personal', 'owner', '原文件夹')`).Error; err != nil {
+			return err
+		}
+		if err := migrateCanvasFolderOwnerKeys(tx); err != nil {
+			return err
+		}
+		ownerKey := model.TeamContentKey("12345678-1234-1234-1234-123456789012")
+		if err := tx.Exec(`INSERT INTO canvas_folders (id, user_id, name) VALUES ('team', ?, '团队文件夹')`, ownerKey).Error; err != nil {
+			return err
+		}
+		var folders []model.CanvasFolder
+		if err := tx.Order("id").Find(&folders).Error; err != nil {
+			return err
+		}
+		if len(folders) != 2 || folders[0].UserID != "owner" || folders[0].Name != "原文件夹" || folders[1].UserID != ownerKey {
+			return fmt.Errorf("迁移后归属或原有文件夹不符: %+v", folders)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestPostgresAssetIDMigration(t *testing.T) {
 	dsn := strings.TrimSpace(os.Getenv("CANVAS_TEST_POSTGRES_DSN"))
