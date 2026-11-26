@@ -8,16 +8,6 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
             viewDetails: "View details",
             dismiss: "Dismiss notice",
         },
-        changelog: {
-            announcements: "Announcements",
-            log: "Changelog",
-            view: "View {{title}}",
-            announcementsDescription: "Updates and feature notes published on this site, by version",
-            logDescription: "Changes to product features, interactions and stability, by version",
-            currentVersion: "Current version {{version}}",
-            unreleased: "In development",
-            latest: "Latest",
-        },
         announcements: {
             title: "System announcements",
             unreadLabel: "System announcements, {{count}} unread",
@@ -67,17 +57,6 @@ export const enUS: DeepStringRecord<typeof zhCN> = {
         footerMenu: {
             loggedOut: "Signed out",
             logoutFailed: "Sign-out failed",
-        },
-        updates: {
-            versionLabel: "Version {{version}}",
-            versionPending: "Version not set",
-            currentVersion: "Current version",
-            textPending: "Text not set",
-            imageAlt: "Update announcement image",
-            videoLabel: "Update announcement video",
-            imagePending: "Image not uploaded",
-            videoPending: "Video not uploaded",
-            empty: "Add a version and content to preview the announcement here.",
         },
         list: {
             filter: "Filter",

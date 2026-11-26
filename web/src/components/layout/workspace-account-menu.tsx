@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AuthLoginLink } from "@/components/auth/auth-login-link";
-import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { WorkspaceAccountCard } from "./workspace-account-card";
 import { UserAvatar } from "./user-avatar";
 import { UserGroupAvatarRing } from "./user-group-badge";
@@ -13,7 +12,7 @@ import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import { useThemeStore, type ThemeName } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 
-/** 顶部与侧栏复用同一账户卡片；顶部额外保留版本和主题偏好。 */
+/** 顶部账户菜单可跟随当前工作区的主题偏好。 */
 export function WorkspaceAccountMenu({ themePreference }: { themePreference?: { theme: ThemeName; onChange: (theme: ThemeName) => void } }) {
     const workspaceTheme = useThemeStore((state) => state.theme);
     const setWorkspaceTheme = useThemeStore((state) => state.setTheme);
@@ -45,7 +44,6 @@ export function WorkspaceAccountMenu({ themePreference }: { themePreference?: { 
                         }}
                     >
                         <div className="workspace-account-menu-footer">
-                            <AppChangelogButton className="workspace-account-menu-row" showLabel showVersion labelClassName="workspace-account-menu-label" versionClassName="workspace-account-menu-version" />
                             <label className="workspace-account-menu-row">
                                 {theme === "dark" ? <Moon aria-hidden /> : <Sun aria-hidden />}
                                 <span className="workspace-account-menu-label">{t(themePreference ? "canvasC.toolbar.appearance" : "shell.darkMode")}</span>

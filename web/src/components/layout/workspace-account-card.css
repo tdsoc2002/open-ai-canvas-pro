@@ -282,14 +282,10 @@ label.workspace-account-menu-row {
 .workspace-account-menu-row {
     color: var(--user-ink-muted);
 }
-.workspace-account-menu-version,
 .workspace-account-menu-theme-state {
     max-width: 42%;
     color: var(--user-ink-muted);
     font-size: var(--fs-caption);
-}
-.workspace-account-menu-version {
-    font-variant-numeric: tabular-nums;
 }
 .workspace-account-card :is(a, button):focus-visible {
     outline: 2px solid var(--user-accent);

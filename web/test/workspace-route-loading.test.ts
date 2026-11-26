@@ -137,12 +137,9 @@ describe("workspace route loading", () => {
         expect(wallet).toContain("WALLET_STALE_TIME_MS");
     });
 
-    test("defers modal-only markdown runtimes until interaction", () => {
-        const changelogButton = source("../src/components/layout/app-changelog-modal.tsx");
+    test("defers the system announcement dialog until interaction", () => {
         const announcements = source("../src/components/layout/system-announcement-center.tsx");
 
-        expect(changelogButton).toContain('lazy(() => import("@/components/layout/app-changelog-dialog")');
-        expect(changelogButton).not.toContain('from "react-markdown"');
         expect(announcements).toContain('lazy(() => import("@/components/ui/aceternity/announcement-timeline-modal")');
     });
 

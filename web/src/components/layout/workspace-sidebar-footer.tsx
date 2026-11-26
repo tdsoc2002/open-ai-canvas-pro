@@ -5,7 +5,6 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { AuthLoginLink } from "@/components/auth/auth-login-link";
-import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { IdentityProviderBadge } from "@/components/layout/identity-provider-badge";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { UserGroupBadge } from "@/components/layout/user-group-badge";
@@ -87,19 +86,10 @@ export function WorkspaceSidebarFooter({ expandedClassName, collapsedClassName, 
                             </div>
 
                             {user.role === "admin" ? (
-                                <nav className="py-2" aria-label={t("shell.account.adminTools")}>
+                                <nav className="border-b border-border/65 py-2" aria-label={t("shell.account.adminTools")}>
                                     <MenuLink to="/admin" icon={<ShieldCheck />} label={t("shell.account.adminConsole")} onNavigate={() => setMenuOpen(false)} />
                                 </nav>
                             ) : null}
-
-                            <div className="border-y border-border/65 py-2">
-                                <AppChangelogButton
-                                    className="flex h-8 w-full items-center gap-2 rounded px-2 text-[var(--fs-label)] text-foreground/58 hover:bg-surface-hover hover:text-foreground [&_svg]:size-3.5"
-                                    showLabel
-                                    showVersion
-                                    versionClassName="ml-auto text-[var(--fs-micro)] tabular-nums text-foreground/32"
-                                />
-                            </div>
 
                             <div className="flex h-10 items-center px-2">
                                 {theme === "dark" ? <Moon className="size-3.5 text-foreground/45" /> : <Sun className="size-3.5 text-foreground/45" />}

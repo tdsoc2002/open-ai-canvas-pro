@@ -6,16 +6,6 @@ export const zhCN = {
             viewDetails: "点击查看详情",
             dismiss: "关闭通知",
         },
-        changelog: {
-            announcements: "更新公告",
-            log: "更新日志",
-            view: "查看{{title}}",
-            announcementsDescription: "按版本查看本站发布的更新与功能介绍",
-            logDescription: "按版本查看产品能力、交互与稳定性变化",
-            currentVersion: "当前版本 {{version}}",
-            unreleased: "开发中",
-            latest: "最新",
-        },
         announcements: {
             title: "系统公告",
             unreadLabel: "系统公告，{{count}} 条未读",
@@ -65,17 +55,6 @@ export const zhCN = {
         footerMenu: {
             loggedOut: "已退出登录",
             logoutFailed: "退出失败",
-        },
-        updates: {
-            versionLabel: "版本 {{version}}",
-            versionPending: "待填写版本",
-            currentVersion: "当前版本",
-            textPending: "待填写文字内容",
-            imageAlt: "更新公告配图",
-            videoLabel: "更新公告视频",
-            imagePending: "待上传图片",
-            videoPending: "待上传视频",
-            empty: "添加版本与内容后，可在此预览公告。",
         },
         list: {
             filter: "筛选",

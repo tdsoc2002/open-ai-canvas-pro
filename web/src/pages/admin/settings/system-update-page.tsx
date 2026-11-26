@@ -1,5 +1,5 @@
 import { App, Button, Input, Skeleton } from "antd";
-import { AlertTriangle, Archive, BadgeCheck, Circle, ExternalLink, History, RefreshCw, RotateCcw, ServerCog, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Archive, BadgeCheck, Circle, History, RefreshCw, RotateCcw, ServerCog, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { checkSystemUpdate, getSystemUpdateStatus, rollbackSystemUpdate, startSystemUpdate, type SystemUpdateStatus, type UpdatePhase } from "@/services/api/system-update";
@@ -221,17 +221,6 @@ export default function SystemUpdatePage() {
                                 <dt>代码仓库</dt>
                                 <dd>{status?.repository || "ddcat-ai/open-ai-canvas"}</dd>
                             </dl>
-                            {status?.latestRelease ? (
-                                <div className="admin-system-update-notes">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <h3>更新日志</h3>
-                                        <a href={status.latestRelease.url} target="_blank" rel="noreferrer">
-                                            查看 Release <ExternalLink className="size-3" />
-                                        </a>
-                                    </div>
-                                    <pre>{status.latestRelease.body || "本版本未填写更新日志。"}</pre>
-                                </div>
-                            ) : null}
                         </div>
                     </SettingsSectionCard>
 

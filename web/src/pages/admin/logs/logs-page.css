@@ -1,6 +1,33 @@
-[data-admin-root] .admin-data-table:has(.admin-logs-compact, .admin-logs-full) .admin-list-toolbar-main {
+[data-admin-root] .admin-list-toolbar:has(.admin-logs-toolbar-top) {
+    align-items: flex-start;
+    justify-content: flex-end;
+}
+
+[data-admin-root] .admin-list-toolbar-main:has(> .admin-logs-toolbar-top) {
     min-width: 0;
-    flex: 1 1 640px;
+    flex: 1 1 min(360px, 100%);
+}
+
+[data-admin-root] .admin-logs-toolbar-top {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--admin-space);
+}
+
+[data-admin-root] .admin-logs-toolbar-top + .admin-list-toolbar-filters {
+    min-width: 0;
+    flex-basis: 100%;
+}
+
+[data-admin-root] .admin-logs-toolbar-top + .admin-list-toolbar-filters > .ant-picker {
+    max-width: 100%;
+}
+
+[data-admin-root] .admin-logs-toolbar-top + .admin-list-toolbar-filters > .ant-select {
+    min-width: 0;
+    flex: 1 1 100px;
 }
 
 [data-admin-root] .admin-logs-compact .ant-table-cell {

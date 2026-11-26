@@ -8,16 +8,6 @@ export const jaJP: DeepStringRecord<typeof zhCN> = {
             viewDetails: "クリックして詳細を表示",
             dismiss: "通知を閉じる",
         },
-        changelog: {
-            announcements: "アップデートのお知らせ",
-            log: "更新履歴",
-            view: "{{title}}を表示",
-            announcementsDescription: "本サイトで公開されたアップデートと機能紹介をバージョン別に表示",
-            logDescription: "機能、操作性、安定性の変更をバージョン別に表示",
-            currentVersion: "現在のバージョン {{version}}",
-            unreleased: "開発中",
-            latest: "最新",
-        },
         announcements: {
             title: "システムのお知らせ",
             unreadLabel: "システムのお知らせ、未読 {{count}} 件",
@@ -67,17 +57,6 @@ export const jaJP: DeepStringRecord<typeof zhCN> = {
         footerMenu: {
             loggedOut: "ログアウトしました",
             logoutFailed: "ログアウトに失敗しました",
-        },
-        updates: {
-            versionLabel: "バージョン {{version}}",
-            versionPending: "バージョン未入力",
-            currentVersion: "現在のバージョン",
-            textPending: "本文未入力",
-            imageAlt: "アップデートのお知らせ画像",
-            videoLabel: "アップデートのお知らせ動画",
-            imagePending: "画像未アップロード",
-            videoPending: "動画未アップロード",
-            empty: "バージョンと内容を追加すると、ここでお知らせをプレビューできます。",
         },
         list: {
             filter: "絞り込み",

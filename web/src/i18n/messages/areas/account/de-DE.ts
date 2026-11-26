@@ -8,16 +8,6 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
             viewDetails: "Details anzeigen",
             dismiss: "Hinweis schließen",
         },
-        changelog: {
-            announcements: "Ankündigungen",
-            log: "Änderungsprotokoll",
-            view: "{{title}} anzeigen",
-            announcementsDescription: "Auf dieser Website veröffentlichte Updates und Funktionsbeschreibungen, nach Version",
-            logDescription: "Änderungen an Funktionen, Bedienung und Stabilität, nach Version",
-            currentVersion: "Aktuelle Version {{version}}",
-            unreleased: "In Entwicklung",
-            latest: "Neueste",
-        },
         announcements: {
             title: "Systemankündigungen",
             unreadLabel: "Systemankündigungen, {{count}} ungelesen",
@@ -67,17 +57,6 @@ export const deDE: DeepStringRecord<typeof zhCN> = {
         footerMenu: {
             loggedOut: "Abgemeldet",
             logoutFailed: "Abmelden fehlgeschlagen",
-        },
-        updates: {
-            versionLabel: "Version {{version}}",
-            versionPending: "Version noch nicht angegeben",
-            currentVersion: "Aktuelle Version",
-            textPending: "Text noch nicht angegeben",
-            imageAlt: "Bild zur Update-Ankündigung",
-            videoLabel: "Video zur Update-Ankündigung",
-            imagePending: "Bild noch nicht hochgeladen",
-            videoPending: "Video noch nicht hochgeladen",
-            empty: "Fügen Sie Version und Inhalt hinzu, um die Ankündigung hier in der Vorschau zu sehen.",
         },
         list: {
             filter: "Filter",

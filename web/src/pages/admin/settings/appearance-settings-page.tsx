@@ -8,8 +8,6 @@ import { Switch } from "@/pages/admin/ui/controls";
 import { WelcomeSetting } from "@/pages/admin/settings/components/welcome-setting";
 import { SkinThemeEditor } from "@/pages/admin/settings/components/skin-theme-editor";
 import { CanvasAppearanceEditor } from "./components/canvas-appearance-editor";
-import { UpdateAnnouncementEditor } from "./components/update-announcement-editor";
-import { DEFAULT_UPDATE_ANNOUNCEMENT, normalizeUpdateAnnouncement, validateUpdateAnnouncement, type UpdateAnnouncement } from "@/lib/update-announcement";
 import { App, Button, Tabs, Form, Input } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBlocker } from "react-router";
@@ -165,7 +163,6 @@ export default function AppearanceSettingsPage() {
     const [setting, setSetting] = useState<AdminAppearance | null>(null);
     const [brandName, setBrandName] = useState("");
     const [canvas, setCanvas] = useState<CanvasAppearance>(DEFAULT_CANVAS_APPEARANCE);
-    const [updates, setUpdates] = useState<UpdateAnnouncement>(DEFAULT_UPDATE_ANNOUNCEMENT);
     const [canvasUploading, setCanvasUploading] = useState(false);
     const [brandSlug, setBrandSlug] = useState("");
     const [authHeroTitle, setAuthHeroTitle] = useState("");
@@ -197,8 +194,7 @@ export default function AppearanceSettingsPage() {
 
     const dirty =
         Boolean(setting) &&
-        (JSON.stringify(updates) !== JSON.stringify(normalizeUpdateAnnouncement(setting?.updates)) ||
-            JSON.stringify(canvas) !== JSON.stringify(setting?.canvas || DEFAULT_CANVAS_APPEARANCE) ||
+        (JSON.stringify(canvas) !== JSON.stringify(setting?.canvas || DEFAULT_CANVAS_APPEARANCE) ||
             canvasUploading ||
             brandName.trim() !== setting?.brandName ||
             brandSlug.trim().toLocaleLowerCase() !== setting?.brandSlug ||
@@ -223,7 +219,6 @@ export default function AppearanceSettingsPage() {
         setSetting({ ...value, skinThemes: [siteSkin], skinId: JOYSEE_MINIMAL_SKIN_ID });
         setBrandName(value.brandName);
         setCanvas(value.canvas || DEFAULT_CANVAS_APPEARANCE);
-        setUpdates(normalizeUpdateAnnouncement(value.updates));
         setBrandSlug(value.brandSlug);
         setAuthHeroTitle(value.authHeroTitle);
         setAuthHeroDescription(value.authHeroDescription);
@@ -276,7 +271,7 @@ export default function AppearanceSettingsPage() {
         if (blocker.state !== "blocked") return;
         modal.confirm({
             title: "放弃站点及外观调整？",
-            content: "当前品牌、画布 Agent、更新公告、SEO、备案、皮肤或媒体配置尚未保存，离开后草稿会丢失。线上站点不会改变。",
+            content: "当前品牌、画布 Agent、SEO、备案、皮肤或媒体配置尚未保存，离开后草稿会丢失。线上站点不会改变。",
             okText: "放弃并离开",
             cancelText: "继续编辑",
             okButtonProps: { danger: true },
@@ -333,7 +328,6 @@ export default function AppearanceSettingsPage() {
     const discardDraft = () => {
         if (!setting || saving || restoring || canvasUploading) return;
         setCanvas(setting.canvas || DEFAULT_CANVAS_APPEARANCE);
-        setUpdates(normalizeUpdateAnnouncement(setting.updates));
         setBrandName(setting.brandName);
         setBrandSlug(setting.brandSlug);
         setAuthHeroTitle(setting.authHeroTitle);
@@ -364,7 +358,7 @@ export default function AppearanceSettingsPage() {
         }
         modal.confirm({
             title: "放弃调整并重新读取？",
-            content: "重新读取会丢弃当前品牌、画布 Agent、更新公告、SEO、备案、皮肤和待上传文件。",
+            content: "重新读取会丢弃当前品牌、画布 Agent、SEO、备案、皮肤和待上传文件。",
             okText: "放弃并刷新",
             cancelText: "继续编辑",
             okButtonProps: { danger: true },
@@ -376,7 +370,7 @@ export default function AppearanceSettingsPage() {
         if (!setting?.configured || saving || refreshing || restoring || canvasUploading) return;
         modal.confirm({
             title: "恢复乐见画布默认外观？",
-            content: "品牌名称、英文标识、Logo、画布 Agent 名称/文案/形象、更新公告、登录页文案、视频、封面、SEO、备案和皮肤主题会立即恢复为项目内置值；自定义公告会清空并关闭，展示原有更新日志。原配置引用的已上传文件仍保留在存储资源中，不会被自动清理。",
+            content: "站点外观配置会立即恢复为项目内置值，包含品牌、画布 Agent、登录页、SEO、备案和皮肤主题。原配置引用的已上传文件仍保留在存储资源中。",
             okText: "恢复默认",
             cancelText: "取消",
             okButtonProps: { danger: true },
@@ -403,12 +397,6 @@ export default function AppearanceSettingsPage() {
 
     const save = async () => {
         if (!setting || saving || restoring || canvasUploading) return;
-        const updatesError = validateUpdateAnnouncement(updates);
-        if (updatesError) {
-            setActiveTab("updates");
-            message.error(updatesError);
-            return;
-        }
         if (![canvas.agentName, canvas.panelTitle, canvas.welcomeTitle, canvas.inputPlaceholder].every((text) => text.trim())) {
             setActiveTab("canvas");
             message.error("请填写助手名称、面板标题、欢迎标题和输入框提示");
@@ -496,7 +484,6 @@ export default function AppearanceSettingsPage() {
             }
             const updated = await updateAdminAppearance({
                 canvas,
-                updates,
                 brandName: nextBrandName,
                 brandSlug: nextBrandSlug,
                 authHeroTitle: nextAuthHeroTitle,
@@ -870,7 +857,6 @@ export default function AppearanceSettingsPage() {
                                 ),
                             },
                             { key: "canvas", label: "画布配置", children: <CanvasAppearanceEditor value={canvas} onChange={setCanvas} disabled={saving || refreshing || restoring || canvasUploading} onUploading={setCanvasUploading} /> },
-                            { key: "updates", label: "更新公告", children: <UpdateAnnouncementEditor value={updates} onChange={setUpdates} disabled={saving || refreshing || restoring || canvasUploading} onUploading={setCanvasUploading} /> },
                         ]}
                     />
                 </div>

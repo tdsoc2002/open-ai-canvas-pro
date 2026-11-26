@@ -341,27 +341,28 @@ export default function LogsPage() {
             ) : null}
             <AdminDataTable
                 className={view === "all" ? "admin-logs-full" : "admin-logs-compact"}
-                trailing={
-                    <Segmented
-                        aria-label="请求明细视图"
-                        value={view}
-                        onChange={(value) => updateUrl({ view: value })}
-                        options={[
-                            { label: "排障", value: "troubleshoot" },
-                            { label: "计费", value: "billing" },
-                            { label: "全部字段", value: "all" },
-                        ]}
-                    />
-                }
                 toolbar={
-                    <AdminSearchInput
-                        allowClear
-                        className="app-list-search"
-                        prefix={<Search className="size-4 text-foreground/40" />}
-                        value={keyword}
-                        placeholder="搜索用户、渠道、模型、路径或请求号"
-                        onValueChange={(value) => updateUrl({ filter: value, page: 1 }, true)}
-                    />
+                    <div className="admin-logs-toolbar-top">
+                        <AdminSearchInput
+                            allowClear
+                            className="app-list-search"
+                            prefix={<Search className="size-4 text-foreground/40" />}
+                            value={keyword}
+                            placeholder="搜索用户、渠道、模型、路径或请求号"
+                            onValueChange={(value) => updateUrl({ filter: value, page: 1 }, true)}
+                        />
+                        <Segmented
+                            aria-label="请求明细视图"
+                            className="ms-auto"
+                            value={view}
+                            onChange={(value) => updateUrl({ view: value })}
+                            options={[
+                                { label: "排障", value: "troubleshoot" },
+                                { label: "计费", value: "billing" },
+                                { label: "全部字段", value: "all" },
+                            ]}
+                        />
+                    </div>
                 }
                 toolbarActiveFilters={
                     <>
@@ -386,7 +387,7 @@ export default function LogsPage() {
                         />
                         <Select
                             aria-label="按用户筛选"
-                            className="w-44"
+                            className="max-w-44"
                             allowClear
                             showSearch
                             filterOption={false}
@@ -399,7 +400,7 @@ export default function LogsPage() {
                         />
                         <Select
                             aria-label="按模型筛选"
-                            className="w-48"
+                            className="max-w-48"
                             allowClear
                             showSearch
                             optionFilterProp="label"
@@ -410,7 +411,7 @@ export default function LogsPage() {
                         />
                         <Select
                             aria-label="按渠道筛选"
-                            className="w-40"
+                            className="max-w-40"
                             allowClear
                             showSearch
                             optionFilterProp="label"
@@ -421,7 +422,7 @@ export default function LogsPage() {
                         />
                         <Select
                             aria-label="明细类型"
-                            className="w-32"
+                            className="max-w-32"
                             value={recordType}
                             onChange={(value) => updateUrl({ recordType: value, page: 1 })}
                             options={[
@@ -432,7 +433,7 @@ export default function LogsPage() {
                         />
                         <Select
                             aria-label="能力类型"
-                            className="w-28"
+                            className="max-w-32"
                             value={capability}
                             onChange={(value) => updateUrl({ capability: value, page: 1 })}
                             options={[
@@ -445,7 +446,7 @@ export default function LogsPage() {
                         />
                         <Select
                             aria-label="请求结果"
-                            className="w-32"
+                            className="max-w-32"
                             value={status}
                             onChange={(value) => updateUrl({ status: value, page: 1 })}
                             options={[

@@ -10083,37 +10083,6 @@ html[data-magicui-theme-vt="active"] .admin-shell * {
     overflow-wrap: anywhere;
 }
 
-.admin-system-update-notes {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--admin-divider);
-}
-
-.admin-system-update-notes h3 {
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.admin-system-update-notes a {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: color-mix(in srgb, var(--foreground) 62%, transparent);
-    font-size: 11px;
-}
-
-.admin-system-update-notes pre {
-    max-height: 260px;
-    margin: 8px 0 0;
-    overflow: auto;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    color: color-mix(in srgb, var(--foreground) 68%, transparent);
-    font: inherit;
-    font-size: 12px;
-    line-height: 1.7;
-}
-
 .admin-system-update-checks {
     padding: 4px 16px 8px;
 }

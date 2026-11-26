@@ -39,7 +39,6 @@ for (const [key, value] of Object.entries({
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
 }
 (globalThis as Record<string, unknown>).__APP_VERSION__ = "test";
-(globalThis as Record<string, unknown>).__APP_CHANGELOG__ = "";
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { PoseLibrarySystems } = await import("../src/pages/admin/pose-library/pose-library-page");

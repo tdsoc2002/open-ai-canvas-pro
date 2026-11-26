@@ -52,11 +52,9 @@ import {
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
-import { APP_VERSION, AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { publishWorkspaceSidebarCollapsed, readWorkspaceSidebarCollapsed, subscribeWorkspaceSidebarCollapsed } from "@/components/layout/workspace-sidebar-state";
 import { AppFeedbackProvider } from "@/components/layout/app-feedback";
-import { updateAnnouncementVersion } from "@/lib/update-announcement";
 import { cn } from "@/lib/utils";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useGlobalAgentStore } from "@/stores/use-global-agent-store";
@@ -247,7 +245,7 @@ function AdminShellLayout() {
                             <div className={cn("admin-sidebar-brand", collapsed && "is-collapsed")}>
                                 <BrandLogoFrame className="admin-sidebar-brand-mark grid shrink-0 place-items-center bg-foreground text-background" logoClassName="size-5 object-contain" fallback={<InfinityIcon className="size-4" aria-hidden="true" />} />
                                 <span className={collapsed ? "sr-only" : "admin-sidebar-brand-title whitespace-nowrap"}>{appearance.brandName}</span>
-                                {!collapsed ? <span className="admin-sidebar-brand-version">{updateAnnouncementVersion(appearance.updates, APP_VERSION)}</span> : null}
+                                {!collapsed ? <span className="admin-sidebar-brand-version">{__APP_VERSION__}</span> : null}
                             </div>
                         </div>
                         <AdminNavigation collapsed={collapsed} />
@@ -411,7 +409,6 @@ function MobileAdminNavigation() {
                         <Home className="size-4" aria-hidden="true" />
                     </Link>
                 </AdminTooltip>
-                <AppChangelogButton className="admin-mobile-navigation-action [&_svg]:size-4" />
             </div>
         </nav>
     );

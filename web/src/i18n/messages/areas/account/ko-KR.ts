@@ -8,16 +8,6 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
             viewDetails: "클릭하여 자세히 보기",
             dismiss: "알림 닫기",
         },
-        changelog: {
-            announcements: "업데이트 공지",
-            log: "업데이트 기록",
-            view: "{{title}} 보기",
-            announcementsDescription: "이 사이트에 게시된 업데이트와 기능 소개를 버전별로 확인",
-            logDescription: "제품 기능, 사용성, 안정성 변경 사항을 버전별로 확인",
-            currentVersion: "현재 버전 {{version}}",
-            unreleased: "개발 중",
-            latest: "최신",
-        },
         announcements: {
             title: "시스템 공지",
             unreadLabel: "시스템 공지, 읽지 않음 {{count}}개",
@@ -67,17 +57,6 @@ export const koKR: DeepStringRecord<typeof zhCN> = {
         footerMenu: {
             loggedOut: "로그아웃되었습니다",
             logoutFailed: "로그아웃에 실패했습니다",
-        },
-        updates: {
-            versionLabel: "버전 {{version}}",
-            versionPending: "버전 미입력",
-            currentVersion: "현재 버전",
-            textPending: "본문 미입력",
-            imageAlt: "업데이트 공지 이미지",
-            videoLabel: "업데이트 공지 동영상",
-            imagePending: "이미지 미업로드",
-            videoPending: "동영상 미업로드",
-            empty: "버전과 내용을 추가하면 여기에서 공지를 미리 볼 수 있습니다.",
         },
         list: {
             filter: "필터",

@@ -2,10 +2,8 @@ import { http } from "@/services/api/request";
 import type { SkinDefinition } from "@/lib/skin-themes";
 import type { AgentAvatarBundleManifest, CanvasAppearance } from "@/lib/canvas/agent-appearance";
 import { apiBaseURL } from "@/services/api/request";
-import type { UpdateAnnouncement } from "@/lib/update-announcement";
 
 export type PublicAppearance = {
-    updates?: UpdateAnnouncement;
     canvas?: CanvasAppearance;
     schemaVersion: number;
     brandName: string;
@@ -37,7 +35,6 @@ export type PublicAppearance = {
 };
 
 export type AdminAppearance = {
-    updates?: UpdateAnnouncement;
     canvas?: CanvasAppearance;
     schemaVersion: number;
     brandName: string;
@@ -117,7 +114,6 @@ export async function updateAdminAppearance(
         AdminAppearance,
         | "brandName"
         | "canvas"
-        | "updates"
         | "brandSlug"
         | "authHeroTitle"
         | "authHeroDescription"
@@ -147,7 +143,7 @@ export async function resetAdminAppearance() {
     return result.setting;
 }
 
-export async function uploadAppearanceAsset(slot: AppearanceAssetUploadSlot | "update-image" | "update-video", file: File) {
+export async function uploadAppearanceAsset(slot: AppearanceAssetUploadSlot, file: File) {
     const body = new FormData();
     body.append("file", file);
     const result = await http.post<{ resource: AppearanceResource }>(`/admin/settings/appearance/assets/${slot}`, body);
@@ -157,10 +153,6 @@ export async function uploadAppearanceAsset(slot: AppearanceAssetUploadSlot | "u
 export function appearanceAssetURL(slot: AppearanceAssetUploadSlot, revision = "") {
     const query = revision ? `?v=${encodeURIComponent(revision)}` : "";
     return `${apiBaseURL.replace(/\/$/, "")}/public/appearance/assets/${encodeURIComponent(slot)}${query}`;
-}
-
-export function updateAnnouncementPreviewURL(resourceId: string) {
-    return `${apiBaseURL.replace(/\/$/, "")}/admin/settings/appearance/updates/${encodeURIComponent(resourceId)}`;
 }
 
 export async function uploadLive2D(file: File, scope: "admin" | "personal" = "admin") {

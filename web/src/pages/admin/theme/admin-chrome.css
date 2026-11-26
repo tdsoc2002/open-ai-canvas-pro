@@ -49,10 +49,14 @@
     min-height: 38px;
     width: 100%;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
     padding: 0 8px;
     color: inherit;
+}
+
+[data-admin-root] .admin-sidebar-brand.is-collapsed {
+    justify-content: center;
 }
 
 [data-admin-root] .admin-sidebar-brand-mark {
