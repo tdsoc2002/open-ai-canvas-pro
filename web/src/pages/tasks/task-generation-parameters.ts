@@ -1,5 +1,6 @@
 import { standardImageRatioForSize } from "@/lib/image-size-presets";
 import { doubaoAudioDialectOptions, doubaoAudioLanguageOptions, doubaoAudioVoiceOptions, openAIAudioVoiceOptions } from "@/lib/audio-generation";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 
 type MediaKind = "image" | "video";
 export type TaskParameterKind = MediaKind | "audio" | "text";
@@ -125,7 +126,7 @@ function resolutionLabel(value: string, kind: MediaKind) {
     if (automatic(value)) return "auto";
     if (/^[1-9]\d?(?:\.\d)?k$/i.test(value)) return value.toUpperCase();
     if (/^[1-9]\d{0,5}\s*[x×]\s*[1-9]\d{0,5}$/i.test(value)) return value.replace(/\s*[x×]\s*/i, " × ");
-    if (kind === "video" && /^[1-9]\d{0,4}(?:p[竖横]?)?$/i.test(value)) return /p/i.test(value) ? value.replace(/p/i, "p") : `${value}p`;
+    if (kind === "video" && /^[1-9]\d{0,4}(?:p[竖横]?)?$/i.test(value)) return formatVideoResolutionLabel(value);
     return undefined;
 }
 

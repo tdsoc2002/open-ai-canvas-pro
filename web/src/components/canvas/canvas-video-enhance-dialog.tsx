@@ -7,7 +7,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { videoEnhanceProfile, videoEnhanceQuoteRequest, videoEnhanceResolutionShortEdge, videoEnhanceSourceError, type VideoEnhanceBitrateLevel, type VideoEnhanceParams } from "@/lib/canvas/canvas-video-enhance";
 import { listVideoProcessingModels } from "@/lib/canvas/canvas-video-processing";
 import { modelQuoteDescription } from "@/lib/model-pricing";
-import { compareVideoResolutions } from "@/lib/video-generation-options";
+import { compareVideoResolutions, formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-models";
 import { modelDisplayName, type AiConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -42,7 +42,7 @@ function EnhanceEditor({ node, config, onClose, onConfirm }: Props) {
         const edge = videoEnhanceResolutionShortEdge(value);
         // 低于源视频短边的档位不会提升画质，直接禁用。
         const disabled = sourceShortEdge > 0 && edge > 0 && edge < sourceShortEdge;
-        return { value, label: value.toUpperCase(), disabled, title: disabled ? "低于源视频分辨率" : undefined };
+        return { value, label: formatVideoResolutionLabel(value), disabled, title: disabled ? "低于源视频分辨率" : undefined };
     });
     const defaultResolution = resolutionOptions.find((item) => item.value === profile.defaultResolution && !item.disabled)?.value || resolutionOptions.find((item) => !item.disabled)?.value || "";
     const [resolution, setResolution] = useState(defaultResolution);

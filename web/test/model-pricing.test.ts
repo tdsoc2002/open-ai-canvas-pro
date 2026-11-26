@@ -1,6 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { modelQuoteDescription, modelQuoteRequest, systemModelQuoteRequest, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection, requestCreditCost } from "../src/lib/model-pricing";
+import {
+    modelQuoteDescription,
+    modelQuoteRequest,
+    systemModelQuoteRequest,
+    normalizeTierResolution,
+    priceTierSummaryLabel,
+    priceTiersForCurrentSelection,
+    requestCreditCost,
+    videoPriceResolutionLabel,
+    videoPriceTierSummaryLabel,
+    type ModelPriceTier,
+} from "../src/lib/model-pricing";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
 import type { ModelRequirements } from "../src/lib/model-selection";
 import { createModelChannel, defaultConfig, normalizeConfigSnapshot, resolveModelChannel, type AiConfig } from "../src/stores/use-config-store";
@@ -240,6 +251,24 @@ describe("model request pricing", () => {
     test("preserves provider-specific resolution enums when matching price tiers", () => {
         expect(normalizeTierResolution("768P竖")).toBe("768p竖");
         expect(normalizeTierResolution("HD_Portrait")).toBe("hd_portrait");
+    });
+
+    test("H3 价格档把 1440p 显示为 2K", () => {
+        const tier: ModelPriceTier = {
+            selector: { vquality: "1440p" },
+            resolution: "1440p",
+            videoSeconds: 0,
+            billingMode: "per_second",
+            unitPriceMicrocredits: 130_000,
+            inputTokenPriceMicrocredits: 0,
+            outputTokenPriceMicrocredits: 0,
+            cachedTokenPriceMicrocredits: 0,
+            cacheWriteTokenPriceMicrocredits: 0,
+        };
+        expect(videoPriceResolutionLabel("1440p")).toBe("2K");
+        expect(videoPriceResolutionLabel("2160p")).toBe("4K");
+        expect(videoPriceTierSummaryLabel([tier])).toContain("2K");
+        expect(videoPriceTierSummaryLabel([tier])).not.toContain("1440P");
     });
 
     test("matches the current Agnes resolution and duration tier and totals per-second credits", () => {

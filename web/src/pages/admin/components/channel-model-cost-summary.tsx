@@ -3,6 +3,7 @@ import type { ChannelModel, ChannelModelPriceTier } from "@/services/api/wallet"
 import { priceCurrencyUnit } from "@/services/api/user-groups";
 import { AdminStatusBadge } from "./admin-ui";
 import { formatModelMarkup, formatModelPrice, modelPriceFields } from "./channel-model-pricing";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 
 export function ChannelModelCostSummary({ item }: { item: ChannelModel }) {
     const tiers = item.priceTiers?.filter((tier) => tier.enabled) || [];
@@ -74,7 +75,7 @@ export function specificationLabel(tier: ChannelModelPriceTier) {
             imageQualityLabel(specific(selector.imageResolution) || specific(selector.resolution)),
             specific(selector.size),
             specific(selector.count) ? `${selector.count} 张输出` : "",
-            resolution.toUpperCase(),
+            formatVideoResolutionLabel(resolution),
             duration ? `${duration} 秒` : "",
             specific(selector.imageCount) ? `${selector.imageCount} 张参考图` : "",
             selector.videoGenerateAudio === "true" ? "有声" : selector.videoGenerateAudio === "false" ? "无声" : "",

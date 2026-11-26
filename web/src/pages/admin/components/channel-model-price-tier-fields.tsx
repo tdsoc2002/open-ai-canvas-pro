@@ -11,7 +11,7 @@ import { priceCurrencyUnit } from "@/services/api/user-groups";
 import { Select } from "@/components/ui/base/select";
 import { ImageParameterInput } from "@/components/image-parameter-fields";
 import { imageResolutionTiers } from "@/lib/image-size-presets";
-import { compareVideoResolutions } from "@/lib/video-generation-options";
+import { compareVideoResolutions, formatVideoResolutionLabel } from "@/lib/video-generation-options";
 // 价格档分辨率按后端保存口径（2k→1440p、4k→2160p）取值，已存档位才能正确回显。
 import { normalizeTierResolution } from "@/lib/model-pricing";
 
@@ -132,7 +132,7 @@ export function PriceTierFields({
                                 </Form.Item>
                                 {isVideo ? (
                                     <Form.Item className="mb-0" name={[index, "resolution"]} label="分辨率" rules={[{ required: true, message: "请选择分辨率" }]}>
-                                        <Select options={[{ label: "任意分辨率", value: "*" }, ...resolutionOptions.map((value) => ({ label: value.toUpperCase(), value: normalizeTierResolution(value) }))]} />
+                                        <Select options={[{ label: "任意分辨率", value: "*" }, ...resolutionOptions.map((value) => ({ label: formatVideoResolutionLabel(value), value: normalizeTierResolution(value) }))]} />
                                     </Form.Item>
                                 ) : null}
                                 {isVideo && video?.processing && video.defaultOperation !== "depth" ? (

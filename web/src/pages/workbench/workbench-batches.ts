@@ -1,6 +1,7 @@
 import { playbackVariantUrl, resourceFileUrl, resourceIdFromStorageKey } from "@/services/api/resources";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { WorkbenchKind } from "@/services/api/workbench";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 
 /** 一次提交的作品数上限：图片宫格最多 12 张，视频最多 8 条。实际上限还受模型单次张数和账号并发约束。 */
 export const IMAGE_BATCH_MAX = 12;
@@ -312,7 +313,7 @@ export function workbenchParameterSummary(kind: WorkbenchKind, parameters: Recor
         const ratio = ratioLabel(parameters.ratio);
         if (ratio) items.push(ratio);
         const resolution = text(parameters.resolution);
-        if (resolution) items.push(/^\d+$/.test(resolution) ? `${resolution}p` : resolution);
+        if (resolution) items.push(formatVideoResolutionLabel(resolution));
         if (parameters.generateAudio === true) items.push("有声");
     }
     if (outputCount && outputCount > 0) items.push(kind === "image" ? `${outputCount} 张` : `${outputCount} 条`);

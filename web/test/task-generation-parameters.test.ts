@@ -4,7 +4,7 @@ import { taskGenerationParameters } from "../src/pages/tasks/task-generation-par
 describe("创作历史的当次参数", () => {
     test("区分关闭、自动与未记录", () => {
         expect(taskGenerationParameters('{"generationParameters":{"vquality":"480","size":"16:9","videoSeconds":"-1","videoGenerateAudio":false}}', "video")).toEqual({
-            resolution: "480p",
+            resolution: "480P",
             ratio: "16:9",
             duration: "auto",
             audio: false,
@@ -26,7 +26,7 @@ describe("创作历史的当次参数", () => {
 
     test("从旧工作台快照读取，不从当前配置或错误数据猜测", () => {
         expect(taskGenerationParameters('{"workbench":{"kind":"video","parameters":{"ratio":"1:1","resolution":"720p","seconds":4,"generateAudio":true}}}', "video")).toEqual({
-            resolution: "720p",
+            resolution: "720P",
             ratio: "1:1",
             duration: 4,
             audio: true,

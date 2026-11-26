@@ -131,7 +131,7 @@ function SeedanceVideoSettingsPanel({ config, profile, priceTiers, onConfigChang
                 <SettingGroup title="分辨率">
                     <div className={optionGrid}>
                         {profile.resolutions.toSorted(compareVideoResolutions).map((value) => {
-                            const item = { value, label: value.toUpperCase() };
+                            const item = { value, label: formatVideoResolutionLabel(value) };
                             const disabled = (item.value === "1080p" && isSeedanceFastModel(model)) || !hasPriceTierForVideoSelection(priceTiers, item.value, duration);
                             return (
                                 <OptionPill key={item.value} selected={resolution === item.value} disabled={disabled} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>

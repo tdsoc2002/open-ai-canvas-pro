@@ -101,7 +101,7 @@ export function videoPriceTierSummaryLabel(tiers: ModelPriceTier[]) {
     perSecondByResolution.delete("*");
     if (!perSecondByResolution.size) return priceTierSummaryLabel(tiers, "video", true);
 
-    const labels = [...perSecondByResolution].sort(([a], [b]) => compareVideoResolutions(a, b)).map(([resolution, group]) => `${resolution.toUpperCase()} ${priceTierSummaryLabel(group, "video", true)}`);
+    const labels = [...perSecondByResolution].sort(([a], [b]) => compareVideoResolutions(a, b)).map(([resolution, group]) => `${videoPriceResolutionLabel(resolution)} ${priceTierSummaryLabel(group, "video", true)}`);
     if (unrestricted) labels.push(`未限定分辨率 ${priceTierSummaryLabel(unrestricted, "video", true)}`);
     if (otherTiers.length) labels.push(priceTierSummaryLabel(otherTiers, "video", true));
     return labels.join(" · ");
@@ -294,4 +294,11 @@ export function normalizeTierResolution(value: string) {
     const raw = String(value || "").trim();
     if (!raw || raw === "*") return "*";
     return videoResolutionComparisonKey(raw);
+}
+
+export function videoPriceResolutionLabel(value: string) {
+    const normalized = normalizeTierResolution(value);
+    if (normalized === "1440p") return "2K";
+    if (normalized === "2160p") return "4K";
+    return normalized.toUpperCase();
 }

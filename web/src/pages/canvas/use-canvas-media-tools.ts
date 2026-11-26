@@ -58,6 +58,7 @@ import { buildVideoFrameNodes } from "@/lib/canvas/canvas-video-frame-nodes";
 import { extractVideoAudio, trimVideoSegment } from "@/lib/canvas/canvas-video-segment";
 import { generationErrorMessage } from "@/lib/generation-error";
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { defaultImageParamsForModel, modelCompatibilityError } from "@/lib/model-selection";
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { storeGeneratedVideo } from "@/services/api/video";
@@ -2026,7 +2027,7 @@ export function useCanvasMediaTools({
             const title =
                 request.operation === "depth"
                     ? translate("canvasPage.mediaTools.titleDepth", { title: node.title || translate("canvasPage.common.video") })
-                    : translate("canvasPage.mediaTools.titleEnhance", { title: node.title || translate("canvasPage.common.video"), resolution: request.params.resolution.toUpperCase() });
+                    : translate("canvasPage.mediaTools.titleEnhance", { title: node.title || translate("canvasPage.common.video"), resolution: formatVideoResolutionLabel(request.params.resolution) });
             setRunningNodeId(childId);
             setNodes((current) => [
                 ...current,

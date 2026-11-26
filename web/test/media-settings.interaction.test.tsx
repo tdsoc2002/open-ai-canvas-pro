@@ -322,7 +322,7 @@ test("真实视频设置面板自动适配时长与分辨率，不发送不支�
         const seedanceModel = "seedance-2.0";
         config = { ...config, model: encodeChannelModel("video", seedanceModel), channels: [{ ...channel, models: [seedanceModel], modelCosts: [{ ...channel.modelCosts![0], model: seedanceModel }] }] };
         await act(async () => render());
-        expect(resolutionLabels()).toEqual(["480P", "720P", "1080P", "1440P", "4K"]);
+        expect(resolutionLabels()).toEqual(["480P", "720P", "1080P", "2K", "4K"]);
         const seedanceResolution = [...host.querySelectorAll("button")].find((button) => button.textContent === "720P")!;
         expect(seedanceResolution).toBeDefined();
         expect(seedanceResolution.getAttribute("aria-pressed")).toBe("false");

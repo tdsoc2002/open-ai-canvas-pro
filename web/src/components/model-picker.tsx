@@ -9,7 +9,7 @@ import { buildImagePriceTable } from "@/lib/image-price-table";
 import { formatCreditDisplay, formatCreditPoints } from "@/lib/credit-format";
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
-import { formatPriceRange, modelQuoteDescription, modelQuoteRequest, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection, tokenPriceRuleDescription, videoPriceTierSummaryLabel, type ModelPriceTier } from "@/lib/model-pricing";
+import { formatPriceRange, modelQuoteDescription, modelQuoteRequest, priceTierSummaryLabel, priceTiersForCurrentSelection, tokenPriceRuleDescription, videoPriceResolutionLabel, videoPriceTierSummaryLabel, type ModelPriceTier } from "@/lib/model-pricing";
 import { compatibleModelInGroup, configuredModelDisplayName, modelCompatibilityError, resolveCompatibleModel, type DisplayModelGroup, type ModelRequirements } from "@/lib/model-selection";
 import { groupModelsForPicker, isDirectSystemModel, modelChannelLabel, type ModelPickerGroup } from "@/lib/model-picker-groups";
 import { isSeedanceVideoModel } from "@/lib/seedance-video";
@@ -792,11 +792,6 @@ function channelTierPriceSummary(label: string, allTiers: ModelPriceTier[], capa
     };
 }
 
-function tierResolutionLabel(value: string) {
-    const normalized = normalizeTierResolution(value);
-    return normalized === "*" ? "全部分辨率" : normalized.toUpperCase();
-}
-
 function tierDurationLabel(seconds: number) {
     return seconds > 0 ? `${seconds} 秒` : "全部时长";
 }
@@ -814,8 +809,8 @@ function tierSpecificationLabel(tier: NonNullable<NonNullable<AiConfig["channels
                 [
                     selector.imageResolution?.toUpperCase(),
                     selector.resolution?.toUpperCase(),
-                    selector.vquality && selector.vquality !== "*" ? tierResolutionLabel(selector.vquality) : "",
-                    tier.resolution && tier.resolution !== "*" && !selector.resolution && !selector.vquality && !selector.imageResolution ? tierResolutionLabel(tier.resolution) : "",
+                    selector.vquality && selector.vquality !== "*" ? videoPriceResolutionLabel(selector.vquality) : "",
+                    tier.resolution && tier.resolution !== "*" && !selector.resolution && !selector.vquality && !selector.imageResolution ? videoPriceResolutionLabel(tier.resolution) : "",
                 ].filter((value) => value && value !== "*"),
             ),
         ].map((value) => `分辨率 ${value}`),
