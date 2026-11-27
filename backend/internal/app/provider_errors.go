@@ -146,6 +146,12 @@ func (e providerHTTPError) Error() string {
 	if e.StatusCode == http.StatusBadRequest || e.StatusCode == http.StatusUnprocessableEntity {
 		return providerErrorWithDetail(e.summary(), e.Body)
 	}
+	if e.StatusCode == http.StatusForbidden {
+		code, _, failed := providerResponseBusinessFailure([]byte(e.Body))
+		if failed && strings.EqualFold(code, "output_content_policy_violation") {
+			return "生成结果未通过模型服务内容审核，请调整提示词或参考素材后重新生成"
+		}
+	}
 	if message := speechResourceDeniedUserMessage(e.Body); (e.StatusCode == http.StatusUnauthorized || e.StatusCode == http.StatusForbidden) && message != "" {
 		return message
 	}

@@ -1028,6 +1028,12 @@ func TestProviderUserFacingErrorMessageClassifiesRejectedRequestBodies(t *testin
 			want:       "安全审核",
 		},
 		{
+			name:       "forbidden image output rejected by moderation",
+			statusCode: http.StatusForbidden,
+			body:       `{"error":{"code":"output_content_policy_violation","message":"生成内容未通过内容审核。 (request id: secret-trace)","type":"image_error"}}`,
+			want:       "生成结果未通过模型服务内容审核",
+		},
+		{
 			name:       "unprocessable entity is classified too",
 			statusCode: http.StatusUnprocessableEntity,
 			body:       `{"error":{"message":"insufficient balance, secret-trace"}}`,
