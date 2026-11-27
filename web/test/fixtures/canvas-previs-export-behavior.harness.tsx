@@ -259,7 +259,7 @@ for (const renderMode of ["beauty", "clay"] as const) {
             expect(video).toMatchObject({
                 type: CanvasNodeType.Video,
                 title: `${output.title} · 图生视频`,
-                metadata: { generationMode: "video", videoEditOperation: "image_to_video", videoStartFrameNodeId: picture.id, referenceAssetNodeIds: [picture.id], prompt: output.prompt, composerContent: output.prompt, seconds: "7.5", status: "idle" },
+                metadata: { generationMode: "video", videoEditOperation: "image_to_video", videoStartFrameNodeId: picture.id, referenceAssetNodeIds: [picture.id], prompt: output.prompt, composerContent: output.prompt, seconds: "8", status: "idle" },
             });
             expect(video.metadata?.content).toBeFalsy();
             expect(video.position.x).toBeGreaterThanOrEqual(picture.position.x + picture.width);
@@ -419,7 +419,7 @@ test("two exports finishing in reverse order retain both image/video pairs and t
     for (const output of [firstOutput, secondOutput]) {
         const picture = added.find((item) => item.type === CanvasNodeType.Image && item.title.startsWith(output.title))!;
         const video = added.find((item) => item.type === CanvasNodeType.Video && item.title.startsWith(output.title))!;
-        expect(video.metadata).toMatchObject({ videoStartFrameNodeId: picture.id, prompt: output.prompt, composerContent: output.prompt, seconds: String(output.duration) });
+        expect(video.metadata).toMatchObject({ videoStartFrameNodeId: picture.id, prompt: output.prompt, composerContent: output.prompt, seconds: String(Math.max(1, Math.round(output.duration))) });
         expect(connectionsRef.current.filter((link) => link.fromNodeId === picture.id && link.toNodeId === video.id)).toHaveLength(1);
     }
     expect(connectionsRef.current).toHaveLength(3);
