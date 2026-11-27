@@ -120,7 +120,11 @@ export function readNodeGenerationSpec(node: Pick<CanvasNodeData, "type" | "meta
             if (!(field.modes as readonly string[]).includes(mode)) continue;
             const value = Object.hasOwn(legacyOptions, field.name) ? legacyOptions[field.name] : metadata[field.node];
             if (value === undefined || value === null || (value === "" && field.name !== "audioVoice")) continue;
-            options[field.name] = optionValue(value, field.kind, field.node);
+            try {
+                options[field.name] = optionValue(value, field.kind, field.node);
+            } catch {
+                // 历史镜像可能来自预演台的小数时长；忽略单个坏字段，避免整张画布无法打开。
+            }
         }
     }
     const modelSelection =

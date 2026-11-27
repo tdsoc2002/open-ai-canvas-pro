@@ -367,7 +367,7 @@ export function useCanvasPrevis({
                             referenceAssetNodeIds: [picture.id],
                             prompt: output.prompt,
                             composerContent: output.prompt,
-                            seconds: String(output.duration),
+                            seconds: String(Math.max(1, Math.round(output.duration))),
                             status: NODE_STATUS_IDLE,
                         },
                     );
@@ -465,7 +465,7 @@ export function useCanvasPrevis({
                 status: NODE_STATUS_IDLE,
                 composerContent: prompt,
                 prompt,
-                seconds: String(scene.shots.reduce((total, shot) => total + shot.duration, 0)),
+                seconds: String(Math.max(1, Math.round(scene.shots.reduce((total, shot) => total + shot.duration, 0)))),
                 dramaRef: { ...ref, baseResourceId: request.segment.videoResourceId },
                 previsSceneId: scene.id,
                 previsShotId: scene.activeShotId,

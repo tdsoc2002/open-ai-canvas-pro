@@ -64,6 +64,14 @@ test("历史视频草稿优先读取合同参数，空参数回退到镜像字�
     assert.deepEqual(readNodeGenerationSpec(withoutOptions)?.options, { durationSeconds: 8 });
 });
 
+test("历史视频镜像包含小数时长时忽略坏字段，不阻断画布读取", () => {
+    const current = node(CanvasNodeType.Video, { seconds: "6.4", composerContent: "预演镜头" });
+
+    assert.doesNotThrow(() => readNodeGenerationSpec(current));
+    assert.deepEqual(readNodeGenerationSpec(current)?.options, {});
+    assert.equal(readNodeGenerationSpec(current)?.prompt, "预演镜头");
+});
+
 test("空媒体草稿同时初始化提交提示词和编辑提示词", () => {
     const current = node(CanvasNodeType.Video, { status: "idle" });
 
